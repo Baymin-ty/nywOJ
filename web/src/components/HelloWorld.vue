@@ -14,7 +14,7 @@ export default {
   },
   data() {
     return {
-      cnt: document.cookie,
+      cnt: document.cookie ? document.cookie : 0,
       flag: 1
     }
   },
