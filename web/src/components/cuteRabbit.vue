@@ -1,7 +1,7 @@
 <template>
   <div>
     <img v-show="flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-1.jpg">
-    <img v-show="!flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-2.jpg">
+    <img v-show="!flag" class="round" alt="Rabbit" src="../assets/rabbit-2.jpg">
     <h1 class="rainbow"> 你戳了可爱兔兔 {{ cnt }} 下</h1>
   </div>
 </template>
