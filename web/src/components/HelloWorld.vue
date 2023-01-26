@@ -14,13 +14,15 @@ export default {
   },
   data() {
     return {
-      cnt: 0,
+      cnt: document.cookie,
       flag: 1
     }
   },
   methods: {
     fun() {
       ++this.cnt;
+      document.cookie = this.cnt;
+      console.log(document.cookie);
       this.flag ^= 1;
       setTimeout(() => {
         this.flag ^= 1;
