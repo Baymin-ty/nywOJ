@@ -1,14 +1,14 @@
 <template>
-  <HelloWorld msg="考上大学再搞机" />
+  <cuteRabbit />
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import cuteRabbit from './components/cuteRabbit.vue'
 
 export default {
   name: 'App',
   components: {
-    HelloWorld
+    cuteRabbit
   }
 }
 </script>

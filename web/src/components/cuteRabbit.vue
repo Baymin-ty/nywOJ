@@ -1,5 +1,5 @@
 <template>
-  <div class="hello">
+  <div>
     <img v-show="flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-1.jpg">
     <img v-show="!flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-2.jpg">
     <h1 class="rainbow"> 你戳了可爱兔兔 {{ cnt }} 下</h1>
@@ -8,25 +8,18 @@
 
 <script>
 export default {
-  name: 'HelloWorld',
-  props: {
-    msg: String,
-  },
+  name: 'cuteRabbit',
   data() {
     return {
-      cnt: document.cookie ? document.cookie : 0,
+      cnt: (!document.cookie || document.cookie > 114514) ? 0 : document.cookie,
       flag: 1
     }
   },
   methods: {
     fun() {
-      ++this.cnt;
-      document.cookie = this.cnt;
-      console.log(document.cookie);
+      document.cookie = ++this.cnt;
       this.flag ^= 1;
-      setTimeout(() => {
-        this.flag ^= 1;
-      }, 66);
+      setTimeout(() => { this.flag ^= 1; }, 66);
     }
   },
 }
