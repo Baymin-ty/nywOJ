@@ -15,16 +15,16 @@ export default {
   data() {
     let obj = this;
     return {
-      cnt: obj.getcookie(),
+      cnt: obj.getCookie(),
       flag: 1
     }
   },
   methods: {
-    getcookie() {
-      var str = document.cookie;
+    getCookie() {
+      const str = document.cookie;
       if (!str.length || str.length > 10)
         return 0;
-      for (var i = 0, len = str.length; i < len; i++) {
+      for (let i = 0, len = str.length; i < len; i++) {
         if (str[i] < '0' + (!i) || str[i] > '9')
           return 0;
       }
