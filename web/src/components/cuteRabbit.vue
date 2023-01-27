@@ -1,6 +1,6 @@
 <template>
   <el-row>
-    <el-col :span="15">
+    <el-col :span="12">
       <div>
         <img v-show="flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-1.jpg">
         <img v-show="!flag" class="round" alt="Rabbit" src="../assets/rabbit-2.jpg">
@@ -10,7 +10,7 @@
         <h1 class="rainbow"> 你戳了可爱兔兔 {{ cnt }} 下</h1>
       </div>
     </el-col>
-    <el-col :span="8">
+    <el-col :span="12">
       <h2 style="float:left;">
         <el-switch
             v-model="exSound"
@@ -23,7 +23,7 @@
         />
         戳可爱兔兔，测可爱列表
       </h2>
-      <el-table :data="tableData">
+      <el-table :data="tableData" border height="600px">
         <el-table-column prop="date" label="点击时间" width="auto"/>
         <el-table-column prop="name" label="用户名" width="auto"/>
         <el-table-column prop="ip" label="IP" width="auto"/>
@@ -43,31 +43,32 @@ export default {
       flag: 1,
       exSound: 0,
       tableData: [{
-        date: '1970-1-1',
-        name: 'ty',
-        ip: '0.0.0.0',
-        loc: '江苏省苏州市',
-      }, {
-        date: '1970-1-2',
-        name: 'ty',
-        ip: '1.1.1.1',
-        loc: '浙江省温州市',
-      }, {
-        date: '1970-1-3',
-        name: 'ty',
-        ip: '2.2.2.2',
-        loc: '江苏省常州市',
+        date: '1145-1-4',
+        name: 'ztmf',
+        ip: '1.1.4.5',
+        loc: '火星',
       }, {
         date: '1970-1-4',
         name: 'ty',
         ip: '3.3.3.3',
         loc: '美国',
       }, {
-        date: '114514-1-5',
-        name: 'ztmf',
-        ip: '1.1.4.5',
-        loc: '火星',
-      }],
+        date: '1970-1-3',
+        name: 'ty',
+        ip: '2.2.2.2',
+        loc: '江苏省常州市',
+      }, {
+        date: '1970-1-2',
+        name: 'ty',
+        ip: '1.1.1.1',
+        loc: '浙江省温州市',
+      },
+        {
+          date: '1970-1-1',
+          name: 'ty',
+          ip: '0.0.0.0',
+          loc: '江苏省苏州市',
+        },],
     }
   },
   methods: {
@@ -86,10 +87,10 @@ export default {
         this.$refs.hash.play();
       this.addClickInfo();
       document.cookie = ++this.cnt;
-      this.flag ^= 1;
-      setTimeout(() => {
-        this.flag ^= 1;
-      }, 36);
+      // this.flag ^= 1;
+      // setTimeout(() => {
+      //   this.flag ^= 1;
+      // }, 36);
     },
     addClickInfo() {
       this.axios.get('https://ip.useragentinfo.com/json').then((response) => {
@@ -103,8 +104,9 @@ export default {
         if (ipInfo.province === ipInfo.city)
           ipInfo.province = "";
         const now = new Date();
-        const curDate = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
-        this.tableData.push({
+        const curDate = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate()
+            + ' ' + now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds();
+        this.tableData.unshift({
           date: curDate, name: "guest", ip: ipInfo.ip,
           loc: ipInfo.country + ipInfo.province + ipInfo.city
         });
@@ -123,7 +125,7 @@ export default {
 
 .rainbow {
   margin: 10px;
-  font-size: 80px;
+  font-size: 60px;
   background-image: linear-gradient(92deg, rgb(38, 243, 93) 0%, rgb(254, 171, 58) 100%);
   color: rgb(38, 82, 243);
   background-clip: text;
