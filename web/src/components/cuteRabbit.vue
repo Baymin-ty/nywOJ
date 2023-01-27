@@ -11,8 +11,17 @@
       </div>
     </el-col>
     <el-col :span="8">
-      <h2>
-        点击左侧可爱兔兔，测试此列表
+      <h2 style="float:left;">
+        <el-switch
+            v-model="exSound"
+            size="large"
+            class="ml-2"
+            inline-prompt
+            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
+            active-text="开启点击音效"
+            inactive-text="关闭点击音效"
+        />
+        戳可爱兔兔，测可爱列表
       </h2>
       <el-table :data="tableData">
         <el-table-column prop="date" label="点击时间" width="auto"/>
@@ -32,6 +41,7 @@ export default {
     return {
       cnt: obj.getCookie(),
       flag: 1,
+      exSound: 0,
       tableData: [{
         date: '1970-1-1',
         name: 'ty',
@@ -72,7 +82,8 @@ export default {
       return str;
     },
     fun() {
-      this.$refs.hash.play();
+      if (this.exSound)
+        this.$refs.hash.play();
       this.addClickInfo();
       document.cookie = ++this.cnt;
       this.flag ^= 1;
