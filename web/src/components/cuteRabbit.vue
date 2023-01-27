@@ -139,7 +139,7 @@ export default {
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 .round {
-  width: 500px;
+  width: 400px;
   border-radius: 36px;
 }
 
