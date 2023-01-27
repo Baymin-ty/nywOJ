@@ -1,12 +1,27 @@
 <template>
-  <div>
-    <img v-show="flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-1.jpg">
-    <img v-show="!flag" class="round" alt="Rabbit" src="../assets/rabbit-2.jpg">
-    <audio ref="hash">
-      <source src="../assets/hash.mp3">
-    </audio>
-    <h1 class="rainbow"> 你戳了可爱兔兔 {{ cnt }} 下</h1>
-  </div>
+  <el-row>
+    <el-col :span="15">
+      <div>
+        <img v-show="flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-1.jpg">
+        <img v-show="!flag" class="round" alt="Rabbit" src="../assets/rabbit-2.jpg">
+        <audio ref="hash">
+          <source src="../assets/hash.mp3">
+        </audio>
+        <h1 class="rainbow"> 你戳了可爱兔兔 {{ cnt }} 下</h1>
+      </div>
+    </el-col>
+    <el-col :span="8">
+      <h2>
+        点击左侧可爱兔兔，测试此列表
+      </h2>
+      <el-table :data="tableData">
+        <el-table-column prop="date" label="点击时间" width="auto"/>
+        <el-table-column prop="name" label="用户名" width="auto"/>
+        <el-table-column prop="ip" label="IP" width="auto"/>
+        <el-table-column prop="loc" label="IP属地" width="auto"/>
+      </el-table>
+    </el-col>
+  </el-row>
 </template>
 
 <script>
@@ -16,7 +31,33 @@ export default {
     let obj = this;
     return {
       cnt: obj.getCookie(),
-      flag: 1
+      flag: 1,
+      tableData: [{
+        date: '1970-1-1',
+        name: 'ty',
+        ip: '0.0.0.0',
+        loc: '江苏省苏州市',
+      }, {
+        date: '1970-1-2',
+        name: 'ty',
+        ip: '1.1.1.1',
+        loc: '浙江省温州市',
+      }, {
+        date: '1970-1-3',
+        name: 'ty',
+        ip: '2.2.2.2',
+        loc: '江苏省常州市',
+      }, {
+        date: '1970-1-4',
+        name: 'ty',
+        ip: '3.3.3.3',
+        loc: '美国',
+      }, {
+        date: '114514-1-5',
+        name: 'ztmf',
+        ip: '1.1.4.5',
+        loc: '火星',
+      }],
     }
   },
   methods: {
@@ -32,10 +73,32 @@ export default {
     },
     fun() {
       this.$refs.hash.play();
+      this.addClickInfo();
       document.cookie = ++this.cnt;
       this.flag ^= 1;
-      setTimeout(() => { this.flag ^= 1; }, 36);
-    }
+      setTimeout(() => {
+        this.flag ^= 1;
+      }, 36);
+    },
+    addClickInfo() {
+      this.axios.get('https://ip.useragentinfo.com/json').then((response) => {
+        let ipInfo = {};
+        ipInfo.ip = response.data.ip;
+        ipInfo.country = response.data.country;
+        ipInfo.province = response.data.province;
+        ipInfo.city = response.data.city;
+        if (ipInfo.country === "中国")
+          ipInfo.country = "";
+        if (ipInfo.province === ipInfo.city)
+          ipInfo.province = "";
+        const now = new Date();
+        const curDate = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+        this.tableData.push({
+          date: curDate, name: "guest", ip: ipInfo.ip,
+          loc: ipInfo.country + ipInfo.province + ipInfo.city
+        });
+      });
+    },
   },
 }
 </script>

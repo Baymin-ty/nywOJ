@@ -5,14 +5,7 @@
         <myHeader/>
       </el-header>
       <el-main>
-        <el-row>
-          <el-col :span="15">
-            <cuteRabbit/>
-          </el-col>
-          <el-col :span="8">
-            <click-list/>
-          </el-col>
-        </el-row>
+        <cuteRabbit/>
       </el-main>
       <el-footer>
         <myFooter/>
@@ -25,7 +18,6 @@
 import cuteRabbit from './components/cuteRabbit.vue'
 import myHeader from './components/myHeader.vue'
 import myFooter from './components/myFooter.vue'
-import clickList from './components/clickList.vue'
 
 export default {
   name: 'App',
@@ -33,7 +25,6 @@ export default {
     cuteRabbit,
     myHeader,
     myFooter,
-    clickList
   }
 }
 </script>
