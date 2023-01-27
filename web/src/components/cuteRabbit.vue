@@ -98,7 +98,7 @@ export default {
       }, 36);
     },
     all() {
-      this.axios.get('http://127.0.0.1/rabbit/all').then(res => {
+      this.axios.get('http://124.222.66.125:1234/rabbit/all').then(res => {
         this.info = res.data;
       }).catch(err => {
         console.log("failed: " + err);
@@ -106,7 +106,7 @@ export default {
     },
     async add() {
       let x = await getInfo();
-      axios.get('http://127.0.0.1/rabbit/add', {
+      axios.get('http://124.222.66.125:1234/rabbit/add', {
         params: {
           userid: x.userid,
           time: x.time,
