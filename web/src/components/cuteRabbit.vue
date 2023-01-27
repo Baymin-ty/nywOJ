@@ -34,6 +34,10 @@
 </template>
 
 <script>
+const dateFormat = (x) => {
+  x = x.toString();
+  return x.length > 1 ? x : '0' + x;
+}
 export default {
   name: 'cuteRabbit',
   data() {
@@ -43,32 +47,31 @@ export default {
       flag: 1,
       exSound: 0,
       tableData: [{
-        date: '1145-1-4',
+        date: '1145-01-04 11:45:14',
         name: 'ztmf',
         ip: '1.1.4.5',
         loc: '火星',
       }, {
-        date: '1970-1-4',
+        date: '1970-01-04 22:44:44',
         name: 'ty',
         ip: '3.3.3.3',
         loc: '美国',
       }, {
-        date: '1970-1-3',
+        date: '1970-01-03 22:33:33',
         name: 'ty',
         ip: '2.2.2.2',
         loc: '江苏省常州市',
       }, {
-        date: '1970-1-2',
+        date: '1970-01-02 22:22:22',
         name: 'ty',
         ip: '1.1.1.1',
         loc: '浙江省温州市',
-      },
-        {
-          date: '1970-1-1',
-          name: 'ty',
-          ip: '0.0.0.0',
-          loc: '江苏省苏州市',
-        },],
+      }, {
+        date: '1970-01-01 11:11:11',
+        name: 'ty',
+        ip: '0.0.0.0',
+        loc: '江苏省苏州市',
+      },],
     }
   },
   methods: {
@@ -104,8 +107,8 @@ export default {
         if (ipInfo.province === ipInfo.city)
           ipInfo.province = "";
         const now = new Date();
-        const curDate = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate()
-            + ' ' + now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds();
+        const curDate = now.getFullYear() + '-' + dateFormat(now.getMonth() + 1) + '-' + dateFormat(now.getDate())
+            + ' ' + dateFormat(now.getHours()) + ':' + dateFormat(now.getMinutes()) + ':' + dateFormat(now.getSeconds());
         this.tableData.unshift({
           date: curDate, name: "guest", ip: ipInfo.ip,
           loc: ipInfo.country + ipInfo.province + ipInfo.city
