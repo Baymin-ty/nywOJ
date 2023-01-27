@@ -23,20 +23,46 @@
         />
         戳可爱兔兔，测可爱列表
       </h2>
-      <el-table :data="tableData" border height="600px">
-        <el-table-column prop="date" label="点击时间" width="auto"/>
-        <el-table-column prop="name" label="用户名" width="auto"/>
+      <el-table :data="info"
+                border height="500px"
+                :cell-style="{ textAlign: 'center' }"
+                :header-cell-style="{ 'text-align': 'center' }">
+        <el-table-column prop="id" label="#" width="80px"/>
+        <el-table-column prop="time" label="点击时间" width="auto"/>
+        <el-table-column prop="userid" label="uid" width="80ox"/>
         <el-table-column prop="ip" label="IP" width="auto"/>
-        <el-table-column prop="loc" label="IP属地" width="auto"/>
+        <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
       </el-table>
     </el-col>
   </el-row>
 </template>
 
 <script>
+import axios from "axios"
+
 const dateFormat = (x) => {
   x = x.toString();
   return x.length > 1 ? x : '0' + x;
+}
+const getInfo = () => {
+  return axios.get('https://ip.useragentinfo.com/json').then((response) => {
+    let ipInfo = {};
+    ipInfo.ip = response.data.ip;
+    ipInfo.country = response.data.country;
+    ipInfo.province = response.data.province;
+    ipInfo.city = response.data.city;
+    if (ipInfo.country === "中国")
+      ipInfo.country = "";
+    if (ipInfo.province === ipInfo.city)
+      ipInfo.province = "";
+    const now = new Date();
+    const curDate = now.getFullYear() + '-' + dateFormat(now.getMonth() + 1) + '-' + dateFormat(now.getDate())
+        + ' ' + dateFormat(now.getHours()) + ':' + dateFormat(now.getMinutes()) + ':' + dateFormat(now.getSeconds());
+    return {
+      time: curDate, userid: 1, ip: ipInfo.ip,
+      ip_loc: ipInfo.country + ipInfo.province + ipInfo.city
+    };
+  })
 }
 export default {
   name: 'cuteRabbit',
@@ -46,32 +72,7 @@ export default {
       cnt: obj.getCookie(),
       flag: 1,
       exSound: 0,
-      tableData: [{
-        date: '1145-01-04 11:45:14',
-        name: 'ztmf',
-        ip: '1.1.4.5',
-        loc: '火星',
-      }, {
-        date: '1970-01-04 22:44:44',
-        name: 'ty',
-        ip: '3.3.3.3',
-        loc: '美国',
-      }, {
-        date: '1970-01-03 22:33:33',
-        name: 'ty',
-        ip: '2.2.2.2',
-        loc: '江苏省常州市',
-      }, {
-        date: '1970-01-02 22:22:22',
-        name: 'ty',
-        ip: '1.1.1.1',
-        loc: '浙江省温州市',
-      }, {
-        date: '1970-01-01 11:11:11',
-        name: 'ty',
-        ip: '0.0.0.0',
-        loc: '江苏省苏州市',
-      },],
+      info: [],
     }
   },
   methods: {
@@ -88,34 +89,50 @@ export default {
     fun() {
       if (this.exSound)
         this.$refs.hash.play();
-      this.addClickInfo();
+      this.add();
+      this.all();
       document.cookie = ++this.cnt;
-      // this.flag ^= 1;
-      // setTimeout(() => {
-      //   this.flag ^= 1;
-      // }, 36);
+      this.flag ^= 1;
+      setTimeout(() => {
+        this.flag ^= 1;
+      }, 36);
     },
-    addClickInfo() {
-      this.axios.get('https://ip.useragentinfo.com/json').then((response) => {
-        let ipInfo = {};
-        ipInfo.ip = response.data.ip;
-        ipInfo.country = response.data.country;
-        ipInfo.province = response.data.province;
-        ipInfo.city = response.data.city;
-        if (ipInfo.country === "中国")
-          ipInfo.country = "";
-        if (ipInfo.province === ipInfo.city)
-          ipInfo.province = "";
-        const now = new Date();
-        const curDate = now.getFullYear() + '-' + dateFormat(now.getMonth() + 1) + '-' + dateFormat(now.getDate())
-            + ' ' + dateFormat(now.getHours()) + ':' + dateFormat(now.getMinutes()) + ':' + dateFormat(now.getSeconds());
-        this.tableData.unshift({
-          date: curDate, name: "guest", ip: ipInfo.ip,
-          loc: ipInfo.country + ipInfo.province + ipInfo.city
-        });
+    all() {
+      this.axios.get('http://127.0.0.1/rabbit/all').then(res => {
+        this.info = res.data;
+      }).catch(err => {
+        console.log("failed: " + err);
+      });
+    },
+    async add() {
+      let x = await getInfo();
+      axios.get('http://127.0.0.1/rabbit/add', {
+        params: {
+          userid: x.userid,
+          time: x.time,
+          ip: x.ip,
+          ip_loc: x.ip_loc,
+        }
+      }).then(res => {
+        if (res.data.status === 200) {
+          this.all()
+        } else {
+          this.$message({
+            message: 'Failed',
+            type: 'error'
+          });
+        }
+      }).catch(err => {
+        console.log("Failed" + err);
       });
     },
   },
+  mounted: function () {
+    this.all();
+    setInterval(() => {
+      this.all();
+    }, 1000);
+  }
 }
 </script>
 
