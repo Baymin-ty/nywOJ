@@ -2,7 +2,7 @@
   <div>
     <img v-show="flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-1.jpg">
     <img v-show="!flag" class="round" alt="Rabbit" src="../assets/rabbit-2.jpg">
-    <audio src="../assets/hash.mp3"></audio>
+    <!-- <audio src="../assets/hash.mp3"></audio> -->
     <h1 class="rainbow"> 你戳了可爱兔兔 {{ cnt }} 下</h1>
   </div>
 </template>
@@ -31,7 +31,7 @@ export default {
     fun() {
       document.cookie = ++this.cnt;
       this.flag ^= 1;
-      setTimeout(() => { this.flag ^= 1; }, 66);
+      setTimeout(() => { this.flag ^= 1; }, 36);
     }
   },
 }
