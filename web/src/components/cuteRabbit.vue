@@ -25,7 +25,9 @@
       </h2>
       <el-table v-loading="!this.info.length"
                 :data="info"
-                border height="500px"
+                border
+                height="500px"
+                :row-class-name="tableRowClassName"
                 :cell-style="{ textAlign: 'center' }"
                 :header-cell-style="{ textAlign: 'center' }">
         <el-table-column prop="id" label="#" width="80px"/>
@@ -127,14 +129,13 @@ export default {
         console.log("Failed" + err);
       });
     },
+    tableRowClassName(obj) {
+      return (obj.row.ip === this.user_info.ip ? 'success' : '');
+    },
   },
   mounted: async function () {
     this.user_info = await getInfo();
     this.all();
-    // this.loading = 0;
-    // setInterval(() => {
-    //   this.all();
-    // }, 1000);
   }
 }
 </script>

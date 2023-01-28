@@ -2,7 +2,6 @@
   <el-menu
       class="el-menu-demo"
       mode="horizontal"
-      :default-active="activeIndex"
       :router="true">
     <img style="width: 50px; height: 50px; margin-left: 30px; margin-right: 30px" src="../assets/rabbit.png">
     <el-menu-item index="/">首页</el-menu-item>
@@ -16,15 +15,6 @@
 <script>
 export default {
   name: "myHeader",
-  data() {
-    return {
-      activeIndex: '',
-    }
-  },
-  mounted() {
-    // this.activeIndex = this.$route.curentRoute.path;
-    console.log(this.$route.fullPath);
-  }
 }
 </script>
 

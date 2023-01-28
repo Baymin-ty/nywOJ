@@ -1,13 +1,12 @@
 <template>
   <div style="width:1200px; text-align: center; margin: 0 auto">
-    <el-table
-        v-loading="!this.info.length"
-        :data="info"
-        border
-        height="500px"
-        :cell-style="{ textAlign: 'center' }"
-        :header-cell-style="{ textAlign: 'center' }"
-        type="index">
+    <el-table v-loading="!this.info.length"
+              :data="info"
+              border
+              height="500px"
+              :row-class-name="tableRowClassName"
+              :cell-style="{ textAlign: 'center' }"
+              :header-cell-style="{ textAlign: 'center' }">
       <el-table-column label="id" type="index" width="80px"/>
       <el-table-column prop="ip" label="IP" width="auto"/>
       <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
@@ -19,10 +18,19 @@
 <script>
 import axios from "axios"
 
+const getIp = () => {
+  return axios.get('https://ip.useragentinfo.com/json').then((response) => {
+    return {
+      ip: response.data.ip,
+    };
+  })
+}
+
 export default {
   name: 'cuteRank',
   data() {
     return {
+      user_info: {},
       info: [],
     }
   },
@@ -34,8 +42,12 @@ export default {
         console.log("failed: " + err);
       });
     },
+    tableRowClassName(obj) {
+      return (obj.row.ip === this.user_info.ip ? 'success' : '');
+    },
   },
-  mounted: function () {
+  mounted: async function () {
+    this.user_info = await getIp();
     this.all();
   }
 }

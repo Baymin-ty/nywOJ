@@ -36,4 +36,7 @@ export default {
   margin: 0 auto;
   color: #2c3e50;
 }
+.el-table .success {
+  --el-table-tr-bg-color: var(--el-color-success-light-9);
+}
 </style>
