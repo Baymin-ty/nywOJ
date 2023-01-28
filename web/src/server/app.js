@@ -9,6 +9,6 @@ app.use(bodyParser.urlencoded({extended: false}));
 app.use(cors())              //配置跨域
 app.use(router)              //配置路由
 
-app.listen(80, () => {
+app.listen(1234, () => {
     console.log('success!!!');
 })
