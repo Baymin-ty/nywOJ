@@ -3,7 +3,7 @@ let db = require('../db/index')
 exports.all = (req, res) => {
     let sql = 'SELECT * FROM clickList ORDER BY id desc limit 20';
     db.query(sql, (err, data) => {
-        if (err) return res.send('error: ' + err.message);
+        if (err) return res.send('Error: ' + err.message);
         res.send(data);
     })
 }
@@ -27,6 +27,14 @@ exports.add = (req, res) => {
 exports.getClickCnt = (req, res) => {
     let sql = 'SELECT COUNT(*) as cnt FROM clickList WHERE ip=?';
     db.query(sql, [req.query.ip], (err, data) => {
+        if (err) return res.send('Error: ' + err.message);
+        res.send(data);
+    })
+}
+
+exports.getRankInfo = (req, res) => {
+    let sql = 'SELECT ip,ip_loc,COUNT(*) as cnt FROM clickList GROUP BY ip ORDER BY cnt DESC LIMIT 20';
+    db.query(sql, (err, data) => {
         if (err) return res.send('Error: ' + err.message);
         res.send(data);
     })

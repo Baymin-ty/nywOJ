@@ -26,7 +26,7 @@
       <el-table :data="info"
                 border height="500px"
                 :cell-style="{ textAlign: 'center' }"
-                :header-cell-style="{ 'text-align': 'center' }">
+                :header-cell-style="{ textAlign: 'center' }">
         <el-table-column prop="id" label="#" width="80px"/>
         <el-table-column prop="time" label="点击时间" width="auto"/>
         <el-table-column prop="userid" label="uid" width="80ox"/>

@@ -4,7 +4,10 @@
       <img alt="OJ-icon" style="height: 40px;  position: relative" src="../assets/rabbit.png">
     </div>
     <div class="title">
-      首页
+      <a href="/">首页</a>
+    </div>
+    <div class="title">
+      <a href="/rank">点击排行</a>
     </div>
     <div class="title">
       题库
