@@ -5,7 +5,7 @@
         <myHeader/>
       </el-header>
       <el-main>
-        <cuteRabbit/>
+        <router-view/>
       </el-main>
       <el-footer>
         <myFooter/>
@@ -15,14 +15,12 @@
 </template>
 
 <script>
-import cuteRabbit from './components/cuteRabbit.vue'
 import myHeader from './components/myHeader.vue'
 import myFooter from './components/myFooter.vue'
 
 export default {
   name: 'App',
   components: {
-    cuteRabbit,
     myHeader,
     myFooter,
   }
