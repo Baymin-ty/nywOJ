@@ -40,10 +40,6 @@
 <script>
 import axios from "axios"
 
-const dateFormat = (x) => {
-  x = x.toString();
-  return x.length > 1 ? x : '0' + x;
-}
 const getInfo = () => {
   return axios.get('https://ip.useragentinfo.com/json').then((response) => {
     let ipInfo = {};
@@ -55,63 +51,67 @@ const getInfo = () => {
       ipInfo.country = "";
     if (ipInfo.province === ipInfo.city)
       ipInfo.province = "";
-    const now = new Date();
-    const curDate = now.getFullYear() + '-' + dateFormat(now.getMonth() + 1) + '-' + dateFormat(now.getDate())
-        + ' ' + dateFormat(now.getHours()) + ':' + dateFormat(now.getMinutes()) + ':' + dateFormat(now.getSeconds());
     return {
-      time: curDate, userid: 1, ip: ipInfo.ip,
+      userid: 1, ip: ipInfo.ip,
       ip_loc: ipInfo.country + ipInfo.province + ipInfo.city
     };
   })
 }
+
+const dateFormat = (x) => {
+  x = x.toString();
+  return x.length > 1 ? x : '0' + x;
+}
+const getCurTime = () => {
+  const now = new Date();
+  return now.getFullYear() + '-' + dateFormat(now.getMonth() + 1) + '-' + dateFormat(now.getDate())
+      + ' ' + dateFormat(now.getHours()) + ':' + dateFormat(now.getMinutes()) + ':' + dateFormat(now.getSeconds());
+}
+
 export default {
   name: 'cuteRabbit',
   data() {
-    let obj = this;
     return {
-      cnt: obj.getCookie(),
+      cnt: "/",
       flag: 1,
       exSound: 0,
       info: [],
+      user_info: {},
     }
   },
   methods: {
-    getCookie() {
-      const str = document.cookie;
-      if (!str.length || str.length > 10)
-        return 0;
-      for (let i = 0, len = str.length; i < len; i++) {
-        if (str[i] < '0' + (!i) || str[i] > '9')
-          return 0;
-      }
-      return str;
-    },
     fun() {
       if (this.exSound)
         this.$refs.hash.play();
       this.add();
-      this.all();
-      document.cookie = ++this.cnt;
       this.flag ^= 1;
       setTimeout(() => {
         this.flag ^= 1;
       }, 36);
     },
     all() {
-      this.axios.get('http://124.222.66.125:1234/rabbit/all').then(res => {
+      axios.get('http://localhost/rabbit/all').then(res => {
         this.info = res.data;
+      }).catch(err => {
+        console.log("failed: " + err);
+      });
+      axios.get('http://localhost/rabbit/getClickCnt', {
+        params: {
+          ip: this.user_info.ip
+        }
+      }).then(res => {
+        this.cnt = res.data[0].cnt;
       }).catch(err => {
         console.log("failed: " + err);
       });
     },
     async add() {
-      let x = await getInfo();
-      axios.get('http://124.222.66.125:1234/rabbit/add', {
+      axios.get('http://localhost/rabbit/add', {
         params: {
-          userid: x.userid,
-          time: x.time,
-          ip: x.ip,
-          ip_loc: x.ip_loc,
+          userid: this.user_info.userid,
+          time: getCurTime(),
+          ip: this.user_info.ip,
+          ip_loc: this.user_info.ip_loc,
         }
       }).then(res => {
         if (res.data.status === 200) {
@@ -127,7 +127,8 @@ export default {
       });
     },
   },
-  mounted: function () {
+  mounted: async function () {
+    this.user_info = await getInfo();
     this.all();
     setInterval(() => {
       this.all();

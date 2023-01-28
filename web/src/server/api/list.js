@@ -25,7 +25,7 @@ exports.add = (req, res) => {
 }
 
 exports.getClickCnt = (req, res) => {
-    let sql = 'SELECT COUNT(*) FROM clickList WHERE ip=?';
+    let sql = 'SELECT COUNT(*) as cnt FROM clickList WHERE ip=?';
     db.query(sql, [req.query.ip], (err, data) => {
         if (err) return res.send('Error: ' + err.message);
         res.send(data);
