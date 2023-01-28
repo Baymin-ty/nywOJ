@@ -50,7 +50,7 @@ export default {
         ElMessage({
           message: '获取最新排名成功',
           type: 'success',
-          duration: '1000',
+          duration: 1000,
         });
       }).catch(err => {
         console.log("failed: " + err);
