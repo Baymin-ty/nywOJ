@@ -90,12 +90,12 @@ export default {
       }, 36);
     },
     all() {
-      axios.get('http://localhost/rabbit/all').then(res => {
+      axios.get('/rabbit/all').then(res => {
         this.info = res.data;
       }).catch(err => {
         console.log("failed: " + err);
       });
-      axios.get('http://localhost/rabbit/getClickCnt', {
+      axios.get('/rabbit/getClickCnt', {
         params: {
           ip: this.user_info.ip
         }
@@ -105,8 +105,8 @@ export default {
         console.log("failed: " + err);
       });
     },
-    async add() {
-      axios.get('http://localhost/rabbit/add', {
+    add() {
+      axios.get('/rabbit/add', {
         params: {
           userid: this.user_info.userid,
           time: getCurTime(),
