@@ -1,22 +1,31 @@
 <template>
   <div style="width:1200px; text-align: center; margin: 0 auto">
-    <el-table v-loading="!this.info.length"
-              :data="info"
-              border
-              height="500px"
-              :row-class-name="tableRowClassName"
-              :cell-style="{ textAlign: 'center' }"
-              :header-cell-style="{ textAlign: 'center' }">
-      <el-table-column label="id" type="index" width="80px"/>
-      <el-table-column prop="ip" label="IP" width="auto"/>
-      <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
-      <el-table-column prop="cnt" label="点击次数" width="auto"/>
-    </el-table>
+    <el-card class="box-card" shadow="hover">
+      <template #header>
+        <div class="card-header">
+          点击数排名
+          <el-button type="primary" @click="all">更新排名</el-button>
+        </div>
+      </template>
+      <el-table v-loading="!this.info.length"
+                :data="info"
+                border
+                height="600px"
+                :row-class-name="tableRowClassName"
+                :cell-style="{ textAlign: 'center' }"
+                :header-cell-style="{ textAlign: 'center' }">
+        <el-table-column label="id" type="index" width="80px"/>
+        <el-table-column prop="ip" label="IP" width="auto"/>
+        <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
+        <el-table-column prop="cnt" label="点击次数" width="auto"/>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
 <script>
 import axios from "axios"
+import {ElMessage} from 'element-plus'
 
 const getIp = () => {
   return axios.get('https://ip.useragentinfo.com/json').then((response) => {
@@ -55,5 +64,15 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+.box-card {
+  height: 700px;
+  margin: 10px;
+}
 
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 20px;
+}
 </style>

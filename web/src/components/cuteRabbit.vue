@@ -1,47 +1,58 @@
 <template>
   <el-row>
     <el-col :span="12">
-      <div>
+      <el-card class="box-card" shadow="hover">
+        <template #header>
+          <div class="card-header">
+            ty 的宠物 可爱兔兔 Tiddar
+            <el-switch
+                v-model="exSound"
+                size="large"
+                class="ml-2"
+                inline-prompt
+                style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
+                active-text="开启点击音效"
+                inactive-text="关闭点击音效"
+            />
+          </div>
+        </template>
         <img v-show="flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-1.jpg">
         <img v-show="!flag" class="round" alt="Rabbit" src="../assets/rabbit-2.jpg">
         <audio ref="hash">
           <source src="../assets/hash.mp3">
         </audio>
         <h1 class="rainbow"> 你戳了可爱兔兔 {{ cnt }} 下</h1>
-      </div>
+      </el-card>
     </el-col>
     <el-col :span="12">
-      <h2 style="float:left;">
-        <el-switch
-            v-model="exSound"
-            size="large"
-            class="ml-2"
-            inline-prompt
-            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-            active-text="开启点击音效"
-            inactive-text="关闭点击音效"
-        />
-        戳可爱兔兔，测可爱列表
-      </h2>
-      <el-table v-loading="!this.info.length"
-                :data="info"
-                border
-                height="500px"
-                :row-class-name="tableRowClassName"
-                :cell-style="{ textAlign: 'center' }"
-                :header-cell-style="{ textAlign: 'center' }">
-        <el-table-column prop="id" label="#" width="80px"/>
-        <el-table-column prop="time" label="点击时间" width="auto"/>
-        <el-table-column prop="userid" label="uid" width="80ox"/>
-        <el-table-column prop="ip" label="IP" width="auto"/>
-        <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
-      </el-table>
+      <el-card class="box-card" shadow="hover">
+        <template #header>
+          <div class="card-header">
+            戳可爱兔兔，测可爱列表
+            <el-button type="primary" @click="all">更新信息</el-button>
+          </div>
+        </template>
+        <el-table v-loading="!this.info.length"
+                  :data="info"
+                  border
+                  height="600px"
+                  :row-class-name="tableRowClassName"
+                  :cell-style="{ textAlign: 'center' }"
+                  :header-cell-style="{ textAlign: 'center' }">
+          <el-table-column prop="id" label="#" width="80px"/>
+          <el-table-column prop="time" label="点击时间" width="auto"/>
+          <el-table-column prop="userid" label="uid" width="80ox"/>
+          <el-table-column prop="ip" label="IP" width="auto"/>
+          <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
+        </el-table>
+      </el-card>
     </el-col>
   </el-row>
 </template>
 
 <script>
 import axios from "axios"
+import {ElMessage} from 'element-plus'
 
 const getInfo = () => {
   return axios.get('https://ip.useragentinfo.com/json').then((response) => {
@@ -118,11 +129,17 @@ export default {
         }
       }).then(res => {
         if (res.data.status === 200) {
-          this.all()
+          ElMessage({
+            message: '添加点击信息成功',
+            type: 'success',
+            duration: 1000,
+          });
+          this.all();
         } else {
-          this.$message({
-            message: 'Failed',
-            type: 'error'
+          ElMessage({
+            message: '添加点击信息失败',
+            type: 'error',
+            duration: 2000,
           });
         }
       }).catch(err => {
@@ -134,7 +151,18 @@ export default {
     },
   },
   mounted: async function () {
+    ElMessage({
+      message: '受到宇宙射线影响，自动更新被ty删了，请手动点击列表右上方按钮更新最新信息（点击兔兔的同时也会更新最新信息）',
+      type: 'warning',
+      duration: 5000,
+      showClose: true
+    })
     this.user_info = await getInfo();
+    ElMessage({
+      message: '获取个人信息成功',
+      type: 'success',
+      duration: 3000,
+    });
     this.all();
   }
 }
@@ -143,7 +171,7 @@ export default {
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 .round {
-  width: 400px;
+  width: 380px;
   border-radius: 36px;
 }
 
@@ -155,5 +183,17 @@ export default {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   font-weight: 600;
+}
+
+.box-card {
+  height: 700px;
+  margin: 10px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 20px;
 }
 </style>
