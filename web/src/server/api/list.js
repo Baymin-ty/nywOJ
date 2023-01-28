@@ -1,29 +1,33 @@
 let db = require('../db/index')
 
 exports.all = (req, res) => {
-    let sql = 'SELECT * FROM clickList ORDER BY id desc limit 20'
+    let sql = 'SELECT * FROM clickList ORDER BY id desc limit 20';
     db.query(sql, (err, data) => {
-        if (err)
-            return res.send('error: ' + err.message);
+        if (err) return res.send('error: ' + err.message);
         res.send(data);
     })
 }
 
 exports.add = (req, res) => {
-    let sql = 'insert into clickList(userid,time,ip,ip_loc) values (?,?,?,?)'
+    let sql = 'INSERT INTO clickList(userid,time,ip,ip_loc) values (?,?,?,?)';
     db.query(sql, [req.query.userid, req.query.time, req.query.ip, req.query.ip_loc], (err, data) => {
-        if (err)
-            return res.send('Error：' + err.message);
+        if (err) return res.send('Error：' + err.message);
         if (data.affectedRows > 0) {
             res.send({
-                status: 200,
-                message: 'success',
+                status: 200, message: 'success',
             })
         } else {
             res.send({
-                status: 202,
-                message: 'error',
+                status: 202, message: 'error',
             })
         }
+    })
+}
+
+exports.getClickCnt = (req, res) => {
+    let sql = 'SELECT COUNT(*) FROM clickList WHERE ip=?';
+    db.query(sql, [req.query.ip], (err, data) => {
+        if (err) return res.send('Error: ' + err.message);
+        res.send(data);
     })
 }
