@@ -23,7 +23,8 @@
         />
         戳可爱兔兔，测可爱列表
       </h2>
-      <el-table :data="info"
+      <el-table v-loading="!this.info.length"
+                :data="info"
                 border height="500px"
                 :cell-style="{ textAlign: 'center' }"
                 :header-cell-style="{ textAlign: 'center' }">
@@ -130,9 +131,10 @@ export default {
   mounted: async function () {
     this.user_info = await getInfo();
     this.all();
-    setInterval(() => {
-      this.all();
-    }, 1000);
+    // this.loading = 0;
+    // setInterval(() => {
+    //   this.all();
+    // }, 1000);
   }
 }
 </script>

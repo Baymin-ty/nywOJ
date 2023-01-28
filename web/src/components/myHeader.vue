@@ -1,48 +1,33 @@
 <template>
-  <div style="height: 40px; line-height: 40px;">
-    <div class="title">
-      <img alt="OJ-icon" style="height: 40px;  position: relative" src="../assets/rabbit.png">
-    </div>
-    <div class="title">
-      <a href="/">首页</a>
-    </div>
-    <div class="title">
-      <a href="/rank">点击排行</a>
-    </div>
-    <div class="title">
-      题库
-    </div>
-    <div class="title">
-      比赛
-    </div>
-    <div class="title">
-      提交记录
-    </div>
-    <div style="float: right">
-      个人中心
-    </div>
-  </div>
+  <el-menu
+      class="el-menu-demo"
+      mode="horizontal"
+      :default-active="activeIndex"
+      :router="true">
+    <img style="width: 50px; height: 50px; margin-left: 30px; margin-right: 30px" src="../assets/rabbit.png">
+    <el-menu-item index="/">首页</el-menu-item>
+    <el-menu-item index="/rank">兔兔挑战排行榜</el-menu-item>
+    <el-menu-item index="3" disabled>题库</el-menu-item>
+    <el-menu-item index="4" disabled>比赛</el-menu-item>
+    <el-menu-item index="5" disabled>提交记录</el-menu-item>
+  </el-menu>
 </template>
 
 <script>
 export default {
-  name: "myHeader"
+  name: "myHeader",
+  data() {
+    return {
+      activeIndex: '',
+    }
+  },
+  mounted() {
+    // this.activeIndex = this.$route.curentRoute.path;
+    console.log(this.$route.fullPath);
+  }
 }
 </script>
 
-<style scoped>
-div {
-  margin: 10px;
-}
+<style>
 
-div.title {
-  float: left;
-  height: 40px;
-  width: auto;
-  margin-left: 40px;
-}
-
-el-col {
-  margin: 0;
-}
 </style>

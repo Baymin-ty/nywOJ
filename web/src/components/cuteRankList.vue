@@ -1,11 +1,13 @@
 <template>
   <div style="width:1200px; text-align: center; margin: 0 auto">
-    <el-table :data="info"
-              border
-              height="500px"
-              :cell-style="{ textAlign: 'center' }"
-              :header-cell-style="{ textAlign: 'center' }"
-              type="index">
+    <el-table
+        v-loading="!this.info.length"
+        :data="info"
+        border
+        height="500px"
+        :cell-style="{ textAlign: 'center' }"
+        :header-cell-style="{ textAlign: 'center' }"
+        type="index">
       <el-table-column label="id" type="index" width="80px"/>
       <el-table-column prop="ip" label="IP" width="auto"/>
       <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
