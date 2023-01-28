@@ -4,16 +4,33 @@
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            ty 的宠物 可爱兔兔 Tiddar
-            <el-switch
-                v-model="exSound"
-                size="large"
-                class="ml-2"
-                inline-prompt
-                style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-                active-text="开启点击音效"
-                inactive-text="关闭点击音效"
-            />
+            Tiddar
+            <el-divider direction="vertical"/>
+            <el-col :span="3" class="switch">
+              <el-switch
+                  v-model="exSound"
+                  size="large"
+                  class="ml-2"
+                  inline-prompt
+                  style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
+                  active-text="开启点击音效"
+                  inactive-text="关闭点击音效"
+              />
+            </el-col>
+            <el-divider direction="vertical"/>
+            通知：
+            <el-col :span="4" class="switch">
+              插入数据：
+              <el-switch v-model="show_insert_info"/>
+            </el-col>
+            <el-col :span="3" class="switch">
+              列表：
+              <el-switch v-model="show_list_info"/>
+            </el-col>
+            <el-col :span="4" class="switch">
+              点击数：
+              <el-switch v-model="show_clickCnt_info"/>
+            </el-col>
           </div>
         </template>
         <img v-show="flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-1.jpg">
@@ -89,6 +106,9 @@ export default {
       cnt: "/",
       flag: 1,
       exSound: 0,
+      show_list_info: 0,
+      show_clickCnt_info: 0,
+      show_insert_info: 0,
       info: [],
       user_info: {},
     }
@@ -106,11 +126,13 @@ export default {
     all() {
       axios.get('/rabbit/all').then(res => {
         this.info = res.data;
-        ElMessage({
-          message: '获取列表信息成功',
-          type: 'success',
-          duration: 1000,
-        });
+        if (this.show_list_info) {
+          ElMessage({
+            message: '获取列表信息成功',
+            type: 'success',
+            duration: 1000,
+          });
+        }
       }).catch(err => {
         console.log("failed: " + err);
       });
@@ -120,11 +142,13 @@ export default {
         }
       }).then(res => {
         this.cnt = res.data[0].cnt;
-        ElMessage({
-          message: '获取个人点击数成功',
-          type: 'success',
-          duration: 1000,
-        });
+        if (this.show_clickCnt_info) {
+          ElMessage({
+            message: '获取个人点击数成功',
+            type: 'success',
+            duration: 1000,
+          });
+        }
       }).catch(err => {
         console.log("failed: " + err);
       });
@@ -139,21 +163,25 @@ export default {
         }
       }).then(res => {
         if (res.data.status === 200) {
-          ElMessage({
-            message: '添加点击信息成功',
-            type: 'success',
-            duration: 1000,
-          });
+          if (this.show_insert_info) {
+            ElMessage({
+              message: '添加点击信息成功',
+              type: 'success',
+              duration: 1000,
+            });
+          }
           this.all();
         } else {
-          ElMessage({
-            message: '添加点击信息失败',
-            type: 'error',
-            duration: 2000,
-          });
+          if (this.show_insert_info) {
+            ElMessage({
+              message: '添加点击信息失败',
+              type: 'error',
+              duration: 2000,
+            });
+          }
         }
       }).catch(err => {
-        console.log("Failed" + err);
+        console.log("failed" + err);
       });
     },
     tableRowClassName(obj) {
@@ -206,4 +234,18 @@ export default {
   align-items: center;
   height: 20px;
 }
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 20px;
+}
+
+.switch {
+  display: flex; /**/
+  align-items: center;
+  height: 20px;
+}
+
 </style>
