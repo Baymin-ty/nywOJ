@@ -106,6 +106,11 @@ export default {
     all() {
       axios.get('/rabbit/all').then(res => {
         this.info = res.data;
+        ElMessage({
+          message: '获取列表信息成功',
+          type: 'success',
+          duration: 1000,
+        });
       }).catch(err => {
         console.log("failed: " + err);
       });
@@ -115,6 +120,11 @@ export default {
         }
       }).then(res => {
         this.cnt = res.data[0].cnt;
+        ElMessage({
+          message: '获取个人点击数成功',
+          type: 'success',
+          duration: 1000,
+        });
       }).catch(err => {
         console.log("failed: " + err);
       });
