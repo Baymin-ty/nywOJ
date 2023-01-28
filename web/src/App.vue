@@ -23,7 +23,7 @@ export default {
   components: {
     myHeader,
     myFooter,
-  }
+  },
 }
 </script>
 
@@ -34,7 +34,6 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   margin: 0 auto;
-  width: 1500px;
   color: #2c3e50;
 }
 </style>
