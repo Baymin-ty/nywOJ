@@ -3,7 +3,8 @@
       class="el-menu-demo"
       mode="horizontal"
       :router="true">
-    <img style="width: 50px; height: 50px; margin-left: 30px; margin-right: 30px" src="../assets/rabbit.png">
+    <img style="width: 40px; height: 40px; margin-left: 30px; margin-right: 30px; margin-top: 5px; border-radius: 5px"
+         src="../assets/rabbit.png">
     <el-menu-item index="/">首页</el-menu-item>
     <el-menu-item index="/rank">兔兔挑战排行榜</el-menu-item>
     <el-menu-item index="3" disabled>题库</el-menu-item>

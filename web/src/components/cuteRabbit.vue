@@ -231,7 +231,7 @@ export default {
 
 .rainbow {
   margin: 10px;
-  font-size: 60px;
+  font-size: 40px;
   background-image: linear-gradient(92deg, rgb(38, 243, 93) 0%, rgb(254, 171, 58) 100%);
   color: rgb(38, 82, 243);
   background-clip: text;
@@ -259,7 +259,7 @@ export default {
 }
 
 .switch {
-  display: flex; /**/
+  display: flex;
   align-items: center;
   height: 20px;
 }
