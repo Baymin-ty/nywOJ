@@ -7,9 +7,7 @@
          src="../assets/rabbit.png">
     <el-menu-item index="/">首页</el-menu-item>
     <el-menu-item index="/rank">兔兔挑战排行榜</el-menu-item>
-    <el-menu-item index="" style="padding: 0;">
-      <el-button style="height: 55px; width: 80px; padding: 0;" text @click="dialogVisible = true">打赏</el-button>
-    </el-menu-item>
+    <el-button style="height: 55px; width: 80px; padding: 0;" text @click="dialogVisible = true">打赏</el-button>
     <el-menu-item index="/p" disabled>题库</el-menu-item>
     <el-menu-item index="/c" disabled>比赛</el-menu-item>
     <el-menu-item index="/s" disabled>提交记录</el-menu-item>
