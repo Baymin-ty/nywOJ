@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           点击数排名
-          <el-button type="primary" @click="all">更新排名</el-button>
+          <el-button type="primary" :disabled="!finished" @click="all">更新排名</el-button>
         </div>
       </template>
       <el-table v-loading="!this.info.length"
@@ -39,14 +39,17 @@ export default {
   name: 'cuteRank',
   data() {
     return {
+      finished: 0,
       user_info: {},
       info: [],
     }
   },
   methods: {
     all() {
+      this.finished = false;
       axios.get('/rabbit/getRankInfo').then(res => {
         this.info = res.data;
+        this.finished = true;
         ElMessage({
           message: '获取最新排名成功',
           type: 'success',
