@@ -14,7 +14,7 @@
                 :row-class-name="tableRowClassName"
                 :cell-style="{ textAlign: 'center' }"
                 :header-cell-style="{ textAlign: 'center' }">
-        <el-table-column label="id" type="index" width="80px"/>
+        <el-table-column label="#" type="index" width="80px"/>
         <el-table-column prop="ip" label="IP" width="auto"/>
         <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
         <el-table-column prop="cnt" label="点击次数" width="auto"/>
