@@ -138,6 +138,7 @@ export default {
             duration: 1000,
           });
         }
+        this.finished = 1;
       }).catch(err => {
         if (this.show_list_info) {
           ElMessage({
@@ -146,6 +147,7 @@ export default {
             duration: 2000,
           });
         }
+        this.finished = 1;
       });
       axios.get('/rabbit/getClickCnt', {
         params: {
@@ -169,7 +171,6 @@ export default {
           });
         }
       });
-      this.finished = 1;
     },
     add() {
       axios.get('/rabbit/add', {
@@ -196,15 +197,14 @@ export default {
           type: 'error',
           duration: 2000,
         });
+        this.finished = 1;
       });
-      this.finished = 1;
     },
     tableRowClassName(obj) {
       return (obj.row.ip === this.user_info.ip ? 'success' : '');
     },
   },
   mounted: async function () {
-    this.finished = 0;
     ElMessage({
       message: '受到宇宙射线影响，自动更新被ty删了，请手动点击列表右上方按钮更新最新信息（点击兔兔的同时也会更新最新信息）',
       type: 'warning',
