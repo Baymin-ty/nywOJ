@@ -1,48 +1,26 @@
 <template>
-  <el-row>
-    <el-col :span="15">
-      <el-card class="box-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            点击数排名
-            <el-button type="primary" :disabled="!finished" @click="all">更新排名</el-button>
-          </div>
-        </template>
-        <el-table v-loading="!finished"
-                  :data="info"
-                  border
-                  height="600px"
-                  :row-class-name="tableRowClassName"
-                  :cell-style="{ textAlign: 'center' }"
-                  :header-cell-style="{ textAlign: 'center' }">
-          <el-table-column label="#" type="index" width="80px"/>
-          <el-table-column prop="ip" label="IP" width="auto"/>
-          <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
-          <el-table-column prop="cnt" label="点击次数" width="auto"/>
-        </el-table>
-      </el-card>
-    </el-col>
-    <el-col :span="9">
-      <el-card class="box-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            实施可持续发展战略
-            <el-select v-model="money" class="m-2" placeholder="Select">
-              <el-option
-                  v-for="item in options"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-              />
-            </el-select>
-          </div>
-        </template>
-        <img v-show="money===50" class="round" src="../assets/50.png">
-        <img v-show="money===100" class="round" src="../assets/100.png">
-        <img v-show="money===500" class="round" src="../assets/500.png">
-      </el-card>
-    </el-col>
-  </el-row>
+  <div style="width:1200px; text-align: center; margin: 0 auto">
+    <el-card class="box-card" shadow="hover">
+      <template #header>
+        <div class="card-header">
+          点击数排名
+          <el-button type="primary" :disabled="!finished" @click="all">更新排名</el-button>
+        </div>
+      </template>
+      <el-table v-loading="!finished"
+                :data="info"
+                border
+                height="600px"
+                :row-class-name="tableRowClassName"
+                :cell-style="{ textAlign: 'center' }"
+                :header-cell-style="{ textAlign: 'center' }">
+        <el-table-column label="#" type="index" width="80px"/>
+        <el-table-column prop="ip" label="IP" width="auto"/>
+        <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
+        <el-table-column prop="cnt" label="点击次数" width="auto"/>
+      </el-table>
+    </el-card>
+  </div>
 </template>
 
 <script>
@@ -64,17 +42,6 @@ export default {
       finished: 0,
       user_info: {},
       info: [],
-      money: 50,
-      options: [{
-        value: 50,
-        label: '50 分',
-      }, {
-        value: 100,
-        label: '100 分',
-      }, {
-        value: 500,
-        label: '500 分',
-      }],
     }
   },
   methods: {
@@ -105,11 +72,6 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-.round {
-  height: 600px;
-  border-radius: 15px;
-}
-
 .box-card {
   height: 700px;
   margin: 10px;

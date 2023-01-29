@@ -10,15 +10,64 @@
     <el-menu-item index="3" disabled>题库</el-menu-item>
     <el-menu-item index="4" disabled>比赛</el-menu-item>
     <el-menu-item index="5" disabled>提交记录</el-menu-item>
+    <el-menu-item index="/rank" @click="dialogVisible = true">
+      打赏
+    </el-menu-item>
+    <el-dialog v-model="dialogVisible"
+               title="实施可持续发展战略"
+               width="25%"
+               style="border-radius: 10px"
+               custom-class="pd">
+      <el-divider/>
+      <el-select v-model="money" class="m-2" placeholder="Select" style="width: 100px">
+        <el-option
+            v-for="item in options"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+        />
+      </el-select>
+      <img v-show="money===50" class="round" alt="50" src="../assets/50.png">
+      <img v-show="money===100" class="round" alt="100" src="../assets/100.png">
+      <img v-show="money===300" class="round" alt="300" src="../assets/300.png">
+    </el-dialog>
   </el-menu>
 </template>
 
 <script>
 export default {
   name: "myHeader",
+  data() {
+    return {
+      dialogVisible: 0,
+      money: 50,
+      options: [{
+        value: 50,
+        label: '一包辣条',
+      }, {
+        value: 100,
+        label: '一根冰棍',
+      }, {
+        value: 300,
+        label: '一瓶可乐',
+      }],
+    }
+  }
 }
 </script>
 
 <style>
+.round {
+  height: 400px;
+  border-radius: 10px;
+  margin: 20px;
+}
 
+.pd .el-dialog__body {
+  padding: 0;
+}
+
+.el-divider--horizontal {
+  margin: 10px 0;
+}
 </style>
