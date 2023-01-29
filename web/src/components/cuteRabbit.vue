@@ -18,9 +18,9 @@
               />
             </el-col>
             <el-divider direction="vertical"/>
-            通知：
-            <el-col :span="4" class="switch">
-              插入数据：
+            更新提示
+            <el-col :span="3" class="switch">
+              添加：
               <el-switch v-model="show_insert_info"/>
             </el-col>
             <el-col :span="3" class="switch">
@@ -33,8 +33,10 @@
             </el-col>
           </div>
         </template>
-        <img v-show="flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-1.jpg">
-        <img v-show="!flag" class="round" alt="Rabbit" src="../assets/rabbit-2.jpg">
+        <el-button style="height: 500px; width: 400px" round :disabled="!finished">
+          <img v-show="flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-1.jpg">
+          <img v-show="!flag" class="round" alt="Rabbit" src="../assets/rabbit-2.jpg">
+        </el-button>
         <audio ref="hash">
           <source src="../assets/hash.mp3">
         </audio>
@@ -46,7 +48,7 @@
         <template #header>
           <div class="card-header">
             戳可爱兔兔，测可爱列表
-            <el-button type="primary" @click="all">更新信息</el-button>
+            <el-button type="primary" :disabled="!finished" @click="all">更新信息</el-button>
           </div>
         </template>
         <el-table v-loading="!this.info.length"
@@ -106,6 +108,7 @@ export default {
       cnt: "/",
       flag: 1,
       exSound: 0,
+      finished: 0,
       show_list_info: 0,
       show_clickCnt_info: 0,
       show_insert_info: 0,
@@ -115,17 +118,20 @@ export default {
   },
   methods: {
     fun() {
+      this.finished = 0;
       if (this.exSound)
         this.$refs.hash.play();
       this.add();
-      this.flag ^= 1;
-      setTimeout(() => {
-        this.flag ^= 1;
-      }, 36);
+      // this.flag ^= 1;
+      // setTimeout(() => {
+      //   this.flag ^= 1;
+      // }, 36);
     },
     all() {
+      this.finished = 0;
       axios.get('/rabbit/all').then(res => {
         this.info = res.data;
+        this.finished = 1;
         if (this.show_list_info) {
           ElMessage({
             message: '获取列表信息成功',
@@ -171,17 +177,14 @@ export default {
             });
           }
           this.all();
-        } else {
-          if (this.show_insert_info) {
-            ElMessage({
-              message: '添加点击信息失败',
-              type: 'error',
-              duration: 2000,
-            });
-          }
         }
       }).catch(err => {
-        console.log("failed" + err);
+        ElMessage({
+          message: err.message,
+          type: 'error',
+          duration: 2000,
+        });
+        this.finished = 1;
       });
     },
     tableRowClassName(obj) {
@@ -189,6 +192,7 @@ export default {
     },
   },
   mounted: async function () {
+    this.finished = 0;
     ElMessage({
       message: '受到宇宙射线影响，自动更新被ty删了，请手动点击列表右上方按钮更新最新信息（点击兔兔的同时也会更新最新信息）',
       type: 'warning',
@@ -202,15 +206,15 @@ export default {
       duration: 3000,
     });
     this.all();
-  }
+  },
 }
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 .round {
-  width: 380px;
-  border-radius: 36px;
+  height: 480px;
+  border-radius: 15px;
 }
 
 .rainbow {
