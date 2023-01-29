@@ -1,49 +1,29 @@
 <template>
   <el-row>
-    <el-col :span="12">
+    <el-col :span="12" style="min-width: 500px">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
             Tiddar
-            <el-divider direction="vertical"/>
-            <el-col :span="3" class="switch">
-              <el-switch
-                  v-model="exSound"
-                  size="large"
-                  class="ml-2"
-                  inline-prompt
-                  style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-                  active-text="开启点击音效"
-                  inactive-text="关闭点击音效"
-              />
-            </el-col>
-            <el-divider direction="vertical"/>
-            更新提示
-            <el-col :span="3" class="switch">
-              添加：
-              <el-switch v-model="show_insert_info"/>
-            </el-col>
-            <el-col :span="3" class="switch">
-              列表：
-              <el-switch v-model="show_list_info"/>
-            </el-col>
-            <el-col :span="4" class="switch">
-              点击数：
-              <el-switch v-model="show_clickCnt_info"/>
-            </el-col>
+            <el-switch
+                v-model="show_insert_info"
+                size="large"
+                class="ml-2"
+                inline-prompt
+                style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
+                active-text="开启添加成功通知"
+                inactive-text="关闭添加成功通知"
+            />
           </div>
         </template>
         <el-button style="height: 500px; width: 400px" @click="fun" round :disabled="!finished">
           <img v-show="flag" class="round" alt="Rabbit" src="../assets/rabbit-1.jpg">
           <img v-show="!flag" class="round" alt="Rabbit" src="../assets/rabbit-2.jpg">
         </el-button>
-        <audio ref="hash">
-          <source src="../assets/hash.mp3">
-        </audio>
         <h1 class="rainbow"> 你戳了可爱兔兔 {{ cnt }} 下</h1>
       </el-card>
     </el-col>
-    <el-col :span="12">
+    <el-col :span="12" style="min-width: 500px">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -107,10 +87,7 @@ export default {
     return {
       cnt: "/",
       flag: 1,
-      exSound: 0,
       finished: 0,
-      show_list_info: 0,
-      show_clickCnt_info: 0,
       show_insert_info: 0,
       info: [],
       user_info: {},
@@ -119,35 +96,18 @@ export default {
   methods: {
     fun() {
       this.finished = 0;
-      if (this.exSound)
-        this.$refs.hash.play();
       this.add();
-      // this.flag ^= 1;
-      // setTimeout(() => {
-      //   this.flag ^= 1;
-      // }, 36);
     },
     all() {
       this.finished = 0;
       axios.get('/rabbit/all').then(res => {
         this.info = res.data;
-        if (this.show_list_info) {
-          ElMessage({
-            message: '获取列表信息成功',
-            type: 'success',
-            duration: 1000,
-          });
-        }
-        this.finished = 1;
       }).catch(err => {
-        if (this.show_list_info) {
-          ElMessage({
-            message: '获取列表信息失败' + err.message,
-            type: 'error',
-            duration: 2000,
-          });
-        }
-        this.finished = 1;
+        ElMessage({
+          message: '获取列表信息失败' + err.message,
+          type: 'error',
+          duration: 2000,
+        });
       });
       axios.get('/rabbit/getClickCnt', {
         params: {
@@ -155,21 +115,14 @@ export default {
         }
       }).then(res => {
         this.cnt = res.data[0].cnt;
-        if (this.show_clickCnt_info) {
-          ElMessage({
-            message: '获取个人点击数成功',
-            type: 'success',
-            duration: 1000,
-          });
-        }
+        this.finished = 1;
       }).catch(err => {
-        if (this.show_clickCnt_info) {
-          ElMessage({
-            message: '获取个人点击数失败' + err.message,
-            type: 'error',
-            duration: 2000,
-          });
-        }
+        ElMessage({
+          message: '获取个人点击数失败' + err.message,
+          type: 'error',
+          duration: 2000,
+        });
+        this.finished = 1;
       });
     },
     add() {
@@ -205,12 +158,6 @@ export default {
     },
   },
   mounted: async function () {
-    ElMessage({
-      message: '受到宇宙射线影响，自动更新被ty删了，请手动点击列表右上方按钮更新最新信息（点击兔兔的同时也会更新最新信息）',
-      type: 'warning',
-      duration: 5000,
-      showClose: true
-    })
     this.user_info = await getInfo();
     ElMessage({
       message: '获取个人信息成功',

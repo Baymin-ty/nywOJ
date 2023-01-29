@@ -15,18 +15,20 @@
     <el-menu-item index="/s" disabled>提交记录</el-menu-item>
     <el-dialog v-model="dialogVisible"
                title="实施可持续发展战略"
-               width="25%"
+               width="400px"
                style="border-radius: 10px"
-               custom-class="pd">
+               class="pd">
       <el-divider/>
-      <el-select v-model="money" class="m-2" placeholder="Select" style="width: 100px">
-        <el-option
-            v-for="item in options"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-        />
-      </el-select>
+      <div style="height: 40px">
+        <el-select v-model="money" class="m-2" placeholder="Select" style="width: 100px">
+          <el-option
+              v-for="item in options"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+          />
+        </el-select>
+      </div>
       <img v-show="money===50" class="round" alt="50" src="../assets/50.png">
       <img v-show="money===100" class="round" alt="100" src="../assets/100.png">
       <img v-show="money===300" class="round" alt="300" src="../assets/300.png">
@@ -39,7 +41,7 @@ export default {
   name: "myHeader",
   data() {
     return {
-      dialogVisible: 0,
+      dialogVisible: false,
       money: 50,
       options: [{
         value: 50,
@@ -60,7 +62,7 @@ export default {
 .round {
   height: 400px;
   border-radius: 10px;
-  margin: 20px;
+  margin: 10px;
 }
 
 .pd .el-dialog__body {

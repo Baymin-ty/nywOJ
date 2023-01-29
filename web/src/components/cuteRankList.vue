@@ -56,7 +56,12 @@ export default {
           duration: 1000,
         });
       }).catch(err => {
-        console.log("failed: " + err);
+        this.finished = true;
+        ElMessage({
+          message: '获取最新排名失败' + err.message,
+          type: 'error',
+          duration: 2000,
+        });
       });
     },
     tableRowClassName(obj) {
