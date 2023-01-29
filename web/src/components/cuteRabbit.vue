@@ -131,7 +131,6 @@ export default {
       this.finished = 0;
       axios.get('/rabbit/all').then(res => {
         this.info = res.data;
-        this.finished = 1;
         if (this.show_list_info) {
           ElMessage({
             message: '获取列表信息成功',
@@ -140,7 +139,11 @@ export default {
           });
         }
       }).catch(err => {
-        console.log("failed: " + err);
+        ElMessage({
+          message: '添加列表信息失败' + err.message,
+          type: 'error',
+          duration: 2000,
+        });
       });
       axios.get('/rabbit/getClickCnt', {
         params: {
@@ -156,8 +159,13 @@ export default {
           });
         }
       }).catch(err => {
-        console.log("failed: " + err);
+        ElMessage({
+          message: '添加个人点击数失败' + err.message,
+          type: 'error',
+          duration: 2000,
+        });
       });
+      this.finished = 1;
     },
     add() {
       axios.get('/rabbit/add', {
@@ -180,12 +188,12 @@ export default {
         }
       }).catch(err => {
         ElMessage({
-          message: err.message,
+          message: '添加点击信息失败' + err.message,
           type: 'error',
           duration: 2000,
         });
-        this.finished = 1;
       });
+      this.finished = 1;
     },
     tableRowClassName(obj) {
       return (obj.row.ip === this.user_info.ip ? 'success' : '');
