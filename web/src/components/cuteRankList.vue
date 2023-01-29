@@ -1,5 +1,5 @@
 <template>
-  <div style="width:1200px; text-align: center; margin: 0 auto">
+  <div style="text-align: center; margin: 0 auto">
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
@@ -14,7 +14,7 @@
                 :row-class-name="tableRowClassName"
                 :cell-style="{ textAlign: 'center' }"
                 :header-cell-style="{ textAlign: 'center' }">
-        <el-table-column label="#" type="index" width="80px"/>
+        <el-table-column label="#" type="index" width="auto"/>
         <el-table-column prop="ip" label="IP" width="auto"/>
         <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
         <el-table-column prop="cnt" label="点击次数" width="auto"/>
