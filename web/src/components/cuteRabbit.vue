@@ -33,8 +33,8 @@
             </el-col>
           </div>
         </template>
-        <el-button style="height: 500px; width: 400px" round :disabled="!finished">
-          <img v-show="flag" class="round" alt="Rabbit" @click="fun" src="../assets/rabbit-1.jpg">
+        <el-button style="height: 500px; width: 400px" @click="fun" round :disabled="!finished">
+          <img v-show="flag" class="round" alt="Rabbit" src="../assets/rabbit-1.jpg">
           <img v-show="!flag" class="round" alt="Rabbit" src="../assets/rabbit-2.jpg">
         </el-button>
         <audio ref="hash">
