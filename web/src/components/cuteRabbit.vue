@@ -139,11 +139,13 @@ export default {
           });
         }
       }).catch(err => {
-        ElMessage({
-          message: '添加列表信息失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        if (this.show_list_info) {
+          ElMessage({
+            message: '获取列表信息失败' + err.message,
+            type: 'error',
+            duration: 2000,
+          });
+        }
       });
       axios.get('/rabbit/getClickCnt', {
         params: {
@@ -159,11 +161,13 @@ export default {
           });
         }
       }).catch(err => {
-        ElMessage({
-          message: '添加个人点击数失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        if (this.show_clickCnt_info) {
+          ElMessage({
+            message: '获取个人点击数失败' + err.message,
+            type: 'error',
+            duration: 2000,
+          });
+        }
       });
       this.finished = 1;
     },
