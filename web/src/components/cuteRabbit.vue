@@ -51,7 +51,7 @@
             <el-button type="primary" :disabled="!finished" @click="all">更新信息</el-button>
           </div>
         </template>
-        <el-table v-loading="!this.info.length"
+        <el-table v-loading="!finished"
                   :data="info"
                   border
                   height="600px"
