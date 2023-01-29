@@ -10,9 +10,9 @@
     <el-menu-item style="padding: 0;">
       <el-button style="height: 55px; width: 80px; padding: 0" text @click="dialogVisible = true">打赏</el-button>
     </el-menu-item>
-    <el-menu-item index="/" disabled>题库</el-menu-item>
-    <el-menu-item index="/" disabled>比赛</el-menu-item>
-    <el-menu-item index="/" disabled>提交记录</el-menu-item>
+    <el-menu-item index="/p" disabled>题库</el-menu-item>
+    <el-menu-item index="/c" disabled>比赛</el-menu-item>
+    <el-menu-item index="/s" disabled>提交记录</el-menu-item>
     <el-dialog v-model="dialogVisible"
                title="实施可持续发展战略"
                width="25%"
