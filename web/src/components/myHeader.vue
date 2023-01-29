@@ -7,12 +7,12 @@
          src="../assets/rabbit.png">
     <el-menu-item index="/">首页</el-menu-item>
     <el-menu-item index="/rank">兔兔挑战排行榜</el-menu-item>
-    <el-menu-item index="3" disabled>题库</el-menu-item>
-    <el-menu-item index="4" disabled>比赛</el-menu-item>
-    <el-menu-item index="5" disabled>提交记录</el-menu-item>
-    <el-menu-item index="/rank" @click="dialogVisible = true">
-      打赏
+    <el-menu-item style="padding: 0;">
+      <el-button style="height: 55px; width: 80px; padding: 0" text @click="dialogVisible = true">打赏</el-button>
     </el-menu-item>
+    <el-menu-item index="/" disabled>题库</el-menu-item>
+    <el-menu-item index="/" disabled>比赛</el-menu-item>
+    <el-menu-item index="/" disabled>提交记录</el-menu-item>
     <el-dialog v-model="dialogVisible"
                title="实施可持续发展战略"
                width="25%"
