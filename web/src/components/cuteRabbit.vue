@@ -1,6 +1,6 @@
 <template>
   <el-row>
-    <el-col :span="12" style="min-width: 500px">
+    <el-col :span="12" style="min-width: 600px">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -23,7 +23,7 @@
         <h1 class="rainbow"> 你戳了可爱兔兔 {{ cnt }} 下</h1>
       </el-card>
     </el-col>
-    <el-col :span="12" style="min-width: 500px">
+    <el-col :span="12" style="min-width: 600px">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
