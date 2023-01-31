@@ -52,6 +52,7 @@
 <script>
 import axios from "axios"
 import {ElMessage} from 'element-plus'
+import bcrypt from 'bcryptjs'
 
 const getInfo = () => {
   return axios.get('https://ip.useragentinfo.com/json').then((response) => {
