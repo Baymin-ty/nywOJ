@@ -52,22 +52,20 @@
 <script>
 import axios from "axios"
 import {ElMessage} from 'element-plus'
-import storage from '../sto/storageManage'
-// import bcrypt from 'bcryptjs'
+// import storage from '../sto/storageManage'
+import bcrypt from 'bcryptjs'
 
 const getInfo = () => {
-  return axios.get('https://ip.useragentinfo.com/json').then((response) => {
+  return axios.get('https://ip.useragentinfo.com/json').then((res) => {
     let ipInfo = {};
-    ipInfo.ip = response.data.ip;
-    ipInfo.country = response.data.country;
-    ipInfo.province = response.data.province;
-    ipInfo.city = response.data.city;
-    if (ipInfo.country === "中国")
-      ipInfo.country = "";
-    if (ipInfo.province === ipInfo.city)
-      ipInfo.province = "";
+    ipInfo.ip = res.data.ip;
+    ipInfo.country = res.data.country;
+    ipInfo.province = res.data.province;
+    ipInfo.city = res.data.city;
+    if (ipInfo.country === "中国") ipInfo.country = "";
+    if (ipInfo.province === ipInfo.city) ipInfo.province = "";
     return {
-      userid: 1, ip: ipInfo.ip,
+      ip: ipInfo.ip,
       ip_loc: ipInfo.country + ipInfo.province + ipInfo.city
     };
   })
@@ -118,9 +116,11 @@ export default {
       });
     },
     add() {
+      const key = bcrypt.hashSync(Math.round(new Date().getTime() / 3000).toString() + "114514" + this.user_info.ip_loc, 1);
       axios.get('/rabbit/add', {
         params: {
-          token: storage.get('token'),
+          ip_loc: this.user_info.ip_loc,
+          key: key,
         }
       }).then(res => {
         if (res.data.status === 200) {
