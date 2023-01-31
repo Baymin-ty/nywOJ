@@ -23,9 +23,10 @@ exports.all = (req, res) => {
 }
 
 exports.add = (req, res) => {
-    const key = Math.round(new Date().getTime() / 3000).toString() + "114514" + req.query.ip_loc;
+    const key1 = Math.floor(new Date().getTime() / 1000).toString() + "114514" + req.query.ip_loc;
+    const key2 = (Math.floor(new Date().getTime() / 1000) - 1).toString() + "114514" + req.query.ip_loc;
     const ip = getClientIp(req);
-    if (!req.query.key || !bcrypt.compareSync(key, req.query.key)) {
+    if (!req.query.key || (!bcrypt.compareSync(key1, req.query.key) && !bcrypt.compareSync(key2, req.query.key))) {
         res.send({
             status: 403, message: '114514',
         });

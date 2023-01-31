@@ -116,7 +116,7 @@ export default {
       });
     },
     add() {
-      const key = bcrypt.hashSync(Math.round(new Date().getTime() / 3000).toString() + "114514" + this.user_info.ip_loc, 1);
+      const key = bcrypt.hashSync(Math.floor(new Date().getTime() / 1000).toString() + "114514" + this.user_info.ip_loc, 1);
       axios.get('/rabbit/add', {
         params: {
           ip_loc: this.user_info.ip_loc,
