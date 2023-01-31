@@ -1,5 +1,34 @@
 let db = require('../db/index')
-const bcrypt = require("bcryptjs");
+const bcrypt = require('bcryptjs');
+const axios = require('axios');
+
+function getClientIp(req) {
+    return req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
+}
+
+const getInfo = () => {
+    return axios.get('https://ip.useragentinfo.com/json').then((response) => {
+        let ipInfo = {};
+        ipInfo.ip = response.data.ip;
+        ipInfo.country = response.data.country;
+        ipInfo.province = response.data.province;
+        ipInfo.city = response.data.city;
+        if (ipInfo.country === "中国") ipInfo.country = "";
+        if (ipInfo.province === ipInfo.city) ipInfo.province = "";
+        return {
+            ip_loc: ipInfo.country + ipInfo.province + ipInfo.city
+        };
+    })
+}
+
+const dateFormat = (x) => {
+    x = x.toString();
+    return x.length > 1 ? x : '0' + x;
+}
+const getCurTime = () => {
+    const now = new Date();
+    return now.getFullYear() + '-' + dateFormat(now.getMonth() + 1) + '-' + dateFormat(now.getDate()) + ' ' + dateFormat(now.getHours()) + ':' + dateFormat(now.getMinutes()) + ':' + dateFormat(now.getSeconds());
+}
 
 exports.all = (req, res) => {
     let sql = 'SELECT * FROM clickList ORDER BY id desc limit 20';
@@ -10,15 +39,9 @@ exports.all = (req, res) => {
 }
 
 exports.add = (req, res) => {
-    const key = Math.round(new Date().getTime() / 1000).toString() + "114514" + req.query.ip;
-    if (!req.query.key || !bcrypt.compareSync(key, req.query.key)) {
-        res.send({
-            req: req.ip, status: 403, message: '114514',
-        });
-        return;
-    }
+    const ip = getClientIp(req);
     let sql = 'INSERT INTO clickList(userid,time,ip,ip_loc) values (?,?,?,?)';
-    db.query(sql, [req.query.userid, req.query.time, req.query.ip, req.query.ip_loc], (err, data) => {
+    db.query(sql, [1, getCurTime(), ip, getInfo(ip).ip_loc], (err, data) => {
         if (err) return res.send('Error：' + err.message);
         if (data.affectedRows > 0) {
             res.send({

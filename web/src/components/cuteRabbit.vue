@@ -52,7 +52,8 @@
 <script>
 import axios from "axios"
 import {ElMessage} from 'element-plus'
-import bcrypt from 'bcryptjs'
+import storage from '../sto/storageManage'
+// import bcrypt from 'bcryptjs'
 
 const getInfo = () => {
   return axios.get('https://ip.useragentinfo.com/json').then((response) => {
@@ -70,16 +71,6 @@ const getInfo = () => {
       ip_loc: ipInfo.country + ipInfo.province + ipInfo.city
     };
   })
-}
-
-const dateFormat = (x) => {
-  x = x.toString();
-  return x.length > 1 ? x : '0' + x;
-}
-const getCurTime = () => {
-  const now = new Date();
-  return now.getFullYear() + '-' + dateFormat(now.getMonth() + 1) + '-' + dateFormat(now.getDate())
-      + ' ' + dateFormat(now.getHours()) + ':' + dateFormat(now.getMinutes()) + ':' + dateFormat(now.getSeconds());
 }
 
 export default {
@@ -127,14 +118,9 @@ export default {
       });
     },
     add() {
-      const key = bcrypt.hashSync(Math.round(new Date().getTime() / 1000).toString() + "114514" + this.user_info.ip, 1);
       axios.get('/rabbit/add', {
         params: {
-          userid: this.user_info.userid,
-          time: getCurTime(),
-          ip: this.user_info.ip,
-          ip_loc: this.user_info.ip_loc,
-          key: key,
+          token: storage.get('token'),
         }
       }).then(res => {
         if (res.data.status === 200) {
