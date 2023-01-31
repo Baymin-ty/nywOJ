@@ -2,6 +2,7 @@
   <el-menu
       class="el-menu-demo"
       mode="horizontal"
+      :default-active="path"
       :router="true">
     <img style="width: 40px; height: 40px; margin-left: 30px; margin-right: 30px; margin-top: 5px; border-radius: 5px"
          src="../assets/rabbit.png">
@@ -39,6 +40,7 @@ export default {
   name: "myHeader",
   data() {
     return {
+      path: "/",
       dialogVisible: false,
       money: 50,
       options: [{
