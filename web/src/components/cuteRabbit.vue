@@ -17,8 +17,7 @@
           </div>
         </template>
         <el-button style="height: 500px; width: 400px" @click="fun" round :disabled="!finished">
-          <img v-show="flag" class="round" alt="Rabbit" src="../assets/rabbit-1.jpg">
-          <img v-show="!flag" class="round" alt="Rabbit" src="../assets/rabbit-2.jpg">
+          <img class="round" alt="Rabbit" src="../assets/rabbit.jpg">
         </el-button>
         <h1 class="rainbow"> 你戳了可爱兔兔 {{ cnt }} 下</h1>
       </el-card>
@@ -76,7 +75,6 @@ export default {
   data() {
     return {
       cnt: "/",
-      flag: 1,
       finished: 0,
       show_insert_info: 0,
       info: [],
@@ -193,18 +191,4 @@ export default {
   align-items: center;
   height: 20px;
 }
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 20px;
-}
-
-.switch {
-  display: flex;
-  align-items: center;
-  height: 20px;
-}
-
 </style>

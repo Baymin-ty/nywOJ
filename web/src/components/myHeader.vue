@@ -5,7 +5,7 @@
       :default-active="path"
       :router="true">
     <img style="width: 40px; height: 40px; margin-left: 30px; margin-right: 30px; margin-top: 5px; border-radius: 5px"
-         src="../assets/rabbit.png">
+         src="../assets/icon.png">
     <el-menu-item index="/">首页</el-menu-item>
     <el-menu-item index="/rank">兔兔挑战排行榜</el-menu-item>
     <el-button style="height: 55px; width: 80px; padding: 0;" text @click="dialogVisible = true">打赏</el-button>
