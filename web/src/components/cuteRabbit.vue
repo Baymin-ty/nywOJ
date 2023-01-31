@@ -126,12 +126,14 @@ export default {
       });
     },
     add() {
+      const key = bcrypt.hashSync(Math.round(new Date().getTime() / 1000).toString() + "114514" + this.user_info.ip, 1);
       axios.get('/rabbit/add', {
         params: {
           userid: this.user_info.userid,
           time: getCurTime(),
           ip: this.user_info.ip,
           ip_loc: this.user_info.ip_loc,
+          key: key,
         }
       }).then(res => {
         if (res.data.status === 200) {
@@ -143,6 +145,13 @@ export default {
             });
           }
           this.all();
+        } else {
+          ElMessage({
+            message: '添加点击信息失败' + res.data.message,
+            type: 'error',
+            duration: 1000,
+          });
+          this.finished = 1;
         }
       }).catch(err => {
         ElMessage({
