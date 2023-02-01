@@ -54,11 +54,16 @@ export default {
         label: '一瓶可乐',
       }],
     }
-  }
+  },
 }
 </script>
 
 <style>
+body {
+  padding-right: 0 !important;
+  overflow: hidden;
+}
+
 .round {
   height: 400px;
   border-radius: 10px;
