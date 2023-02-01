@@ -10,5 +10,7 @@ router.get('/rabbit/add', info.add);
 // router.get('/rabbit/del', info.del);
 router.get('/rabbit/getClickCnt', info.getClickCnt);
 router.get('/rabbit/getRankInfo', info.getRankInfo);
+router.get('/rabbit/getUserIp', info.getUserIp);
+
 
 module.exports = router;

@@ -4,7 +4,7 @@
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            Tiddar
+            Tiddar ({{ this.ip }} from {{ this.ip_loc }})
             <el-switch
                 v-model="show_insert_info"
                 size="large"
@@ -49,26 +49,9 @@
 </template>
 
 <script>
-import axios from "axios"
+import axios from 'axios'
 import {ElMessage} from 'element-plus'
-// import storage from '../sto/storageManage'
 import bcrypt from 'bcryptjs'
-
-const getInfo = () => {
-  return axios.get('https://ip.useragentinfo.com/json').then((res) => {
-    let ipInfo = {};
-    ipInfo.ip = res.data.ip;
-    ipInfo.country = res.data.country;
-    ipInfo.province = res.data.province;
-    ipInfo.city = res.data.city;
-    if (ipInfo.country === "中国") ipInfo.country = "";
-    if (ipInfo.province === ipInfo.city) ipInfo.province = "";
-    return {
-      ip: ipInfo.ip,
-      ip_loc: ipInfo.country + ipInfo.province + ipInfo.city
-    };
-  })
-}
 
 export default {
   name: 'cuteRabbit',
@@ -78,7 +61,9 @@ export default {
       finished: 0,
       show_insert_info: 0,
       info: [],
-      user_info: {},
+      ip: "/",
+      ip_loc: "/",
+      ok: true
     }
   },
   methods: {
@@ -99,7 +84,7 @@ export default {
       });
       axios.get('/rabbit/getClickCnt', {
         params: {
-          ip: this.user_info.ip
+          ip: this.ip
         }
       }).then(res => {
         this.cnt = res.data[0].cnt;
@@ -114,10 +99,10 @@ export default {
       });
     },
     add() {
-      const key = bcrypt.hashSync(Math.floor(new Date().getTime() / 1000).toString() + "114514" + this.user_info.ip_loc, 1);
+      const key = bcrypt.hashSync(Math.floor(new Date().getTime() / 1000).toString() + "114514" + this.ip_loc, 1);
       axios.get('/rabbit/add', {
         params: {
-          ip_loc: this.user_info.ip_loc,
+          ip_loc: this.ip_loc,
           key: key,
         }
       }).then(res => {
@@ -148,16 +133,51 @@ export default {
       });
     },
     tableRowClassName(obj) {
-      return (obj.row.ip === this.user_info.ip ? 'success' : '');
+      return (obj.row.ip === this.ip ? 'success' : '');
     },
   },
   mounted: async function () {
-    this.user_info = await getInfo();
-    ElMessage({
-      message: '获取个人信息成功',
-      type: 'success',
-      duration: 3000,
+    this.ok = true;
+    await axios.get('/rabbit/getUserIp', {}).then(res => {
+      this.ip = res.data[0].ip;
+    }).catch(err => {
+      this.ok = false;
+      ElMessage({
+        message: '获取ip失败' + err.message,
+        type: 'error',
+        duration: 2000,
+      });
     });
+    await axios.get('https://ip.useragentinfo.com/json', {
+      params: {
+        ip: this.ip
+      }
+    }).then((res) => {
+      let ipInfo = {};
+      ipInfo.ip = res.data.ip;
+      ipInfo.country = res.data.country;
+      ipInfo.province = res.data.province;
+      ipInfo.city = res.data.city;
+      if (ipInfo.country === "中国") ipInfo.country = "";
+      if (ipInfo.province === ipInfo.city) ipInfo.province = "";
+      this.ip_loc = ipInfo.country + ipInfo.province + ipInfo.city;
+      if (!this.ip_loc.length)
+        this.ok = false;
+    });
+    console.log(this.ok);
+    if (this.ok) {
+      ElMessage({
+        message: '获取个人信息成功',
+        type: 'success',
+        duration: 2000,
+      });
+    } else {
+      ElMessage({
+        message: '获取个人信息异常',
+        type: 'warning',
+        duration: 2000,
+      });
+    }
     this.all();
   },
 }

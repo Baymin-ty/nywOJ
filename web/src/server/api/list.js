@@ -55,6 +55,13 @@ exports.getClickCnt = (req, res) => {
     })
 }
 
+exports.getUserIp = (req, res) => {
+    res.send([{
+            ip: getClientIp(req)
+        }]
+    );
+}
+
 exports.getRankInfo = (req, res) => {
     let sql = 'SELECT ip,ip_loc,COUNT(*) as cnt FROM clickList GROUP BY ip ORDER BY cnt DESC LIMIT 20';
     db.query(sql, (err, data) => {
