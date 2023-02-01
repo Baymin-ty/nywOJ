@@ -39,7 +39,7 @@
                   :header-cell-style="{ textAlign: 'center' }">
           <el-table-column prop="id" label="#" width="80px"/>
           <el-table-column prop="time" label="点击时间" width="auto"/>
-          <el-table-column prop="userid" label="uid" width="80px"/>
+          <el-table-column prop="uid" label="uid" width="80px"/>
           <el-table-column prop="ip" label="IP" width="auto"/>
           <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
         </el-table>

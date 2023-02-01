@@ -32,7 +32,7 @@ exports.add = (req, res) => {
         });
         return;
     }
-    let sql = 'INSERT INTO clickList(userid,time,ip,ip_loc) values (?,?,?,?)';
+    let sql = 'INSERT INTO clickList(uid,time,ip,ip_loc) values (?,?,?,?)';
     db.query(sql, [1, getCurTime(), ip, req.query.ip_loc], (err, data) => {
         if (err) return res.send('Error：' + err.message);
         if (data.affectedRows > 0) {
