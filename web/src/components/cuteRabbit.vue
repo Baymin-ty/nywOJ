@@ -4,7 +4,7 @@
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            Tiddar ({{ this.ip }} from {{ this.ip_loc }})
+            Tiddar (IP: {{ this.ip }} 用户名: {{ this.name }})
             <el-switch
                 v-model="show_insert_info"
                 size="large"
@@ -37,11 +37,11 @@
                   :row-class-name="tableRowClassName"
                   :cell-style="{ textAlign: 'center' }"
                   :header-cell-style="{ textAlign: 'center' }">
-          <el-table-column prop="id" label="#" width="80px"/>
-          <el-table-column prop="time" label="点击时间" width="auto"/>
-          <el-table-column prop="uid" label="uid" width="80px"/>
+          <el-table-column prop="id" label="#" width="100px"/>
+          <el-table-column prop="time" label="点击时间" width="200px"/>
+          <el-table-column prop="uid" label="uid" width="60px"/>
+          <el-table-column prop="name" label="用户名" width="auto"/>
           <el-table-column prop="ip" label="IP" width="auto"/>
-          <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
         </el-table>
       </el-card>
     </el-col>
@@ -51,7 +51,6 @@
 <script>
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
-import bcrypt from 'bcryptjs'
 
 export default {
   name: 'cuteRabbit',
@@ -62,48 +61,60 @@ export default {
       show_insert_info: 0,
       info: [],
       ip: "/",
-      ip_loc: "/",
+      uid: -1,
+      name: "请登录",
       ok: true
     }
   },
   methods: {
-    fun() {
-      this.finished = 0;
-      this.add();
+    async fun() {
+      await this.add();
+      await this.all();
+      this.getCnt();
     },
     all() {
       this.finished = 0;
       axios.get('/rabbit/all').then(res => {
-        this.info = res.data;
+        this.info = res.data.data;
+        this.finished = 1;
       }).catch(err => {
         ElMessage({
           message: '获取列表信息失败' + err.message,
           type: 'error',
           duration: 2000,
         });
+        this.finished = 1;
       });
+    },
+    getCnt() {
+      if (this.uid === -1)
+        return;
       axios.get('/rabbit/getClickCnt', {
         params: {
-          ip: this.ip
+          uid: this.uid,
         }
       }).then(res => {
-        this.cnt = res.data[0].cnt;
-        this.finished = 1;
+        this.cnt = res.data.data[0].clickCnt;
       }).catch(err => {
         ElMessage({
           message: '获取个人点击数失败' + err.message,
           type: 'error',
           duration: 2000,
         });
-        this.finished = 1;
       });
     },
     add() {
-      const key = bcrypt.hashSync(Math.floor(new Date().getTime() / 1000).toString() + "114514" + this.ip_loc, 1);
+      if (!localStorage.getItem('token')) {
+        ElMessage({
+          message: '请先登录后再点击',
+          type: 'error',
+          duration: 2000,
+        });
+        return;
+      }
       axios.get('/rabbit/add', {
         params: {
-          ip_loc: this.ip_loc,
-          key: key,
+          token: localStorage.getItem('token')
         }
       }).then(res => {
         if (res.data.status === 200) {
@@ -114,14 +125,12 @@ export default {
               duration: 1000,
             });
           }
-          this.all();
         } else {
           ElMessage({
             message: '添加点击信息失败' + res.data.message,
             type: 'error',
             duration: 1000,
           });
-          this.finished = 1;
         }
       }).catch(err => {
         ElMessage({
@@ -129,11 +138,10 @@ export default {
           type: 'error',
           duration: 2000,
         });
-        this.finished = 1;
       });
     },
     tableRowClassName(obj) {
-      return (obj.row.ip === this.ip ? 'success' : '');
+      return (obj.row.uid === this.uid ? 'success' : '');
     },
   },
   mounted: async function () {
@@ -148,23 +156,48 @@ export default {
         duration: 2000,
       });
     });
-    await axios.get('https://ip.useragentinfo.com/json', {
-      params: {
-        ip: this.ip
-      }
-    }).then((res) => {
-      let ipInfo = {};
-      ipInfo.ip = res.data.ip;
-      ipInfo.country = res.data.country;
-      ipInfo.province = res.data.province;
-      ipInfo.city = res.data.city;
-      if (ipInfo.country === "中国") ipInfo.country = "";
-      if (ipInfo.province === ipInfo.city) ipInfo.province = "";
-      this.ip_loc = ipInfo.country + ipInfo.province + ipInfo.city;
-      if (!this.ip_loc.length)
+    if (!localStorage.getItem('token')) {
+      ElMessage({
+        message: '暂未登录',
+        type: 'warning',
+        duration: 2000,
+      });
+      this.ok = false;
+    } else {
+      await axios.get('/user/getUserInfo', {
+        params: {
+          token: localStorage.getItem('token')
+        }
+      }).then(res => {
+        if (res.data.status === 200) {
+          this.uid = res.data.uid;
+          this.name = res.data.name;
+        } else {
+          if (res.data.status === 114514) {
+            localStorage.removeItem('token');
+            ElMessage({
+              message: res.data.message,
+              type: 'warning',
+              duration: 3000,
+            });
+          } else {
+            ElMessage({
+              message: res.data.message,
+              type: 'error',
+              duration: 3000,
+            });
+          }
+          this.ok = false;
+        }
+      }).catch(err => {
+        ElMessage({
+          message: '获取用户信息失败' + err.message,
+          type: 'error',
+          duration: 2000,
+        });
         this.ok = false;
-    });
-    console.log(this.ok);
+      });
+    }
     if (this.ok) {
       ElMessage({
         message: '获取个人信息成功',
@@ -174,11 +207,12 @@ export default {
     } else {
       ElMessage({
         message: '获取个人信息异常',
-        type: 'warning',
+        type: 'error',
         duration: 2000,
       });
     }
     this.all();
+    this.getCnt();
   },
 }
 </script>

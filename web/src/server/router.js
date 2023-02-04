@@ -1,16 +1,18 @@
-let express = require('express');
-let router = express.Router();
+const express = require('express');
+const router = express.Router();
 
-let info = require('./api/list');
+const rabbit = require('./api/rabbit');
 
-router.get('/rabbit/all', info.all);
-// router.get('/rabbit/get', info.get);
-router.get('/rabbit/add', info.add);
-// router.get('/rabbit/update', info.update);
-// router.get('/rabbit/del', info.del);
-router.get('/rabbit/getClickCnt', info.getClickCnt);
-router.get('/rabbit/getRankInfo', info.getRankInfo);
-router.get('/rabbit/getUserIp', info.getUserIp);
+router.get('/rabbit/all', rabbit.all);
+router.get('/rabbit/add', rabbit.add);
+router.get('/rabbit/getClickCnt', rabbit.getClickCnt);
+router.get('/rabbit/getRankInfo', rabbit.getRankInfo);
+router.get('/rabbit/getUserIp', rabbit.getUserIp);
 
+const user = require('./api/user');
+
+router.get('/user/login', user.login);
+router.get('/user/reg', user.reg);
+router.get('/user/getUserInfo', user.getUserInfo);
 
 module.exports = router;

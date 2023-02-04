@@ -2,16 +2,16 @@
   <el-menu
       class="el-menu-demo"
       mode="horizontal"
-      :default-active="path"
+      :default-active="this.$router.path"
       :router="true">
     <img style="width: 40px; height: 40px; margin-left: 30px; margin-right: 30px; margin-top: 5px; border-radius: 5px"
          src="../assets/icon.png">
     <el-menu-item index="/">首页</el-menu-item>
     <el-menu-item index="/rank">兔兔挑战排行榜</el-menu-item>
+    <el-menu-item v-show="!uid" index="/user/login">登录</el-menu-item>
+    <el-menu-item v-show="!uid" index="/user/reg">注册</el-menu-item>
+    <el-button v-show="uid" style="height: 55px; width: 100px; padding: 0;" text @click="logout">注销登录</el-button>
     <el-button style="height: 55px; width: 80px; padding: 0;" text @click="dialogVisible = true">打赏</el-button>
-    <el-menu-item index="/p" disabled>题库</el-menu-item>
-    <el-menu-item index="/c" disabled>比赛</el-menu-item>
-    <el-menu-item index="/s" disabled>提交记录</el-menu-item>
     <el-dialog v-model="dialogVisible"
                title="实施可持续发展战略"
                width="400px"
@@ -36,11 +36,13 @@
 </template>
 
 <script>
+import axios from "axios";
+
 export default {
   name: "myHeader",
   data() {
     return {
-      path: "/",
+      uid: 0,
       dialogVisible: false,
       money: 50,
       options: [{
@@ -54,6 +56,23 @@ export default {
         label: '一瓶可乐',
       }],
     }
+  },
+  methods: {
+    logout() {
+      localStorage.removeItem('token');
+      location.reload();
+    }
+  },
+  async mounted() {
+    await axios.get('/user/getUserInfo', {
+      params: {
+        token: localStorage.getItem('token')
+      }
+    }).then(res => {
+      if (res.data.status === 200) {
+        this.uid = res.data.uid;
+      }
+    });
   },
 }
 </script>

@@ -15,9 +15,9 @@
                 :cell-style="{ textAlign: 'center' }"
                 :header-cell-style="{ textAlign: 'center' }">
         <el-table-column label="#" type="index" width="80px"/>
-        <el-table-column prop="ip" label="IP" width="auto"/>
-        <el-table-column prop="ip_loc" label="IP属地" width="auto"/>
-        <el-table-column prop="cnt" label="点击次数" width="auto"/>
+        <el-table-column prop="uid" label="uid" width="auto"/>
+        <el-table-column prop="name" label="用户名" width="auto"/>
+        <el-table-column prop="clickCnt" label="点击次数" width="auto"/>
       </el-table>
     </el-card>
   </div>
@@ -27,20 +27,12 @@
 import axios from "axios"
 import {ElMessage} from 'element-plus'
 
-const getIp = () => {
-  return axios.get('https://ip.useragentinfo.com/json').then((response) => {
-    return {
-      ip: response.data.ip,
-    };
-  })
-}
-
 export default {
   name: 'cuteRank',
   data() {
     return {
       finished: 0,
-      user_info: {},
+      uid: -1,
       info: [],
     }
   },
@@ -48,7 +40,7 @@ export default {
     all() {
       this.finished = false;
       axios.get('/rabbit/getRankInfo').then(res => {
-        this.info = res.data;
+        this.info = res.data.data;
         this.finished = true;
         ElMessage({
           message: '获取最新排名成功',
@@ -65,11 +57,19 @@ export default {
       });
     },
     tableRowClassName(obj) {
-      return (obj.row.ip === this.user_info.ip ? 'success' : '');
+      return (obj.row.uid === this.uid ? 'success' : '');
     },
   },
   mounted: async function () {
-    this.user_info = await getIp();
+    await axios.get('/user/getUserInfo', {
+      params: {
+        token: localStorage.getItem('token')
+      }
+    }).then(res => {
+      if (res.data.status === 200) {
+        this.uid = res.data.uid;
+      }
+    });
     this.all();
   }
 }
