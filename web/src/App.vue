@@ -7,9 +7,9 @@
       <el-main>
         <router-view/>
       </el-main>
-      <el-footer>
-        <myFooter/>
-      </el-footer>
+<!--      <el-footer>-->
+<!--        <myFooter/>-->
+<!--      </el-footer>-->
     </el-container>
   </div>
 </template>

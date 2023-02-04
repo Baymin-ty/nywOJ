@@ -35,7 +35,7 @@ export default {
   },
   methods: {
     submit() {
-      axios.get('/user/login', {
+      axios.get('/api/user/login', {
         params: {
           name: this.userInfo.name,
           pwd: this.userInfo.pwd,
@@ -66,7 +66,7 @@ export default {
     }
   },
   async mounted() {
-    await axios.get('/user/getUserInfo', {
+    await axios.get('/api/user/getUserInfo', {
       params: {
         token: localStorage.getItem('token')
       }

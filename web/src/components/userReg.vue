@@ -38,7 +38,7 @@ export default {
   },
   methods: {
     submit() {
-      axios.get('/user/reg', {
+      axios.get('/api/user/reg', {
         params: {
           name: this.userInfo.name,
           pwd: this.userInfo.pwd,

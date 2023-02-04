@@ -39,7 +39,7 @@ export default {
   methods: {
     all() {
       this.finished = false;
-      axios.get('/rabbit/getRankInfo').then(res => {
+      axios.get('/api/rabbit/getRankInfo').then(res => {
         this.info = res.data.data;
         this.finished = true;
         ElMessage({
@@ -61,7 +61,7 @@ export default {
     },
   },
   mounted: async function () {
-    await axios.get('/user/getUserInfo', {
+    await axios.get('/api/user/getUserInfo', {
       params: {
         token: localStorage.getItem('token')
       }

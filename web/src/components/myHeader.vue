@@ -64,7 +64,7 @@ export default {
     }
   },
   async mounted() {
-    await axios.get('/user/getUserInfo', {
+    await axios.get('/api/user/getUserInfo', {
       params: {
         token: localStorage.getItem('token')
       }

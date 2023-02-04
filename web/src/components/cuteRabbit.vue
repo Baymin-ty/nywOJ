@@ -74,7 +74,7 @@ export default {
     },
     all() {
       this.finished = 0;
-      axios.get('/rabbit/all').then(res => {
+      axios.get('/api/rabbit/all').then(res => {
         this.info = res.data.data;
         this.finished = 1;
       }).catch(err => {
@@ -89,7 +89,7 @@ export default {
     getCnt() {
       if (this.uid === -1)
         return;
-      axios.get('/rabbit/getClickCnt', {
+      axios.get('/api/rabbit/getClickCnt', {
         params: {
           uid: this.uid,
         }
@@ -112,7 +112,7 @@ export default {
         });
         return;
       }
-      axios.get('/rabbit/add', {
+      axios.get('/api/rabbit/add', {
         params: {
           token: localStorage.getItem('token')
         }
@@ -146,7 +146,7 @@ export default {
   },
   mounted: async function () {
     this.ok = true;
-    await axios.get('/rabbit/getUserIp', {}).then(res => {
+    await axios.get('/api/rabbit/getUserIp', {}).then(res => {
       this.ip = res.data[0].ip;
     }).catch(err => {
       this.ok = false;
@@ -164,7 +164,7 @@ export default {
       });
       this.ok = false;
     } else {
-      await axios.get('/user/getUserInfo', {
+      await axios.get('/api/user/getUserInfo', {
         params: {
           token: localStorage.getItem('token')
         }
