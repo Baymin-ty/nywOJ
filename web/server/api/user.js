@@ -84,6 +84,7 @@ exports.login = (req, res) => {
             const time = new Date();
             const token = bcrypt.hashSync(time.getTime().toString() + name, 10) + uid
             db.query("INSERT INTO tokenList(token,uid,name,time) values (?,?,?,?)", [token, uid, name, time]);
+            db.query("UPDATE userInfo SET login_time=? WHERE uid=?", [new Date(), uid]);
             res.send({
                 status: 200, token: token,
             })
