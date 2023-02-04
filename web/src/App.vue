@@ -16,13 +16,13 @@
 
 <script>
 import myHeader from './components/myHeader.vue'
-import myFooter from './components/myFooter.vue'
+// import myFooter from './components/myFooter.vue'
 
 export default {
   name: 'App',
   components: {
     myHeader,
-    myFooter,
+    // myFooter,
   },
 }
 </script>

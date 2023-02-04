@@ -69,8 +69,8 @@ export default {
   methods: {
     async fun() {
       await this.add();
-      await this.all();
-      this.getCnt();
+      await this.getCnt();
+      this.all();
     },
     all() {
       this.finished = 0;
@@ -211,8 +211,8 @@ export default {
         duration: 2000,
       });
     }
-    this.all();
     this.getCnt();
+    this.all();
   },
 }
 </script>
