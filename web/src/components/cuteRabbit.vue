@@ -5,15 +5,9 @@
         <template #header>
           <div class="card-header">
             Tiddar (uid: {{ this.uid }} 用户名: {{ this.name }})
-            <el-switch
-                v-model="show_insert_info"
-                size="large"
-                class="ml-2"
-                inline-prompt
-                style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-                active-text="开启添加成功通知"
-                inactive-text="关闭添加成功通知"
-            />
+            <el-switch v-model="show_insert_info" size="large" class="ml-2" inline-prompt
+              style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949" active-text="开启添加成功通知"
+              inactive-text="关闭添加成功通知" />
           </div>
         </template>
         <el-button style="height: 500px; width: 400px" @click="fun" round :disabled="!finished">
@@ -30,18 +24,13 @@
             <el-button type="primary" :disabled="!finished" @click="all">更新信息</el-button>
           </div>
         </template>
-        <el-table v-loading="!finished"
-                  :data="info"
-                  border
-                  height="600px"
-                  :row-class-name="tableRowClassName"
-                  :cell-style="{ textAlign: 'center' }"
-                  :header-cell-style="{ textAlign: 'center' }">
-          <el-table-column prop="id" label="#" width="100px"/>
-          <el-table-column prop="time" label="点击时间" width="200px"/>
-          <el-table-column prop="uid" label="uid" width="60px"/>
-          <el-table-column prop="name" label="用户名" width="auto"/>
-          <el-table-column prop="ip" label="IP" width="auto"/>
+        <el-table v-loading="!finished" :data="info" border height="600px" :row-class-name="tableRowClassName"
+          :cell-style="{ textAlign: 'center' }" :header-cell-style="{ textAlign: 'center' }">
+          <el-table-column prop="id" label="#" width="100px" />
+          <el-table-column prop="time" label="点击时间" width="180px" />
+          <el-table-column prop="uid" label="uid" width="100px" />
+          <el-table-column prop="name" label="用户名" width="auto" />
+          <el-table-column prop="ip" label="IP" width="auto" />
         </el-table>
       </el-card>
     </el-col>
@@ -50,7 +39,7 @@
 
 <script>
 import axios from 'axios'
-import {ElMessage} from 'element-plus'
+import { ElMessage } from 'element-plus'
 import store from '@/sto/store'
 
 export default {

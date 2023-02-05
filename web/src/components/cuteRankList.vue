@@ -7,17 +7,12 @@
           <el-button type="primary" :disabled="!finished" @click="all">更新排名</el-button>
         </div>
       </template>
-      <el-table v-loading="!finished"
-                :data="info"
-                border
-                height="600px"
-                :row-class-name="tableRowClassName"
-                :cell-style="{ textAlign: 'center' }"
-                :header-cell-style="{ textAlign: 'center' }">
-        <el-table-column label="#" type="index" width="80px"/>
-        <el-table-column prop="uid" label="uid" width="auto"/>
-        <el-table-column prop="name" label="用户名" width="auto"/>
-        <el-table-column prop="clickCnt" label="点击次数" width="auto"/>
+      <el-table v-loading="!finished" :data="info" border height="600px" :row-class-name="tableRowClassName"
+        :cell-style="{ textAlign: 'center' }" :header-cell-style="{ textAlign: 'center' }">
+        <el-table-column label="#" type="index" width="80px" />
+        <el-table-column prop="uid" label="uid" width="auto" />
+        <el-table-column prop="name" label="用户名" width="auto" />
+        <el-table-column prop="clickCnt" label="点击次数" width="auto" />
       </el-table>
     </el-card>
   </div>
@@ -25,7 +20,7 @@
 
 <script>
 import axios from "axios"
-import {ElMessage} from 'element-plus'
+import { ElMessage } from 'element-plus'
 import store from '@/sto/store'
 
 export default {

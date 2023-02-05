@@ -8,13 +8,13 @@
       </template>
       <el-form :model="userInfo">
         <el-form-item label="用户名" prop="name" style="margin-left: 15px">
-          <el-input v-model="userInfo.name" type="text"/>
+          <el-input v-model="userInfo.name" type="text" />
         </el-form-item>
         <el-form-item label="密码" prop="pass" style="margin-left: 28px">
-          <el-input v-model="userInfo.pwd" type="password"/>
+          <el-input v-model="userInfo.pwd" type="password" />
         </el-form-item>
         <el-form-item label="确认密码" prop="checkPass">
-          <el-input v-model="userInfo.rePwd" type="password"/>
+          <el-input v-model="userInfo.rePwd" type="password" />
         </el-form-item>
         <el-button type="primary" @click="submit">提交</el-button>
       </el-form>
@@ -23,7 +23,7 @@
 </template>
 <script>
 import axios from "axios";
-import {ElMessage} from "element-plus";
+import { ElMessage } from "element-plus";
 
 export default {
   name: "userReg",

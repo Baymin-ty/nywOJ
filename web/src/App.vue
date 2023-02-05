@@ -2,14 +2,14 @@
   <div class="common-layout">
     <el-container>
       <el-header>
-        <myHeader/>
+        <myHeader />
       </el-header>
       <el-main>
-        <router-view/>
+        <router-view />
       </el-main>
-<!--      <el-footer>-->
-<!--        <myFooter/>-->
-<!--      </el-footer>-->
+      <!--      <el-footer>-->
+      <!--        <myFooter/>-->
+      <!--      </el-footer>-->
     </el-container>
   </div>
 </template>
@@ -36,6 +36,7 @@ export default {
   margin: 0 auto;
   color: #2c3e50;
 }
+
 .el-table .success {
   --el-table-tr-bg-color: var(--el-color-success-light-9);
 }

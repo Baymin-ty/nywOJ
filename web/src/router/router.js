@@ -1,4 +1,4 @@
-import {createRouter, createWebHistory} from "vue-router";
+import { createRouter, createWebHistory } from "vue-router";
 
 import cuteRabbit from '@/components/cuteRabbit.vue';
 import rabbitRankList from '@/components/cuteRankList.vue';
@@ -36,7 +36,7 @@ router.beforeEach((to, from, next) => {
                 store.state.uid = 0;
                 store.state.name = "/";
                 localStorage.removeItem('token');
-                next({path: '/user/login'});
+                next({ path: '/user/login' });
             }
         });
     }
