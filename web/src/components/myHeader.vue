@@ -58,7 +58,7 @@ export default {
     }
   },
   mounted() {
-    axios.get('http://localhost:1234/api/user/getUserInfo', {
+    axios.get('/api/user/getUserInfo', {
       params: {
         token: localStorage.getItem('token')
       }
