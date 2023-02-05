@@ -180,6 +180,7 @@ export default {
               type: 'warning',
               duration: 3000,
             });
+            location.reload();
           } else {
             ElMessage({
               message: res.data.message,
