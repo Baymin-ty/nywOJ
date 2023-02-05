@@ -4,7 +4,7 @@
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            Tiddar (IP: {{ this.ip }} 用户名: {{ this.name }})
+            Tiddar (uid: {{ this.uid }} 用户名: {{ this.name }})
             <el-switch
                 v-model="show_insert_info"
                 size="large"
@@ -51,6 +51,7 @@
 <script>
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
+import store from '@/sto/store'
 
 export default {
   name: 'cuteRabbit',
@@ -60,8 +61,7 @@ export default {
       finished: 0,
       show_insert_info: 0,
       info: [],
-      ip: "/",
-      uid: -1,
+      uid: 0,
       name: "请登录",
       ok: true
     }
@@ -104,14 +104,6 @@ export default {
       });
     },
     add() {
-      if (!localStorage.getItem('token')) {
-        ElMessage({
-          message: '请先登录后再点击',
-          type: 'error',
-          duration: 2000,
-        });
-        return;
-      }
       axios.get('/api/rabbit/add', {
         params: {
           token: localStorage.getItem('token')
@@ -144,72 +136,20 @@ export default {
       return (obj.row.uid === this.uid ? 'success' : '');
     },
   },
-  mounted: async function () {
-    this.ok = true;
-    await axios.get('/api/rabbit/getUserIp', {}).then(res => {
-      this.ip = res.data[0].ip;
-    }).catch(err => {
-      this.ok = false;
+  mounted: function () {
+    this.uid = store.state.uid;
+    this.name = store.state.name;
+    if (this.uid === 0 || this.name === "/") {
       ElMessage({
-        message: '获取ip失败' + err.message,
-        type: 'error',
-        duration: 2000,
-      });
-    });
-    if (!localStorage.getItem('token')) {
-      ElMessage({
-        message: '暂未登录',
+        message: '获取个人信息异常',
         type: 'warning',
         duration: 2000,
       });
-      this.ok = false;
     } else {
-      await axios.get('/api/user/getUserInfo', {
-        params: {
-          token: localStorage.getItem('token')
-        }
-      }).then(res => {
-        if (res.data.status === 200) {
-          this.uid = res.data.uid;
-          this.name = res.data.name;
-        } else {
-          if (res.data.status === 114514) {
-            localStorage.removeItem('token');
-            ElMessage({
-              message: res.data.message,
-              type: 'warning',
-              duration: 3000,
-            });
-            location.reload();
-          } else {
-            ElMessage({
-              message: res.data.message,
-              type: 'error',
-              duration: 3000,
-            });
-          }
-          this.ok = false;
-        }
-      }).catch(err => {
-        ElMessage({
-          message: '获取用户信息失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
-        this.ok = false;
-      });
-    }
-    if (this.ok) {
       ElMessage({
         message: '获取个人信息成功',
         type: 'success',
-        duration: 2000,
-      });
-    } else {
-      ElMessage({
-        message: '获取个人信息异常',
-        type: 'error',
-        duration: 2000,
+        duration: 1000,
       });
     }
     this.getCnt();

@@ -26,6 +26,7 @@
 <script>
 import axios from "axios"
 import {ElMessage} from 'element-plus'
+import store from '@/sto/store'
 
 export default {
   name: 'cuteRank',
@@ -60,16 +61,8 @@ export default {
       return (obj.row.uid === this.uid ? 'success' : '');
     },
   },
-  mounted: async function () {
-    await axios.get('/api/user/getUserInfo', {
-      params: {
-        token: localStorage.getItem('token')
-      }
-    }).then(res => {
-      if (res.data.status === 200) {
-        this.uid = res.data.uid;
-      }
-    });
+  mounted: function () {
+    this.uid = store.state.uid;
     this.all();
   }
 }

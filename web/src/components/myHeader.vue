@@ -57,14 +57,8 @@ export default {
       }],
     }
   },
-  methods: {
-    logout() {
-      localStorage.removeItem('token');
-      location.reload();
-    }
-  },
-  async mounted() {
-    await axios.get('/api/user/getUserInfo', {
+  mounted() {
+    axios.get('http://localhost:1234/api/user/getUserInfo', {
       params: {
         token: localStorage.getItem('token')
       }
@@ -73,6 +67,12 @@ export default {
         this.uid = res.data.uid;
       }
     });
+  },
+  methods: {
+    logout() {
+      localStorage.removeItem('token');
+      location.reload();
+    }
   },
 }
 </script>

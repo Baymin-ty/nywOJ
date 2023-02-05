@@ -21,7 +21,8 @@
     "mysql2": "^3.0.1",
     "vue": "^3.2.13",
     "vue-axios": "^3.5.2",
-    "vue-router": "^4.1.6"
+    "vue-router": "^4.1.6",
+    "vuex": "^4.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",

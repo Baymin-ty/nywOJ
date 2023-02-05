@@ -70,6 +70,11 @@ export default {
         this.finished = 1;
       });
     }
+  },
+  created() {
+    if (localStorage.getItem('token')) {
+      this.$router.push('/');
+    }
   }
 }
 </script>

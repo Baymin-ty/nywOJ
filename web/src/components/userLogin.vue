@@ -65,16 +65,10 @@ export default {
       });
     }
   },
-  async mounted() {
-    await axios.get('/api/user/getUserInfo', {
-      params: {
-        token: localStorage.getItem('token')
-      }
-    }).then(res => {
-      if (res.data.status === 200) {
-        this.$router.push("/");
-      }
-    });
+  created() {
+    if (localStorage.getItem('token')) {
+      this.$router.push('/');
+    }
   }
 }
 </script>
