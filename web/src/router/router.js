@@ -23,7 +23,7 @@ router.beforeEach((to, from, next) => {
     if (to.path === '/user/reg' || to.path === '/user/login') {
         next();
     } else {
-        axios.get('http://localhost:1234/api/user/getUserInfo', {
+        axios.get('/api/user/getUserInfo', {
             params: {
                 token: localStorage.getItem('token')
             }
