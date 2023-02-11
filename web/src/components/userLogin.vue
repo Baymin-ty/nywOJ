@@ -13,9 +13,10 @@
         <el-form-item label="密码" prop="pass" style="margin-left: 28px">
           <el-input v-model="userInfo.pwd" type="password" />
         </el-form-item>
-        <el-button type="primary" @click="submit">提交</el-button>
+        <el-button type="primary" @click="submit" style="width: 250px;">登录</el-button>
       </el-form>
     </el-card>
+    <el-button type="info" plain @click="this.$router.push('/user/reg')" style="width: 500px; height: 50px;">新用户？点此注册</el-button>
   </div>
 </template>
 
@@ -61,7 +62,6 @@ export default {
           type: 'error',
           duration: 2000,
         });
-        this.finished = 1;
       });
     }
   },

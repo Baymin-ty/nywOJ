@@ -45,22 +45,32 @@ exports.reg = (req, res) => {
         });
         return;
     }
-    const time = new Date();
-    const password = bcrypt.hashSync(pwd, 12);
-    db.query("INSERT INTO userInfo(name,pwd,reg_time) values (?,?,?)", [name, password, time], (err, data) => {
+    db.query("SELECT uid FROM userInfo WHERE name=?", [name], (err, data) => {
         if (err) return res.send({
-            status: 250, message: err.message,
+            status: 202, message: err.message,
         });
-        if (data.affectedRows > 0) {
-            res.send({
-                status: 200, message: 'success',
-            });
-        } else {
-            res.send({
-                status: 202, message: 'sql error',
+        if (data.length) return res.send({
+            status: 202, message: "该用户名已被注册"
+        });
+        else {
+            const time = new Date();
+            const password = bcrypt.hashSync(pwd, 12);
+            db.query("INSERT INTO userInfo(name,pwd,reg_time) values (?,?,?)", [name, password, time], (err, data) => {
+                if (err) return res.send({
+                    status: 202, message: err.message,
+                });
+                if (data.affectedRows > 0) {
+                    res.send({
+                        status: 200, message: 'success',
+                    });
+                } else {
+                    res.send({
+                        status: 202, message: 'sql error',
+                    });
+                }
             });
         }
-    });
+    })
 }
 
 exports.login = (req, res) => {

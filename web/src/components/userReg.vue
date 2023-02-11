@@ -16,9 +16,11 @@
         <el-form-item label="确认密码" prop="checkPass">
           <el-input v-model="userInfo.rePwd" type="password" />
         </el-form-item>
-        <el-button type="primary" @click="submit">提交</el-button>
+        <el-button type="primary" @click="submit" style="width: 250px;">注册</el-button>
       </el-form>
     </el-card>
+    <el-button type="info" plain @click="this.$router.push('/user/login')"
+      style="width: 500px; height: 50px;">已有用户？点此登录</el-button>
   </div>
 </template>
 <script>
@@ -53,12 +55,10 @@ export default {
           });
           this.$router.push('/user/login');
         } else {
-          let err = res.data.message;
-          if (res.data.status === 250)
-            err = "此用户名已被注册";
           ElMessage({
-            message: err,
+            message: res.data.message,
             type: 'error',
+            duration: 2000,
           });
         }
       }).catch(err => {
@@ -67,7 +67,6 @@ export default {
           type: 'error',
           duration: 2000,
         });
-        this.finished = 1;
       });
     }
   },
