@@ -1,7 +1,8 @@
 let db = require('../db/index')
 let bcrypt = require('bcryptjs')
+let axios = require('axios');
 
-exports.reg = (req, res) => {
+exports.reg = async (req, res) => {
     const name = req.query.name;
     const pwd = req.query.pwd;
     const rePwd = req.query.rePwd;
@@ -45,6 +46,18 @@ exports.reg = (req, res) => {
         });
         return;
     }
+    let ok = true;
+    await axios.get('https://v.api.aa1.cn/api/api-mgc/index.php', {
+        params: {
+            msg: name,
+        }
+    }).then(res => {
+        if (res.data.num === '1')
+            ok = false;
+    });
+    if (!ok) return res.send({
+        status: 202, message: "用户名中存在敏感词"
+    });
     db.query("SELECT uid FROM userInfo WHERE name=?", [name], (err, data) => {
         if (err) return res.send({
             status: 202, message: err.message,
