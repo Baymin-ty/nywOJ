@@ -4,6 +4,9 @@
       <template #header>
         <div class="card-header">
           点击数排名
+          <el-switch v-model="today" size="large" class="ml-2" inline-prompt
+            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949" active-text="今日排名"
+            inactive-text="总排名" @click="all"/>
           <el-button type="primary" :disabled="!finished" @click="all">更新排名</el-button>
         </div>
       </template>
@@ -30,12 +33,17 @@ export default {
       finished: 0,
       uid: -1,
       info: [],
+      today: false,
     }
   },
   methods: {
     all() {
       this.finished = false;
-      axios.get('/api/rabbit/getRankInfo').then(res => {
+      axios.get('/api/rabbit/getRankInfo', {
+        params: {
+          today: this.today
+        }
+      }).then(res => {
         this.info = res.data.data;
         this.finished = true;
         ElMessage({

@@ -91,6 +91,8 @@ exports.getUserIp = (req, res) => {
 
 exports.getRankInfo = (req, res) => {
     let sql = 'SELECT uid,name,clickCnt FROM userInfo GROUP BY uid ORDER BY clickCnt DESC LIMIT 20';
+    console.log(req.query.today);
+    if (req.query.today === "true") sql = 'SELECT uid,name,COUNT(*) as clickCnt FROM clickList WHERE !DATEDIFF(NOW(),time) GROUP BY uid ORDER BY clickCnt DESC LIMIT 20';
     db.query(sql, (err, data) => {
         if (err) return res.send({
             status: 202, message: err.message
