@@ -12,9 +12,9 @@ exports.reg = async (req, res) => {
         });
         return;
     }
-    if (name.length < 6 || name.length > 15) {
+    if (name.length < 3 || name.length > 15) {
         res.send({
-            status: 202, message: "用户名长度应在6～15之间"
+            status: 202, message: "用户名长度应在3～15之间"
         });
         return;
     }
@@ -26,9 +26,9 @@ exports.reg = async (req, res) => {
             return;
         }
     }
-    if (pwd.length > 31 || pwd.length < 8) {
+    if (pwd.length > 31 || pwd.length < 6) {
         res.send({
-            status: 202, message: "密码长度应在8～31之间"
+            status: 202, message: "密码长度应在6～31之间"
         });
         return;
     }
