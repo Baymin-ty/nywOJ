@@ -19,9 +19,6 @@
       <img v-show="money === 100" class="round" alt="100" src="../assets/100.png">
       <img v-show="money === 300" class="round" alt="300" src="../assets/300.png">
     </el-dialog>
-    <el-icon>
-      <Bell />
-    </el-icon>
   </el-menu>
 </template>
 
