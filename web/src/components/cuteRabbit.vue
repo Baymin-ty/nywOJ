@@ -58,7 +58,7 @@ export default {
   methods: {
     async fun() {
       await this.add();
-      await this.getCnt();
+      this.getCnt();
       this.all();
     },
     all() {

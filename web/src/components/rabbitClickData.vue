@@ -50,39 +50,103 @@ export default {
     });
     let clickCnt = chart.init(document.getElementById("clickCnt"));
     clickCnt.setOption({
-      title: { text: "每日点击总次数", left: "center", },
-      xAxis: {
-        data: this.date,
+      "grid": {
+        "left": 80,
+        "top": 60,
+        "right": 60,
+        "bottom": 50,
+        "containLabel": true
       },
-      yAxis: {},
-      series: [
-        {
-          type: "line",
-          data: this.clickCnt,
+      "title": {
+        "show": true,
+        "text": "每日点击总次数",
+        "left": "center",
+        "top": "top"
+      },
+      "xAxis": {
+        "type": "category",
+        "data": this.date,
+        "axisLine": {
+          "show": true
         },
-      ],
+        "axisTick": {
+          "show": false
+        }
+      },
+      "yAxis": {
+        "type": "value",
+        "axisLine": {
+          "show": false
+        },
+        "axisTick": {
+          "show": false
+        }
+      },
+      "tooltip": {
+        "show": true,
+        "trigger": "axis",
+        "axisPointer": {
+          "type": "none"
+        }
+      },
+      "series": [
+        {
+          "name": "总次数",
+          "type": "line",
+          "color": "#5470c6",
+          "data": this.clickCnt
+        }
+      ]
     });
     let userCnt = chart.init(document.getElementById("userCnt"));
     userCnt.setOption({
-      title: { text: "每日点击用户数", left: "center", },
-      xAxis: {
-        data: this.date,
+      "grid": {
+        "left": 80,
+        "top": 60,
+        "right": 60,
+        "bottom": 50,
+        "containLabel": true
       },
-      yAxis: {},
-      series: [
-        {
-          type: "line",
-          data: this.userCnt,
-          itemStyle: {
-            normal: {
-              color: 'green',
-              lineStyle: {
-                color: 'green'
-              }
-            }
-          },
+      "title": {
+        "show": true,
+        "text": "每日点击用户数",
+        "left": "center",
+        "top": "top"
+      },
+      "xAxis": {
+        "type": "category",
+        "data": this.date,
+        "axisLine": {
+          "show": true
         },
-      ],
+        "axisTick": {
+          "show": false
+        }
+      },
+      "yAxis": {
+        "type": "value",
+        "axisLine": {
+          "show": false
+        },
+        "axisTick": {
+          "show": false
+        }
+      },
+      "tooltip": {
+        "show": true,
+        "trigger": "axis",
+        "axisPointer": {
+          "type": "none"
+        }
+      },
+      "series": [
+        {
+          "name": "用户数",
+          "type": "line",
+          "color": "green",
+          "data": this.userCnt
+        }
+      ]
     });
     window.onresize = () => { clickCnt.resize(), userCnt.resize() };
   },
