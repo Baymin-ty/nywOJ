@@ -76,8 +76,6 @@ export default {
       });
     },
     getCnt() {
-      if (this.uid === -1)
-        return;
       axios.get('/api/rabbit/getClickCnt', {
         params: {
           uid: this.uid,

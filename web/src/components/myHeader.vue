@@ -3,7 +3,8 @@
     <img style="width: 40px; height: 40px; margin-left: 30px; margin-right: 30px; margin-top: 5px; border-radius: 5px"
       src="../assets/icon.png">
     <el-menu-item index="/">首页</el-menu-item>
-    <el-menu-item index="/rank">兔兔挑战排行榜</el-menu-item>
+    <el-menu-item index="/rank">排名</el-menu-item>
+    <el-menu-item index="/data">统计</el-menu-item>
     <el-menu-item v-show="!uid" index="/user/login">登录</el-menu-item>
     <el-menu-item v-show="!uid" index="/user/reg">注册</el-menu-item>
     <el-button v-show="uid" style="height: 55px; width: 100px; padding: 0;" text @click="logout">退出登录</el-button>

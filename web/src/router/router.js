@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 
 import cuteRabbit from '@/components/cuteRabbit.vue';
 import rabbitRankList from '@/components/cuteRankList.vue';
+import rabbitClickData  from '@/components/rabbitClickData.vue'
 import userLogin from "@/components/userLogin.vue";
 import userReg from "@/components/userReg.vue";
 import axios from "axios";
@@ -12,6 +13,8 @@ const router = createRouter({
         path: '/', component: cuteRabbit,
     }, {
         path: '/rank', component: rabbitRankList,
+    }, {
+        path: '/data', component: rabbitClickData,
     }, {
         path: '/user/login', component: userLogin,
     }, {

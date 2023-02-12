@@ -8,6 +8,8 @@ router.get('/api/rabbit/add', rabbit.add);
 router.get('/api/rabbit/getClickCnt', rabbit.getClickCnt);
 router.get('/api/rabbit/getRankInfo', rabbit.getRankInfo);
 router.get('/api/rabbit/getUserIp', rabbit.getUserIp);
+router.get('/api/rabbit/getClickData', rabbit.getClickData);
+
 
 const user = require('./api/user');
 
