@@ -6,8 +6,8 @@
           点击统计
         </div>
       </template>
-      <div id="clickCnt" :style="{ width: '100%', height: '300px' }"></div>
-      <div id="userCnt" :style="{ width: '100%', height: '300px' }"></div>
+      <div id="clickCnt" style="max-width:1000px; margin: 0 auto;" :style="{ width: '100%', height: '300px' }"></div>
+      <div id="userCnt" style="max-width:1000px; margin: 0 auto;" :style="{ width: '100%', height: '300px' }"></div>
     </el-card>
   </div>
 </template>
@@ -51,9 +51,9 @@ export default {
     let clickCnt = chart.init(document.getElementById("clickCnt"));
     clickCnt.setOption({
       "grid": {
-        "left": 80,
+        "left": 30,
         "top": 60,
-        "right": 60,
+        "right": 10,
         "bottom": 50,
         "containLabel": true
       },
@@ -101,9 +101,9 @@ export default {
     let userCnt = chart.init(document.getElementById("userCnt"));
     userCnt.setOption({
       "grid": {
-        "left": 80,
+        "left": 30,
         "top": 60,
-        "right": 60,
+        "right": 10,
         "bottom": 50,
         "containLabel": true
       },
