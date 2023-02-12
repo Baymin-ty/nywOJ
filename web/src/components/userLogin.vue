@@ -15,8 +15,10 @@
         </el-form-item>
         <el-button type="primary" @click="submit" style="width: 250px;">登录</el-button>
       </el-form>
+      <el-divider />
+      <el-button type="info" plain @click="this.$router.push('/user/reg')"
+        style="width: 100%; height: 40px;">新用户？点此注册</el-button>
     </el-card>
-    <el-button type="info" plain @click="this.$router.push('/user/reg')" style="width: 500px; height: 50px;">新用户？点此注册</el-button>
   </div>
 </template>
 
