@@ -221,12 +221,12 @@ exports.sendEmailVertifyCode = async (req, res) => {
 exports.setUserEmail = (req, res) => {
     const uid = req.session.uid;
     const userCode = req.body.code;
+    if (!req.session.vertifyCode || !userCode) {
+        return res.status(202).send({ message: "请确认信息完整且操作正确" });
+    }
     const vertifycode = req.session.vertifyCode.code;
     const expire = req.session.vertifyCode.expire;
     const email = req.session.vertifyCode.email;
-    if (!userCode || !vertifycode || !email) {
-        return res.status(202).send({ message: "请确认信息完整且操作正确" });
-    }
     if (userCode !== vertifycode) {
         return res.status(202).send({ message: "验证码错误" });
     }
