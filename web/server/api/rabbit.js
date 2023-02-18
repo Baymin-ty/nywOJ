@@ -102,7 +102,7 @@ exports.getRankInfo = (req, res) => {
     })
 }
 
-exports.getClickData = async (req, res) => {
+exports.getClickData = (req, res) => {
     let sql = 'SELECT DATE(time) AS date,COUNT(*) AS clickCnt,COUNT(DISTINCT uid) AS userCnt FROM clickList WHERE DATEDIFF(NOW(),time)<7 GROUP BY date';
     db.query(sql, (err, data) => {
         if (err) return res.send({

@@ -13,6 +13,7 @@
         <el-form-item label="密码" prop="pass" style="margin-left: 28px">
           <el-input v-model="userInfo.pwd" type="password" />
         </el-form-item>
+        <div id="grecaptcha"></div>
         <el-button type="primary" @click="submit" style="width: 250px;">登录</el-button>
       </el-form>
       <el-divider />
@@ -30,6 +31,7 @@ export default {
   name: "userLogin",
   data() {
     return {
+      retoken: "",
       userInfo: {
         name: "",
         pwd: "",
@@ -38,11 +40,11 @@ export default {
   },
   methods: {
     submit() {
-      axios.get('/api/user/login', {
-        params: {
-          name: this.userInfo.name,
-          pwd: this.userInfo.pwd,
-        }
+      console.log(this.retoken)
+      axios.post('/api/user/login', {
+        name: this.userInfo.name,
+        pwd: this.userInfo.pwd,
+        retoken: this.retoken,
       }).then(res => {
         if (res.data.status === 200) {
           ElMessage({
@@ -65,12 +67,21 @@ export default {
           duration: 2000,
         });
       });
+    },
+    savetoken(token) {
+      this.retoken = token
     }
   },
   created() {
     if (localStorage.getItem('token')) {
       this.$router.push('/');
     }
+  },
+  mounted() {
+    window.grecaptcha.render("grecaptcha", {
+      sitekey: "",
+      callback: this.savetoken
+    });
   }
 }
 </script>

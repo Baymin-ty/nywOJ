@@ -3,9 +3,9 @@ let bcrypt = require('bcryptjs')
 let axios = require('axios');
 
 exports.reg = async (req, res) => {
-    const name = req.query.name;
-    const pwd = req.query.pwd;
-    const rePwd = req.query.rePwd;
+    const name = req.body.name;
+    const pwd = req.body.pwd;
+    const rePwd = req.body.rePwd;
     if (!name || !pwd || !rePwd) {
         res.send({
             status: 403, message: "请确认信息完善"
@@ -14,7 +14,7 @@ exports.reg = async (req, res) => {
     }
     if (name.length < 3 || name.length > 15) {
         res.send({
-            status: 202, message: "用户名长度应在3～15之间"
+            status: 202, message: "用户名长度应在3~15之间"
         });
         return;
     }
@@ -28,7 +28,7 @@ exports.reg = async (req, res) => {
     }
     if (pwd.length > 31 || pwd.length < 6) {
         res.send({
-            status: 202, message: "密码长度应在6～31之间"
+            status: 202, message: "密码长度应在6~31之间"
         });
         return;
     }
@@ -86,9 +86,21 @@ exports.reg = async (req, res) => {
     })
 }
 
-exports.login = (req, res) => {
-    const name = req.query.name;
-    const pwd = req.query.pwd;
+exports.login = async (req, res) => {
+    const name = req.body.name;
+    const pwd = req.body.pwd;
+    const retoken = req.body.retoken;
+    let recapt = await axios.get("https://www.recaptcha.net/recaptcha/api/siteverify", {
+        params: {
+            secret: "",
+            response: retoken
+        }
+    });
+    if (!recapt.data.success) {
+        return res.status(202).send({
+            message: "请进行人机验证"
+        })
+    }
     if (!name || !pwd) {
         res.send({
             status: 403, message: "请确认信息完善"

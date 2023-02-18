@@ -41,12 +41,10 @@ export default {
   },
   methods: {
     submit() {
-      axios.get('/api/user/reg', {
-        params: {
-          name: this.userInfo.name,
-          pwd: this.userInfo.pwd,
-          rePwd: this.userInfo.rePwd,
-        }
+      axios.post('/api/user/reg', {
+        name: this.userInfo.name,
+        pwd: this.userInfo.pwd,
+        rePwd: this.userInfo.rePwd,
       }).then(res => {
         if (res.data.status === 200) {
           ElMessage({

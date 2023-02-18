@@ -13,8 +13,8 @@ router.get('/api/rabbit/getClickData', rabbit.getClickData);
 
 const user = require('./api/user');
 
-router.get('/api/user/login', user.login);
-router.get('/api/user/reg', user.reg);
+router.post('/api/user/login', user.login);
+router.post('/api/user/reg', user.reg);
 router.get('/api/user/getUserInfo', user.getUserInfo);
 
 module.exports = router;
