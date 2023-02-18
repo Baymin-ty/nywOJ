@@ -79,11 +79,12 @@ export default {
     }
   },
   mounted() {
-    setTimeout(
+    setTimeout(() => {
       window.grecaptcha.render("grecaptcha", {
         sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
         callback: this.savetoken
-      }), 1000);
+      });
+    }, 200);
   }
 }
 </script>
