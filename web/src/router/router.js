@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 
 import cuteRabbit from '@/components/cuteRabbit.vue';
 import rabbitRankList from '@/components/cuteRankList.vue';
-import rabbitClickData  from '@/components/rabbitClickData.vue'
+import rabbitClickData from '@/components/rabbitClickData.vue'
 import userLogin from "@/components/userLogin.vue";
 import userReg from "@/components/userReg.vue";
 import axios from "axios";
@@ -27,18 +27,16 @@ router.beforeEach((to, from, next) => {
         next();
     } else {
         axios.get('/api/user/getUserInfo', {
-            params: {
-                token: localStorage.getItem('token')
-            }
         }).then(res => {
-            if (res.data.status === 200) {
+            if (res.status === 200) {
+                localStorage.setItem('isLogin', true);
                 store.state.uid = res.data.uid;
                 store.state.name = res.data.name;
                 next();
             } else {
                 store.state.uid = 0;
                 store.state.name = "/";
-                localStorage.removeItem('token');
+                localStorage.removeItem('isLogin');
                 next({ path: '/user/login' });
             }
         });

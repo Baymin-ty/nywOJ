@@ -107,7 +107,7 @@ exports.login = async (req, res) => {
         });
         return;
     }
-    db.query("SELECT uid,pwd FROM userInfo WHERE name=?", [name], (err, data) => {
+    db.query("SELECT * FROM userInfo WHERE name=?", [name], (err, data) => {
         if (!data.length) return res.send({
             status: 202, message: "请先注册后再登录"
         });
@@ -118,7 +118,8 @@ exports.login = async (req, res) => {
         if (bcrypt.compareSync(pwd, password)) {
             const time = new Date();
             const token = bcrypt.hashSync(time.getTime().toString() + name, 10) + uid
-            db.query("INSERT INTO tokenList(token,uid,name,time) values (?,?,?,?)", [token, uid, name, time]);
+            req.session.uid = uid;
+            req.session.name = data[0].name;
             db.query("UPDATE userInfo SET login_time=? WHERE uid=?", [new Date(), uid]);
             res.send({
                 status: 200, token: token,
@@ -132,30 +133,10 @@ exports.login = async (req, res) => {
 }
 
 exports.getUserInfo = (req, res) => {
-    const token = req.query.token;
-    if (!token) {
-        res.send({
-            status: 403, message: "请确认信息完善"
-        });
-        return;
-    }
-    db.query("SELECT uid,name,time FROM tokenList WHERE token=?", [token], (err, data) => {
-        if (err) return res.send({
-            status: 202, message: err.message
-        });
-        if (!data.length) return res.send({
-            status: 202, message: "请先登录"
-        });
-        const tim = data[0].time;
-        const curTime = new Date();
-        if (curTime - tim > 600000) {
-            res.send({
-                status: 114514, message: "登录超时请重新登录"
-            });
-        } else {
-            res.send({
-                status: 200, uid: data[0].uid, name: data[0].name
-            });
-        }
-    });
+    if (req.session.uid) return res.status(200).send({ uid: req.session.uid, name: req.session.name });
+    else return res.status(202).send({ message: "请先登录" });
+}
+
+exports.logout = (req) => {
+    return req.session.destroy();
 }

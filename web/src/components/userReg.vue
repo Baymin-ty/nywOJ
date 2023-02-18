@@ -70,10 +70,10 @@ export default {
     }
   },
   created() {
-    if (localStorage.getItem('token')) {
+    if (localStorage.getItem('isLogin')) {
       this.$router.push('/');
     }
-  }
+  },
 }
 </script>
 

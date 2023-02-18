@@ -76,11 +76,7 @@ export default {
       });
     },
     getCnt() {
-      axios.get('/api/rabbit/getClickCnt', {
-        params: {
-          uid: this.uid,
-        }
-      }).then(res => {
+      axios.get('/api/rabbit/getClickCnt').then(res => {
         this.cnt = res.data.data[0].clickCnt;
       }).catch(err => {
         ElMessage({
@@ -91,11 +87,7 @@ export default {
       });
     },
     add() {
-      axios.get('/api/rabbit/add', {
-        params: {
-          token: localStorage.getItem('token')
-        }
-      }).then(res => {
+      axios.get('/api/rabbit/add').then(res => {
         if (res.data.status === 200) {
           if (this.show_insert_info) {
             ElMessage({
@@ -138,8 +130,8 @@ export default {
         type: 'success',
         duration: 1000,
       });
+      this.getCnt();
     }
-    this.getCnt();
     this.all();
   },
 }

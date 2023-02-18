@@ -15,6 +15,7 @@ const user = require('./api/user');
 
 router.post('/api/user/login', user.login);
 router.post('/api/user/reg', user.reg);
+router.post('/api/user/logout', user.logout);
 router.get('/api/user/getUserInfo', user.getUserInfo);
 
 module.exports = router;

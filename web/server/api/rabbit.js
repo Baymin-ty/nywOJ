@@ -27,44 +27,22 @@ exports.all = (req, res) => {
 }
 
 exports.add = (req, res) => {
-    const token = req.query.token;
-    if (!token) {
-        res.send({
-            status: 403, message: "请确认信息完善"
-        });
-        return;
+    const ip = getClientIp(req), uid = req.session.uid, name = req.session.name;
+    if (!uid) {
+        return res.status(202).send({ message: "请先登录" })
     }
-    const ip = getClientIp(req);
-    db.query("SELECT uid,name,time FROM tokenList WHERE token=?", [token], (err, data) => {
+    db.query('INSERT INTO clickList(uid,name,time,ip) values (?,?,?,?)', [uid, name, new Date(), ip], (err, data) => {
         if (err) return res.send({
             status: 202, message: err.message
         });
-        if (!data.length) return res.send({
-            status: 202, message: "请先登录"
-        });
-        const tim = data[0].time;
-        const curTime = new Date();
-        if (curTime - tim > 600000) {
+        if (data.affectedRows > 0) {
+            db.query("UPDATE userInfo SET clickCnt=clickCnt+1 WHERE uid=?", [uid]);
             res.send({
-                status: 114514, message: "登录超时请重新登录"
-            });
+                status: 200, message: 'success',
+            })
         } else {
-            let sql = 'INSERT INTO clickList(uid,name,time,ip) values (?,?,?,?)';
-            let uid = data[0].uid;
-            db.query(sql, [uid, data[0].name, new Date(), ip], (err, data) => {
-                if (err) return res.send({
-                    status: 202, message: err.message
-                });
-                if (data.affectedRows > 0) {
-                    db.query("UPDATE userInfo SET clickCnt=clickCnt+1 WHERE uid=?", [uid]);
-                    res.send({
-                        status: 200, message: 'success',
-                    })
-                } else {
-                    res.send({
-                        status: 202, message: 'error',
-                    })
-                }
+            res.send({
+                status: 202, message: 'error',
             })
         }
     });
@@ -72,7 +50,7 @@ exports.add = (req, res) => {
 
 exports.getClickCnt = (req, res) => {
     let sql = 'SELECT clickCnt FROM userInfo WHERE uid=?';
-    db.query(sql, [req.query.uid], (err, data) => {
+    db.query(sql, [req.session.uid], (err, data) => {
         if (err) return res.send({
             status: 202, message: err.message
         });

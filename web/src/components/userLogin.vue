@@ -53,7 +53,7 @@ export default {
             type: 'success',
             duration: 2000,
           });
-          localStorage.setItem('token', res.data.token);
+          localStorage.setItem('isLogin', true);
           location.reload();
         } else {
           ElMessage({
@@ -74,7 +74,7 @@ export default {
     },
   },
   created() {
-    if (localStorage.getItem('token')) {
+    if (localStorage.getItem('isLogin')) {
       this.$router.push('/');
     }
   },

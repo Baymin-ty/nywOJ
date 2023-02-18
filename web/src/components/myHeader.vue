@@ -5,10 +5,10 @@
     <el-menu-item index="/">首页</el-menu-item>
     <el-menu-item index="/rank">排名</el-menu-item>
     <el-menu-item index="/data">统计</el-menu-item>
-    <el-menu-item v-show="!uid" index="/user/login">登录</el-menu-item>
-    <el-menu-item v-show="!uid" index="/user/reg">注册</el-menu-item>
-    <el-button v-show="uid" style="height: 55px; width: 100px; padding: 0;" text @click="logout">退出登录</el-button>
-    <el-button style="height: 55px; width: 80px; padding: 0;" text @click="dialogVisible = true">打赏</el-button>
+    <el-menu-item v-show="!login" index="/user/login">登录</el-menu-item>
+    <el-menu-item v-show="!login" index="/user/reg">注册</el-menu-item>
+    <el-button v-show="login" style="height: 55px; width: 100px; padding: 0; margin: 0;" text @click="logout">退出登录</el-button>
+    <el-button style="height: 55px; width: 80px; padding: 0; margin: 0;" text @click="dialogVisible = true">打赏</el-button>
     <el-dialog v-model="dialogVisible" title="实施可持续发展战略" width="400px" style="border-radius: 10px" class="pd">
       <el-divider />
       <div style="height: 40px">
@@ -30,7 +30,7 @@ export default {
   name: "myHeader",
   data() {
     return {
-      uid: 0,
+      login: 0,
       dialogVisible: false,
       money: 50,
       options: [{
@@ -46,19 +46,12 @@ export default {
     }
   },
   mounted() {
-    axios.get('/api/user/getUserInfo', {
-      params: {
-        token: localStorage.getItem('token')
-      }
-    }).then(res => {
-      if (res.data.status === 200) {
-        this.uid = res.data.uid;
-      }
-    });
+    this.login = localStorage.getItem('isLogin');
   },
   methods: {
     logout() {
-      localStorage.removeItem('token');
+      axios.post('/api/user/logout');
+      localStorage.removeItem('isLogin');
       location.reload();
     }
   },
