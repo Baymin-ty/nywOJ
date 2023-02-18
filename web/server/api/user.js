@@ -156,8 +156,9 @@ exports.getUserInfo = (req, res) => {
     else return res.status(202).send({ message: "请先登录" });
 }
 
-exports.logout = (req) => {
-    return req.session.destroy();
+exports.logout = (req, res) => {
+    req.session.destroy();
+    return res.status(200).send({ message: "success" });
 }
 
 exports.sendEmailVertifyCode = async (req, res) => {
