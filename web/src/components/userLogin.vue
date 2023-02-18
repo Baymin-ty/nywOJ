@@ -13,7 +13,9 @@
         <el-form-item label="密码" prop="pass" style="margin-left: 28px">
           <el-input v-model="userInfo.pwd" type="password" />
         </el-form-item>
-        <div id="grecaptcha"></div>
+        <el-form-item label="人机验证" prop="pass">
+          <div id="grecaptcha"></div>
+        </el-form-item>
         <el-button type="primary" @click="submit" style="width: 250px;">登录</el-button>
       </el-form>
       <el-divider />
@@ -40,7 +42,6 @@ export default {
   },
   methods: {
     submit() {
-      console.log(this.retoken)
       axios.post('/api/user/login', {
         name: this.userInfo.name,
         pwd: this.userInfo.pwd,
@@ -70,7 +71,7 @@ export default {
     },
     savetoken(token) {
       this.retoken = token
-    }
+    },
   },
   created() {
     if (localStorage.getItem('token')) {
@@ -78,10 +79,11 @@ export default {
     }
   },
   mounted() {
-    window.grecaptcha.render("grecaptcha", {
-      sitekey: "",
-      callback: this.savetoken
-    });
+    setTimeout(
+      window.grecaptcha.render("grecaptcha", {
+        sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
+        callback: this.savetoken
+      }), 1000);
   }
 }
 </script>

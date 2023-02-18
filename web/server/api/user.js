@@ -92,13 +92,13 @@ exports.login = async (req, res) => {
     const retoken = req.body.retoken;
     let recapt = await axios.get("https://www.recaptcha.net/recaptcha/api/siteverify", {
         params: {
-            secret: "",
+            secret: "6LcEKJIkAAAAACAlGysXJJowd7Vrcbc08Ghtd58C",
             response: retoken
         }
     });
     if (!recapt.data.success) {
         return res.status(202).send({
-            message: "请进行人机验证"
+            message: "人机验证失败,请刷新网页重试"
         })
     }
     if (!name || !pwd) {
