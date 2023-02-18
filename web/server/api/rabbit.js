@@ -1,9 +1,5 @@
 const db = require('../db/index')
 
-const getClientIp = (req) => {
-    return req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
-}
-
 const fill = (x) => {
     x = x.toString();
     return x.length > 1 ? x : '0' + x;
@@ -27,7 +23,7 @@ exports.all = (req, res) => {
 }
 
 exports.add = (req, res) => {
-    const ip = getClientIp(req), uid = req.session.uid, name = req.session.name;
+    const ip = req.session.ip, uid = req.session.uid, name = req.session.name;
     if (!uid) {
         return res.status(202).send({ message: "请先登录" })
     }
@@ -63,7 +59,7 @@ exports.getClickCnt = (req, res) => {
 exports.getUserIp = (req, res) => {
     res.send([{
         status: 200,
-        ip: getClientIp(req)
+        ip: req.session.ip
     }]);
 }
 

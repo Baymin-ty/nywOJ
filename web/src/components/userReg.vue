@@ -16,6 +16,9 @@
         <el-form-item label="确认密码" prop="checkPass">
           <el-input v-model="userInfo.rePwd" type="password" />
         </el-form-item>
+        <el-form-item label="人机验证" prop="pass">
+          <div id="grecaptcha"></div>
+        </el-form-item>
         <el-button type="primary" @click="submit" style="width: 250px;">注册</el-button>
       </el-form>
       <el-divider />
@@ -32,6 +35,7 @@ export default {
   name: "userReg",
   data() {
     return {
+      retoken: "",
       userInfo: {
         name: "",
         pwd: "",
@@ -45,6 +49,7 @@ export default {
         name: this.userInfo.name,
         pwd: this.userInfo.pwd,
         rePwd: this.userInfo.rePwd,
+        retoken: this.retoken,
       }).then(res => {
         if (res.data.status === 200) {
           ElMessage({
@@ -67,13 +72,24 @@ export default {
           duration: 2000,
         });
       });
-    }
+    },
+    savetoken(token) {
+      this.retoken = token
+    },
   },
   created() {
     if (localStorage.getItem('isLogin')) {
       this.$router.push('/');
     }
   },
+  mounted() {
+    setTimeout(() => {
+      window.grecaptcha.render("grecaptcha", {
+        sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
+        callback: this.savetoken
+      });
+    }, 200);
+  }
 }
 </script>
 

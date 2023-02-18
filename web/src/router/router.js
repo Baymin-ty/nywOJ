@@ -5,6 +5,7 @@ import rabbitRankList from '@/components/cuteRankList.vue';
 import rabbitClickData from '@/components/rabbitClickData.vue'
 import userLogin from "@/components/userLogin.vue";
 import userReg from "@/components/userReg.vue";
+import userSetEmail from "@/components/userEmail.vue"
 import axios from "axios";
 import store from '@/sto/store';
 
@@ -19,20 +20,23 @@ const router = createRouter({
         path: '/user/login', component: userLogin,
     }, {
         path: '/user/reg', component: userReg,
-    }]
+    }, {
+        path: '/user/setemail', component: userSetEmail,
+    }],
 });
 
 router.beforeEach((to, from, next) => {
-    if (to.path === '/user/reg' || to.path === '/user/login') {
+    if (to.path === '/user/reg' || to.path === '/user/login' || to.path === '/user/setemail') {
         next();
     } else {
         axios.get('/api/user/getUserInfo', {
         }).then(res => {
-            if (res.status === 200) {
+            if (res.data.uid) {
                 localStorage.setItem('isLogin', true);
                 store.state.uid = res.data.uid;
                 store.state.name = res.data.name;
-                next();
+                if (!res.data.email) next({ path: '/user/setemail' });
+                else next();
             } else {
                 store.state.uid = 0;
                 store.state.name = "/";
