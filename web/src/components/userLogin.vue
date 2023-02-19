@@ -33,7 +33,6 @@ export default {
   name: "userLogin",
   data() {
     return {
-      retoken: "",
       userInfo: {
         name: "",
         pwd: "",
@@ -41,11 +40,11 @@ export default {
     }
   },
   methods: {
-    submit() {
+    submit(retoken) {
       axios.post('/api/user/login', {
         name: this.userInfo.name,
         pwd: this.userInfo.pwd,
-        retoken: this.retoken,
+        retoken: retoken,
       }).then(res => {
         if (res.data.status === 200) {
           ElMessage({
@@ -56,6 +55,7 @@ export default {
           localStorage.setItem('isLogin', true);
           location.reload();
         } else {
+          window.grecaptcha.reset();
           ElMessage({
             message: res.data.message,
             type: 'error',
@@ -69,9 +69,6 @@ export default {
         });
       });
     },
-    savetoken(token) {
-      this.retoken = token
-    },
   },
   created() {
     if (localStorage.getItem('isLogin')) {
@@ -82,7 +79,7 @@ export default {
     setTimeout(() => {
       window.grecaptcha.render("grecaptcha", {
         sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
-        callback: this.savetoken
+        callback: this.submit
       });
     }, 200);
   }

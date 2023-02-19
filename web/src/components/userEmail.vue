@@ -49,6 +49,7 @@ export default {
             duration: 2000,
           });
         } else {
+          window.grecaptcha.reset();
           ElMessage({
             message: res.data.message,
             type: 'error',

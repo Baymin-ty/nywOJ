@@ -3,10 +3,6 @@ const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const mail = require('nodemailer');
 
-const getClientIp = (req) => {
-    return req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
-}
-
 exports.reg = async (req, res) => {
     const name = req.body.name;
     const pwd = req.body.pwd;
@@ -20,7 +16,7 @@ exports.reg = async (req, res) => {
     });
     if (!recapt.data.success) {
         return res.status(202).send({
-            message: "人机验证失败,请刷新网页重试"
+            message: "请先进行人机验证"
         })
     }
     if (!name || !pwd || !rePwd) {
@@ -115,7 +111,7 @@ exports.login = async (req, res) => {
     });
     if (!recapt.data.success) {
         return res.status(202).send({
-            message: "人机验证失败,请刷新网页重试"
+            message: "请先进行人机验证"
         })
     }
     if (!name || !pwd) {
@@ -172,7 +168,7 @@ exports.sendEmailVertifyCode = async (req, res) => {
     });
     if (!recapt.data.success) {
         return res.status(202).send({
-            message: "人机验证失败,请刷新网页重试"
+            message: "请先进行人机验证"
         })
     }
     const emailExp = /^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/;
@@ -218,7 +214,7 @@ exports.sendEmailVertifyCode = async (req, res) => {
     })
 }
 
-exports.setUserEmail = (req, res) => {
+exports.setUserEmail = async (req, res) => {
     const uid = req.session.uid;
     const userCode = req.body.code;
     if (!req.session.vertifyCode || !userCode) {
@@ -234,13 +230,23 @@ exports.setUserEmail = (req, res) => {
     if (time > expire) {
         return res.status(202).send({ message: "验证码超时" });
     }
-    db.query("UPDATE userInfo SET email=? WHERE uid=?", [email, uid], (err, data) => {
+    db.query("SELECT uid FROM userInfo WHERE email=? LIMIT 1", [email], (err, data) => {
         if (err) {
             return res.status(202).send({ message: err.message });
         }
-        if (data.affectedRows > 0) {
-            req.session.email = email;
-            return res.status(200).send({ message: "success" });
-        } else return res.status(202).send({ message: "sql error" });
+        if (data.length) {
+            return res.status(202).send({ message: "此邮箱已绑定过其他账号" });
+        }
+        else {
+            db.query("UPDATE userInfo SET email=? WHERE uid=?", [email, uid], (err, data) => {
+                if (err) {
+                    return res.status(202).send({ message: err.message });
+                }
+                if (data.affectedRows > 0) {
+                    req.session.email = email;
+                    return res.status(200).send({ message: "success" });
+                } else return res.status(202).send({ message: "sql error" });
+            });
+        }
     });
 }

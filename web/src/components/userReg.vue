@@ -8,10 +8,10 @@
       </template>
       <el-form :model="userInfo">
         <el-form-item label="用户名" prop="name" style="margin-left: 15px">
-          <el-input v-model="userInfo.name" type="text" />
+          <el-input v-model="userInfo.name" type="text" placeholder="由字母或数字组成,长度在[3,15]之间" />
         </el-form-item>
         <el-form-item label="密码" prop="pass" style="margin-left: 28px">
-          <el-input v-model="userInfo.pwd" type="password" />
+          <el-input v-model="userInfo.pwd" type="password" placeholder="由字母或数字组成,长度在[6,31]之间" />
         </el-form-item>
         <el-form-item label="确认密码" prop="checkPass">
           <el-input v-model="userInfo.rePwd" type="password" />
@@ -35,7 +35,6 @@ export default {
   name: "userReg",
   data() {
     return {
-      retoken: "",
       userInfo: {
         name: "",
         pwd: "",
@@ -44,12 +43,12 @@ export default {
     }
   },
   methods: {
-    submit() {
+    submit(retoken) {
       axios.post('/api/user/reg', {
         name: this.userInfo.name,
         pwd: this.userInfo.pwd,
         rePwd: this.userInfo.rePwd,
-        retoken: this.retoken,
+        retoken: retoken,
       }).then(res => {
         if (res.data.status === 200) {
           ElMessage({
@@ -59,6 +58,7 @@ export default {
           });
           this.$router.push('/user/login');
         } else {
+          window.grecaptcha.reset();
           ElMessage({
             message: res.data.message,
             type: 'error',
@@ -73,9 +73,6 @@ export default {
         });
       });
     },
-    savetoken(token) {
-      this.retoken = token
-    },
   },
   created() {
     if (localStorage.getItem('isLogin')) {
@@ -86,7 +83,7 @@ export default {
     setTimeout(() => {
       window.grecaptcha.render("grecaptcha", {
         sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
-        callback: this.savetoken
+        callback: this.submit
       });
     }, 200);
   }
