@@ -13,8 +13,8 @@ app.use(session({
     secret: '114514-nywOJ-1919810',
     resave: true,
     saveUninitialized: true,
-    cookie: { maxAge: 600000 },
-    name: 'sessionId'
+    cookie: { maxAge: 86400 * 1000 * 7 },
+    name: 'token'
 }));
 
 app.use((req, res, next) => {

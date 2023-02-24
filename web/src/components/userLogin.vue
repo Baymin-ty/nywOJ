@@ -70,12 +70,11 @@ export default {
       });
     },
   },
-  created() {
+  mounted() {
     if (localStorage.getItem('isLogin')) {
       this.$router.push('/');
+      return;
     }
-  },
-  mounted() {
     setTimeout(() => {
       window.grecaptcha.render("grecaptcha", {
         sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",

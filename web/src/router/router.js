@@ -21,7 +21,7 @@ const router = createRouter({
     }, {
         path: '/user/reg', component: userReg,
     }, {
-        path: '/user/setEmail', component: userSetEmail,
+        path: '/user/setemail', component: userSetEmail,
     }],
     caseSensitive: true
 });
@@ -36,8 +36,8 @@ router.beforeEach((to, from, next) => {
                 localStorage.setItem('isLogin', true);
                 store.state.uid = res.data.uid;
                 store.state.name = res.data.name;
-                if (res.data.uid && to.path === '/user/setEmail') next();
-                else if (!res.data.email) next({ path: '/user/setEmail' });
+                if (to.path === '/user/setemail') next();
+                else if (!res.data.email) next({ path: '/user/setemail' });
                 else next();
             } else {
                 store.state.uid = 0;
