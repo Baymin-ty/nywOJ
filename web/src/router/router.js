@@ -6,7 +6,6 @@ import rabbitClickData from '@/components/rabbitClickData.vue'
 import userLogin from "@/components/userLogin.vue";
 import userReg from "@/components/userReg.vue";
 import userSetEmail from "@/components/userEmail.vue"
-import userLogout from '@/components/userLogout.vue'
 import userInfo from '@/components/userInfo.vue'
 
 import userManage from "@/components/admin/userManage"
@@ -57,11 +56,6 @@ const router = createRouter({
         path: '/admin/usermanage', component: userManage,
     }, {
         meta: {
-            title: '退出登录'
-        },
-        path: '/logout', component: userLogout,
-    }, {
-        meta: {
             title: '用户信息'
         },
         path: '/user/:id', component: userInfo,
@@ -86,11 +80,7 @@ router.beforeEach((to, from, next) => {
                 if (to.path === '/user/setemail') next();
                 else if (!res.data.email) next({ path: '/user/setemail' });
                 else {
-                    if (to.path === '/user/myself') {
-                        let mypath = '/user/' + res.data.uid;
-                        next({ path: mypath });
-                    }
-                    else if (!per[to.path] || res.data.gid >= per[to.path])
+                    if (!per[to.path] || res.data.gid >= per[to.path])
                         next();
                 }
             } else {

@@ -3,7 +3,7 @@
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          更新时间: {{ updateTime }}
+          更新于: {{ updateTime }}
         </div>
       </template>
       <div id="clickCnt" style="max-width:1000px; margin: 0 auto;" :style="{ width: '100%', height: '300px' }"></div>

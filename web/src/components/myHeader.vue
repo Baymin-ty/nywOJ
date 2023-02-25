@@ -9,11 +9,14 @@
     <el-menu-item v-show="!login" index="/user/reg">注册</el-menu-item>
     <el-sub-menu index="/user/myself" v-show="login">
       <template #title>{{ this.name }}</template>
-      <el-menu-item :width="100" index="/user/myself">个人主页</el-menu-item>
+      <a :href="/user/ + this.uid">
+        <el-menu-item :width="100" index="/user/myself"> 个人主页 </el-menu-item>
+      </a>
       <el-menu-item :width="100" v-show="gid === 3" index="/admin/usermanage">用户管理</el-menu-item>
-      <el-menu-item :width="100" index="/logout">退出登录</el-menu-item>
+      <span @click="logout"><el-menu-item :width="100">退出登录</el-menu-item></span>
     </el-sub-menu>
-    <el-button style="height: 55px; width: 80px; padding: 0; margin: 0;" text @click="dialogVisible = true">打赏</el-button>
+    <el-button style=" height: 55px; width: 80px; padding: 0; margin: 0;" text
+      @click="dialogVisible = true">打赏</el-button>
     <el-dialog v-model="dialogVisible" title="实施可持续发展战略" width="400px" style="border-radius: 10px" class="pd">
       <el-divider />
       <div style="height: 40px">
@@ -54,6 +57,13 @@ export default {
       }],
     }
   },
+  methods: {
+    logout() {
+      axios.post('/api/user/logout');
+      localStorage.removeItem('isLogin');
+      location.reload();
+    }
+  },
   async mounted() {
     this.login = localStorage.getItem('isLogin');
     await axios.post('/api/user/getUserInfo', {
@@ -89,5 +99,14 @@ export default {
 .el-menu--popup {
   min-width: 100px !important;
   font-size: 10px;
+}
+
+a {
+  color: #2c3e50;
+  background: 0 0;
+  text-decoration: none;
+  outline: 0;
+  cursor: pointer;
+  font-weight: 500;
 }
 </style>
