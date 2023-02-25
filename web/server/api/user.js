@@ -2,6 +2,7 @@ const db = require('../db/index');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const mail = require('nodemailer');
+const { effect } = require('vue');
 
 exports.reg = async (req, res) => {
     const name = req.body.name;
@@ -14,50 +15,41 @@ exports.reg = async (req, res) => {
             response: retoken
         }
     });
-    if (!recapt.data.success) {
+    if (!recapt.data.success) { return res.status(202).send({ message: "请先进行人机验证" }); }
+
+    if (!name || !pwd || !rePwd) {
         return res.status(202).send({
-            message: "请先进行人机验证"
+            message: "请确认信息完善"
         })
     }
-    if (!name || !pwd || !rePwd) {
-        res.send({
-            status: 403, message: "请确认信息完善"
-        });
-        return;
-    }
     if (name.length < 3 || name.length > 15) {
-        res.send({
-            status: 202, message: "用户名长度应在3~15之间"
-        });
-        return;
+        return res.status(202).send({
+            message: "用户名长度应在3~15之间"
+        })
     }
     for (let i = 0; i < name.length; i++) {
         if (!((name[i] >= 'A' && name[i] <= 'Z') || (name[i] >= 'a' && name[i] <= 'z') || (name[i] >= '0' && name[i] <= '9'))) {
-            res.send({
-                status: 202, message: "用户名应只包含字母或数字"
-            });
-            return;
+            return res.status(202).send({
+                message: "用户名应只包含字母或数字"
+            })
         }
     }
     if (pwd.length > 31 || pwd.length < 6) {
-        res.send({
-            status: 202, message: "密码长度应在6~31之间"
-        });
-        return;
+        return res.status(202).send({
+            message: "密码长度应在6~31之间"
+        })
     }
     for (let i = 0; i < pwd.length; i++) {
         if (!((pwd[i] >= 'A' && pwd[i] <= 'Z') || (pwd[i] >= 'a' && pwd[i] <= 'z') || (pwd[i] >= '0' && pwd[i] <= '9'))) {
-            res.send({
-                status: 202, message: "密码应只包含字母或数字"
-            });
-            return;
+            return res.status(202).send({
+                message: "密码应只包含字母或数字"
+            })
         }
     }
     if (pwd !== rePwd) {
-        res.send({
-            status: 202, message: "两次输入的密码不一致"
-        });
-        return;
+        return res.status(202).send({
+            message: "两次输入的密码不一致"
+        })
     }
     let ok = true;
     await axios.get('https://v.api.aa1.cn/api/api-mgc/index.php', {
@@ -68,30 +60,30 @@ exports.reg = async (req, res) => {
         if (res.data.num === '1')
             ok = false;
     });
-    if (!ok) return res.send({
-        status: 202, message: "用户名中存在敏感词"
+    if (!ok) return res.status(202).send({
+        message: "用户名中存在敏感词"
     });
     db.query("SELECT uid FROM userInfo WHERE name=?", [name], (err, data) => {
-        if (err) return res.send({
-            status: 202, message: err.message,
+        if (err) return res.status(202).send({
+            message: err.message
         });
-        if (data.length) return res.send({
-            status: 202, message: "该用户名已被注册"
+        if (data.length) return res.status(202).send({
+            message: "此用户名已被注册"
         });
         else {
             const time = new Date();
             const password = bcrypt.hashSync(pwd, 12);
             db.query("INSERT INTO userInfo(name,pwd,reg_time) values (?,?,?)", [name, password, time], (err, data) => {
-                if (err) return res.send({
-                    status: 202, message: err.message,
+                if (err) return res.status(202).send({
+                    message: err.message
                 });
                 if (data.affectedRows > 0) {
-                    res.send({
-                        status: 200, message: 'success',
+                    return res.status(200).send({
+                        message: 'success'
                     });
                 } else {
-                    res.send({
-                        status: 202, message: 'sql error',
+                    return res.status(202).send({
+                        message: "sql error"
                     });
                 }
             });
@@ -115,40 +107,48 @@ exports.login = async (req, res) => {
         })
     }
     if (!name || !pwd) {
-        res.send({
-            status: 403, message: "请确认信息完善"
+        res.status(202).send({
+            message: "请确认信息完善"
         });
         return;
     }
     db.query("SELECT * FROM userInfo WHERE name=?", [name], (err, data) => {
-        if (!data.length) return res.send({
-            status: 202, message: "请先注册后再登录"
+        if (!data.length) return res.status(202).send({
+            message: "请先注册后再登录"
         });
-        if (err) return res.send({
-            status: 202, message: err.message
+        if (err) return res.status(202).send({
+            message: err.message
         });
-        const uid = data[0].uid, password = data[0].pwd;
+        const uid = data[0].uid, password = data[0].pwd, inUse = data[0].inUse;
+        if (!inUse) {
+            return res.status(202).send({
+                message: '你号没了'
+            });
+        }
         if (bcrypt.compareSync(pwd, password)) {
-            const time = new Date();
-            const token = bcrypt.hashSync(time.getTime().toString() + name, 10) + uid
             req.session.uid = uid;
             req.session.name = data[0].name;
             req.session.email = data[0].email;
+            req.session.gid = data[0].gid;
             db.query("UPDATE userInfo SET login_time=? WHERE uid=?", [new Date(), uid]);
             db.query("INSERT INTO loginLog(uid,time,ip) values (?,?,?) ", [uid, new Date(), req.session.ip]);
-            res.send({
-                status: 200, token: token,
-            })
+            res.status(200).send({ message: 'success' })
         } else {
-            res.send({
-                status: 202, message: "密码错误",
+            res.status(202).send({
+                message: "密码错误",
             })
         }
     });
 }
 
 exports.getUserInfo = (req, res) => {
-    if (req.session.uid) return res.status(200).send({ uid: req.session.uid, name: req.session.name, email: req.session.email });
+    if (req.session.uid) return res.status(200).send({
+        uid: req.session.uid,
+        name: req.session.name,
+        email: req.session.email,
+        ip: req.session.ip,
+        gid: req.session.gid,
+    });
     else return res.status(202).send({ message: "请先登录" });
 }
 
@@ -202,7 +202,7 @@ exports.sendEmailVertifyCode = async (req, res) => {
         from: 'nywojservice@163.com',
         to: email,
         subject: 'nywOJ绑定邮箱验证码',
-        text: "你正在nywOJ进行绑定邮箱操作，验证码为 " + vertifyCode + " 。该验证码3分钟内有效。"
+        text: "你正在nywOJ进行绑定邮箱操作,验证码为 " + vertifyCode + "\n该验证码3分钟内有效。"
     }
 
     transporter.sendMail(mailOptions, (err) => {
@@ -248,5 +248,28 @@ exports.setUserEmail = async (req, res) => {
                 } else return res.status(202).send({ message: "sql error" });
             });
         }
+    });
+}
+
+exports.getUserPublicInfo = (req, res) => {
+    const uid = req.body.id;
+    db.query("SELECT uid,name,email,reg_time,login_time,clickCnt,inUse,gid,motto FROM userInfo WHERE uid=?", [uid], (err, data) => {
+        if (err) {
+            return res.status(202).send({ message: err.message });
+        }
+        return res.status(200).send({ info: data[0] });
+    });
+}
+
+exports.setUserMotto = async (req, res) => {
+    const motto = req.body.data;
+    if (motto.length > 200) {
+        res.status(202).send({ message: "个签长度应在200以内" });
+    }
+    db.query("UPDATE userInfo SET motto=? WHERE uid=?", [motto, req.session.uid], (err, data) => {
+        if (err) {
+            return res.status(202).send({ message: err.message });
+        }
+        res.status(200).send({ message: 'success' });
     });
 }

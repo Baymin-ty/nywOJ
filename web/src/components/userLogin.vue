@@ -46,7 +46,7 @@ export default {
         pwd: this.userInfo.pwd,
         retoken: retoken,
       }).then(res => {
-        if (res.data.status === 200) {
+        if (res.status === 200) {
           ElMessage({
             message: '登录成功',
             type: 'success',
@@ -70,17 +70,19 @@ export default {
       });
     },
   },
-  mounted() {
+  async mounted() {
     if (localStorage.getItem('isLogin')) {
       this.$router.push('/');
       return;
     }
-    setTimeout(() => {
-      window.grecaptcha.render("grecaptcha", {
-        sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
-        callback: this.submit
-      });
-    }, 200);
+    if (sessionStorage.getItem('path') !== '/user/login') {  // fix recaptcha
+      sessionStorage.setItem('path', '/user/login');
+      location.reload();
+    }
+    await window.grecaptcha.render("grecaptcha", {
+      sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
+      callback: this.submit
+    });
   }
 }
 </script>

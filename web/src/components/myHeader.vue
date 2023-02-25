@@ -1,5 +1,5 @@
 <template>
-  <el-menu class="el-menu-demo" mode="horizontal" :default-active="this.$router.path" :router="true">
+  <el-menu class="el-menu-demo" mode="horizontal" :default-active="this.$router.path" :router="true" height="60px">
     <img style="width: 40px; height: 40px; margin-left: 30px; margin-right: 30px; margin-top: 5px; border-radius: 5px"
       src="../assets/icon.png">
     <el-menu-item index="/">首页</el-menu-item>
@@ -7,13 +7,19 @@
     <el-menu-item index="/data">统计</el-menu-item>
     <el-menu-item v-show="!login" index="/user/login">登录</el-menu-item>
     <el-menu-item v-show="!login" index="/user/reg">注册</el-menu-item>
-    <el-button v-show="login" style="height: 55px; width: 100px; padding: 0; margin: 0;" text @click="logout">退出登录</el-button>
+    <el-sub-menu index="/user/myself" v-show="login">
+      <template #title>{{ this.name }}</template>
+      <el-menu-item :width="100" index="/user/myself">个人主页</el-menu-item>
+      <el-menu-item :width="100" v-show="gid === 3" index="/admin/usermanage">用户管理</el-menu-item>
+      <el-menu-item :width="100" index="/logout">退出登录</el-menu-item>
+    </el-sub-menu>
     <el-button style="height: 55px; width: 80px; padding: 0; margin: 0;" text @click="dialogVisible = true">打赏</el-button>
     <el-dialog v-model="dialogVisible" title="实施可持续发展战略" width="400px" style="border-radius: 10px" class="pd">
       <el-divider />
       <div style="height: 40px">
-        <el-select v-model="money" class="m-2" placeholder="Select" style="width: 100px">
-          <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
+        <el-select v-model="money" class="m-2" placeholder="Select" style="width: 110px">
+          <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value"
+            style="width: 110px" />
         </el-select>
       </div>
       <img v-show="money === 50" class="round" alt="50" src="../assets/50.png">
@@ -31,6 +37,9 @@ export default {
   data() {
     return {
       login: 0,
+      uid: 0,
+      name: "/",
+      gid: 1,
       dialogVisible: false,
       money: 50,
       options: [{
@@ -45,15 +54,14 @@ export default {
       }],
     }
   },
-  mounted() {
+  async mounted() {
     this.login = localStorage.getItem('isLogin');
-  },
-  methods: {
-    logout() {
-      axios.post('/api/user/logout');
-      localStorage.removeItem('isLogin');
-      location.reload();
-    }
+    await axios.post('/api/user/getUserInfo', {
+    }).then(res => {
+      this.name = res.data.name;
+      this.uid = res.data.uid;
+      this.gid = res.data.gid;
+    });
   },
 }
 </script>
@@ -75,5 +83,11 @@ export default {
 
 .el-divider--horizontal {
   margin: 10px 0;
+}
+
+.el-menu--collapse .el-menu .el-submenu,
+.el-menu--popup {
+  min-width: 100px !important;
+  font-size: 10px;
 }
 </style>

@@ -1,17 +1,15 @@
 <template>
-  <div class="common-layout">
-    <el-container>
-      <el-header>
-        <myHeader />
-      </el-header>
-      <el-main>
-        <router-view />
-      </el-main>
-      <!--      <el-footer>-->
-      <!--        <myFooter/>-->
-      <!--      </el-footer>-->
-    </el-container>
-  </div>
+  <el-container>
+    <el-header>
+      <myHeader />
+    </el-header>
+    <el-main>
+      <router-view />
+    </el-main>
+    <!--      <el-footer>-->
+    <!--        <myFooter/>-->
+    <!--      </el-footer>-->
+  </el-container>
 </template>
 
 <script>
@@ -39,5 +37,11 @@ export default {
 
 .el-table .success {
   --el-table-tr-bg-color: var(--el-color-success-light-9);
+}
+
+.el-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 </style>

@@ -25,11 +25,15 @@
           </div>
         </template>
         <el-table v-loading="!finished" :data="info" border height="600px" :row-class-name="tableRowClassName"
-          :cell-style="{ textAlign: 'center' }" :header-cell-style="{ textAlign: 'center' }">
+          :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
           <el-table-column prop="id" label="#" width="100px" />
           <el-table-column prop="time" label="点击时间" width="180px" />
           <el-table-column prop="uid" label="uid" width="100px" />
-          <el-table-column prop="name" label="用户名" width="auto" />
+          <el-table-column prop="name" label="用户名" width="150px">
+            <template #default="scope">
+              <a :href="/user/ + scope.row.uid"> {{ scope.row.name }}</a>
+            </template>
+          </el-table-column>
           <el-table-column prop="ip" label="IP" width="auto" />
         </el-table>
       </el-card>
@@ -63,7 +67,7 @@ export default {
     },
     all() {
       this.finished = 0;
-      axios.get('/api/rabbit/all').then(res => {
+      axios.post('/api/rabbit/all').then(res => {
         this.info = res.data.data;
         this.finished = 1;
       }).catch(err => {
@@ -76,8 +80,8 @@ export default {
       });
     },
     getCnt() {
-      axios.get('/api/rabbit/getClickCnt').then(res => {
-        this.cnt = res.data.data[0].clickCnt;
+      axios.post('/api/rabbit/getClickCnt').then(res => {
+        this.cnt = res.data.clickCnt;
       }).catch(err => {
         ElMessage({
           message: '获取个人点击数失败' + err.message,
@@ -87,8 +91,8 @@ export default {
       });
     },
     add() {
-      axios.get('/api/rabbit/add').then(res => {
-        if (res.data.status === 200) {
+      axios.post('/api/rabbit/add').then(res => {
+        if (res.status === 200) {
           if (this.show_insert_info) {
             ElMessage({
               message: '添加点击信息成功',
@@ -114,6 +118,14 @@ export default {
     tableRowClassName(obj) {
       return (obj.row.uid === this.uid ? 'success' : '');
     },
+    cellStyle({ columnIndex }) {
+      let style = {};
+      style['textAlign'] = 'center';
+      if (columnIndex === 3) {
+        style['font-weight'] = 500;
+      }
+      return style;
+    }
   },
   mounted: function () {
     this.uid = store.state.uid;
@@ -164,5 +176,14 @@ export default {
   justify-content: space-between;
   align-items: center;
   height: 20px;
+}
+
+a {
+  color: #2d8cf0 !important;
+  background: 0 0;
+  text-decoration: none;
+  outline: 0;
+  cursor: pointer;
+  font-weight: 500;
 }
 </style>

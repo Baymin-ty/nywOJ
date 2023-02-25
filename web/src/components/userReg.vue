@@ -50,7 +50,7 @@ export default {
         rePwd: this.userInfo.rePwd,
         retoken: retoken,
       }).then(res => {
-        if (res.data.status === 200) {
+        if (res.status === 200) {
           ElMessage({
             message: '注册成功',
             type: 'success',
@@ -74,17 +74,19 @@ export default {
       });
     },
   },
-  mounted() {
+  async mounted() {
     if (localStorage.getItem('isLogin')) {
       this.$router.push('/');
       return;
     }
-    setTimeout(() => {
-      window.grecaptcha.render("grecaptcha", {
-        sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
-        callback: this.submit
-      });
-    }, 200);
+    if (sessionStorage.getItem('path') !== '/user/reg') { // fix recaptcha
+      sessionStorage.setItem('path', '/user/reg');
+      location.reload();
+    }
+    await window.grecaptcha.render("grecaptcha", {
+      sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
+      callback: this.submit
+    });
   }
 }
 </script>

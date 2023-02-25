@@ -20,6 +20,8 @@ app.use(session({
 app.use((req, res, next) => {
     req.session.ip = getClientIp(req);
     if (req.session.uid) {
+        if (req.url.match('^\/api\/admin') && req.session.gid !== 3)
+            res.status(403).end('403 Forbidden');
         next();
     } else {
         if (req.url === '/api/user/login' ||

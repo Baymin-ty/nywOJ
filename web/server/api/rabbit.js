@@ -1,4 +1,5 @@
 const db = require('../db/index')
+const rabbitData = require('../store/rabbitData.json')
 
 const fill = (x) => {
     x = x.toString();
@@ -12,12 +13,12 @@ const Format = (now) => {
 exports.all = (req, res) => {
     let sql = 'SELECT * FROM clickList ORDER BY id desc limit 20';
     db.query(sql, (err, data) => {
-        if (err) return res.send({
-            status: 202, message: err.message
+        if (err) return res.status(202).send({
+            message: err.message
         });
         for (let i = 0; i < data.length; i++) data[i].time = Format(data[i].time);
-        res.send({
-            status: 200, data: data
+        res.status(200).send({
+            data: data
         });
     })
 }
@@ -28,60 +29,50 @@ exports.add = (req, res) => {
         return res.status(202).send({ message: "请先登录" })
     }
     db.query('INSERT INTO clickList(uid,name,time,ip) values (?,?,?,?)', [uid, name, new Date(), ip], (err, data) => {
-        if (err) return res.send({
-            status: 202, message: err.message
+        if (err) return res.status(202).send({
+            message: err.message
         });
         if (data.affectedRows > 0) {
             db.query("UPDATE userInfo SET clickCnt=clickCnt+1 WHERE uid=?", [uid]);
-            res.send({
-                status: 200, message: 'success',
+            res.status(200).send({
+                message: 'success',
             })
         } else {
-            res.send({
-                status: 202, message: 'error',
+            res.status(202).send({
+                message: 'error',
             })
         }
     });
 }
 
 exports.getClickCnt = (req, res) => {
+    let uid = req.session.uid;
+    if (req.body.uid) uid = req.body.uid;
     let sql = 'SELECT clickCnt FROM userInfo WHERE uid=?';
-    db.query(sql, [req.session.uid], (err, data) => {
-        if (err) return res.send({
-            status: 202, message: err.message
+    db.query(sql, [uid], (err, data) => {
+        if (err) return res.status(202).send({
+            message: err.message
         });
-        res.send({
-            status: 200, data: data
-        });
+        res.status(200).send({ clickCnt: data[0].clickCnt });
     })
-}
-
-exports.getUserIp = (req, res) => {
-    res.send([{
-        status: 200,
-        ip: req.session.ip
-    }]);
 }
 
 exports.getRankInfo = (req, res) => {
-    let sql = 'SELECT uid,name,clickCnt FROM userInfo GROUP BY uid ORDER BY clickCnt DESC LIMIT 20';
-    if (req.query.today === "true") sql = 'SELECT uid,name,COUNT(*) as clickCnt FROM clickList WHERE !DATEDIFF(NOW(),time) GROUP BY uid ORDER BY clickCnt DESC LIMIT 20';
+    let sql = 'SELECT uid,name,clickCnt,motto,gid FROM userInfo GROUP BY uid ORDER BY clickCnt DESC LIMIT 20';
     db.query(sql, (err, data) => {
-        if (err) return res.send({
-            status: 202, message: err.message
+        if (err) return res.status(202).send({
+            message: err.message
         });
-        res.send({
-            status: 200, data: data
+        res.status(200).send({
+            data: data
         });
     })
 }
 
-exports.getClickData = (req, res) => {
+const updateClickData = () => {
+    rabbitData.updateTime = new Date().getTime();
     let sql = 'SELECT DATE(time) AS date,COUNT(*) AS clickCnt,COUNT(DISTINCT uid) AS userCnt FROM clickList WHERE DATEDIFF(NOW(),time)<7 GROUP BY date';
     db.query(sql, (err, data) => {
-        if (err) return res.send({
-            status: 202, message: err.message
-        });
         let mp = [];
         const now = new Date();
         for (let i = 6; i >= 0; i--)
@@ -96,8 +87,22 @@ exports.getClickData = (req, res) => {
                 userCnt: mp[key][1]
             })
         }
-        res.send({
-            status: 200, data: result
+        rabbitData.data = result;
+    });
+}
+
+exports.getClickData = (req, res) => {
+    if (!rabbitData.data) {
+        updateClickData();
+        return res.status(202).send({
+            message: "请稍后再试"
         });
-    })
+    }
+    res.status(200).send({
+        data: rabbitData.data,
+        updateTime: Format(new Date(rabbitData.updateTime))
+    });
+    if (new Date().getTime() - rabbitData.updateTime > 900000) {
+        updateClickData();
+    }
 }

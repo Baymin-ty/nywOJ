@@ -3,7 +3,7 @@
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          点击统计
+          更新时间: {{ updateTime }}
         </div>
       </template>
       <div id="clickCnt" style="max-width:1000px; margin: 0 auto;" :style="{ width: '100%', height: '300px' }"></div>
@@ -24,12 +24,13 @@ export default {
       date: [],
       clickCnt: [],
       userCnt: [],
+      updateTime: null,
     }
   },
   async mounted() {
-    await axios.get('/api/rabbit/getClickData', {
-    }).then(res => {
-      if (res.data.status === 200) {
+    await axios.post('/api/rabbit/getClickData').then(res => {
+      if (res.status === 200) {
+        this.updateTime = res.data.updateTime;
         for (let i = 0; i < res.data.data.length; i++) {
           this.date[i] = res.data.data[i].date;
           this.clickCnt[i] = res.data.data[i].clickCnt;
@@ -40,6 +41,9 @@ export default {
           type: 'success',
           duration: 1000,
         });
+      }
+      else {
+        location.reload();
       }
     }).catch(err => {
       ElMessage({

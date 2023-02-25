@@ -3,13 +3,11 @@ const router = express.Router();
 
 const rabbit = require('./api/rabbit');
 
-router.get('/api/rabbit/all', rabbit.all);
-router.get('/api/rabbit/add', rabbit.add);
-router.get('/api/rabbit/getClickCnt', rabbit.getClickCnt);
-router.get('/api/rabbit/getRankInfo', rabbit.getRankInfo);
-router.get('/api/rabbit/getUserIp', rabbit.getUserIp);
-router.get('/api/rabbit/getClickData', rabbit.getClickData);
-
+router.post('/api/rabbit/all', rabbit.all);
+router.post('/api/rabbit/add', rabbit.add);
+router.post('/api/rabbit/getClickCnt', rabbit.getClickCnt);
+router.post('/api/rabbit/getRankInfo', rabbit.getRankInfo);
+router.post('/api/rabbit/getClickData', rabbit.getClickData);
 
 const user = require('./api/user');
 
@@ -18,6 +16,14 @@ router.post('/api/user/reg', user.reg);
 router.post('/api/user/logout', user.logout);
 router.post('/api/user/sendEmailVertifyCode', user.sendEmailVertifyCode);
 router.post('/api/user/setUserEmail', user.setUserEmail);
-router.get('/api/user/getUserInfo', user.getUserInfo);
+router.post('/api/user/getUserInfo', user.getUserInfo);
+router.post('/api/user/getUserPublicInfo', user.getUserPublicInfo);
+router.post('/api/user/setUserMotto', user.setUserMotto);
+
+const admin = require('./api/admin');
+
+router.post('/api/admin/getUserInfoList', admin.getUserInfoList);
+router.post('/api/admin/setBlock', admin.setBlock);
+router.post('/api/admin/updateUserInfo', admin.updateUserInfo);
 
 module.exports = router;

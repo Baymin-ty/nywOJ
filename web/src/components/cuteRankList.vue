@@ -4,18 +4,28 @@
       <template #header>
         <div class="card-header">
           点击数排名
-          <el-switch v-model="today" size="large" class="ml-2" inline-prompt
-            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949" active-text="今日排名"
-            inactive-text="总排名" @click="all"/>
           <el-button type="primary" :disabled="!finished" @click="all">更新排名</el-button>
         </div>
       </template>
       <el-table v-loading="!finished" :data="info" border height="600px" :row-class-name="tableRowClassName"
-        :cell-style="{ textAlign: 'center' }" :header-cell-style="{ textAlign: 'center' }">
+        :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
         <el-table-column label="#" type="index" width="80px" />
-        <el-table-column prop="uid" label="uid" width="auto" />
-        <el-table-column prop="name" label="用户名" width="auto" />
-        <el-table-column prop="clickCnt" label="点击次数" width="auto" />
+        <el-table-column prop="uid" label="uid" width="100px">
+          <template #default="scope">
+            <a :href="/user/ + scope.row.uid"> {{ scope.row.uid }}</a>
+          </template>
+        </el-table-column>
+        <el-table-column prop="name" label="用户名" width="150px">
+          <template #default="scope">
+            <span> {{ scope.row.name }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="clickCnt" label="点击次数" width="130px" />
+        <el-table-column :show-overflow-tooltip=true prop="motto" label="个性签名" width="auto">
+          <template #default="scope">
+            <span> {{ scope.row.motto }} </span>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
   </div>
@@ -25,6 +35,7 @@
 import axios from "axios"
 import { ElMessage } from 'element-plus'
 import store from '@/sto/store'
+import { getNameColor } from '@/assets/common'
 
 export default {
   name: 'cuteRank',
@@ -33,17 +44,12 @@ export default {
       finished: 0,
       uid: -1,
       info: [],
-      today: false,
     }
   },
   methods: {
     all() {
       this.finished = false;
-      axios.get('/api/rabbit/getRankInfo', {
-        params: {
-          today: this.today
-        }
-      }).then(res => {
+      axios.post('/api/rabbit/getRankInfo').then(res => {
         this.info = res.data.data;
         this.finished = true;
         ElMessage({
@@ -63,8 +69,19 @@ export default {
     tableRowClassName(obj) {
       return (obj.row.uid === this.uid ? 'success' : '');
     },
+    cellStyle({ row, columnIndex }) {
+      let style = {};
+      style['textAlign'] = 'center';
+      if (columnIndex === 2) {
+        style['font-weight'] = 500;
+        style['color'] = getNameColor(row.gid, row.clickCnt);
+        if (style['color'] === '#8e44ad')
+          style['font-weight'] = 900;
+      }
+      return style;
+    }
   },
-  mounted: function () {
+  async mounted() {
     this.uid = store.state.uid;
     this.all();
   }
@@ -83,5 +100,13 @@ export default {
   justify-content: space-between;
   align-items: center;
   height: 20px;
+}
+
+a {
+  color: #2d8cf0 !important;
+  background: 0 0;
+  text-decoration: none;
+  outline: 0;
+  cursor: pointer;
 }
 </style>
