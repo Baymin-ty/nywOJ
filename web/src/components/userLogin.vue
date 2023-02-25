@@ -79,10 +79,12 @@ export default {
       sessionStorage.setItem('path', '/user/login');
       location.reload();
     }
-    await window.grecaptcha.render("grecaptcha", {
-      sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
-      callback: this.submit
-    });
+    setTimeout(() => {
+      window.grecaptcha.render("grecaptcha", {
+        sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
+        callback: this.submit
+      });
+    }, 200);
   }
 }
 </script>

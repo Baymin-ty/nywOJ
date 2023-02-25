@@ -94,10 +94,12 @@ export default {
       sessionStorage.setItem('path', '/user/setemail');
       location.reload();
     }
-    await window.grecaptcha.render("grecaptcha", {
-      sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
-      callback: this.sendVertifyCode
-    });
+    setTimeout(() => {
+      window.grecaptcha.render("grecaptcha", {
+        sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
+        callback: this.sendVertifyCode
+      });
+    }, 200);
   }
 }
 </script>
