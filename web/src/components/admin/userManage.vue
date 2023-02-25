@@ -89,6 +89,7 @@ export default {
         this.total = res.data.total;
         this.info = res.data.userList;
         for (let i = 0; i < this.info.length; i++) this.info[i].edit = 0;
+        this.finished = 1;
       });
     },
     handleCurrentChange(val) {
