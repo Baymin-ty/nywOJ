@@ -42,9 +42,6 @@ export default {
           duration: 1000,
         });
       }
-      else {
-        location.reload();
-      }
     }).catch(err => {
       ElMessage({
         message: '添加点击信息失败' + err.message,

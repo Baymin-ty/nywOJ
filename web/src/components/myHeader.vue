@@ -65,12 +65,12 @@ export default {
     }
   },
   async mounted() {
-    this.login = localStorage.getItem('isLogin');
     await axios.post('/api/user/getUserInfo', {
     }).then(res => {
       this.name = res.data.name;
       this.uid = res.data.uid;
       this.gid = res.data.gid;
+      this.login = res.data.uid;
     });
   },
 }

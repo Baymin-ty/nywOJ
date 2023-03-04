@@ -1,7 +1,7 @@
 <template>
   <el-row>
     <el-col :span="12" style="min-width: 400px">
-      <el-card class="box-card" shadow="hover">
+      <el-card class="box-card" shadow="hover" style="text-align: center;">
         <template #header>
           <div class="card-header">
             Tiddar (uid: {{ this.uid }} 用户名: {{ this.name }})

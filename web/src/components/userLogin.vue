@@ -13,9 +13,6 @@
         <el-form-item label="密码" prop="pass" style="margin-left: 28px">
           <el-input v-model="userInfo.pwd" type="password" />
         </el-form-item>
-        <el-form-item label="人机验证" prop="pass">
-          <div id="grecaptcha"></div>
-        </el-form-item>
         <el-button type="primary" @click="submit" style="width: 250px;">登录</el-button>
       </el-form>
       <el-divider />
@@ -26,6 +23,7 @@
 </template>
 
 <script>
+import store from "@/sto/store";
 import axios from "axios";
 import { ElMessage } from "element-plus";
 
@@ -40,11 +38,10 @@ export default {
     }
   },
   methods: {
-    submit(retoken) {
+    submit() {
       axios.post('/api/user/login', {
         name: this.userInfo.name,
         pwd: this.userInfo.pwd,
-        retoken: retoken,
       }).then(res => {
         if (res.status === 200) {
           ElMessage({
@@ -52,10 +49,8 @@ export default {
             type: 'success',
             duration: 2000,
           });
-          localStorage.setItem('isLogin', true);
           location.reload();
         } else {
-          window.grecaptcha.reset();
           ElMessage({
             message: res.data.message,
             type: 'error',
@@ -70,21 +65,11 @@ export default {
       });
     },
   },
-  async mounted() {
-    if (localStorage.getItem('isLogin')) {
+  mounted() {
+    if (store.state.uid) {
       this.$router.push('/');
       return;
     }
-    if (sessionStorage.getItem('path') !== '/user/login') {  // fix recaptcha
-      sessionStorage.setItem('path', '/user/login');
-      location.reload();
-    }
-    setTimeout(() => {
-      window.grecaptcha.render("grecaptcha", {
-        sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
-        callback: this.submit
-      });
-    }, 200);
   }
 }
 </script>

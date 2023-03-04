@@ -5,8 +5,8 @@ import rabbitRankList from '@/components/cuteRankList.vue';
 import rabbitClickData from '@/components/rabbitClickData.vue'
 import userLogin from "@/components/userLogin.vue";
 import userReg from "@/components/userReg.vue";
-import userSetEmail from "@/components/userEmail.vue"
 import userInfo from '@/components/userInfo.vue'
+import problemView from '@/components/problemView.vue'
 
 import userManage from "@/components/admin/userManage"
 
@@ -46,11 +46,6 @@ const router = createRouter({
         path: '/user/reg', component: userReg,
     }, {
         meta: {
-            title: '绑定邮箱'
-        },
-        path: '/user/setemail', component: userSetEmail,
-    }, {
-        meta: {
             title: '用户管理'
         },
         path: '/admin/usermanage', component: userManage,
@@ -59,6 +54,11 @@ const router = createRouter({
             title: '用户信息'
         },
         path: '/user/:id', component: userInfo,
+    }, {
+        meta: {
+            title: '题目'
+        },
+        path: '/problem', component: problemView,
     }],
     caseSensitive: true
 });
@@ -68,29 +68,19 @@ router.afterEach((to) => {
     }
 })
 router.beforeEach((to, from, next) => {
-    if (to.path === '/user/reg' || to.path === '/user/login') {
-        next();
-    } else {
-        axios.post('/api/user/getUserInfo', {
-        }).then(res => {
-            if (res.data.uid) {
-                localStorage.setItem('isLogin', true);
-                store.state.uid = res.data.uid;
-                store.state.name = res.data.name;
-                if (to.path === '/user/setemail') next();
-                else if (!res.data.email) next({ path: '/user/setemail' });
-                else {
-                    if (!per[to.path] || res.data.gid >= per[to.path])
-                        next();
-                }
-            } else {
-                store.state.uid = 0;
-                store.state.name = "/";
-                localStorage.removeItem('isLogin');
-                next({ path: '/user/login' });
-            }
-        });
-    }
+    axios.post('/api/user/getUserInfo', {
+    }).then(res => {
+        store.state.uid = res.data.uid;
+        store.state.name = res.data.name;
+        if (to.path === '/user/reg' || to.path === '/user/login')
+            next();
+        else if (res.data.uid) {
+            if (!per[to.path] || res.data.gid >= per[to.path])
+                next();
+        } else {
+            next({ path: '/user/login' });
+        }
+    });
 })
 
 export default router;

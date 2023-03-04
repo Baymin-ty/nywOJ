@@ -1,5 +1,5 @@
 <template>
-  <div style="text-align: center; margin: 0 auto; max-width: 1200px">
+  <div style="margin: 0 auto; max-width: 1200px">
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
@@ -10,12 +10,12 @@
         <el-col :span="12">
           <el-card style="width:90%; margin: auto; height: 600px;overflow-y: auto;" shadow="never">
             <template #header>
-              <div class="card-header">
+              <div class="card-header" style="text-align: center;">
                 个性签名
                 <el-button v-show="info.uid === this.uid" type="success"
                   @click="this.dialogVisible = true">编辑我的个性签名</el-button>
-                <el-dialog v-model="dialogVisible" title="编辑签名(会以html渲染)"
-                  style="width:600px;height: 600px;border-radius: 10px" class="pd">
+                <el-dialog v-model="dialogVisible" title="编辑签名" style="width:600px;height: 600px;border-radius: 10px"
+                  class="pd">
                   <el-divider />
                   <el-input v-model="newMotto" type="textarea" placeholder="Please input" :rows="20" :maxlength="200"
                     :show-word-limit="true" style="width:500px;margin: 20px;" resize="none" />
@@ -23,14 +23,13 @@
                 </el-dialog>
               </div>
             </template>
-            <div style="white-space: pre-wrap; text-align: left;" v-html="this.info.motto">
-            </div>
+            <v-md-preview :text="this.info.motto"></v-md-preview>
           </el-card>
         </el-col>
         <el-col :span="12">
           <el-descriptions direction="vertical" :column="1" border>
             <el-descriptions-item label="uid"> {{ info.uid }}</el-descriptions-item>
-            <el-descriptions-item label="用户名" :style="getNameStyle">{{ info.name }}</el-descriptions-item>
+            <el-descriptions-item label="用户名"> {{ info.name }}</el-descriptions-item>
             <el-descriptions-item label="电子邮件">{{ info.email }}</el-descriptions-item>
             <el-descriptions-item label="兔兔点击数">{{ info.clickCnt }}</el-descriptions-item>
             <el-descriptions-item label="用户角色">{{ group[info.gid] }}</el-descriptions-item>
@@ -47,7 +46,6 @@
 import axios from "axios";
 import { ElMessage } from "element-plus";
 import store from "@/sto/store"
-import { getNameColor } from "@/assets/common";
 
 const fill = (x) => {
   x = x.toString();
@@ -90,16 +88,6 @@ export default {
         }
       });
     },
-    getNameStyle() {
-      let style = {};
-      style['textAlign'] = 'center';
-      style['font-weight'] = 500;
-      style['color'] = getNameColor(this.info.gid, this.info.clickCnt);
-      if (style['color'] === '#8e44ad')
-        style['font-weight'] = 900;
-      console.log(style);
-      return style;
-    }
   },
   async mounted() {
     this.id = this.$route.params.id;

@@ -8,6 +8,7 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@kangc/v-md-editor": "^2.3.15",
     "axios": "^1.2.5",
     "bcrypt": "^5.1.0",
     "bcryptjs": "^2.4.3",
@@ -24,7 +25,6 @@
     "nodemailer": "^6.9.1",
     "vue": "^3.2.13",
     "vue-axios": "^3.5.2",
-    "vue-meditor": "^2.1.2",
     "vue-router": "^4.1.6",
     "vuex": "^4.1.0"
   },

@@ -43,20 +43,9 @@ exports.setBlock = (req, res) => {
 exports.updateUserInfo = (req, res) => {
   const newInfo = req.body.info;
   const uid = newInfo.uid, name = newInfo.name, email = newInfo.email, gid = newInfo.gid;
-  if (!uid || !name || !email || !gid) {
+  if (!uid || !name || !gid) {
     return res.status(202).send({
       message: '请确认信息完善'
-    });
-  }
-  if (name.length < 3 || name.length > 15) {
-    return res.status(202).send({
-      message: "用户名长度应在3~15之间"
-    });
-  }
-  const emailExp = /^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/;
-  if (!emailExp.test(email)) {
-    return res.status(202).send({
-      message: "请检查邮箱是否合法"
     });
   }
   db.query("UPDATE userInfo SET name=?,email=?,gid=? WHERE uid=?", [name, email, gid, uid], (err, data) => {

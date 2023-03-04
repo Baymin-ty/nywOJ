@@ -8,15 +8,12 @@ exports.reg = async (req, res) => {
     const name = req.body.name;
     const pwd = req.body.pwd;
     const rePwd = req.body.rePwd;
-    const retoken = req.body.retoken;
-    let recapt = await axios.get("https://www.recaptcha.net/recaptcha/api/siteverify", {
-        params: {
-            secret: "6LcEKJIkAAAAACAlGysXJJowd7Vrcbc08Ghtd58C",
-            response: retoken
-        }
-    });
-    if (!recapt.data.success) { return res.status(202).send({ message: "请先进行人机验证" }); }
-
+    const email = req.session.vertifiedEmail;
+    if (!email) {
+        return res.status(202).send({
+            message: "请先验证邮箱"
+        })
+    }
     if (!name || !pwd || !rePwd) {
         return res.status(202).send({
             message: "请确认信息完善"
@@ -38,13 +35,6 @@ exports.reg = async (req, res) => {
         return res.status(202).send({
             message: "密码长度应在6~31之间"
         })
-    }
-    for (let i = 0; i < pwd.length; i++) {
-        if (!((pwd[i] >= 'A' && pwd[i] <= 'Z') || (pwd[i] >= 'a' && pwd[i] <= 'z') || (pwd[i] >= '0' && pwd[i] <= '9'))) {
-            return res.status(202).send({
-                message: "密码应只包含字母或数字"
-            })
-        }
     }
     if (pwd !== rePwd) {
         return res.status(202).send({
@@ -73,7 +63,7 @@ exports.reg = async (req, res) => {
         else {
             const time = new Date();
             const password = bcrypt.hashSync(pwd, 12);
-            db.query("INSERT INTO userInfo(name,pwd,reg_time) values (?,?,?)", [name, password, time], (err, data) => {
+            db.query("INSERT INTO userInfo(name,pwd,reg_time,email) values (?,?,?,?)", [name, password, time, email], (err, data) => {
                 if (err) return res.status(202).send({
                     message: err.message
                 });
@@ -94,18 +84,7 @@ exports.reg = async (req, res) => {
 exports.login = async (req, res) => {
     const name = req.body.name;
     const pwd = req.body.pwd;
-    const retoken = req.body.retoken;
-    let recapt = await axios.get("https://www.recaptcha.net/recaptcha/api/siteverify", {
-        params: {
-            secret: "6LcEKJIkAAAAACAlGysXJJowd7Vrcbc08Ghtd58C",
-            response: retoken
-        }
-    });
-    if (!recapt.data.success) {
-        return res.status(202).send({
-            message: "请先进行人机验证"
-        })
-    }
+
     if (!name || !pwd) {
         res.status(202).send({
             message: "请确认信息完善"
@@ -215,14 +194,12 @@ exports.sendEmailVertifyCode = async (req, res) => {
 }
 
 exports.setUserEmail = async (req, res) => {
-    const uid = req.session.uid;
     const userCode = req.body.code;
     if (!req.session.vertifyCode || !userCode) {
-        return res.status(202).send({ message: "请确认信息完整且操作正确" });
+        return res.status(202).send({ message: "请确认信息完善且操作正确" });
     }
     const vertifycode = req.session.vertifyCode.code;
     const expire = req.session.vertifyCode.expire;
-    const email = req.session.vertifyCode.email;
     if (userCode !== vertifycode) {
         return res.status(202).send({ message: "验证码错误" });
     }
@@ -230,25 +207,18 @@ exports.setUserEmail = async (req, res) => {
     if (time > expire) {
         return res.status(202).send({ message: "验证码超时" });
     }
-    db.query("SELECT uid FROM userInfo WHERE email=? LIMIT 1", [email], (err, data) => {
-        if (err) {
-            return res.status(202).send({ message: err.message });
-        }
-        if (data.length) {
-            return res.status(202).send({ message: "此邮箱已绑定过其他账号" });
-        }
+    db.query("SELECT email FROM userInfo WHERE email=?", [req.session.vertifyCode.email], (err, data) => {
+        if (err) return res.status(202).send({
+            message: err.message
+        });
+        if (data.length) return res.status(202).send({
+            message: "此邮箱已绑定过其他账号"
+        });
         else {
-            db.query("UPDATE userInfo SET email=? WHERE uid=?", [email, uid], (err, data) => {
-                if (err) {
-                    return res.status(202).send({ message: err.message });
-                }
-                if (data.affectedRows > 0) {
-                    req.session.email = email;
-                    return res.status(200).send({ message: "success" });
-                } else return res.status(202).send({ message: "sql error" });
-            });
+            req.session.vertifiedEmail = req.session.vertifyCode.email;
+            return res.status(200).send({ message: "验证成功" });
         }
-    });
+    })
 }
 
 exports.getUserPublicInfo = (req, res) => {
