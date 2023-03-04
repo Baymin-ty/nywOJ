@@ -41,7 +41,11 @@ export default {
           type: 'success',
           duration: 1000,
         });
-      }
+      } else ElMessage({
+        message: '请稍后再试',
+        type: 'error',
+        duration: 2000,
+      });
     }).catch(err => {
       ElMessage({
         message: '添加点击信息失败' + err.message,

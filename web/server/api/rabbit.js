@@ -11,7 +11,7 @@ const Format = (now) => {
 }
 
 exports.all = (req, res) => {
-    let sql = 'SELECT * FROM clickList ORDER BY id desc limit 20';
+    let sql = 'SELECT clickList.id,clickList.time,clickList.uid,userInfo.name,clickList.ip,userInfo.clickCnt,userInfo.gid FROM clickList INNER JOIN userInfo ON userInfo.uid = clickList.uid ORDER BY clickList.id DESC LIMIT 20';
     db.query(sql, (err, data) => {
         if (err) return res.status(202).send({
             message: err.message
@@ -24,11 +24,11 @@ exports.all = (req, res) => {
 }
 
 exports.add = (req, res) => {
-    const ip = req.session.ip, uid = req.session.uid, name = req.session.name;
+    const ip = req.session.ip, uid = req.session.uid;
     if (!uid) {
         return res.status(202).send({ message: "请先登录" })
     }
-    db.query('INSERT INTO clickList(uid,name,time,ip) values (?,?,?,?)', [uid, name, new Date(), ip], (err, data) => {
+    db.query('INSERT INTO clickList(uid,time,ip) values (?,?,?)', [uid, new Date(), ip], (err, data) => {
         if (err) return res.status(202).send({
             message: err.message
         });

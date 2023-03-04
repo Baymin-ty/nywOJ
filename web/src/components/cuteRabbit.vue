@@ -29,11 +29,7 @@
           <el-table-column prop="id" label="#" width="100px" />
           <el-table-column prop="time" label="点击时间" width="180px" />
           <el-table-column prop="uid" label="uid" width="100px" />
-          <el-table-column prop="name" label="用户名" width="150px">
-            <template #default="scope">
-              <a :href="/user/ + scope.row.uid"> {{ scope.row.name }}</a>
-            </template>
-          </el-table-column>
+          <el-table-column prop="name" label="用户名" width="150px" />
           <el-table-column prop="ip" label="IP" width="auto" />
         </el-table>
       </el-card>
@@ -45,6 +41,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import store from '@/sto/store'
+import { getNameColor } from '@/assets/common'
 
 export default {
   name: 'cuteRabbit',
@@ -118,11 +115,14 @@ export default {
     tableRowClassName(obj) {
       return (obj.row.uid === this.uid ? 'success' : '');
     },
-    cellStyle({ columnIndex }) {
+    cellStyle({ row, columnIndex }) {
       let style = {};
       style['textAlign'] = 'center';
       if (columnIndex === 3) {
         style['font-weight'] = 500;
+        style['color'] = getNameColor(row.gid, row.clickCnt);
+        if (style['color'] === '#8e44ad')
+          style['font-weight'] = 900;
       }
       return style;
     }
