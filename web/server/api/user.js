@@ -86,10 +86,9 @@ exports.login = async (req, res) => {
     const pwd = req.body.pwd;
 
     if (!name || !pwd) {
-        res.status(202).send({
+        return res.status(202).send({
             message: "请确认信息完善"
         });
-        return;
     }
     db.query("SELECT * FROM userInfo WHERE name=?", [name], (err, data) => {
         if (!data.length) return res.status(202).send({
@@ -111,11 +110,9 @@ exports.login = async (req, res) => {
             req.session.gid = data[0].gid;
             db.query("UPDATE userInfo SET login_time=? WHERE uid=?", [new Date(), uid]);
             db.query("INSERT INTO loginLog(uid,time,ip) values (?,?,?) ", [uid, new Date(), req.session.ip]);
-            res.status(200).send({ message: 'success' })
+            return res.status(200).send({ message: 'success' })
         } else {
-            res.status(202).send({
-                message: "密码错误",
-            })
+            return res.status(202).send({ message: "密码错误" })
         }
     });
 }
@@ -173,7 +170,7 @@ exports.sendEmailVertifyCode = async (req, res) => {
         secureConnection: true,
         auth: {
             user: 'nywojservice@163.com',
-            pass: 'OJCFMGSMMFNBEOOA'
+            pass: '123'
         }
     })
 
@@ -234,12 +231,12 @@ exports.getUserPublicInfo = (req, res) => {
 exports.setUserMotto = async (req, res) => {
     const motto = req.body.data;
     if (motto.length > 200) {
-        res.status(202).send({ message: "个签长度应在200以内" });
+        return res.status(202).send({ message: "个签长度应在200以内" });
     }
     db.query("UPDATE userInfo SET motto=? WHERE uid=?", [motto, req.session.uid], (err, data) => {
         if (err) {
             return res.status(202).send({ message: err.message });
         }
-        res.status(200).send({ message: 'success' });
+        return res.status(200).send({ message: 'success' });
     });
 }

@@ -17,7 +17,7 @@ exports.all = (req, res) => {
             message: err.message
         });
         for (let i = 0; i < data.length; i++) data[i].time = Format(data[i].time);
-        res.status(200).send({
+        return res.status(200).send({
             data: data
         });
     })
@@ -34,11 +34,11 @@ exports.add = (req, res) => {
         });
         if (data.affectedRows > 0) {
             db.query("UPDATE userInfo SET clickCnt=clickCnt+1 WHERE uid=?", [uid]);
-            res.status(200).send({
+            return res.status(200).send({
                 message: 'success',
             })
         } else {
-            res.status(202).send({
+            return res.status(202).send({
                 message: 'error',
             })
         }
@@ -53,7 +53,7 @@ exports.getClickCnt = (req, res) => {
         if (err) return res.status(202).send({
             message: err.message
         });
-        res.status(200).send({ clickCnt: data[0].clickCnt });
+        return res.status(200).send({ clickCnt: data[0].clickCnt });
     })
 }
 
@@ -63,7 +63,7 @@ exports.getRankInfo = (req, res) => {
         if (err) return res.status(202).send({
             message: err.message
         });
-        res.status(200).send({
+        return res.status(200).send({
             data: data
         });
     })

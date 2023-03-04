@@ -26,6 +26,8 @@ app.use((req, res, next) => {
     } else {
         if (req.url === '/api/user/login' ||
             req.url === '/api/user/reg' ||
+            req.url === '/api/user/setUserEmail' ||
+            req.url === '/api/user/sendEmailVertifyCode' ||
             req.url === '/api/user/getUserInfo')
             next();
         else res.status(404).end('404 Not Found');
