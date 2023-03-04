@@ -17,7 +17,8 @@
     </el-sub-menu>
     <el-button style=" height: 55px; width: 80px; padding: 0; margin: 0;" text
       @click="dialogVisible = true">打赏</el-button>
-    <el-dialog v-model="dialogVisible" title="实施可持续发展战略" width="400px" style="border-radius: 10px" class="pd">
+    <el-dialog v-model="dialogVisible" title="实施可持续发展战略" width="400px" style="border-radius: 10px;text-align: center;"
+      class="pd">
       <el-divider />
       <div style="height: 40px">
         <el-select v-model="money" class="m-2" placeholder="Select" style="width: 110px">
