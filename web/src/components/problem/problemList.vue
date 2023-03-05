@@ -74,10 +74,12 @@ export default {
     addProblem() {
       axios.post('/api/problem/createProblem').then(res => {
         if (res.status === 200) {
+          this.$router.push('/problem/edit/' + res.data.pid);
+        } else {
           ElMessage({
-            message: '添加题目成功',
-            type: 'success',
-            duration: 1000,
+            message: '添加题目失败' + res.data.message,
+            type: 'error',
+            duration: 2000,
           });
         }
       });

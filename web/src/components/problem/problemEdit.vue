@@ -1,5 +1,5 @@
 <template>
-  <el-row style="margin: auto;width: 1500px;">
+  <el-row style="margin: auto;max-width: 1500px;min-width: 800px;">
     <el-col :span="16">
       <el-card class="box-card" shadow="hover">
         <template #header>
@@ -71,7 +71,7 @@ export default {
         }
         else {
           ElMessage({
-            message: res.message,
+            message: res.data.message,
             type: 'error',
             duration: 2000,
           });

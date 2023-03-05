@@ -11,13 +11,13 @@ const Format = (now) => {
 
 exports.createProblem = (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
-  db.query('INSERT INTO problem(title,publisher,time) VALUES (?,?,?)', ["请输入题目标题", req.session.uid, new Date()], (err, data) => {
+  db.query('INSERT INTO problem(title,description,publisher,time) VALUES (?,?,?,?)', ["请输入题目标题", "请输入题目描述", req.session.uid, new Date()], (err, data) => {
     if (err) return res.status(202).send({
       message: err.message
     });
     if (data.affectedRows > 0) {
       return res.status(200).send({
-        message: 'success',
+        pid: data.insertId
       })
     } else {
       return res.status(202).send({
