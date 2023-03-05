@@ -27,9 +27,16 @@ router.post('/api/admin/setBlock', admin.setBlock);
 router.post('/api/admin/updateUserInfo', admin.updateUserInfo);
 
 const problem = require('./api/problem');
+
 router.post('/api/problem/createProblem', problem.createProblem);
 router.post('/api/problem/getProblemList', problem.getProblemList);
 router.post('/api/problem/getProblemInfo', problem.getProblemInfo);
 router.post('/api/problem/updateProblem', problem.updateProblem);
+
+const judge = require('./api/judge');
+
+router.post('/api/judge/submit', judge.submit);
+router.post('/api/judge/getSubmissionList', judge.getSubmissionList);
+router.post('/api/judge/getSubmissionInfo', judge.getSubmissionInfo);
 
 module.exports = router;

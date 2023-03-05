@@ -9,6 +9,8 @@ import userInfo from '@/components/user/userInfo.vue'
 import problemList from '@/components/problem/problemList.vue'
 import problemView from '@/components/problem/problemView.vue'
 import problemEdit from '@/components/problem/problemEdit.vue'
+import submissionList from '@/components/submission/submissionList.vue'
+import submissionView from '@/components/submission/submissionView.vue'
 
 import userManage from "@/components/admin/userManage"
 
@@ -67,8 +69,17 @@ const router = createRouter({
             title: '题目管理'
         },
         path: '/problem/edit/:pid', component: problemEdit,
-    }
-    ],
+    }, {
+        meta: {
+            title: '提交记录'
+        },
+        path: '/submission', component: submissionList,
+    }, {
+        meta: {
+            title: '提交记录详情'
+        },
+        path: '/submission/:sid', component: submissionView,
+    }],
     caseSensitive: true
 });
 router.afterEach((to) => {

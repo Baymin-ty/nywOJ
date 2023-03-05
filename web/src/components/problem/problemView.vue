@@ -14,7 +14,7 @@
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            题目信息
+            题目信息 (提交: {{ problemInfo.submitCnt }} AC: {{ problemInfo.acCnt }})
           </div>
         </template>
         <el-descriptions direction="vertical" :column="1" border>
@@ -31,16 +31,23 @@
           </el-descriptions-item>
         </el-descriptions>
         <el-divider style="margin-top: 20px; margin-bottom: 20px;" />
-        <el-button type="primary">提交代码</el-button>
+        <el-button type="primary" @click="this.dialogVisible = true">提交代码</el-button>
         <el-button v-show="this.gid > 1" type="danger"
           @click="this.$router.push('/problem/edit/' + problemInfo.pid)">题目管理</el-button>
       </el-card>
+      <el-dialog v-model="dialogVisible" title="提交代码"
+        style="width:1000px;height: 600px;border-radius: 10px; text-align: center;">
+        <el-input v-model="code" type="textarea" :rows="20" resize="none" />
+        <el-divider style="margin-top: 10px; margin-bottom: 10px;" />
+        <el-button type="primary" @click="submit" style="margin: 10px;">确认提交</el-button>
+      </el-dialog>
     </el-col>
   </el-row>
 </template>
 
 <script>
 import axios from 'axios';
+import { ElMessage } from 'element-plus'
 import store from '@/sto/store';
 
 export default {
@@ -48,7 +55,27 @@ export default {
   data() {
     return {
       gid: 1,
+      dialogVisible: false,
       problemInfo: [],
+      code: '',
+    }
+  },
+  methods: {
+    submit() {
+      axios.post('/api/judge/submit', {
+        pid: this.pid,
+        code: this.code
+      }).then(res => {
+        if (res.status === 200) {
+          this.$router.push('/submission/' + res.data.sid);
+        } else {
+          ElMessage({
+            message: '提交失败' + res.data.message,
+            type: 'error',
+            duration: 2000,
+          });
+        }
+      });
     }
   },
   async mounted() {
@@ -67,10 +94,6 @@ export default {
 .box-card {
   margin: 10px;
   text-align: left;
-}
-
-.box-card {
-  margin: 10px;
 }
 
 .title {

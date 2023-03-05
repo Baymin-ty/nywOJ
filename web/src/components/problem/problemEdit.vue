@@ -15,7 +15,7 @@
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            题目信息
+            题目信息 (提交: {{ problemInfo.submitCnt }} AC: {{ problemInfo.acCnt }})
           </div>
         </template>
         <el-descriptions direction="vertical" :column="1" border>
