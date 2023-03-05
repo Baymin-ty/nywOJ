@@ -18,7 +18,7 @@
       </el-table-column>
       <el-table-column prop="judgeResult" label="评测状态" width="150px">
         <template #default="scope">
-          <span style="cursor: pointer;" @click="this.$router.push('/submission/' + scope.row.sid)">
+          <span>
             {{ scope.row.judgeResult }}
           </span>
         </template>
