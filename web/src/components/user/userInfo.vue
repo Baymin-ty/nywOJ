@@ -56,7 +56,7 @@ const Format = (now) => {
   return now.getFullYear() + '-' + fill(now.getMonth() + 1) + '-' + fill(now.getDate()) + ' ' + fill(now.getHours()) + ':' + fill(now.getMinutes()) + ':' + fill(now.getSeconds());
 }
 export default {
-  name: "userLogin",
+  name: "userInfo",
   data() {
     return {
       uid: 0,
@@ -90,7 +90,7 @@ export default {
     },
   },
   async mounted() {
-    this.id = this.$route.params.id;
+    this.id = this.$route.params.uid;
     this.uid = store.state.uid;
     await axios.post('/api/user/getUserPublicInfo', {
       id: this.id

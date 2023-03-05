@@ -10,6 +10,10 @@ export default {
       text: '# 123\n123$1$\n2 $12$ 3',
     }
   },
+  mounted() {
+    this.pid = this.$route.params.pid;
+
+  }
 }
 </script>
 

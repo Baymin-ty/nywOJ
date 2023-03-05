@@ -1,13 +1,14 @@
 <template>
-  <el-menu class="el-menu-demo" mode="horizontal" :default-active="this.$router.path" :router="true" height="60px">
-    <img style="width: 40px; height: 40px; margin-left: 30px; margin-right: 30px; margin-top: 5px; border-radius: 5px"
-      src="../assets/icon.png">
+  <el-menu class="el-menu-demo" mode="horizontal" :default-active="this.$router.path" :router="true">
+    <el-menu-item index="/rabbit" style="height: auto;">
+      <img style="width: 40px; height: 40px; margin-top: 5px; border-radius: 5px" src="../assets/icon.png">
+    </el-menu-item>
     <el-menu-item index="/">首页</el-menu-item>
-    <el-menu-item index="/rank">排名</el-menu-item>
-    <el-menu-item index="/data">统计</el-menu-item>
-    <el-menu-item v-show="!login" index="/user/login">登录</el-menu-item>
-    <el-menu-item v-show="!login" index="/user/reg">注册</el-menu-item>
-    <el-sub-menu index="/user/myself" v-show="login">
+    <el-menu-item index="/problem">题库</el-menu-item>
+    <el-menu-item index="/submission">提交记录</el-menu-item>
+    <el-menu-item v-show="!uid" index="/user/login">登录</el-menu-item>
+    <el-menu-item v-show="!uid" index="/user/reg">注册</el-menu-item>
+    <el-sub-menu index="/user/myself" v-show="uid">
       <template #title>{{ this.name }}</template>
       <a :href="/user/ + this.uid">
         <el-menu-item :width="100" index="/user/myself"> 个人主页 </el-menu-item>
@@ -40,7 +41,6 @@ export default {
   name: "myHeader",
   data() {
     return {
-      login: 0,
       uid: 0,
       name: "/",
       gid: 1,
@@ -71,7 +71,6 @@ export default {
       this.name = res.data.name;
       this.uid = res.data.uid;
       this.gid = res.data.gid;
-      this.login = res.data.uid;
     });
   },
 }
@@ -102,12 +101,7 @@ export default {
   font-size: 10px;
 }
 
-a {
-  color: #2c3e50;
-  background: 0 0;
-  text-decoration: none;
-  outline: 0;
-  cursor: pointer;
-  font-weight: 500;
+.el-menu {
+  justify-content: center;
 }
 </style>

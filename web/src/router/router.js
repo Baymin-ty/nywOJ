@@ -1,12 +1,13 @@
 import { createRouter, createWebHistory } from "vue-router";
 
-import cuteRabbit from '@/components/cuteRabbit.vue';
-import rabbitRankList from '@/components/cuteRankList.vue';
-import rabbitClickData from '@/components/rabbitClickData.vue'
-import userLogin from "@/components/userLogin.vue";
-import userReg from "@/components/userReg.vue";
-import userInfo from '@/components/userInfo.vue'
-import problemView from '@/components/problemView.vue'
+import indexPage from '@/components/indexPage.vue';
+
+import cuteRabbit from '@/components/rabbit/rabbitPage.vue';
+import userLogin from "@/components/user/userLogin.vue";
+import userReg from "@/components/user/userReg.vue";
+import userInfo from '@/components/user/userInfo.vue'
+import problemList from '@/components/problem/problemList.vue'
+import problemView from '@/components/problem/problemView.vue'
 
 import userManage from "@/components/admin/userManage"
 
@@ -19,21 +20,12 @@ const per = [];
 per["/admin/usermanage"] = 3;
 
 const router = createRouter({
-    history: createWebHistory(), routes: [{
+    history: createWebHistory(),
+    routes: [{
         meta: {
             title: '可爱兔兔'
         },
-        path: '/', component: cuteRabbit,
-    }, {
-        meta: {
-            title: '兔兔排行榜'
-        },
-        path: '/rank', component: rabbitRankList,
-    }, {
-        meta: {
-            title: '兔兔统计'
-        },
-        path: '/data', component: rabbitClickData,
+        path: '/rabbit', component: cuteRabbit,
     }, {
         meta: {
             title: '用户登录'
@@ -53,13 +45,24 @@ const router = createRouter({
         meta: {
             title: '用户信息'
         },
-        path: '/user/:id', component: userInfo,
+        path: '/user/:uid', component: userInfo,
+    }, {
+        meta: {
+            title: '题目列表'
+        },
+        path: '/problem', component: problemList,
     }, {
         meta: {
             title: '题目'
         },
-        path: '/problem', component: problemView,
-    }],
+        path: '/problem/:pid', component: problemView,
+    }, {
+        meta: {
+            title: '首页'
+        },
+        path: '/', component: indexPage,
+    }
+    ],
     caseSensitive: true
 });
 router.afterEach((to) => {

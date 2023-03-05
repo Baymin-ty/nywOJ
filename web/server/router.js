@@ -26,4 +26,8 @@ router.post('/api/admin/getUserInfoList', admin.getUserInfoList);
 router.post('/api/admin/setBlock', admin.setBlock);
 router.post('/api/admin/updateUserInfo', admin.updateUserInfo);
 
+const problem = require('./api/problem');
+router.post('/api/problem/createProblem', problem.createProblem);
+
+
 module.exports = router;

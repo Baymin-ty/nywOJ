@@ -1,22 +1,19 @@
 <template>
-  <el-row>
-    <el-col :span="12" style="min-width: 400px">
+  <el-row style="width: 1200px; margin: 0 auto;">
+    <el-col :span="10" style="min-width: 400px">
       <el-card class="box-card" shadow="hover" style="text-align: center;">
         <template #header>
           <div class="card-header">
             Tiddar (uid: {{ this.uid }} 用户名: {{ this.name }})
-            <el-switch v-model="show_insert_info" size="large" class="ml-2" inline-prompt
-              style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949" active-text="开启添加成功通知"
-              inactive-text="关闭添加成功通知" />
           </div>
         </template>
         <el-button style="height: 500px; width: 400px" @click="fun" round :disabled="!finished">
-          <img class="round" alt="Rabbit" src="../assets/rabbit.jpg">
+          <img class="round" alt="Rabbit" src="@/assets/rabbit.jpg">
         </el-button>
-        <h1 class="rainbow"> 你戳了可爱兔兔 {{ cnt }} 下</h1>
+        <h1 class="rainbow"> 你戳了兔兔 {{ cnt }} 下</h1>
       </el-card>
     </el-col>
-    <el-col :span="12" style="min-width: 400px">
+    <el-col :span="14" style="min-width: 400px">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -29,7 +26,12 @@
           <el-table-column prop="id" label="#" width="100px" />
           <el-table-column prop="time" label="点击时间" width="180px" />
           <el-table-column prop="uid" label="uid" width="100px" />
-          <el-table-column prop="name" label="用户名" width="150px" />
+          <el-table-column prop="name" label="用户名" width="150px">
+            <template #default="scope">
+              <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)"> {{ scope.row.name
+              }}</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="ip" label="IP" width="auto" />
         </el-table>
       </el-card>
@@ -49,7 +51,6 @@ export default {
     return {
       cnt: "/",
       finished: 0,
-      show_insert_info: 0,
       info: [],
       uid: 0,
       name: "请登录",
@@ -90,13 +91,11 @@ export default {
     add() {
       axios.post('/api/rabbit/add').then(res => {
         if (res.status === 200) {
-          if (this.show_insert_info) {
-            ElMessage({
-              message: '添加点击信息成功',
-              type: 'success',
-              duration: 1000,
-            });
-          }
+          ElMessage({
+            message: '添加点击信息成功',
+            type: 'success',
+            duration: 1000,
+          });
         } else {
           ElMessage({
             message: '添加点击信息失败' + res.data.message,
@@ -130,20 +129,7 @@ export default {
   mounted: function () {
     this.uid = store.state.uid;
     this.name = store.state.name;
-    if (this.uid === 0 || this.name === "/") {
-      ElMessage({
-        message: '获取个人信息异常',
-        type: 'warning',
-        duration: 2000,
-      });
-    } else {
-      ElMessage({
-        message: '获取个人信息成功',
-        type: 'success',
-        duration: 1000,
-      });
-      this.getCnt();
-    }
+    this.getCnt();
     this.all();
   },
 }
@@ -158,7 +144,7 @@ export default {
 
 .rainbow {
   margin: 10px;
-  font-size: 40px;
+  font-size: 35px;
   background-image: linear-gradient(92deg, rgb(38, 243, 93) 0%, rgb(254, 171, 58) 100%);
   color: rgb(38, 82, 243);
   background-clip: text;

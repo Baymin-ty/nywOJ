@@ -12,12 +12,12 @@
         <el-table-column label="#" type="index" width="80px" />
         <el-table-column prop="uid" label="uid" width="100px">
           <template #default="scope">
-            <a :href="/user/ + scope.row.uid"> {{ scope.row.uid }}</a>
+            <span> {{ scope.row.uid }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="name" label="用户名" width="150px">
           <template #default="scope">
-            <span> {{ scope.row.name }}</span>
+            <span @click="this.$router.push('/user/' + scope.row.uid)"> {{ scope.row.name }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="clickCnt" label="点击次数" width="130px" />
@@ -52,11 +52,6 @@ export default {
       axios.post('/api/rabbit/getRankInfo').then(res => {
         this.info = res.data.data;
         this.finished = true;
-        ElMessage({
-          message: '获取最新排名成功',
-          type: 'success',
-          duration: 1000,
-        });
       }).catch(err => {
         this.finished = true;
         ElMessage({
@@ -100,13 +95,5 @@ export default {
   justify-content: space-between;
   align-items: center;
   height: 20px;
-}
-
-a {
-  color: #2d8cf0 !important;
-  background: 0 0;
-  text-decoration: none;
-  outline: 0;
-  cursor: pointer;
 }
 </style>

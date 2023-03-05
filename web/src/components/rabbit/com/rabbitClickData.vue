@@ -36,11 +36,6 @@ export default {
           this.clickCnt[i] = res.data.data[i].clickCnt;
           this.userCnt[i] = res.data.data[i].userCnt;
         }
-        ElMessage({
-          message: '获取点击统计成功',
-          type: 'success',
-          duration: 1000,
-        });
       } else ElMessage({
         message: '请稍后再试',
         type: 'error',

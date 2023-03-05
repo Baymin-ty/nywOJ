@@ -6,21 +6,16 @@
     <el-main>
       <router-view />
     </el-main>
-    <!--      <el-footer>-->
-    <!--        <myFooter/>-->
-    <!--      </el-footer>-->
   </el-container>
 </template>
 
 <script>
 import myHeader from './components/myHeader.vue'
-// import myFooter from './components/myFooter.vue'
 
 export default {
   name: 'App',
   components: {
     myHeader,
-    // myFooter,
   },
 }
 </script>
@@ -39,8 +34,13 @@ export default {
 }
 
 .el-header {
+  padding: 0;
   position: sticky;
   top: 0;
   z-index: 5;
+}
+
+body {
+  margin-top: 0;
 }
 </style>

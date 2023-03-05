@@ -12,9 +12,10 @@
       <el-table :data="info" border height="600px" :cell-style="{ textAlign: 'center' }"
         :header-cell-style="{ textAlign: 'center' }">
         <el-table-column prop="uid" label="uid" width="80px" />
-        <el-table-column prop="name" label="用户名" width="250px">
+        <el-table-column prop="name" label="用户名" width="150px">
           <template #default="scope">
-            <span v-show="!scope.row.edit"> {{ scope.row.name }} </span>
+            <span style="cursor: pointer;" v-show="!scope.row.edit" @click="this.$router.push('/user/' + scope.row.uid)">
+              {{ scope.row.name }}</span>
             <el-input v-show="scope.row.edit" size="small" style="width:150px" v-model="this.tempInfo.name" />
           </template>
         </el-table-column>
