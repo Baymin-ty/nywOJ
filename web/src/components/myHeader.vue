@@ -10,7 +10,7 @@
     <el-menu-item v-show="!uid" index="/user/reg">注册</el-menu-item>
     <el-sub-menu index="/user/myself" v-show="uid">
       <template #title>{{ this.name }}</template>
-      <a :href="/user/ + this.uid">
+      <a :href="/user/ + this.uid" style="text-decoration: none">
         <el-menu-item :width="100" index="/user/myself"> 个人主页 </el-menu-item>
       </a>
       <el-menu-item :width="100" v-show="gid === 3" index="/admin/usermanage">用户管理</el-menu-item>

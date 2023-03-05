@@ -8,6 +8,7 @@ import userReg from "@/components/user/userReg.vue";
 import userInfo from '@/components/user/userInfo.vue'
 import problemList from '@/components/problem/problemList.vue'
 import problemView from '@/components/problem/problemView.vue'
+import problemEdit from '@/components/problem/problemEdit.vue'
 
 import userManage from "@/components/admin/userManage"
 
@@ -61,6 +62,11 @@ const router = createRouter({
             title: '首页'
         },
         path: '/', component: indexPage,
+    }, {
+        meta: {
+            title: '题目管理'
+        },
+        path: '/problem/edit/:pid', component: problemEdit,
     }
     ],
     caseSensitive: true
@@ -75,6 +81,7 @@ router.beforeEach((to, from, next) => {
     }).then(res => {
         store.state.uid = res.data.uid;
         store.state.name = res.data.name;
+        store.state.gid = res.data.gid;
         if (to.path === '/user/reg' || to.path === '/user/login')
             next();
         else if (res.data.uid) {

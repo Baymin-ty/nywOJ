@@ -43,4 +43,8 @@ export default {
 body {
   margin-top: 0;
 }
+
+.card-header {
+  font-weight: bolder;
+}
 </style>

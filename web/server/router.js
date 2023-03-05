@@ -28,6 +28,8 @@ router.post('/api/admin/updateUserInfo', admin.updateUserInfo);
 
 const problem = require('./api/problem');
 router.post('/api/problem/createProblem', problem.createProblem);
-
+router.post('/api/problem/getProblemList', problem.getProblemList);
+router.post('/api/problem/getProblemInfo', problem.getProblemInfo);
+router.post('/api/problem/updateProblem', problem.updateProblem);
 
 module.exports = router;

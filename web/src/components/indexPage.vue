@@ -64,9 +64,10 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 .box-card {
   margin: 10px;
+  text-align: center;
 }
 
 .card-header {

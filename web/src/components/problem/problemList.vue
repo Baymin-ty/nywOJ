@@ -3,27 +3,35 @@
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          点击数排名
-          <el-button type="primary" :disabled="!finished" @click="all">更新排名</el-button>
+          题目列表
+          <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
+            layout="total, prev, pager, next" :total="total"></el-pagination>
+          <el-button-group>
+            <el-button v-show="this.gid >= 2" type="success" @click="addProblem">添加题目</el-button>
+            <el-button type="primary" @click="all">刷新</el-button>
+          </el-button-group>
         </div>
       </template>
-      <el-table v-loading="!finished" :data="info" border height="600px" :row-class-name="tableRowClassName"
-        :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
-        <el-table-column label="#" type="index" width="80px" />
-        <el-table-column prop="uid" label="uid" width="100px">
+      <el-table :data="problemList" border height="600px" :header-cell-style="{ textAlign: 'center' }"
+        :cell-style="{ textAlign: 'center' }">
+        <el-table-column prop="pid" label="#" width="100px" />
+        <el-table-column prop="title" label="标题" width="auto">
           <template #default="scope">
-            <span> {{ scope.row.uid }}</span>
+            <span style="cursor: pointer;" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
+            }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="name" label="用户名" width="150px">
+        <el-table-column prop="status" label="AC/提交" width="150px">
           <template #default="scope">
-            <span @click="this.$router.push('/user/' + scope.row.uid)"> {{ scope.row.name }}</span>
+            <span> {{ scope.row.acCnt }} / {{ scope.row.submitCnt }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="clickCnt" label="点击次数" width="130px" />
-        <el-table-column :show-overflow-tooltip=true prop="motto" label="个性签名" width="auto">
+        <el-table-column prop="time" label="发布时间" width="200px" />
+        <el-table-column prop="publisher" label="出题人" width="120px">
           <template #default="scope">
-            <span> {{ scope.row.motto }} </span>
+            <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.publisherUid)">
+              {{ scope.row.publisher }}
+            </span>
           </template>
         </el-table-column>
       </el-table>
@@ -35,49 +43,48 @@
 import axios from "axios"
 import { ElMessage } from 'element-plus'
 import store from '@/sto/store'
-import { getNameColor } from '@/assets/common'
 
 export default {
-  name: 'cuteRank',
+  name: 'problemList',
   data() {
     return {
-      finished: 0,
-      uid: -1,
-      info: [],
+      problemList: [],
+      total: 0,
+      gid: 1,
+      currentPage: 1,
     }
   },
   methods: {
     all() {
-      this.finished = false;
-      axios.post('/api/rabbit/getRankInfo').then(res => {
-        this.info = res.data.data;
-        this.finished = true;
+      axios.post('/api/problem/getProblemList').then(res => {
+        this.problemList = res.data.data;
+        this.total = res.data.total;
       }).catch(err => {
-        this.finished = true;
         ElMessage({
-          message: '获取最新排名失败' + err.message,
+          message: '获取题目列表失败' + err.message,
           type: 'error',
           duration: 2000,
         });
       });
     },
-    tableRowClassName(obj) {
-      return (obj.row.uid === this.uid ? 'success' : '');
+    handleCurrentChange(val) {
+      this.currentPage = val;
+      this.all();
     },
-    cellStyle({ row, columnIndex }) {
-      let style = {};
-      style['textAlign'] = 'center';
-      if (columnIndex === 2) {
-        style['font-weight'] = 500;
-        style['color'] = getNameColor(row.gid, row.clickCnt);
-        if (style['color'] === '#8e44ad')
-          style['font-weight'] = 900;
-      }
-      return style;
+    addProblem() {
+      axios.post('/api/problem/createProblem').then(res => {
+        if (res.status === 200) {
+          ElMessage({
+            message: '添加题目成功',
+            type: 'success',
+            duration: 1000,
+          });
+        }
+      });
     }
   },
   async mounted() {
-    this.uid = store.state.uid;
+    this.gid = store.state.gid;
     this.all();
   }
 }

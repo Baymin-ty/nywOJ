@@ -1,7 +1,7 @@
 const db = require('../db/index');
 
 exports.getUserInfoList = (req, res) => {
-  const pageId = req.body.pageId,
+  let pageId = req.body.pageId,
     pageSize = 20;
   if (!pageId) pageId = 1;
   let sql = "SELECT * FROM userInfo LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
