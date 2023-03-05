@@ -58,6 +58,7 @@ export default {
       this.problemInfo = res.data.data
       this.problemInfo.isPublic = res.data.data.isPublic ? true : false;
     });
+    document.title = "题目 — " + this.problemInfo.title;
   }
 }
 </script>
