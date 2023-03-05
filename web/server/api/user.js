@@ -2,7 +2,6 @@ const db = require('../db/index');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const mail = require('nodemailer');
-const { effect } = require('vue');
 
 exports.reg = async (req, res) => {
     const name = req.body.name;
