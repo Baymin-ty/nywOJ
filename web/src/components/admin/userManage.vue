@@ -9,7 +9,7 @@
           <el-button type="primary" @click="all">刷新</el-button>
         </div>
       </template>
-      <el-table :data="info" border height="600px" :cell-style="{ textAlign: 'center' }"
+      <el-table :data="info" height="600px" :cell-style="{ textAlign: 'center' }"
         :header-cell-style="{ textAlign: 'center' }">
         <el-table-column prop="uid" label="uid" width="80px" />
         <el-table-column prop="name" label="用户名" width="150px">

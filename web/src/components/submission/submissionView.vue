@@ -54,7 +54,7 @@
             测试点详情（别等啦，评测机没写呢）
           </div>
         </template>
-        <el-table :data="judgeInfo" border height="600px" :row-class-name="tableRowClassName" :cell-style="cellStyle"
+        <el-table :data="judgeInfo" height="600px" :row-class-name="tableRowClassName" :cell-style="cellStyle"
           :header-cell-style="{ textAlign: 'center' }">
         </el-table>
       </el-card>

@@ -61,3 +61,37 @@ exports.updateUserInfo = (req, res) => {
     }
   })
 }
+
+exports.addAnnouncement = (req, res) => {
+  db.query('INSERT INTO announcement(title,description,weight,time) VALUES (?,?,?,?)', ["请输入公告标题", "请输入公告描述", 10, new Date()], (err, data) => {
+    if (err) return res.status(202).send({
+      message: err.message
+    });
+    if (data.affectedRows > 0) {
+      return res.status(200).send({
+        aid: data.insertId
+      })
+    } else {
+      return res.status(202).send({
+        message: 'error',
+      })
+    }
+  });
+}
+
+exports.updateAnnouncement = (req, res) => {
+  const info = req.body.info;
+  const aid = info.aid, title = info.title, description = info.description, weight = info.weight;
+  db.query("UPDATE announcement SET title=?,description=?,weight=? WHERE aid=?", [title, description, weight, aid], (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (data.affectedRows > 0) {
+      return res.status(200).send({
+        message: 'sueecss'
+      });
+    } else {
+      return res.status(202).send({
+        message: 'failed'
+      });
+    }
+  })
+}

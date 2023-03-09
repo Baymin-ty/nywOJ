@@ -7,7 +7,16 @@
             公告栏
           </div>
         </template>
-        敬请期待
+        <el-table :data="announcements">
+          <el-table-column prop="title" label="标题" width="auto">
+            <template #default="scope">
+              <span style="cursor: pointer;" @click="this.$router.push('/announcement/' + scope.row.aid)"> {{
+                scope.row.aid
+              }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="time" label="日期" width="200px" />
+        </el-table>
       </el-card>
       <cuteRank />
     </el-col>
@@ -41,6 +50,7 @@ export default {
   data() {
     return {
       motto: '',
+      announcements: [],
     }
   },
   methods: {
@@ -48,10 +58,16 @@ export default {
       axios.post('https://v1.hitokoto.cn/?c=a').then(res => {
         this.motto = res.data
       });
-    }
+    },
+    getAnnouncements() {
+      axios.post('/api/common/getAnnouncementList').then(res => {
+        this.announcements = res.data.data;
+      });
+    },
   },
   mounted() {
     this.updateHitokoto();
+    this.getAnnouncements();
   },
 }
 </script>

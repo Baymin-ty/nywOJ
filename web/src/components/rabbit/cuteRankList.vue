@@ -7,7 +7,7 @@
           <el-button type="primary" :disabled="!finished" @click="all">更新排名</el-button>
         </div>
       </template>
-      <el-table v-loading="!finished" :data="info" border height="600px" :row-class-name="tableRowClassName"
+      <el-table v-loading="!finished" :data="info" height="600px" :row-class-name="tableRowClassName"
         :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
         <el-table-column label="#" type="index" width="80px" />
         <el-table-column prop="name" label="用户名" width="150px">

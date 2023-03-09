@@ -11,7 +11,7 @@
           </el-button-group>
         </div>
       </template>
-      <el-table :data="submissionList" border height="600px" :header-cell-style="{ textAlign: 'center' }"
+      <el-table :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }"
         :cell-style="{ textAlign: 'center' }">
         <el-table-column prop="sid" label="#" width="100px" />
         <el-table-column prop="title" label="题目" width="200px">

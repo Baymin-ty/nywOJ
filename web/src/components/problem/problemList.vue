@@ -12,7 +12,7 @@
           </el-button-group>
         </div>
       </template>
-      <el-table :data="problemList" border height="600px" :header-cell-style="{ textAlign: 'center' }"
+      <el-table :data="problemList" height="600px" :header-cell-style="{ textAlign: 'center' }"
         :cell-style="{ textAlign: 'center' }">
         <el-table-column prop="pid" label="#" width="100px" />
         <el-table-column prop="title" label="标题" width="auto">

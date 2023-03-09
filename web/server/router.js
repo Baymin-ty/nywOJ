@@ -25,6 +25,8 @@ const admin = require('./api/admin');
 router.post('/api/admin/getUserInfoList', admin.getUserInfoList);
 router.post('/api/admin/setBlock', admin.setBlock);
 router.post('/api/admin/updateUserInfo', admin.updateUserInfo);
+router.post('/api/admin/addAnnouncement', admin.addAnnouncement);
+router.post('/api/admin/updateAnnouncement', admin.updateAnnouncement);
 
 const problem = require('./api/problem');
 
@@ -38,5 +40,9 @@ const judge = require('./api/judge');
 router.post('/api/judge/submit', judge.submit);
 router.post('/api/judge/getSubmissionList', judge.getSubmissionList);
 router.post('/api/judge/getSubmissionInfo', judge.getSubmissionInfo);
+
+const common = require('./api/common');
+
+router.post('/api/common/getAnnouncementList', common.getAnnouncementList);
 
 module.exports = router;

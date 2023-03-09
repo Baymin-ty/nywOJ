@@ -21,7 +21,7 @@
             <el-button type="primary" :disabled="!finished" @click="all">更新信息</el-button>
           </div>
         </template>
-        <el-table v-loading="!finished" :data="info" border height="600px" :row-class-name="tableRowClassName"
+        <el-table v-loading="!finished" :data="info" height="600px" :row-class-name="tableRowClassName"
           :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
           <el-table-column prop="id" label="#" width="100px" />
           <el-table-column prop="time" label="点击时间" width="180px" />
