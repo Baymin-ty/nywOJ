@@ -9,14 +9,7 @@
         </template>
         敬请期待
       </el-card>
-      <el-card class="box-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            排行榜
-          </div>
-        </template>
-        施工中...
-      </el-card>
+      <cuteRank />
     </el-col>
     <el-col :span="8" style="min-width: 300px;">
       <el-card class="box-card" shadow="hover">
@@ -29,23 +22,22 @@
         <div style="font-size: 14px; "> {{ motto.hitokoto }} </div>
         <div style="font-size: 12px; color: grey; float: right;margin: 10px;"> from {{ motto.from }} </div>
       </el-card>
-      <el-card class="box-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            最新题目
-          </div>
-        </template>
-        施工中...
-      </el-card>
+      <rabbitData />
     </el-col>
   </el-row>
 </template>
 
 <script>
 import axios from "axios";
+import cuteRank from '@/components/rabbit/cuteRankList.vue'
+import rabbitData from '@/components/rabbit/rabbitClickData.vue'
 
 export default {
   name: "myHeader",
+  components: {
+    rabbitData,
+    cuteRank,
+  },
   data() {
     return {
       motto: '',

@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import indexPage from '@/components/indexPage.vue';
 import NotFound from '@/components/NotFoundPage.vue'
 
-import cuteRabbit from '@/components/rabbit/rabbitPage.vue';
+import cuteRabbit from '@/components/rabbit/cuteRabbit.vue';
 import userLogin from "@/components/user/userLogin.vue";
 import userReg from "@/components/user/userReg.vue";
 import userInfo from '@/components/user/userInfo.vue'

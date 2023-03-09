@@ -95,12 +95,17 @@ export default {
     await axios.post('/api/user/getUserPublicInfo', {
       id: this.id
     }).then((res) => {
-      this.info = res.data.info;
-      this.info.reg_time = Format(new Date(this.info.reg_time));
-      this.info.login_time = Format(new Date(this.info.login_time));
-      if (this.info.uid === this.uid) this.newMotto = this.info.motto;
-      if (!this.info.motto) {
-        this.info.motto = "Ta暂时没有设置个签噢"
+      if (res.data.info) {
+        this.info = res.data.info;
+        this.info.reg_time = Format(new Date(this.info.reg_time));
+        this.info.login_time = Format(new Date(this.info.login_time));
+        if (this.info.uid === this.uid) this.newMotto = this.info.motto;
+        if (!this.info.motto) {
+          this.info.motto = "Ta暂时没有设置个签噢"
+        }
+      }
+      else {
+        this.$router.go(-1);
       }
     });
   }

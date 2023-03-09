@@ -1,6 +1,6 @@
 <template>
-  <el-row style="width: 1200px; margin: 0 auto;">
-    <el-col :span="10" style="min-width: 400px">
+  <el-row style="margin: auto;max-width: 1500px;min-width: 600px;">
+    <el-col :span="10" style="min-width: 500px">
       <el-card class="box-card" shadow="hover" style="text-align: center;">
         <template #header>
           <div class="card-header">
@@ -13,7 +13,7 @@
         <h1 class="rainbow"> 你戳了兔兔 {{ cnt }} 下</h1>
       </el-card>
     </el-col>
-    <el-col :span="14" style="min-width: 400px">
+    <el-col :span="14" style="min-width: 500px">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -23,10 +23,10 @@
         </template>
         <el-table v-loading="!finished" :data="info" border height="600px" :row-class-name="tableRowClassName"
           :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
-          <el-table-column prop="id" label="#" width="90px" />
+          <el-table-column prop="id" label="#" width="100px" />
           <el-table-column prop="time" label="点击时间" width="180px" />
           <el-table-column prop="uid" label="uid" width="80px" />
-          <el-table-column prop="name" label="用户名" width="140px">
+          <el-table-column prop="name" label="用户名" width="150px">
             <template #default="scope">
               <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)"> {{ scope.row.name
               }}</span>

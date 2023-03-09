@@ -10,14 +10,10 @@
       <el-table v-loading="!finished" :data="info" border height="600px" :row-class-name="tableRowClassName"
         :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
         <el-table-column label="#" type="index" width="80px" />
-        <el-table-column prop="uid" label="uid" width="100px">
-          <template #default="scope">
-            <span> {{ scope.row.uid }}</span>
-          </template>
-        </el-table-column>
         <el-table-column prop="name" label="用户名" width="150px">
           <template #default="scope">
-            <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)"> {{ scope.row.name }}</span>
+            <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)"> {{ scope.row.name
+            }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="clickCnt" label="点击次数" width="130px" />
@@ -67,7 +63,7 @@ export default {
     cellStyle({ row, columnIndex }) {
       let style = {};
       style['textAlign'] = 'center';
-      if (columnIndex === 2) {
+      if (columnIndex === 1) {
         style['font-weight'] = 500;
         style['color'] = getNameColor(row.gid, row.clickCnt);
         if (style['color'] === '#8e44ad')

@@ -51,7 +51,7 @@ export default {
     let clickCnt = chart.init(document.getElementById("clickCnt"));
     clickCnt.setOption({
       "grid": {
-        "left": 30,
+        "left": 10,
         "top": 60,
         "right": 10,
         "bottom": 50,
@@ -101,7 +101,7 @@ export default {
     let userCnt = chart.init(document.getElementById("userCnt"));
     userCnt.setOption({
       "grid": {
-        "left": 30,
+        "left": 10,
         "top": 60,
         "right": 10,
         "bottom": 50,
