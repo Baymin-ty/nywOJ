@@ -5,13 +5,14 @@
         <template #header>
           <div class="card-header">
             公告栏
+            <el-button type="danger" @click="addAnnouncement">添加公告</el-button>
           </div>
         </template>
         <el-table :data="announcements">
           <el-table-column prop="title" label="标题" width="auto">
             <template #default="scope">
               <span style="cursor: pointer;" @click="this.$router.push('/announcement/' + scope.row.aid)"> {{
-                scope.row.aid
+                scope.row.title
               }}</span>
             </template>
           </el-table-column>
@@ -40,6 +41,7 @@
 import axios from "axios";
 import cuteRank from '@/components/rabbit/cuteRankList.vue'
 import rabbitData from '@/components/rabbit/rabbitClickData.vue'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: "myHeader",
@@ -64,6 +66,19 @@ export default {
         this.announcements = res.data.data;
       });
     },
+    addAnnouncement() {
+      axios.post('/api/admin/addAnnouncement').then(res => {
+        if (res.status === 200) {
+          this.$router.push('/announcement/edit/' + res.data.aid);
+        } else {
+          ElMessage({
+            message: '添加公告失败' + res.data.message,
+            type: 'error',
+            duration: 2000,
+          });
+        }
+      });
+    }
   },
   mounted() {
     this.updateHitokoto();

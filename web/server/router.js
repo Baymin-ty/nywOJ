@@ -44,5 +44,6 @@ router.post('/api/judge/getSubmissionInfo', judge.getSubmissionInfo);
 const common = require('./api/common');
 
 router.post('/api/common/getAnnouncementList', common.getAnnouncementList);
+router.post('/api/common/getAnnouncementInfo', common.getAnnouncementInfo);
 
 module.exports = router;

@@ -1,43 +1,22 @@
 <template>
-  <el-row style="margin: auto;max-width: 1500px;min-width: 800px;">
-    <el-col :span="16">
+  <el-row style="margin: auto;max-width: 1500px;min-width: 600px;">
+    <el-col :span="24">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            <p class="title">#{{ problemInfo.pid }}、<el-input size="large" v-model="problemInfo.title"
-                style="width: 200px;" /></p>
+            <p class="title">
+              标题：<el-input v-model="announcementInfo.title" style="width: 200px;" />
+              权重：<el-input v-model="announcementInfo.weight" style="width: 80px;" />
+            </p>
+            <p class="time">{{ announcementInfo.time }}</p>
+            <el-button-group style="float: right;">
+              <el-button type="danger" @click="updateAnnouncement">更新公告</el-button>
+              <el-button type="primary"
+                @click="this.$router.push('/announcement/' + announcementInfo.aid)">返回公告</el-button>
+            </el-button-group>
           </div>
         </template>
-        <v-md-editor height="600px" v-model="problemInfo.description"></v-md-editor>
-      </el-card>
-    </el-col>
-    <el-col :span="8">
-      <el-card class="box-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            题目信息 (提交: {{ problemInfo.submitCnt }} AC: {{ problemInfo.acCnt }})
-          </div>
-        </template>
-        <el-descriptions direction="vertical" :column="1" border>
-          <el-descriptions-item label="时间限制">
-            <el-input v-model="problemInfo.timeLimit" style="width: 80px;" /> ms
-          </el-descriptions-item>
-          <el-descriptions-item label="空间限制">
-            <el-input v-model="problemInfo.memoryLimit" style="width: 80px;" /> MB
-          </el-descriptions-item>
-          <el-descriptions-item label="出题人">
-            <span style="cursor: pointer;" @click="this.$router.push('/user/' + problemInfo.publisherUid)"> {{
-              problemInfo.publisher
-            }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="发布时间"> {{ problemInfo.time }} </el-descriptions-item>
-          <el-descriptions-item label="是否公开">
-            <el-switch v-model="problemInfo.isPublic" size="large" active-text="公开" inactive-text="隐藏" />
-          </el-descriptions-item>
-        </el-descriptions>
-        <el-divider style="margin-top: 20px; margin-bottom: 20px;" />
-        <el-button type="primary" @click="this.$router.push('/problem/' + problemInfo.pid)">返回题目</el-button>
-        <el-button type="danger" @click="updateProblem">更新题目</el-button>
+        <v-md-editor height="600px" v-model="announcementInfo.description"></v-md-editor>
       </el-card>
     </el-col>
   </el-row>
@@ -49,22 +28,23 @@ import { ElMessage } from 'element-plus'
 import store from '@/sto/store';
 
 export default {
-  name: "announcementEdit",
+  name: "announcementView",
   data() {
     return {
+      aid: 0,
       gid: 1,
-      problemInfo: [],
+      announcementInfo: {},
     }
   },
   methods: {
-    updateProblem() {
-      axios.post('/api/problem/updateProblem', {
-        pid: this.problemInfo.pid,
-        info: this.problemInfo
+    updateAnnouncement() {
+      axios.post('/api/admin/updateAnnouncement', {
+        aid: this.announcementInfo.aid,
+        info: this.announcementInfo
       }).then(res => {
         if (res.status === 200) {
           ElMessage({
-            message: '更新题目成功',
+            message: '更新公告成功',
             type: 'success',
             duration: 1000,
           });
@@ -80,17 +60,18 @@ export default {
     }
   },
   async mounted() {
-    if (store.state.gid < 2) {
-      this.$router.push('/problem/' + this.$route.params.pid);
-      return;
-    }
-    this.pid = this.$route.params.pid;
-    await axios.post('/api/problem/getProblemInfo', { pid: this.pid }).then(res => {
-      this.problemInfo = res.data.data
-      if (!this.problemInfo.description) this.problemInfo.description = "请输入题目描述";
-      if (!this.problemInfo.title) this.problemInfo.title = "请输入题目标题";
-      this.problemInfo.isPublic = res.data.data.isPublic ? true : false;
+    this.aid = this.$route.params.aid;
+    this.gid = store.state.gid;
+    console.log(this.gid);
+    await axios.post('/api/common/getAnnouncementInfo', { aid: this.aid }).then(res => {
+      if (res.status === 200) {
+        this.announcementInfo = res.data.data
+      }
+      else {
+        this.$router.go(-1);
+      }
     });
+    document.title = "编辑公告";
   }
 }
 </script>
@@ -101,13 +82,16 @@ export default {
   text-align: left;
 }
 
-.box-card {
-  margin: 10px;
-}
-
 .title {
   text-align: center;
+  margin: 5px;
+  font-size: 15px;
+}
+
+.time {
+  text-align: center;
   margin: 0;
-  font-size: 30px;
+  font-size: 12px;
+  color: #708090;
 }
 </style>

@@ -1,11 +1,14 @@
 import { createRouter, createWebHistory } from "vue-router";
 
-import indexPage from '@/components/indexPage.vue';
+import indexPage from '@/components/indexPage.vue'
 import NotFound from '@/components/NotFoundPage.vue'
 
-import cuteRabbit from '@/components/rabbit/cuteRabbit.vue';
-import userLogin from "@/components/user/userLogin.vue";
-import userReg from "@/components/user/userReg.vue";
+import AnnouncementView from '@/components/announcement/announcementView.vue'
+import AnnouncementEdit from '@/components/announcement/announcementEdit.vue'
+
+import cuteRabbit from '@/components/rabbit/cuteRabbit.vue'
+import userLogin from "@/components/user/userLogin.vue"
+import userReg from "@/components/user/userReg.vue"
 import userInfo from '@/components/user/userInfo.vue'
 import problemList from '@/components/problem/problemList.vue'
 import problemView from '@/components/problem/problemView.vue'
@@ -84,6 +87,16 @@ const router = createRouter({
         path: '/:catchAll(.*)',
         name: '404',
         component: NotFound
+    }, {
+        meta: {
+            title: '公告'
+        },
+        path: '/announcement/:aid', component: AnnouncementView,
+    }, {
+        meta: {
+            title: '编辑公告'
+        },
+        path: '/announcement/edit/:aid', component: AnnouncementEdit,
     }],
     caseSensitive: true
 });

@@ -1,96 +1,46 @@
 <template>
   <el-row style="margin: auto;max-width: 1500px;min-width: 600px;">
-    <el-col :span="16">
+    <el-col :span="24">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            <p class="title">#{{ problemInfo.pid }}、{{ problemInfo.title }}</p>
+            <p class="title">{{ announcementInfo.title }}</p>
+            <p class="time">{{ announcementInfo.time }}</p>
+            <el-button v-show="this.gid === 3" type="danger" style="float: right;"
+              @click="this.$router.push('/announcement/edit/' + announcementInfo.aid)">编辑公告</el-button>
           </div>
         </template>
-        <v-md-preview :text="problemInfo.description"> </v-md-preview>
+        <v-md-preview :text="announcementInfo.description"> </v-md-preview>
       </el-card>
-    </el-col>
-    <el-col :span="8">
-      <el-card class="box-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            题目信息 (提交: {{ problemInfo.submitCnt }} AC: {{ problemInfo.acCnt }})
-          </div>
-        </template>
-        <el-descriptions direction="vertical" :column="1" border>
-          <el-descriptions-item label="时间限制"> {{ problemInfo.timeLimit }} ms</el-descriptions-item>
-          <el-descriptions-item label="空间限制"> {{ problemInfo.memoryLimit }} MB</el-descriptions-item>
-          <el-descriptions-item label="出题人">
-            <span style="cursor: pointer;" @click="this.$router.push('/user/' + problemInfo.publisherUid)"> {{
-              problemInfo.publisher
-            }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="发布时间"> {{ problemInfo.time }} </el-descriptions-item>
-          <el-descriptions-item label="是否公开">
-            <el-switch v-model="problemInfo.isPublic" disabled size="large" active-text="公开" inactive-text="隐藏" />
-          </el-descriptions-item>
-        </el-descriptions>
-        <el-divider style="margin-top: 20px; margin-bottom: 20px;" />
-        <el-button type="primary" @click="this.dialogVisible = true">提交代码</el-button>
-        <el-button v-show="this.gid > 1" type="danger"
-          @click="this.$router.push('/problem/edit/' + problemInfo.pid)">题目管理</el-button>
-      </el-card>
-      <el-dialog v-model="dialogVisible" title="提交代码"
-        style="width:1000px;height: 600px;border-radius: 10px; text-align: center;">
-        <el-input v-model="code" type="textarea" :rows="20" resize="none" />
-        <el-divider style="margin-top: 10px; margin-bottom: 10px;" />
-        <el-button type="primary" @click="submit" style="margin: 10px;">确认提交</el-button>
-      </el-dialog>
     </el-col>
   </el-row>
 </template>
 
 <script>
 import axios from 'axios';
-import { ElMessage } from 'element-plus'
 import store from '@/sto/store';
 
 export default {
   name: "announcementView",
   data() {
     return {
-      pid: 0,
+      aid: 0,
       gid: 1,
-      problemInfo: {},
-      code: '',
-    }
-  },
-  methods: {
-    submit() {
-      axios.post('/api/judge/submit', {
-        pid: this.pid,
-        code: this.code
-      }).then(res => {
-        if (res.status === 200) {
-          this.$router.push('/submission/' + res.data.sid);
-        } else {
-          ElMessage({
-            message: '提交失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
-        }
-      });
+      announcementInfo: {},
     }
   },
   async mounted() {
-    this.pid = this.$route.params.pid;
+    this.aid = this.$route.params.aid;
     this.gid = store.state.gid;
-    await axios.post('/api/problem/getProblemInfo', { pid: this.pid }).then(res => {
+    await axios.post('/api/common/getAnnouncementInfo', { aid: this.aid }).then(res => {
       if (res.status === 200) {
-        this.problemInfo = res.data.data
-        this.problemInfo.isPublic = res.data.data.isPublic ? true : false;
+        this.announcementInfo = res.data.data
       }
       else {
         this.$router.go(-1);
       }
     });
-    document.title = "题目 — " + this.problemInfo.title;
+    document.title = "公告 — " + this.announcementInfo.title;
   }
 }
 </script>
@@ -103,7 +53,14 @@ export default {
 
 .title {
   text-align: center;
+  margin: 5px;
+  font-size: 30px;
+}
+
+.time {
+  text-align: center;
   margin: 0;
-  font-size: 25px;
+  font-size: 12px;
+  color: #708090;
 }
 </style>
