@@ -54,8 +54,8 @@
             测试点详情（别等啦，评测机没写呢）
           </div>
         </template>
-        <el-table v-loading="!finished" :data="info" border height="600px" :row-class-name="tableRowClassName"
-          :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
+        <el-table :data="judgeInfo" border height="600px" :row-class-name="tableRowClassName" :cell-style="cellStyle"
+          :header-cell-style="{ textAlign: 'center' }">
         </el-table>
       </el-card>
     </el-col>
@@ -83,16 +83,29 @@ export default {
       gid: 1,
       table: [],
       submissionInfo: [],
+      judgeInfo: [],
       code: '',
     }
   },
+  methods: {
+    tableRowClassName() {
+
+    },
+    cellStyle() {
+
+    },
+  },
   async mounted() {
     this.sid = this.$route.params.sid;
-    document.title = "提交记录 — " + this.sid;
+    document.title = "提交记录";
     this.gid = store.state.gid;
     await axios.post('/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {
-      this.submissionInfo = res.data.data
-      this.table.push(this.submissionInfo);
+      if (res.status === 200) {
+        this.submissionInfo = res.data.data
+        this.table.push(this.submissionInfo);
+      } else {
+        this.$router.go(-1);
+      }
     });
     this.submissionInfo.code = "```c++\n" + this.submissionInfo.code + "\n```";
   }
@@ -103,11 +116,5 @@ export default {
 .box-card {
   margin: 10px;
   text-align: left;
-}
-
-.title {
-  text-align: center;
-  margin: 0;
-  font-size: 30px;
 }
 </style>

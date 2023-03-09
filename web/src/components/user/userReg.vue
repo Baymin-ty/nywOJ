@@ -19,7 +19,7 @@
           <div id="grecaptcha" v-show="recap"></div>
         </el-form-item>
         <el-form-item label="验证码" prop="pass" style="margin-left: 13px">
-          <el-input v-model="userInfo.vertifyCode" type="text" placeholder="通过上方人机验证后，自动发送验证码" />
+          <el-input v-model="userInfo.verifyCode" type="text" placeholder="通过上方人机验证后，自动发送验证码" />
         </el-form-item>
         <el-button type="primary" @click="submit" style="width: 250px;">验证</el-button>
       </el-form>
@@ -60,13 +60,13 @@ export default {
       },
       emailInfo: {
         email: "",
-        vertifyCode: "",
+        verifyCode: "",
       },
     }
   },
   methods: {
-    sendVertifyCode(retoken) {
-      axios.post('/api/user/sendEmailVertifyCode', {
+    sendVerifyCode(retoken) {
+      axios.post('/api/user/sendEmailVerifyCode', {
         email: this.userInfo.email,
         retoken: retoken,
       }).then(res => {
@@ -94,7 +94,7 @@ export default {
     },
     submit() {
       axios.post('/api/user/setUserEmail', {
-        code: this.userInfo.vertifyCode
+        code: this.userInfo.verifyCode
       }).then(res => {
         if (res.status === 200) {
           ElMessage({
@@ -150,7 +150,7 @@ export default {
       this.recap = 1;
       window.grecaptcha.render("grecaptcha", {
         sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
-        callback: this.sendVertifyCode
+        callback: this.sendVerifyCode
       });
     }
   },

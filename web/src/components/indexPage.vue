@@ -1,5 +1,5 @@
 <template>
-  <el-row style="width: 1200px;margin: auto;">
+  <el-row style="margin: auto;max-width: 1500px;min-width: 600px;">
     <el-col :span="16">
       <el-card class="box-card" shadow="hover">
         <template #header>
@@ -18,7 +18,7 @@
         施工中...
       </el-card>
     </el-col>
-    <el-col :span="8">
+    <el-col :span="8" style="min-width: 300px;">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -53,7 +53,7 @@ export default {
   },
   methods: {
     updateHitokoto() {
-      axios.get('https://v1.hitokoto.cn/?c=a').then(res => {
+      axios.post('https://v1.hitokoto.cn/?c=a').then(res => {
         this.motto = res.data
       });
     }

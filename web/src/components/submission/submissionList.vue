@@ -75,7 +75,9 @@ export default {
   },
   methods: {
     all() {
-      axios.post('/api/judge/getSubmissionList').then(res => {
+      axios.post('/api/judge/getSubmissionList', {
+        pageId: this.currentPage
+      }).then(res => {
         this.submissionList = res.data.data;
         this.total = res.data.total;
       }).catch(err => {

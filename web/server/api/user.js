@@ -132,7 +132,7 @@ exports.logout = (req, res) => {
     return res.status(200).send({ message: "success" });
 }
 
-exports.sendEmailVertifyCode = async (req, res) => {
+exports.sendEmailVerifyCode = async (req, res) => {
     const email = req.body.email;
     const retoken = req.body.retoken;
     let recapt = await axios.get("https://www.recaptcha.net/recaptcha/api/siteverify", {
@@ -152,13 +152,13 @@ exports.sendEmailVertifyCode = async (req, res) => {
             message: "请检查邮箱是否合法"
         })
     }
-    let vertifyCode = "";
+    let verifyCode = "";
     const mp = 'abcdefghijklmnpqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ1234567890';
-    for (let i = 0; i < 6; i++) vertifyCode += mp.charAt(Math.floor(Math.random() * 60));
+    for (let i = 0; i < 6; i++) verifyCode += mp.charAt(Math.floor(Math.random() * 60));
 
     const tim = new Date();
-    req.session.vertifyCode = {
-        code: vertifyCode,
+    req.session.verifyCode = {
+        code: verifyCode,
         expire: tim.getTime() + 3 * 60 * 1000,
         email: email
     }
@@ -177,7 +177,7 @@ exports.sendEmailVertifyCode = async (req, res) => {
         from: 'nywojservice@163.com',
         to: email,
         subject: 'nywOJ绑定邮箱验证码',
-        text: "你正在nywOJ进行绑定邮箱操作,验证码为 " + vertifyCode + "\n该验证码3分钟内有效。"
+        text: "你正在nywOJ进行绑定邮箱操作,验证码为 " + verifyCode + "\n该验证码3分钟内有效。"
     }
 
     transporter.sendMail(mailOptions, (err) => {
@@ -191,19 +191,19 @@ exports.sendEmailVertifyCode = async (req, res) => {
 
 exports.setUserEmail = async (req, res) => {
     const userCode = req.body.code;
-    if (!req.session.vertifyCode || !userCode) {
+    if (!req.session.verifyCode || !userCode) {
         return res.status(202).send({ message: "请确认信息完善且操作正确" });
     }
-    const vertifycode = req.session.vertifyCode.code;
-    const expire = req.session.vertifyCode.expire;
-    if (userCode !== vertifycode) {
+    const verifycode = req.session.verifyCode.code;
+    const expire = req.session.verifyCode.expire;
+    if (userCode !== verifycode) {
         return res.status(202).send({ message: "验证码错误" });
     }
     const time = new Date().getTime();
     if (time > expire) {
         return res.status(202).send({ message: "验证码超时" });
     }
-    db.query("SELECT email FROM userInfo WHERE email=?", [req.session.vertifyCode.email], (err, data) => {
+    db.query("SELECT email FROM userInfo WHERE email=?", [req.session.verifyCode.email], (err, data) => {
         if (err) return res.status(202).send({
             message: err.message
         });
@@ -211,7 +211,7 @@ exports.setUserEmail = async (req, res) => {
             message: "此邮箱已绑定过其他账号"
         });
         else {
-            req.session.vertifiedEmail = req.session.vertifyCode.email;
+            req.session.vertifiedEmail = req.session.verifyCode.email;
             return res.status(200).send({ message: "验证成功" });
         }
     })

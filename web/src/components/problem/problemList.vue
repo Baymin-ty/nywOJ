@@ -56,7 +56,9 @@ export default {
   },
   methods: {
     all() {
-      axios.post('/api/problem/getProblemList').then(res => {
+      axios.post('/api/problem/getProblemList', {
+        pageId: this.currentPage
+      }).then(res => {
         this.problemList = res.data.data;
         this.total = res.data.total;
       }).catch(err => {

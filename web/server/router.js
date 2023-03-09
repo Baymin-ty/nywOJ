@@ -14,7 +14,7 @@ const user = require('./api/user');
 router.post('/api/user/login', user.login);
 router.post('/api/user/reg', user.reg);
 router.post('/api/user/logout', user.logout);
-router.post('/api/user/sendEmailVertifyCode', user.sendEmailVertifyCode);
+router.post('/api/user/sendEmailVerifyCode', user.sendEmailVerifyCode);
 router.post('/api/user/setUserEmail', user.setUserEmail);
 router.post('/api/user/getUserInfo', user.getUserInfo);
 router.post('/api/user/getUserPublicInfo', user.getUserPublicInfo);

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import indexPage from '@/components/indexPage.vue';
+import NotFound from '@/components/NotFoundPage.vue'
 
 import cuteRabbit from '@/components/rabbit/rabbitPage.vue';
 import userLogin from "@/components/user/userLogin.vue";
@@ -79,6 +80,10 @@ const router = createRouter({
             title: '提交记录详情'
         },
         path: '/submission/:sid', component: submissionView,
+    }, {
+        path: '/:catchAll(.*)',
+        name: '404',
+        component: NotFound
     }],
     caseSensitive: true
 });

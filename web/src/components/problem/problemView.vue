@@ -54,9 +54,10 @@ export default {
   name: "problemView",
   data() {
     return {
+      pid: 0,
       gid: 1,
       dialogVisible: false,
-      problemInfo: [],
+      problemInfo: {},
       code: '',
     }
   },
@@ -82,8 +83,13 @@ export default {
     this.pid = this.$route.params.pid;
     this.gid = store.state.gid;
     await axios.post('/api/problem/getProblemInfo', { pid: this.pid }).then(res => {
-      this.problemInfo = res.data.data
-      this.problemInfo.isPublic = res.data.data.isPublic ? true : false;
+      if (res.status === 200) {
+        this.problemInfo = res.data.data
+        this.problemInfo.isPublic = res.data.data.isPublic ? true : false;
+      }
+      else {
+        this.$router.go(-1);
+      }
     });
     document.title = "题目 — " + this.problemInfo.title;
   }
@@ -99,6 +105,6 @@ export default {
 .title {
   text-align: center;
   margin: 0;
-  font-size: 30px;
+  font-size: 25px;
 }
 </style>

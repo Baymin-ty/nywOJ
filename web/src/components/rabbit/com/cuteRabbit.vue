@@ -23,10 +23,10 @@
         </template>
         <el-table v-loading="!finished" :data="info" border height="600px" :row-class-name="tableRowClassName"
           :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
-          <el-table-column prop="id" label="#" width="100px" />
+          <el-table-column prop="id" label="#" width="90px" />
           <el-table-column prop="time" label="点击时间" width="180px" />
-          <el-table-column prop="uid" label="uid" width="100px" />
-          <el-table-column prop="name" label="用户名" width="150px">
+          <el-table-column prop="uid" label="uid" width="80px" />
+          <el-table-column prop="name" label="用户名" width="140px">
             <template #default="scope">
               <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)"> {{ scope.row.name
               }}</span>

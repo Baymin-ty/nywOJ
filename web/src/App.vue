@@ -4,7 +4,7 @@
       <myHeader />
     </el-header>
     <el-main>
-      <router-view />
+      <router-view :key="$route.fullPath" />
     </el-main>
   </el-container>
 </template>
@@ -37,7 +37,11 @@ export default {
   padding: 0;
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 20;
+}
+
+.el-loading-mask {
+  z-index: 10;
 }
 
 body {

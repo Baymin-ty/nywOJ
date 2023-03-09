@@ -1,5 +1,5 @@
 <template>
-  <el-tabs v-model="activeName" style="width: 1200px; margin: 0 auto;">
+  <el-tabs v-model="activeName" style="margin: auto;max-width: 1200px;min-width: 600px;">
     <el-tab-pane label="可爱兔兔" name="first" :key="'first'">
       <child1 />
     </el-tab-pane>

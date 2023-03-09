@@ -1,5 +1,5 @@
 <template>
-  <div class="reg">
+  <div class="login">
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
@@ -75,7 +75,7 @@ export default {
 </script>
 
 <style scoped>
-.reg {
+.login {
   text-align: center;
   margin: 0 auto;
   max-width: 500px;
