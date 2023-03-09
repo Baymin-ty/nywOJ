@@ -78,7 +78,8 @@ export default {
             type: 'success',
             duration: 1000,
           });
-          location.reload();
+          this.dialogVisible = false;
+          this.all();
         } else {
           ElMessage({
             message: res.data.message,
@@ -88,26 +89,29 @@ export default {
         }
       });
     },
+    all() {
+      axios.post('/api/user/getUserPublicInfo', {
+        id: this.id
+      }).then((res) => {
+        if (res.data.info) {
+          this.info = res.data.info;
+          this.info.reg_time = Format(new Date(this.info.reg_time));
+          this.info.login_time = Format(new Date(this.info.login_time));
+          if (this.info.uid === this.uid) this.newMotto = this.info.motto;
+          if (!this.info.motto) {
+            this.info.motto = "Ta暂时没有设置个签噢"
+          }
+        }
+        else {
+          this.$router.go(-1);
+        }
+      });
+    }
   },
   async mounted() {
     this.id = this.$route.params.uid;
     this.uid = store.state.uid;
-    await axios.post('/api/user/getUserPublicInfo', {
-      id: this.id
-    }).then((res) => {
-      if (res.data.info) {
-        this.info = res.data.info;
-        this.info.reg_time = Format(new Date(this.info.reg_time));
-        this.info.login_time = Format(new Date(this.info.login_time));
-        if (this.info.uid === this.uid) this.newMotto = this.info.motto;
-        if (!this.info.motto) {
-          this.info.motto = "Ta暂时没有设置个签噢"
-        }
-      }
-      else {
-        this.$router.go(-1);
-      }
-    });
+    await this.all();
   }
 }
 </script>

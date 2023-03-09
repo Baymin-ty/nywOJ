@@ -5,7 +5,7 @@
         <template #header>
           <div class="card-header">
             公告栏
-            <el-button type="danger" @click="addAnnouncement">添加公告</el-button>
+            <el-button v-show="gid === 3" type="danger" @click="addAnnouncement">添加公告</el-button>
           </div>
         </template>
         <el-table :data="announcements">
@@ -42,6 +42,7 @@ import axios from "axios";
 import cuteRank from '@/components/rabbit/cuteRankList.vue'
 import rabbitData from '@/components/rabbit/rabbitClickData.vue'
 import { ElMessage } from 'element-plus'
+import store from "@/sto/store";
 
 export default {
   name: "myHeader",
@@ -53,6 +54,7 @@ export default {
     return {
       motto: '',
       announcements: [],
+      gid: 0,
     }
   },
   methods: {
@@ -81,6 +83,7 @@ export default {
     }
   },
   mounted() {
+    this.gid = store.state.gid;
     this.updateHitokoto();
     this.getAnnouncements();
   },

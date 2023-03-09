@@ -111,7 +111,7 @@ router.beforeEach((to, from, next) => {
         store.state.uid = res.data.uid;
         store.state.name = res.data.name;
         store.state.gid = res.data.gid;
-        if (to.path === '/user/reg' || to.path === '/user/login')
+        if (to.path === '/' || to.path === '/user/reg' || to.path === '/user/login')
             next();
         else if (res.data.uid) {
             if (!per[to.path] || res.data.gid >= per[to.path])

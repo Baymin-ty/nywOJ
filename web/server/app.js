@@ -28,7 +28,11 @@ app.use((req, res, next) => {
             req.url === '/api/user/reg' ||
             req.url === '/api/user/setUserEmail' ||
             req.url === '/api/user/sendEmailVerifyCode' ||
-            req.url === '/api/user/getUserInfo')
+            req.url === '/api/user/getUserInfo' ||
+            req.url === '/api/common/getAnnouncementList' ||
+            req.url === '/api/rabbit/getRankInfo' ||
+            req.url === '/api/rabbit/getClickData'
+        )
             next();
         else res.status(404).end('404 Not Found');
     }

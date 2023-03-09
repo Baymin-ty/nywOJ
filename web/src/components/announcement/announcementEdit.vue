@@ -60,9 +60,11 @@ export default {
     }
   },
   async mounted() {
+    if (store.state.gid < 3) {
+      this.$router.push('/');
+      return;
+    }
     this.aid = this.$route.params.aid;
-    this.gid = store.state.gid;
-    console.log(this.gid);
     await axios.post('/api/common/getAnnouncementInfo', { aid: this.aid }).then(res => {
       if (res.status === 200) {
         this.announcementInfo = res.data.data

@@ -81,7 +81,7 @@ export default {
   },
   async mounted() {
     if (store.state.gid < 2) {
-      this.$router.push('/problem/' + this.$route.params.pid);
+      this.$router.push('/');
       return;
     }
     this.pid = this.$route.params.pid;
