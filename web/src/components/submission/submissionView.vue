@@ -86,7 +86,7 @@
         <template #header>
           <div class=" card-header">
             代码
-            <el-button type="danger" @click="reJudge">
+            <el-button v-show="gid > 1" type="danger" @click="reJudge">
               重新测评
             </el-button>
           </div>
