@@ -40,6 +40,7 @@ const judge = require('./api/judge');
 router.post('/api/judge/submit', judge.submit);
 router.post('/api/judge/getSubmissionList', judge.getSubmissionList);
 router.post('/api/judge/getSubmissionInfo', judge.getSubmissionInfo);
+router.post('/api/judge/reJudge', judge.reJudge);
 
 const common = require('./api/common');
 

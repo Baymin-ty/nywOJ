@@ -1,9 +1,9 @@
 <template>
   <el-row style="width: 1180px; margin: 0 auto;">
     <el-table :data="table" style="margin-bottom:10px;height:80px;" :header-cell-style="{ textAlign: 'center' }"
-      :cell-style="{ textAlign: 'center' }">
-      <el-table-column prop="sid" label="#" width="100px" />
-      <el-table-column prop="title" label="题目" width="200px">
+      :cell-style="cellStyle2">
+      <el-table-column prop="sid" label="#" width="80px" />
+      <el-table-column prop="title" label="题目" width="180px">
         <template #default="scope">
           <span style="cursor: pointer;" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
           }}</span>
@@ -16,7 +16,7 @@
           </span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="评测状态" width="150px">
+      <el-table-column prop="judgeResult" label="评测状态" width="180px">
         <template #default="scope">
           <span>
             {{ scope.row.judgeResult }}
@@ -35,7 +35,7 @@
       </el-table-column>
       <el-table-column prop="judgeResult" label="内存" width="auto">
         <template #default="scope">
-          <span> {{ scope.row.memory }} KB </span>
+          <span> {{ scope.row.memory }} </span>
         </template>
       </el-table-column>
       <el-table-column prop="codeLength" label="代码长度" width="100px">
@@ -43,38 +43,65 @@
           <span> {{ scope.row.codeLength }} B </span>
         </template>
       </el-table-column>
-      <el-table-column prop="submitTime" label="提交时间" width="200px" />
+      <el-table-column prop="submitTime" label="提交时间" width="180px" />
     </el-table>
   </el-row>
-  <el-row style="width: 1200px; margin: 0 auto;">
-    <el-col :span="10" style="min-width: 400px">
-      <el-card class="box-card" shadow="hover" style="text-align: center;">
+  <el-row style="text-align: center; margin: 0 auto; width: 1200px">
+    <el-col :span="12" style="min-width: 400px">
+      <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            测试点详情（别等啦，评测机没写呢）
+            测试点详情
+            <el-button type="primary" @click="all">
+              刷新
+            </el-button>
           </div>
         </template>
-        <el-table :data="judgeInfo" height="600px" :row-class-name="tableRowClassName" :cell-style="cellStyle"
-          :header-cell-style="{ textAlign: 'center' }">
+        <el-table :data="submissionInfo.caseResult" height="450px" :row-class-name="tableRowClassName"
+          :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
+          <el-table-column label="#" type="index" width="80px" />
+          <el-table-column prop="judgeResult" label="结果" width="auto">
+            <template #default="scope">
+              <span @click="showDetail(scope.row)" style="cursor: pointer;"> {{ scope.row.judgeResult }} </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="time" label="总用时" width="100">
+            <template #default="scope">
+              <span> {{ Math.floor(scope.row.time) }} ms</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="memory" label="内存" width="100">
+            <template #default="scope">
+              <span> {{ scope.row.memory }} </span>
+            </template>
+          </el-table-column>
         </el-table>
       </el-card>
     </el-col>
-    <el-col :span="14" style="min-width: 400px">
+    <el-col :span="12" style="min-width: 400px;margin: 0 auto;">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class=" card-header">
             代码
+            <el-button type="danger" @click="reJudge">
+              重新测评
+            </el-button>
           </div>
         </template>
         <v-md-preview :text="submissionInfo.code"> </v-md-preview>
       </el-card>
     </el-col>
   </el-row>
+  <el-dialog v-model="dialogVisible" title="测试点详情" style="width:1000px;border-radius: 10px; " class="pd">
+    <el-divider />
+    <v-md-preview :text="detailInfo"> </v-md-preview>
+  </el-dialog>
 </template>
 
 <script>
 import axios from 'axios';
 import store from '@/sto/store';
+import { resColor, scoreColor } from '@/assets/common'
 
 export default {
   name: "problemView",
@@ -83,31 +110,82 @@ export default {
       gid: 1,
       table: [],
       submissionInfo: [],
-      judgeInfo: [],
       code: '',
+      dialogVisible: false,
+      detailInfo: '',
     }
   },
   methods: {
-    tableRowClassName() {
-
+    tableRowClassName(obj) {
+      return (obj.row.judgeResult == 'Accepted' ? 'success' : '');
     },
-    cellStyle() {
-
+    cellStyle({ row, columnIndex }) {
+      let style = {};
+      style['textAlign'] = 'center';
+      if (columnIndex === 1) {
+        style['font-weight'] = 500;
+        style['color'] = resColor[row.judgeResult];
+      }
+      return style;
     },
+    cellStyle2({ row, columnIndex }) {
+      let style = {};
+      style['textAlign'] = 'center';
+      if (columnIndex === 3) {
+        style['font-weight'] = 500;
+        style['color'] = resColor[row.judgeResult];
+      }
+      if (columnIndex === 4) {
+        style['font-weight'] = 500;
+        style['color'] = scoreColor[Math.floor(row.score / 10)];
+      }
+      return style;
+    },
+    showDetail(row) {
+      console.log(row);
+      this.dialogVisible = true;
+
+      this.detailInfo = '### Summarize\n'
+
+      this.detailInfo += '- result: `' + row.judgeResult + '`\n'
+      this.detailInfo += '- time: `' + Math.floor(row.time) + ' ms`\n'
+      this.detailInfo += '- memory: `' + row.memory + '`\n'
+
+      this.detailInfo += '### Input\n';
+      this.detailInfo += '```\n';
+      this.detailInfo += row.input;
+      this.detailInfo += '\n```\n';
+
+      this.detailInfo += '### Output\n';
+      this.detailInfo += '```\n';
+      this.detailInfo += row.output;
+      this.detailInfo += '\n```\n';
+
+      this.detailInfo += '### Checker\n';
+      this.detailInfo += '```\n';
+      this.detailInfo += row.compareResult;
+      this.detailInfo += '```\n';
+    },
+    reJudge() {
+      axios.post('/api/judge/reJudge', { sid: this.sid });
+    },
+    async all() {
+      await axios.post('/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {
+        if (res.status === 200) {
+          this.submissionInfo = res.data.data
+          this.table[0] = this.submissionInfo;
+        } else {
+          this.$router.go(-1);
+        }
+      });
+      this.submissionInfo.code = "```c++\n" + this.submissionInfo.code + "\n```";
+    }
   },
   async mounted() {
     this.sid = this.$route.params.sid;
     document.title = "提交记录";
     this.gid = store.state.gid;
-    await axios.post('/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {
-      if (res.status === 200) {
-        this.submissionInfo = res.data.data
-        this.table.push(this.submissionInfo);
-      } else {
-        this.$router.go(-1);
-      }
-    });
-    this.submissionInfo.code = "```c++\n" + this.submissionInfo.code + "\n```";
+    await this.all();
   }
 }
 </script>
@@ -116,5 +194,12 @@ export default {
 .box-card {
   margin: 10px;
   text-align: left;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 20px;
 }
 </style>

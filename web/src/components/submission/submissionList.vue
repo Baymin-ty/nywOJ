@@ -12,9 +12,9 @@
         </div>
       </template>
       <el-table :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }"
-        :cell-style="{ textAlign: 'center' }">
-        <el-table-column prop="sid" label="#" width="100px" />
-        <el-table-column prop="title" label="题目" width="200px">
+        :cell-style="cellStyle">
+        <el-table-column prop="sid" label="#" width="80px" />
+        <el-table-column prop="title" label="题目" width="180px">
           <template #default="scope">
             <span style="cursor: pointer;" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
             }}</span>
@@ -27,14 +27,14 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="judgeResult" label="评测状态" width="150px">
+        <el-table-column prop="judgeResult" label="评测状态" width="180px">
           <template #default="scope">
             <span style="cursor: pointer;" @click="this.$router.push('/submission/' + scope.row.sid)">
               {{ scope.row.judgeResult }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="score" label="分数" width="80px">
+        <el-table-column prop="score" label="分数" width="60px">
           <template #default="scope">
             <span> {{ scope.row.score }}</span>
           </template>
@@ -46,7 +46,7 @@
         </el-table-column>
         <el-table-column prop="judgeResult" label="内存" width="auto">
           <template #default="scope">
-            <span> {{ scope.row.memory }} KB </span>
+            <span> {{ scope.row.memory }} </span>
           </template>
         </el-table-column>
         <el-table-column prop="codeLength" label="代码长度" width="100px">
@@ -54,7 +54,7 @@
             <span> {{ scope.row.codeLength }} B </span>
           </template>
         </el-table-column>
-        <el-table-column prop="submitTime" label="提交时间" width="200px" />
+        <el-table-column prop="submitTime" label="提交时间" width="180px" />
       </el-table>
     </el-card>
   </div>
@@ -63,6 +63,7 @@
 <script>
 import axios from "axios"
 import { ElMessage } from 'element-plus'
+import { resColor, scoreColor } from '@/assets/common'
 
 export default {
   name: 'submissionList',
@@ -91,6 +92,19 @@ export default {
     handleCurrentChange(val) {
       this.currentPage = val;
       this.all();
+    },
+    cellStyle({ row, columnIndex }) {
+      let style = {};
+      style['textAlign'] = 'center';
+      if (columnIndex === 3) {
+        style['font-weight'] = 500;
+        style['color'] = resColor[row.judgeResult];
+      }
+      if (columnIndex === 4) {
+        style['font-weight'] = 500;
+        style['color'] = scoreColor[Math.floor(row.score / 10)];
+      }
+      return style;
     },
   },
   async mounted() {
