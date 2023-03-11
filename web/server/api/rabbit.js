@@ -1,5 +1,6 @@
 const db = require('../db/index')
 const rabbitData = require('../store/rabbitData.json')
+const lastClick = require('../store/lastClick.json')
 
 const fill = (x) => {
     x = x.toString();
@@ -25,8 +26,12 @@ exports.all = (req, res) => {
 
 exports.add = (req, res) => {
     const ip = req.session.ip, uid = req.session.uid;
-    if (!uid) {
-        return res.status(202).send({ message: "请先登录" })
+
+    const dt = new Date() - lastClick.uid;
+    if (dt < 5000) {
+        return res.status(202).send({
+            message: "请" + (5 - Math.floor(dt / 1000)) + "秒后再点击"
+        })
     }
     db.query('INSERT INTO clickList(uid,time,ip) values (?,?,?)', [uid, new Date(), ip], (err, data) => {
         if (err) return res.status(202).send({
@@ -34,9 +39,10 @@ exports.add = (req, res) => {
         });
         if (data.affectedRows > 0) {
             db.query("UPDATE userInfo SET clickCnt=clickCnt+1 WHERE uid=?", [uid]);
+            lastClick.uid = new Date();
             return res.status(200).send({
                 message: 'success',
-            })
+            });
         } else {
             return res.status(202).send({
                 message: 'error',
