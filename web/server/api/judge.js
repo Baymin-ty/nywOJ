@@ -56,6 +56,8 @@ const SubmissionInfo = (sid) => {
       }
       resolve(data[0]);
     })
+  }).catch(err => {
+    console.log(err);
   });
 }
 
@@ -67,6 +69,8 @@ const ProblemInfo = (pid) => {
       }
       resolve(data[0]);
     })
+  }).catch(err => {
+    console.log(err);
   });
 }
 
@@ -75,6 +79,8 @@ const getCompareResult = () => {
     exec('./comparer/comparer ./comparer/data.in ./comparer/usr.out ./comparer/data.out', (err, stdout, stderr) => {
       resolve(stderr);
     });
+  }).catch(err => {
+    console.log(err);
   });
 }
 
@@ -275,7 +281,7 @@ exports.getSubmissionList = (req, res) => {
 const toHuman = (memory) => {
   if (memory >= 1024)
     memory = Math.round(memory / 1024 * 100) / 100 + ' MB';
-  else memory += ' kB';
+  else memory += ' KB';
   return memory;
 }
 
