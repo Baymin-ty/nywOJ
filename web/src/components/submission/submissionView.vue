@@ -66,7 +66,7 @@
               <span @click="showDetail(scope.row)" style="cursor: pointer;"> {{ scope.row.judgeResult }} </span>
             </template>
           </el-table-column>
-          <el-table-column prop="time" label="总用时" width="100">
+          <el-table-column prop="time" label="用时" width="100">
             <template #default="scope">
               <span> {{ Math.floor(scope.row.time) }} ms</span>
             </template>
@@ -157,12 +157,20 @@ export default {
       this.detailInfo += '### Input\n';
       this.detailInfo += '```\n';
       this.detailInfo += row.input;
-      this.detailInfo += '\n```\n';
+
+      if (row.input && row.input[row.input.length - 1] !== '\n')
+        this.detailInfo += '\n';
+
+      this.detailInfo += '```\n';
 
       this.detailInfo += '### Output\n';
       this.detailInfo += '```\n';
       this.detailInfo += row.output;
-      this.detailInfo += '\n```\n';
+
+      if (row.output && row.output[row.output.length - 1] !== '\n')
+        this.detailInfo += '\n';
+
+      this.detailInfo += '```\n';
 
       this.detailInfo += '### Checker\n';
       this.detailInfo += '```\n';
