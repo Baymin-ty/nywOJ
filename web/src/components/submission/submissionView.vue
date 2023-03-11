@@ -57,8 +57,9 @@
             </el-button>
           </div>
         </template>
-        <el-table :data="submissionInfo.caseResult" height="450px" :row-class-name="tableRowClassName"
-          :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
+        <el-table v-show="submissionInfo.judgeResult !== 'Compilation Error'" :data="submissionInfo.caseResult"
+          height="450px" :row-class-name="tableRowClassName" :cell-style="cellStyle"
+          :header-cell-style="{ textAlign: 'center' }">
           <el-table-column label="#" type="index" width="80px" />
           <el-table-column prop="judgeResult" label="结果" width="auto">
             <template #default="scope">
@@ -76,6 +77,8 @@
             </template>
           </el-table-column>
         </el-table>
+        <v-md-preview v-show="submissionInfo.judgeResult === 'Compilation Error'" :text="submissionInfo.compileResult">
+        </v-md-preview>
       </el-card>
     </el-col>
     <el-col :span="12" style="min-width: 400px;margin: 0 auto;">
@@ -173,6 +176,7 @@ export default {
       await axios.post('/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {
         if (res.status === 200) {
           this.submissionInfo = res.data.data
+          this.submissionInfo.compileResult = "```\n" + this.submissionInfo.compileResult + "```";
           this.table[0] = this.submissionInfo;
         } else {
           this.$router.go(-1);
