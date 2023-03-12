@@ -5,7 +5,7 @@ import App from './App.vue'
 import axios from 'axios'
 import VueAxios from 'vue-axios'
 import router from './router/router'
-import 'default-passive-events'
+// import 'default-passive-events'
 
 import VMdEditor from '@kangc/v-md-editor/lib/codemirror-editor';
 import VMdPreview from '@kangc/v-md-editor/lib/preview';
