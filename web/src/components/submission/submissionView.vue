@@ -145,7 +145,6 @@ export default {
       return style;
     },
     showDetail(row) {
-      console.log(row);
       this.dialogVisible = true;
 
       this.detailInfo = '### Summarize\n'

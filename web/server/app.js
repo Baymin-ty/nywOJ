@@ -43,6 +43,10 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cors())              //配置跨域
 app.use(router)              //配置路由
 
+process.on('uncaughtException', (err) => {
+    console.log(err)
+});
+
 app.listen(1234, () => {
     console.log('success!!!');
 });

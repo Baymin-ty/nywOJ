@@ -84,12 +84,28 @@ const getCompareResult = () => {
   });
 }
 
+const setSubmission = (sid, judgeResult, time, memory, score, compileResult, caseResult) => {
+  return new Promise((resolve, reject) => {
+    db.query('UPDATE submission SET judgeResult=?,time=?,memory=?,score=?,compileResult=?,caseResult=? WHERE sid=?',
+      [judgeResult, time, memory, score, compileResult, caseResult, sid], (err, data) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(data.affectedRows);
+      })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
 const judgeCode = async (sid) => {
   let sinfo = await SubmissionInfo(sid);
   if (!sinfo) return;
 
   const pid = sinfo.pid;
-  db.query('UPDATE submission SET judgeResult=1 WHERE sid=?'[sid]);
+
+  await setSubmission(sid, 1, 0, 0, 0, null, null);
+
   let pinfo = await ProblemInfo(pid);
 
   if (!pinfo) return;
@@ -139,7 +155,7 @@ const judgeCode = async (sid) => {
   // run
   const cases = (await getFileData(pid)).cases;
 
-  let runResult = {}, judgeResult = [];
+  let runResult = {}, judgeResult = [], totalCase = cases.length, acCase = 0;
 
   for (let i in cases) {
     const inputFile = (await getTestCase(pid, cases[i].input));
@@ -197,12 +213,13 @@ const judgeCode = async (sid) => {
         judgeResult: (compareRes.substring(0, 2) === 'ok' ? 4 : 5),
         compareResult: compareRes
       });
+      acCase += (judgeResult[i].judgeResult === 4);
     }
+    await setSubmission(sid, 1, 0, 0, 100 * acCase / totalCase, null, JSON.stringify(judgeResult));
   }
 
-  let finalRes = 12, totalCase = judgeResult.length, acCase = 0, totalTime = 0, maxMemory = 0;
+  let finalRes = 12, totalTime = 0, maxMemory = 0;
   for (i in judgeResult) {
-    acCase += (judgeResult[i].judgeResult === 4);
     totalTime += judgeResult[i].time;
     maxMemory = Math.max(maxMemory, judgeResult[i].memory);
     if (judgeResult[i].judgeResult === 4) continue;
@@ -213,8 +230,7 @@ const judgeCode = async (sid) => {
 
   if (acCase === totalCase) finalRes = 4, score = 100;
 
-  db.query('UPDATE submission SET judgeResult=?,time=?,memory=?,score=?,caseResult=? WHERE sid=?',
-    [finalRes, totalTime, maxMemory, score, JSON.stringify(judgeResult), sid]);
+  await setSubmission(sid, finalRes, totalTime, maxMemory, score, null, JSON.stringify(judgeResult));
 
   delFile(fileId);
 }
