@@ -16,7 +16,7 @@
               }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="time" label="日期" width="200px" />
+          <el-table-column prop="time" label="发布时间" width="200px" />
         </el-table>
       </el-card>
       <cuteRank />

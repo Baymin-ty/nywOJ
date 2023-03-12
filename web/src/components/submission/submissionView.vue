@@ -176,8 +176,9 @@ export default {
       this.detailInfo += row.compareResult;
       this.detailInfo += '```\n';
     },
-    reJudge() {
-      axios.post('/api/judge/reJudge', { sid: this.sid });
+    async reJudge() {
+      await axios.post('/api/judge/reJudge', { sid: this.sid });
+      this.all();
     },
     async all() {
       await axios.post('/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {

@@ -14,7 +14,7 @@
       <el-table :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }"
         :cell-style="cellStyle">
         <el-table-column prop="sid" label="#" width="80px" />
-        <el-table-column prop="title" label="题目" width="180px">
+        <el-table-column prop="title" label="题目" width="160px">
           <template #default="scope">
             <span style="cursor: pointer;" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
             }}</span>
@@ -34,17 +34,17 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="score" label="分数" width="60px">
+        <el-table-column prop="score" label="分数" width="auto">
           <template #default="scope">
             <span> {{ scope.row.score }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="judgeResult" label="总用时" width="auto">
+        <el-table-column prop="judgeResult" label="总用时" width="100px">
           <template #default="scope">
             <span> {{ scope.row.time }} ms</span>
           </template>
         </el-table-column>
-        <el-table-column prop="judgeResult" label="内存" width="auto">
+        <el-table-column prop="judgeResult" label="内存" width="100px">
           <template #default="scope">
             <span> {{ scope.row.memory }} </span>
           </template>
