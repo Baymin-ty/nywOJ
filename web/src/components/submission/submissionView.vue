@@ -77,8 +77,7 @@
             </template>
           </el-table-column>
         </el-table>
-        <v-md-preview v-show="submissionInfo.judgeResult === 'Compilation Error'" :text="submissionInfo.compileResult">
-        </v-md-preview>
+        <v-md-preview v-show="submissionInfo.judgeResult === 'Compilation Error'" :text="submissionInfo.compileResult" />
       </el-card>
     </el-col>
     <el-col :span="12" style="min-width: 400px;margin: 0 auto;">
