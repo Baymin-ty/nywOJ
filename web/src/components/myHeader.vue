@@ -75,10 +75,6 @@ export default {
 </script>
 
 <style>
-::-webkit-scrollbar {
-  width: 0;
-}
-
 .round {
   height: 400px;
   border-radius: 10px;

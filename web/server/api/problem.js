@@ -123,8 +123,8 @@ exports.getProblemCasePreview = async (req, res) => {
     const outputFile = (await getFile(`./data/${pid}/${cases[i].output}`));
     previewList[i] = {
       index: cases[i].index,
-      input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......' : ''),
-      output: outputFile.substring(0, 255) + (outputFile.length > 255 ? '......' : '')
+      input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
+      output: outputFile.substring(0, 255) + (outputFile.length > 255 ? '......\n' : '')
     }
   }
   return res.status(200).send({ data: previewList });

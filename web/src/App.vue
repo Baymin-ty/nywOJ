@@ -46,6 +46,7 @@ export default {
 
 body {
   margin-top: 0;
+  padding-right: 0 !important
 }
 
 .card-header {

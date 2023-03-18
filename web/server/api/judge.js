@@ -187,7 +187,7 @@ const judgeCode = async (sid) => {
 
     if (runResult.status !== 'Accepted') {
       judgeResult.push({
-        input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......' : ''),
+        input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
         output: runResult.files.stderr,
         time: runResult.time / 1000 / 1000, // ms
         memory: runResult.memory / 1024, // kB
@@ -203,8 +203,8 @@ const judgeCode = async (sid) => {
       await delFile(`./comparer/tmp/${sid}usr.out`);
       await delFile(`./comparer/tmp/${sid}data.out`);
       judgeResult.push({
-        input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......' : ''),
-        output: usrOutput.substring(0, 255) + (usrOutput.length > 255 ? '......' : ''),
+        input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
+        output: usrOutput.substring(0, 255) + (usrOutput.length > 255 ? '......\n' : ''),
         time: runResult.time / 1000 / 1000, // ms
         memory: runResult.memory / 1024, // kB
         judgeResult: (compareRes.substring(0, 2) === 'ok' ? 4 : 5),
