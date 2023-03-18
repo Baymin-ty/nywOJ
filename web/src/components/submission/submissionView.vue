@@ -58,7 +58,7 @@
           </div>
         </template>
         <el-table v-show="submissionInfo.judgeResult !== 'Compilation Error'" :data="submissionInfo.caseResult"
-          height="450px" :row-class-name="tableRowClassName" :cell-style="cellStyle"
+          height="auto" :row-class-name="tableRowClassName" :cell-style="cellStyle"
           :header-cell-style="{ textAlign: 'center' }">
           <el-table-column label="#" type="index" width="80px" />
           <el-table-column prop="judgeResult" label="结果" width="auto">
@@ -145,9 +145,7 @@ export default {
       return style;
     },
     showDetail(row) {
-      this.dialogVisible = true;
-
-      this.detailInfo = '### Summarize\n'
+      this.detailInfo = '### Summary\n'
 
       this.detailInfo += '- result: `' + row.judgeResult + '`\n'
       this.detailInfo += '- time: `' + Math.floor(row.time) + ' ms`\n'
@@ -175,6 +173,8 @@ export default {
       this.detailInfo += '```\n';
       this.detailInfo += row.compareResult;
       this.detailInfo += '```\n';
+
+      this.dialogVisible = true;
     },
     async reJudge() {
       await axios.post('/api/judge/reJudge', { sid: this.sid });
@@ -184,13 +184,14 @@ export default {
       await axios.post('/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {
         if (res.status === 200) {
           this.submissionInfo = res.data.data
+          this.submissionInfo.code = "```c++\n" + this.submissionInfo.code + "\n```";
           this.submissionInfo.compileResult = "```\n" + this.submissionInfo.compileResult + "```";
           this.table[0] = this.submissionInfo;
+          this.listH = Math.max(210, this.submissionInfo.caseResult.length * 42);
         } else {
           this.$router.go(-1);
         }
       });
-      this.submissionInfo.code = "```c++\n" + this.submissionInfo.code + "\n```";
     }
   },
   async mounted() {

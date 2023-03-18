@@ -5,7 +5,7 @@
 
 #include "testlib.h"
 
-#define SHOW_DIFF_LENGTH 20
+#define SHOW_DIFF_LENGTH 40
 
 int line, difcol, l, r1, r2;
 bool ok = true;
@@ -14,7 +14,7 @@ std::string Std, usr, Exp, found;
 int main(int argc, char *argv[])
 {
   registerTestlibCmd(argc, argv);
-  
+
   while (!ans.eof() && ok)
   {
     ++line;

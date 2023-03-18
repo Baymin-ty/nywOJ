@@ -1,4 +1,7 @@
 const db = require('../db/index');
+const { getFile } = require('../file');
+const fs = require('fs');
+const path = require('path');
 
 const fill = (x) => {
   x = x.toString();
@@ -71,13 +74,13 @@ exports.getProblemList = (req, res) => {
   let pageId = req.body.pageId,
     pageSize = 20;
   if (!pageId) pageId = 1;
-  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.publisher as publisherUid,u.`name` as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher " +
-    (req.session.gid > 1 ? "" : "WHERE isPublic=1") + " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
+  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.publisher as publisherUid,u.`name` as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher" +
+    (req.session.gid > 1 ? "" : " WHERE isPublic=1") + " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });
     let list = data;
     for (let i = 0; i < list.length; i++) list[i].time = Format(list[i].time);
-    db.query("SELECT COUNT(*) as total FROM problem", (err, data) => {
+    db.query("SELECT COUNT(*) as total FROM problem" + (req.session.gid > 1 ? "" : " WHERE isPublic=1"), (err, data) => {
       if (err) return res.status(202).send({ message: err });
       return res.status(200).send({
         total: data[0].total,
@@ -103,4 +106,39 @@ exports.getProblemInfo = (req, res) => {
       });
     }
   });
+}
+
+exports.getProblemCasePreview = async (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+  const pid = req.body.pid;
+
+  const data = JSON.parse(await (getFile(`./data/${pid}/config.json`)));
+  if (!data) return res.status(202).send({ data: [] });
+
+  const cases = data.cases;
+
+  let previewList = [];
+  for (let i in cases) {
+    const inputFile = (await getFile(`./data/${pid}/${cases[i].input}`));
+    const outputFile = (await getFile(`./data/${pid}/${cases[i].output}`));
+    previewList[i] = {
+      index: cases[i].index,
+      input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......' : ''),
+      output: outputFile.substring(0, 255) + (outputFile.length > 255 ? '......' : '')
+    }
+  }
+  return res.status(200).send({ data: previewList });
+}
+
+exports.clearCase = async (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+
+  const dir = path.join(__dirname, `../data/${req.body.pid}`);
+
+  if (fs.existsSync(dir))
+    fs.rmSync(dir, {
+      recursive: true
+    });
+
+  return res.status(200).send({ message: 'success' });
 }

@@ -1,6 +1,6 @@
 const axios = require('axios');
 const db = require('../db/index');
-const { getFileData, getTestCase, setFileData } = require('../file');
+const { getFile, setFile, delFile } = require('../file');
 const exec = require('child_process').exec;
 
 
@@ -11,11 +11,6 @@ const fill = (x) => {
 
 const Format = (now) => {
   return now.getFullYear() + '-' + fill(now.getMonth() + 1) + '-' + fill(now.getDate()) + ' ' + fill(now.getHours()) + ':' + fill(now.getMinutes()) + ':' + fill(now.getSeconds());
-}
-
-const delFile = (id) => {
-  const req = "http://localhost:5050/file/" + id;
-  axios.delete(req);
 }
 
 const judgeRes = ['Waiting',
@@ -74,9 +69,9 @@ const ProblemInfo = (pid) => {
   });
 }
 
-const getCompareResult = () => {
+const getCompareResult = (sid) => {
   return new Promise((resolve, reject) => {
-    exec('./comparer/comparer ./comparer/data.in ./comparer/usr.out ./comparer/data.out', (err, stdout, stderr) => {
+    exec(`./comparer/comparer ./comparer/data.in ./comparer/tmp/${sid}usr.out ./comparer/tmp/${sid}data.out`, (err, stdout, stderr) => {
       resolve(stderr);
     });
   }).catch(err => {
@@ -153,13 +148,13 @@ const judgeCode = async (sid) => {
   const fileId = compileResult.fileIds['main'];
 
   // run
-  const cases = (await getFileData(pid)).cases;
+  const cases = JSON.parse((await getFile(`./data/${pid}/config.json`))).cases;
 
   let runResult = {}, judgeResult = [], totalCase = cases.length, acCase = 0;
 
   for (let i in cases) {
-    const inputFile = (await getTestCase(pid, cases[i].input));
-    const outputFile = (await getTestCase(pid, cases[i].output));
+    const inputFile = (await getFile(`./data/${pid}/${cases[i].input}`));
+    const outputFile = (await getFile(`./data/${pid}/${cases[i].output}`));
     let usrOutput = "";
     await axios.post('http://localhost:5050/run', {
       "cmd": [{
@@ -192,7 +187,7 @@ const judgeCode = async (sid) => {
 
     if (runResult.status !== 'Accepted') {
       judgeResult.push({
-        input: inputFile.substring(0, 255),
+        input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......' : ''),
         output: runResult.files.stderr,
         time: runResult.time / 1000 / 1000, // ms
         memory: runResult.memory / 1024, // kB
@@ -202,12 +197,14 @@ const judgeCode = async (sid) => {
     }
     else {
       usrOutput = runResult.files.stdout;
-      setFileData('usr', usrOutput);
-      setFileData('data', outputFile);
-      const compareRes = await getCompareResult();
+      await setFile(`./comparer/tmp/${sid}usr.out`, usrOutput);
+      await setFile(`./comparer/tmp/${sid}data.out`, outputFile);
+      const compareRes = await getCompareResult(sid);
+      await delFile(`./comparer/tmp/${sid}usr.out`);
+      await delFile(`./comparer/tmp/${sid}data.out`);
       judgeResult.push({
-        input: inputFile.substring(0, 255),
-        output: usrOutput.substring(0, 255),
+        input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......' : ''),
+        output: usrOutput.substring(0, 255) + (usrOutput.length > 255 ? '......' : ''),
         time: runResult.time / 1000 / 1000, // ms
         memory: runResult.memory / 1024, // kB
         judgeResult: (compareRes.substring(0, 2) === 'ok' ? 4 : 5),
@@ -232,7 +229,7 @@ const judgeCode = async (sid) => {
 
   await setSubmission(sid, finalRes, totalTime, maxMemory, score, null, JSON.stringify(judgeResult));
 
-  delFile(fileId);
+  axios.delete(`http://localhost:5050/file/${fileId}`);
 }
 
 

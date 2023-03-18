@@ -13,6 +13,7 @@ import userInfo from '@/components/user/userInfo.vue'
 import problemList from '@/components/problem/problemList.vue'
 import problemView from '@/components/problem/problemView.vue'
 import problemEdit from '@/components/problem/problemEdit.vue'
+import caseManage from '@/components/problem/caseManage.vue'
 import submissionList from '@/components/submission/submissionList.vue'
 import submissionView from '@/components/submission/submissionView.vue'
 
@@ -97,6 +98,11 @@ const router = createRouter({
             title: '编辑公告'
         },
         path: '/announcement/edit/:aid', component: AnnouncementEdit,
+    }, {
+        meta: {
+            title: '数据管理'
+        },
+        path: '/problem/case/:pid', component: caseManage,
     }],
     caseSensitive: true
 });
