@@ -14,8 +14,8 @@
                 个性签名
                 <el-button v-show="info.uid === this.uid" type="success"
                   @click="this.dialogVisible = true">编辑我的个性签名</el-button>
-                <el-dialog v-model="dialogVisible" title="编辑签名" style="width:600px;height: 600px;border-radius: 10px"
-                  class="pd">
+                <el-dialog :lock-scroll="false" v-model="dialogVisible" title="编辑签名"
+                  style="width:600px;height: 600px;border-radius: 10px" class="pd">
                   <el-divider />
                   <el-input v-model="newMotto" type="textarea" placeholder="Please input" :rows="20" :maxlength="200"
                     :show-word-limit="true" style="width:500px;margin: 20px;" resize="none" />

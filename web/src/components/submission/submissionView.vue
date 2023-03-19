@@ -94,7 +94,8 @@
       </el-card>
     </el-col>
   </el-row>
-  <el-dialog v-model="dialogVisible" title="测试点详情" style="width:1000px;border-radius: 10px; " class="pd">
+  <el-dialog :lock-scroll="false" v-model="dialogVisible" title="测试点详情" style="width:1000px;border-radius: 10px; "
+    class="pd">
     <el-divider />
     <v-md-preview :text="detailInfo"> </v-md-preview>
   </el-dialog>
