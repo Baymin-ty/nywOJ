@@ -52,9 +52,6 @@
         <template #header>
           <div class="card-header">
             测试点详情
-            <el-button type="primary" @click="all">
-              刷新
-            </el-button>
           </div>
         </template>
         <el-table v-show="submissionInfo.judgeResult !== 'Compilation Error'" :data="submissionInfo.caseResult"
@@ -187,7 +184,13 @@ export default {
           this.submissionInfo.code = "```c++\n" + this.submissionInfo.code + "\n```";
           this.submissionInfo.compileResult = "```\n" + this.submissionInfo.compileResult + "```";
           this.table[0] = this.submissionInfo;
-          this.listH = Math.max(210, this.submissionInfo.caseResult.length * 42);
+          if (this.submissionInfo.judgeResult === 'Waiting' ||
+            this.submissionInfo.judgeResult === 'Pending' ||
+            this.submissionInfo.judgeResult === 'Rejudging') {
+            setTimeout(() => {
+              this.all();
+            }, 1000)
+          }
         } else {
           this.$router.go(-1);
         }
