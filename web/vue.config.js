@@ -28,7 +28,7 @@ module.exports = defineConfig({
             name: 'chunk-vendors',
             test: /[\\/]node_modules[\\/]/,
             chunks: 'initial',
-            maxSize: 100000,
+            maxSize: 500000,
             maxInitialRequests: 20,
             priority: 2,
             reuseExistingChunk: true,
@@ -39,7 +39,7 @@ module.exports = defineConfig({
             test: /[\\/]node_modules[\\/]ant-design-vue[\\/]/,
             chunks: 'initial',
             priority: 3,
-            maxSize: 100000,
+            maxSize: 500000,
             reuseExistingChunk: true,
             enforce: true
           }
