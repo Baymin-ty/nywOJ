@@ -25,7 +25,7 @@
         </div>
         <template #tip>
           <div class="el-upload__tip">
-            ZIP files with a size less than 50 MB
+            ZIP files with a size less than 200 MB
           </div>
         </template>
       </el-upload>

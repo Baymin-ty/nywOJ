@@ -76,10 +76,6 @@ const process = (str) => {
 router.post('/api/problem/uploadData', upload.single('file'), (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
 
-  if (req.file.mimetype !== 'application/zip') {
-    return res.status(202).end('error');
-  }
-
   compressing.zip.uncompress(req.file.path, req.file.destination).then(() => {
     fs.readdir(req.file.destination, async (err, file) => {
       if (err) return res.status(202).send({
