@@ -16,36 +16,16 @@ module.exports = defineConfig({
       config.optimization.splitChunks({
         cacheGroups: {
           common: {
-            name: 'chunk-common',
-            chunks: 'initial',
+            name: 'ty',
+            chunks: 'all',
             minChunks: 1,
-            maxInitialRequests: 5,
-            minSize: 0,
+            minSize: 300000,
+            maxSize: 500000,
             priority: 1,
             reuseExistingChunk: true
           },
-          vendors: {
-            name: 'chunk-vendors',
-            test: /[\\/]node_modules[\\/]/,
-            chunks: 'initial',
-            maxSize: 500000,
-            maxInitialRequests: 20,
-            priority: 2,
-            reuseExistingChunk: true,
-            enforce: true
-          },
-          antDesignVue: {
-            name: 'chunk-ant-design-vue',
-            test: /[\\/]node_modules[\\/]ant-design-vue[\\/]/,
-            chunks: 'initial',
-            priority: 3,
-            maxSize: 500000,
-            reuseExistingChunk: true,
-            enforce: true
-          }
         }
       })
     }
   }
-
 });
