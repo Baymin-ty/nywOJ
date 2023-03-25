@@ -10,7 +10,7 @@ const Format = (now) => {
 }
 
 exports.getAnnouncementList = (req, res) => {
-  let sql = "SELECT * FROM announcement ORDER BY weight desc LIMIT 5";
+  let sql = "SELECT aid,time,title FROM announcement ORDER BY weight desc LIMIT 5";
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });
     for (let i = 0; i < data.length; i++) data[i].time = Format(data[i].time);
