@@ -273,9 +273,7 @@ exports.getSubmissionList = (req, res) => {
     pageSize = 20;
   if (!pageId) pageId = 1;
   let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid "
-  if (req.session.gid < 2) {
-    sql += 'WHERE p.isPublic=1';
-  }
+  sql += 'WHERE p.isPublic' + (req.session.gid < 2 ? '=1' : '<6');
   sql += " ORDER BY sid DESC LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });
@@ -304,11 +302,11 @@ const toHuman = (memory) => {
 
 exports.getSubmissionInfo = (req, res) => {
   const sid = req.body.sid;
-  let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=?";
+  let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=" + sid;
   if (req.session.gid < 2) {
     sql += ' and p.isPublic=1';
   }
-  db.query(sql, [sid], (err, data) => {
+  db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (!data.length) return res.status(202).send({
       message: 'error'
