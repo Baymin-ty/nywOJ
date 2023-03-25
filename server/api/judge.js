@@ -274,6 +274,15 @@ exports.getSubmissionList = (req, res) => {
   if (!pageId) pageId = 1;
   let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid "
   sql += 'WHERE p.isPublic' + (req.session.gid < 2 ? '=1' : '<6');
+  if (req.body.name) {
+    sql += ' AND u.name=\"' + req.body.name + "\"";
+  }
+  if (req.body.pid) {
+    sql += ' AND p.pid=' + req.body.pid;
+  }
+  if (req.body.judgeRes !== null) {
+    sql += ' AND s.judgeResult=' + req.body.judgeRes;
+  }
   sql += " ORDER BY sid DESC LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });
