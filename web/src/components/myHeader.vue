@@ -4,8 +4,8 @@
       <img style="width: 40px; height: 40px; margin-top: 5px; border-radius: 5px" src="../assets/icon.png">
     </el-menu-item>
     <el-menu-item index="/">首页</el-menu-item>
-    <el-menu-item index="/problem">题库</el-menu-item>
-    <el-menu-item index="/submission">提交记录</el-menu-item>
+    <el-menu-item v-show="this.uid" index="/problem">题库</el-menu-item>
+    <el-menu-item v-show="this.uid" index="/submission">提交记录</el-menu-item>
     <el-menu-item v-show="!uid" index="/user/login">登录</el-menu-item>
     <el-menu-item v-show="!uid" index="/user/reg">注册</el-menu-item>
     <el-sub-menu index="/user/" v-show="uid">
@@ -16,8 +16,8 @@
     </el-sub-menu>
     <el-button style=" height: 55px; width: 80px; padding: 0; margin: 0;" text
       @click="dialogVisible = true">打赏</el-button>
-    <el-dialog :lock-scroll="false" v-model="dialogVisible" title="实施可持续发展战略" width="400px" style="border-radius: 10px;text-align: center;"
-      class="pd">
+    <el-dialog :lock-scroll="false" v-model="dialogVisible" title="实施可持续发展战略" width="400px"
+      style="border-radius: 10px;text-align: center;" class="pd">
       <el-divider />
       <div style="height: 40px">
         <el-select v-model="money" class="m-2" placeholder="Select" style="width: 110px">
