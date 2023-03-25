@@ -113,6 +113,7 @@ export default {
       code: '',
       dialogVisible: false,
       detailInfo: '',
+      mounted: false
     }
   },
   methods: {
@@ -184,9 +185,9 @@ export default {
           this.submissionInfo.code = "```c++\n" + this.submissionInfo.code + "\n```";
           this.submissionInfo.compileResult = "```\n" + this.submissionInfo.compileResult + "```";
           this.table[0] = this.submissionInfo;
-          if (this.submissionInfo.judgeResult === 'Waiting' ||
+          if (this.mounted && (this.submissionInfo.judgeResult === 'Waiting' ||
             this.submissionInfo.judgeResult === 'Pending' ||
-            this.submissionInfo.judgeResult === 'Rejudging') {
+            this.submissionInfo.judgeResult === 'Rejudging')) {
             setTimeout(() => {
               this.all();
             }, 1000)
@@ -198,10 +199,14 @@ export default {
     }
   },
   async mounted() {
+    this.mounted = true;
     this.sid = this.$route.params.sid;
     document.title = "提交记录";
     this.gid = store.state.gid;
     await this.all();
+  },
+  unmounted() {
+    this.mounted = false;
   }
 }
 </script>
