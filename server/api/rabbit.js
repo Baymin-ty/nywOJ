@@ -1,6 +1,6 @@
 const db = require('../db/index')
-const rabbitData = require('../store/rabbitData.json')
-const lastClick = require('../store/lastClick.json')
+let rabbitData = {};
+let lastClick = {};
 
 const fill = (x) => {
     x = x.toString();
