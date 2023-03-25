@@ -36,9 +36,11 @@
           </el-descriptions-item>
         </el-descriptions>
         <el-divider style="margin-top: 20px; margin-bottom: 20px;" />
-        <el-button type="primary" @click="this.$router.push('/problem/' + problemInfo.pid)">返回题目</el-button>
-        <el-button type="danger" @click="updateProblem">更新题目</el-button>
-        <el-button type="success" @click="this.$router.push('/problem/case/' + problemInfo.pid)">管理数据</el-button>
+        <div style="text-align: center;">
+          <el-button type="primary" @click="this.$router.push('/problem/' + problemInfo.pid)">返回题目</el-button>
+          <el-button type="danger" @click="updateProblem">更新题目</el-button>
+          <el-button type="success" @click="this.$router.push('/problem/case/' + problemInfo.pid)">管理数据</el-button>
+        </div>
       </el-card>
     </el-col>
   </el-row>
