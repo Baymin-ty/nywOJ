@@ -99,6 +99,14 @@ const judgeCode = async (sid) => {
 
   const pid = sinfo.pid;
 
+  if (sinfo.judgeResult < 3) {
+    return;
+  }
+
+  if (sinfo.judgeResult === 4) {
+    db.query("UPDATE problem SET acCnt=acCnt-1 WHERE pid=?", [pid]);
+  }
+
   await setSubmission(sid, 1, 0, 0, 0, null, null);
 
   let pinfo = await ProblemInfo(pid);
@@ -225,7 +233,10 @@ const judgeCode = async (sid) => {
 
   let score = Math.ceil(100 * acCase / totalCase);
 
-  if (acCase === totalCase) finalRes = 4, score = 100;
+  if (acCase === totalCase) {
+    finalRes = 4, score = 100;
+    db.query("UPDATE problem SET acCnt=acCnt+1 WHERE pid=?", [pid]);
+  }
 
   await setSubmission(sid, finalRes, totalTime, maxMemory, score, null, JSON.stringify(judgeResult));
 
@@ -349,6 +360,7 @@ exports.getSubmissionInfo = (req, res) => {
 
 exports.reJudge = (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+
   judgeCode(req.body.sid);
   res.status(200).send({
     message: 'ok'
