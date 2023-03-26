@@ -292,7 +292,18 @@ exports.getSubmissionList = (req, res) => {
       list[i].judgeResult = judgeRes[list[i].judgeResult];
       list[i].memory = toHuman(list[i].memory);
     }
-    db.query("SELECT COUNT(*) as total FROM submission", (err, data) => {
+    let cntsql = "SELECT COUNT(*) as total FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ";
+    cntsql += 'WHERE p.isPublic' + (req.session.gid < 2 ? '=1' : '<6');
+    if (req.body.name) {
+      cntsql += ' AND u.name=\"' + req.body.name + "\"";
+    }
+    if (req.body.pid) {
+      cntsql += ' AND p.pid=' + req.body.pid;
+    }
+    if (req.body.judgeRes !== null) {
+      cntsql += ' AND s.judgeResult=' + req.body.judgeRes;
+    }
+    db.query(cntsql, (err, data) => {
       if (err) return res.status(202).send({ message: err });
       return res.status(200).send({
         total: data[0].total,

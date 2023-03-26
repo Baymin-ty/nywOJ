@@ -8,6 +8,7 @@
             <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
               layout="total, prev, pager, next" :total="total"></el-pagination>
             <el-button-group>
+              <el-button type="success" @click="mySub">我的提交</el-button>
               <el-button type="primary" @click="all">刷新</el-button>
             </el-button-group>
           </div>
@@ -82,9 +83,7 @@
         <el-divider />
         <el-button type="primary" @click="this.all">筛选记录</el-button>
         <el-button type="success" @click="clear">显示全部</el-button>
-
       </el-card>
-
     </el-col>
   </el-row>
 </template>
@@ -93,6 +92,7 @@
 import axios from "axios"
 import { ElMessage } from 'element-plus'
 import { resColor, scoreColor } from '@/assets/common'
+import store from "@/sto/store"
 
 export default {
   name: 'submissionList',
@@ -107,6 +107,9 @@ export default {
         res: null
       },
       options: [{
+        value: -1,
+        label: '不限结果',
+      }, {
         value: 4,
         label: 'Accepted',
       }, {
@@ -154,7 +157,7 @@ export default {
         pageId: this.currentPage,
         pid: this.filter.pid,
         name: this.filter.name,
-        judgeRes: this.filter.res
+        judgeRes: (this.filter.res === -1 ? null : this.filter.res)
       }).then(res => {
         this.submissionList = res.data.data;
         this.total = res.data.total;
@@ -168,6 +171,10 @@ export default {
     },
     clear() {
       this.filter.name = this.filter.pid = this.filter.res = null;
+      this.all();
+    },
+    mySub() {
+      this.filter.name = store.state.name;
       this.all();
     },
     handleCurrentChange(val) {
