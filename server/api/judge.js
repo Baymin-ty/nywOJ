@@ -102,28 +102,73 @@ const updateProblemSubmitInfo = (pid) => {
   })
 }
 
-let judgeList = [];
 
-const judgeCode = async () => {
-  while (judgeList.length) {
-    const sid = judgeList[0].sid;
-    let sinfo = await SubmissionInfo(sid);
-    if (!sinfo) return;
+const judgeCode = async (sid, isreJudge) => {
+  let sinfo = await SubmissionInfo(sid);
+  if (!sinfo) return;
 
-    const pid = sinfo.pid;
-    let pinfo = await ProblemInfo(pid);
-    if (!pinfo) return;
+  const pid = sinfo.pid;
+  let pinfo = await ProblemInfo(pid);
+  if (!pinfo) return;
 
-    await setSubmission(sid, 1, 0, 0, 0, null, null);
-    const code = sinfo.code, timeLimit = pinfo.timeLimit, memoryLimit = pinfo.memoryLimit;
+  await setSubmission(sid, 1, 0, 0, 0, null, null);
+  const code = sinfo.code, timeLimit = pinfo.timeLimit, memoryLimit = pinfo.memoryLimit;
 
-    // compile
+  // compile
+  await axios.post('http://localhost:5050/run', {
+    "cmd": [{
+      "args": ["/usr/bin/g++-9", "-O2", "-std=c++14", "-DONLINE_JUDGE", "main.cpp", "-o", "main"],
+      "env": ["PATH=/usr/bin:/bin"],
+      "files": [{
+        "content": ""
+      }, {
+        "name": "stdout",
+        "max": 10240
+      }, {
+        "name": "stderr",
+        "max": 10240
+      }],
+      "cpuLimit": 10000000000, // 10s
+      "memoryLimit": 536870912, // 512MB
+      "stackLimit": 536870912, // 512MB
+      "procLimit": 50,
+      "copyIn": {
+        "main.cpp": {
+          "content": code,
+        }
+      },
+      "copyOut": ["stdout", "stderr"],
+      "copyOutCached": ["main"],
+      "copyOutDir": "nywOJ_code_" + sid,
+      "strictMemoryLimit": true,
+    }]
+  }).then(res => {
+    compileResult = res.data[0];
+  });
+
+  if (compileResult.exitStatus !== 0) { // Compilation Error
+    const error = `Compilation Error, Time: ${Math.floor(compileResult.time / 1000 / 1000)} ms, Memory: ${Math.floor(compileResult.memory / 1024)} KB\n` + compileResult.files.stderr;
+    db.query('UPDATE submission SET judgeResult=3,compileResult=? WHERE sid=?', [error, sid]);
+    return;
+  }
+
+  const fileId = compileResult.fileIds['main'];
+
+  // run
+  const cases = JSON.parse((await getFile(`./data/${pid}/config.json`))).cases;
+
+  let runResult = {}, judgeResult = [], totalCase = cases.length, acCase = 0;
+
+  for (let i in cases) {
+    const inputFile = (await getFile(`./data/${pid}/${cases[i].input}`));
+    const outputFile = (await getFile(`./data/${pid}/${cases[i].output}`));
+    let usrOutput = "";
     await axios.post('http://localhost:5050/run', {
       "cmd": [{
-        "args": ["/usr/bin/g++-9", "-O2", "-std=c++14", "-DONLINE_JUDGE", "main.cpp", "-o", "main"],
+        "args": ["main"],
         "env": ["PATH=/usr/bin:/bin"],
         "files": [{
-          "content": ""
+          "content": inputFile
         }, {
           "name": "stdout",
           "max": 10240
@@ -131,124 +176,74 @@ const judgeCode = async () => {
           "name": "stderr",
           "max": 10240
         }],
-        "cpuLimit": 10000000000, // 10s
-        "memoryLimit": 536870912, // 512MB
-        "stackLimit": 536870912, // 512MB
+        "cpuLimit": timeLimit * 1000 * 1000, // ms -> ns
+        "clockLimit": timeLimit * 1000 * 1000 * 2,
+        "memoryLimit": memoryLimit * 1024 * 1024, // MB -> B
+        "stackLimit": memoryLimit * 1024 * 1024,
         "procLimit": 50,
+        "strictMemoryLimit": true,
         "copyIn": {
-          "main.cpp": {
-            "content": code,
+          "main": {
+            "fileId": fileId,
           }
         },
-        "copyOut": ["stdout", "stderr"],
-        "copyOutCached": ["main"],
-        "copyOutDir": "nywOJ_code_" + sid,
-        "strictMemoryLimit": true,
       }]
     }).then(res => {
-      compileResult = res.data[0];
+      runResult = res.data[0];
     });
 
-    if (compileResult.exitStatus !== 0) { // Compilation Error
-      const error = `Compilation Error, Time: ${Math.floor(compileResult.time / 1000 / 1000)} ms, Memory: ${Math.floor(compileResult.memory / 1024)} KB\n` + compileResult.files.stderr;
-      db.query('UPDATE submission SET judgeResult=3,compileResult=? WHERE sid=?', [error, sid]);
-      return;
-    }
-
-    const fileId = compileResult.fileIds['main'];
-
-    // run
-    const cases = JSON.parse((await getFile(`./data/${pid}/config.json`))).cases;
-
-    let runResult = {}, judgeResult = [], totalCase = cases.length, acCase = 0;
-
-    for (let i in cases) {
-      const inputFile = (await getFile(`./data/${pid}/${cases[i].input}`));
-      const outputFile = (await getFile(`./data/${pid}/${cases[i].output}`));
-      let usrOutput = "";
-      await axios.post('http://localhost:5050/run', {
-        "cmd": [{
-          "args": ["main"],
-          "env": ["PATH=/usr/bin:/bin"],
-          "files": [{
-            "content": inputFile
-          }, {
-            "name": "stdout",
-            "max": 10240
-          }, {
-            "name": "stderr",
-            "max": 10240
-          }],
-          "cpuLimit": timeLimit * 1000 * 1000, // ms -> ns
-          "clockLimit": timeLimit * 1000 * 1000 * 2,
-          "memoryLimit": memoryLimit * 1024 * 1024, // MB -> B
-          "stackLimit": memoryLimit * 1024 * 1024,
-          "procLimit": 50,
-          "strictMemoryLimit": true,
-          "copyIn": {
-            "main": {
-              "fileId": fileId,
-            }
-          },
-        }]
-      }).then(res => {
-        runResult = res.data[0];
+    if (runResult.status !== 'Accepted') {
+      judgeResult.push({
+        input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
+        output: runResult.files.stderr,
+        time: runResult.time / 1000 / 1000, // ms
+        memory: runResult.memory / 1024, // kB
+        judgeResult: resToIndex[runResult.status],
+        compareResult: '',
       });
-
-      if (runResult.status !== 'Accepted') {
-        judgeResult.push({
-          input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
-          output: runResult.files.stderr,
-          time: runResult.time / 1000 / 1000, // ms
-          memory: runResult.memory / 1024, // kB
-          judgeResult: resToIndex[runResult.status],
-          compareResult: '',
-        });
-      }
-      else {
-        usrOutput = runResult.files.stdout;
-        await setFile(`./comparer/tmp/${sid}usr.out`, usrOutput);
-        await setFile(`./comparer/tmp/${sid}data.out`, outputFile);
-        const compareRes = await getCompareResult(sid);
-        await delFile(`./comparer/tmp/${sid}usr.out`);
-        await delFile(`./comparer/tmp/${sid}data.out`);
-        judgeResult.push({
-          input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
-          output: usrOutput.substring(0, 255) + (usrOutput.length > 255 ? '......\n' : ''),
-          time: runResult.time / 1000 / 1000, // ms
-          memory: runResult.memory / 1024, // kB
-          judgeResult: (compareRes.substring(0, 2) === 'ok' ? 4 : 5),
-          compareResult: compareRes
-        });
-        acCase += (judgeResult[i].judgeResult === 4);
-      }
-      await setSubmission(sid, 1, 0, 0, 100 * acCase / totalCase, null, JSON.stringify(judgeResult));
     }
-
-    let finalRes = 12, totalTime = 0, maxMemory = 0;
-    for (i in judgeResult) {
-      totalTime += judgeResult[i].time;
-      maxMemory = Math.max(maxMemory, judgeResult[i].memory);
-      if (judgeResult[i].judgeResult === 4) continue;
-      finalRes = Math.min(finalRes, judgeResult[i].judgeResult);
+    else {
+      usrOutput = runResult.files.stdout;
+      await setFile(`./comparer/tmp/${sid}usr.out`, usrOutput);
+      await setFile(`./comparer/tmp/${sid}data.out`, outputFile);
+      const compareRes = await getCompareResult(sid);
+      await delFile(`./comparer/tmp/${sid}usr.out`);
+      await delFile(`./comparer/tmp/${sid}data.out`);
+      judgeResult.push({
+        input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
+        output: usrOutput.substring(0, 255) + (usrOutput.length > 255 ? '......\n' : ''),
+        time: runResult.time / 1000 / 1000, // ms
+        memory: runResult.memory / 1024, // kB
+        judgeResult: (compareRes.substring(0, 2) === 'ok' ? 4 : 5),
+        compareResult: compareRes
+      });
+      acCase += (judgeResult[i].judgeResult === 4);
     }
-
-    let score = Math.ceil(100 * acCase / totalCase);
-
-    if (acCase === totalCase) {
-      finalRes = 4, score = 100;
-      db.query("UPDATE problem SET acCnt=acCnt+1 WHERE pid=?", [pid]);
-    }
-
-    await setSubmission(sid, finalRes, totalTime, maxMemory, score, null, JSON.stringify(judgeResult));
-
-    if (judgeList[0].isreJudge) {
-      updateProblemSubmitInfo(pid);
-    }
-    judgeList.shift();
-
-    axios.delete(`http://localhost:5050/file/${fileId}`);
+    await setSubmission(sid, 1, 0, 0, 100 * acCase / totalCase, null, JSON.stringify(judgeResult));
   }
+
+  let finalRes = 12, totalTime = 0, maxMemory = 0;
+  for (i in judgeResult) {
+    totalTime += judgeResult[i].time;
+    maxMemory = Math.max(maxMemory, judgeResult[i].memory);
+    if (judgeResult[i].judgeResult === 4) continue;
+    finalRes = Math.min(finalRes, judgeResult[i].judgeResult);
+  }
+
+  let score = Math.ceil(100 * acCase / totalCase);
+
+  if (acCase === totalCase) {
+    finalRes = 4, score = 100;
+    db.query("UPDATE problem SET acCnt=acCnt+1 WHERE pid=?", [pid]);
+  }
+
+  await setSubmission(sid, finalRes, totalTime, maxMemory, score, null, JSON.stringify(judgeResult));
+
+  if (isreJudge) {
+    updateProblemSubmitInfo(pid);
+  }
+
+  axios.delete(`http://localhost:5050/file/${fileId}`);
 }
 
 
@@ -275,13 +270,7 @@ exports.submit = (req, res) => {
     });
     if (data.affectedRows > 0) {
       db.query("UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?", [pid]);
-      judgeList.push({
-        sid: data.insertId,
-        isreJudge: false
-      });
-      if (judgeList.length === 1) {
-        judgeCode();
-      }
+      judgeCode(data.insertId, false);
       return res.status(200).send({
         sid: data.insertId
       })
@@ -377,15 +366,7 @@ exports.reJudge = async (req, res) => {
 
   await setSubmission(req.body.sid, 2, 0, 0, 0, null, null);
 
-  judgeList.push({
-    sid: req.body.sid,
-    isreJudge: true
-  });
-
-  if (judgeList.length === 1) {
-    judgeCode();
-  }
-
+  judgeCode(req.body.sid, true);
   res.status(200).send({
     message: 'ok'
   });
