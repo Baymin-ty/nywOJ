@@ -149,6 +149,9 @@ const judgeCode = async (sid, isreJudge) => {
   if (compileResult.exitStatus !== 0) { // Compilation Error
     const error = `Compilation Error, Time: ${Math.floor(compileResult.time / 1000 / 1000)} ms, Memory: ${Math.floor(compileResult.memory / 1024)} KB\n` + compileResult.files.stderr;
     db.query('UPDATE submission SET judgeResult=3,compileResult=? WHERE sid=?', [error, sid]);
+    if (isreJudge) {
+      updateProblemSubmitInfo(pid);
+    }
     return;
   }
 
