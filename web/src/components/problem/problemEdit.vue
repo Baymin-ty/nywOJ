@@ -1,6 +1,6 @@
 <template>
   <el-row style="margin: auto;max-width: 1500px;min-width: 800px;">
-    <el-col :span="16">
+    <el-col :span="18">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -11,7 +11,7 @@
         <v-md-editor height="600px" v-model="problemInfo.description"></v-md-editor>
       </el-card>
     </el-col>
-    <el-col :span="8">
+    <el-col :span="6">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -25,7 +25,22 @@
           <el-descriptions-item label="空间限制">
             <el-input v-model="problemInfo.memoryLimit" style="width: 80px;" /> MB
           </el-descriptions-item>
-          <el-descriptions-item label="出题人">
+          <el-descriptions-item label="题目类型">
+            <el-select v-model="problemInfo.type" placeholder="评测结果" style="width: 150px;">
+              <el-option v-for="item in ptype" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-descriptions-item>
+          <el-descriptions-item label="题目标签">
+            <el-tag v-for="tag in problemInfo.tags" :key="tag" closable class="mx-1" @close="removeTag(tag)">
+              {{ tag }}
+            </el-tag>
+            <el-input v-if="inputVisible" v-model="newTag" class="ml-1 w-20" size="small" @keyup.enter="addTag"
+              @blur="addTag" style="width: 80px;" />
+            <el-button v-else class="button-new-tag ml-1" size="small" @click="inputVisible = true" style="width: 80px;">
+              + New Tag
+            </el-button>
+          </el-descriptions-item>
+          <el-descriptions-item label=" 出题人">
             <span style="cursor: pointer;" @click="this.$router.push('/user/' + problemInfo.publisherUid)"> {{
               problemInfo.publisher
             }}</span>
@@ -57,6 +72,12 @@ export default {
     return {
       gid: 1,
       problemInfo: [],
+      newTag: '',
+      inputVisible: false,
+      ptype: [
+        { value: 0, label: '传统文本比较' },
+        { value: 1, label: 'Special Judge' }
+      ],
     }
   },
   methods: {
@@ -80,6 +101,17 @@ export default {
           });
         }
       })
+    },
+    addTag() {
+      if (this.newTag)
+        this.problemInfo.tags.push(this.newTag);
+      this.newTag = '';
+      this.inputVisible = false;
+    },
+    removeTag(tag) {
+      if (this.problemInfo.tags.includes(tag)) {
+        this.problemInfo.tags.splice(this.problemInfo.tags.indexOf(tag), 1);
+      }
     }
   },
   async mounted() {
@@ -111,6 +143,11 @@ export default {
 .title {
   text-align: center;
   margin: 0;
-  font-size: 30px;
+  font-size: 25px;
+}
+
+.el-tag {
+  margin-right: 5px;
+  margin-bottom: 5px;
 }
 </style>

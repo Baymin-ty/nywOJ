@@ -1,33 +1,27 @@
 <template>
-  <div style="margin: 0 auto; max-width: 1200px">
+  <div style="margin: 0 auto; max-width: 1500px;">
     <el-card class="box-card" shadow="hover">
       <template #header>
-        <div class="card-header">
+        <div class="card-header" style="text-align: center;">
           个人主页
+          <el-button v-show="info.uid === this.uid" type="success" @click="this.dialogVisible = true">编辑我的个性签名</el-button>
+          <el-dialog :lock-scroll="false" v-model="dialogVisible" title="编辑签名"
+            style="width:600px;height: 600px;border-radius: 10px" class="pd">
+            <el-divider />
+            <el-input v-model="newMotto" type="textarea" placeholder="Please input" :rows="20" :maxlength="200"
+              :show-word-limit="true" style="width:500px;margin: 20px;" resize="none" />
+            <el-button type="primary" @click="updateMotto">确认修改</el-button>
+          </el-dialog>
         </div>
       </template>
       <el-row>
-        <el-col :span="12">
-          <el-card style="width:90%; margin: auto; height: 600px;overflow-y: auto;" shadow="never">
-            <template #header>
-              <div class="card-header" style="text-align: center;">
-                个性签名
-                <el-button v-show="info.uid === this.uid" type="success"
-                  @click="this.dialogVisible = true">编辑我的个性签名</el-button>
-                <el-dialog :lock-scroll="false" v-model="dialogVisible" title="编辑签名"
-                  style="width:600px;height: 600px;border-radius: 10px" class="pd">
-                  <el-divider />
-                  <el-input v-model="newMotto" type="textarea" placeholder="Please input" :rows="20" :maxlength="200"
-                    :show-word-limit="true" style="width:500px;margin: 20px;" resize="none" />
-                  <el-button type="primary" @click="updateMotto">确认修改</el-button>
-                </el-dialog>
-              </div>
-            </template>
+        <el-col :span="18">
+          <el-card class="box-card" style="overflow-y: auto; height: 600px; margin: auto;" shadow="never">
             <v-md-preview :text="this.info.motto"></v-md-preview>
           </el-card>
         </el-col>
-        <el-col :span="12">
-          <el-descriptions direction="vertical" :column="1" border>
+        <el-col :span="6">
+          <el-descriptions direction="vertical" :column="1" border style="margin: 10px;">
             <el-descriptions-item label="uid"> {{ info.uid }}</el-descriptions-item>
             <el-descriptions-item label="用户名"> {{ info.name }}</el-descriptions-item>
             <el-descriptions-item label="电子邮件">{{ info.email }}</el-descriptions-item>

@@ -25,7 +25,7 @@
         </div>
         <template #tip>
           <div class="el-upload__tip">
-            ZIP files with a size less than 200 MB
+            ZIP file with a size less than 200 MB
           </div>
         </template>
       </el-upload>
@@ -65,6 +65,16 @@ export default {
       }).then(res => {
         let cases = res.data.data;
         this.casePreview = "";
+        if (res.data.spj.length) {
+          this.casePreview = "# checker.cpp\n";
+
+          this.casePreview += "```c++\n";
+          this.casePreview += res.data.spj;
+
+          if (res.data.spj && res.data.spj[res.data.spj.length - 1] !== '\n')
+            this.casePreview += '\n';
+          this.casePreview += "```\n";
+        }
         for (let i = 0; i < cases.length; i++) {
           this.casePreview += '# Case ' + cases[i].index + '\n';
           this.casePreview += '### Input\n';

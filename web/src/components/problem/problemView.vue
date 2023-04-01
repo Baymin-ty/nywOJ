@@ -1,6 +1,6 @@
 <template>
   <el-row style="margin: auto;max-width: 1500px;min-width: 600px;">
-    <el-col :span="16">
+    <el-col :span="18">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -10,7 +10,7 @@
         <v-md-preview :text="problemInfo.description"> </v-md-preview>
       </el-card>
     </el-col>
-    <el-col :span="8">
+    <el-col :span="6">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -20,7 +20,13 @@
         <el-descriptions direction="vertical" :column="1" border>
           <el-descriptions-item label="时间限制"> {{ problemInfo.timeLimit }} ms</el-descriptions-item>
           <el-descriptions-item label="空间限制"> {{ problemInfo.memoryLimit }} MB</el-descriptions-item>
-          <el-descriptions-item label="出题人">
+          <el-descriptions-item label="题目类型"> {{ problemInfo.type }} </el-descriptions-item>
+          <el-descriptions-item label="题目标签">
+            <el-tag v-for="tag in problemInfo.tags" :key="tag" class="mx-1">
+              {{ tag }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label=" 出题人">
             <span style="cursor: pointer;" @click="this.$router.push('/user/' + problemInfo.publisherUid)"> {{
               problemInfo.publisher
             }}</span>
@@ -108,5 +114,10 @@ export default {
   text-align: center;
   margin: 0;
   font-size: 25px;
+}
+
+.el-tag {
+  margin-right: 5px;
+  margin-bottom: 5px;
 }
 </style>

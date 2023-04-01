@@ -46,38 +46,8 @@
       <el-table-column prop="submitTime" label="提交时间" width="180px" />
     </el-table>
   </el-row>
-  <el-row style="text-align: center; margin: 0 auto; width: 1200px">
-    <el-col :span="12" style="min-width: 400px">
-      <el-card class="box-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            测试点详情
-          </div>
-        </template>
-        <el-table v-show="submissionInfo.judgeResult !== 'Compilation Error'" :data="submissionInfo.caseResult"
-          height="auto" :row-class-name="tableRowClassName" :cell-style="cellStyle"
-          :header-cell-style="{ textAlign: 'center' }">
-          <el-table-column label="#" type="index" width="80px" />
-          <el-table-column prop="judgeResult" label="结果" width="auto">
-            <template #default="scope">
-              <span @click="showDetail(scope.row)" style="cursor: pointer;"> {{ scope.row.judgeResult }} </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="time" label="用时" width="100">
-            <template #default="scope">
-              <span> {{ Math.floor(scope.row.time) }} ms</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="memory" label="内存" width="100">
-            <template #default="scope">
-              <span> {{ scope.row.memory }} </span>
-            </template>
-          </el-table-column>
-        </el-table>
-        <v-md-preview v-show="submissionInfo.judgeResult === 'Compilation Error'" :text="submissionInfo.compileResult" />
-      </el-card>
-    </el-col>
-    <el-col :span="12" style="min-width: 400px;margin: 0 auto;">
+  <el-row style="text-align: center; margin: 0 auto; max-width: 1200px; min-width: 600px;">
+    <el-col :span="24" style="min-width: 400px;margin: 0 auto;">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class=" card-header">
@@ -88,6 +58,41 @@
           </div>
         </template>
         <v-md-preview :text="submissionInfo.code"> </v-md-preview>
+      </el-card>
+    </el-col>
+  </el-row>
+  <el-row style="text-align: center; margin: 0 auto; max-width: 1200px; min-width: 600px;">
+    <el-col :span="24" style="min-width: 400px">
+      <el-card class="box-card" shadow="hover">
+        <template #header>
+          <div class="card-header">
+            测试点详情
+          </div>
+        </template>
+        <el-table
+          v-show="submissionInfo.judgeResult !== 'Compilation Error' && submissionInfo.judgeResult !== 'System Error'"
+          :data="submissionInfo.caseResult" height="auto" :row-class-name="tableRowClassName" :cell-style="cellStyle"
+          :header-cell-style="{ textAlign: 'center' }">
+          <el-table-column label="#" type="index" width="100px" />
+          <el-table-column prop="judgeResult" label="结果" width="auto">
+            <template #default="scope">
+              <span @click="showDetail(scope.row)" style="cursor: pointer;"> {{ scope.row.judgeResult }} </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="time" label="用时" width="200px">
+            <template #default="scope">
+              <span> {{ Math.floor(scope.row.time) }} ms</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="memory" label="内存" width="200px">
+            <template #default="scope">
+              <span> {{ scope.row.memory }} </span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <v-md-preview
+          v-show="submissionInfo.judgeResult === 'Compilation Error' || submissionInfo.judgeResult === 'System Error'"
+          :text="submissionInfo.compileResult" />
       </el-card>
     </el-col>
   </el-row>
@@ -183,7 +188,7 @@ export default {
         if (res.status === 200) {
           this.submissionInfo = res.data.data
           this.submissionInfo.code = "```c++\n" + this.submissionInfo.code + "\n```";
-          this.submissionInfo.compileResult = "```\n" + this.submissionInfo.compileResult + "```";
+          this.submissionInfo.compileResult = "```\n" + this.submissionInfo.compileResult + "\n```";
           this.table[0] = this.submissionInfo;
           if (this.mounted && (this.submissionInfo.judgeResult === 'Waiting' ||
             this.submissionInfo.judgeResult === 'Pending' ||

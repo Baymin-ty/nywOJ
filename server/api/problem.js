@@ -14,7 +14,7 @@ const Format = (now) => {
 
 exports.createProblem = (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
-  db.query('INSERT INTO problem(title,description,publisher,time) VALUES (?,?,?,?)', ["请输入题目标题", "请输入题目描述", req.session.uid, new Date()], (err, data) => {
+  db.query('INSERT INTO problem(title,description,publisher,time,tags) VALUES (?,?,?,?,?)', ["请输入题目标题", "请输入题目描述", req.session.uid, new Date(), JSON.stringify(['请修改题目标签'])], (err, data) => {
     if (err) return res.status(202).send({
       message: err.message
     });
@@ -54,7 +54,9 @@ exports.updateProblem = (req, res) => {
     });
   }
   info.isPublic = info.isPublic ? 1 : 0;
-  db.query('UPDATE problem SET title=?,description=?,timeLimit=?,memoryLimit=?,isPublic=? WHERE pid=?', [info.title, info.description, info.timeLimit, info.memoryLimit, info.isPublic, pid], (err, data) => {
+  if (info.type === '传统文本比较') info.type = 0;
+  else if (info.type === 'Special Judge') info.type = 1;
+  db.query('UPDATE problem SET title=?,description=?,timeLimit=?,memoryLimit=?,isPublic=?,type=?,tags=? WHERE pid=?', [info.title, info.description, info.timeLimit, info.memoryLimit, info.isPublic, info.type, JSON.stringify(info.tags), pid], (err, data) => {
     if (err) return res.status(202).send({
       message: err.message
     });
@@ -90,9 +92,11 @@ exports.getProblemList = (req, res) => {
   });
 }
 
+const ptype = ['传统文本比较', 'Special Judge'];
+
 exports.getProblemInfo = (req, res) => {
   const pid = req.body.pid;
-  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.description,p.time,p.timeLimit,p.memoryLimit,p.isPublic,p.publisher as publisherUid,u.`name` as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=? "
+  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.description,p.time,p.timeLimit,p.memoryLimit,p.isPublic,p.type,p.tags,p.publisher as publisherUid,u.`name` as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=? "
     + (req.session.gid > 1 ? "" : "AND isPublic=1");
   db.query(sql, [pid], (err, data) => {
     if (err) return res.status(202).send({ message: err });
@@ -100,6 +104,8 @@ exports.getProblemInfo = (req, res) => {
       message: 'error'
     });
     else {
+      data[0].type = ptype[data[0].type];
+      data[0].tags = JSON.parse(data[0].tags);
       data[0].time = Format(data[0].time);
       return res.status(200).send({
         data: data[0]
@@ -115,6 +121,11 @@ exports.getProblemCasePreview = async (req, res) => {
   const data = JSON.parse(await (getFile(`./data/${pid}/config.json`)));
   if (!data) return res.status(202).send({ data: [] });
 
+  let spj = '';
+
+  if (fs.existsSync(`./data/${pid}/checker.cpp`)) {
+    spj = await getFile(`./data/${pid}/checker.cpp`);
+  }
   const cases = data.cases;
 
   let previewList = [];
@@ -127,7 +138,7 @@ exports.getProblemCasePreview = async (req, res) => {
       output: outputFile.substring(0, 255) + (outputFile.length > 255 ? '......\n' : '')
     }
   }
-  return res.status(200).send({ data: previewList });
+  return res.status(200).send({ data: previewList, spj: spj });
 }
 
 exports.clearCase = async (req, res) => {

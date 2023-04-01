@@ -3,6 +3,7 @@ const db = require('../db/index');
 const { getFile, setFile, delFile } = require('../file');
 const exec = require('child_process').exec;
 
+let jid = 0;
 
 const fill = (x) => {
   x = x.toString();
@@ -124,10 +125,10 @@ const judgeCode = async (sid, isreJudge) => {
           "content": ""
         }, {
           "name": "stdout",
-          "max": 10240
+          "max": 32 * 1024 * 1024
         }, {
           "name": "stderr",
-          "max": 10240
+          "max": 32 * 1024 * 1024
         }],
         "cpuLimit": 10000000000, // 10s
         "memoryLimit": 536870912, // 512MB
@@ -158,6 +159,49 @@ const judgeCode = async (sid, isreJudge) => {
 
     const fileId = compileResult.fileIds['main'];
 
+    let SPJfileId = '';
+
+    // spj
+    if (pinfo.type === 1) {
+      const testlib = await getFile('./comparer/testlib.h');
+      const spj = await getFile(`data/${pid}/checker.cpp`);
+      // compile spj
+      await axios.post('http://localhost:5050/run', {
+        "cmd": [{
+          "args": ["/usr/bin/g++-9", "-O2", "-std=c++14", "-DONLINE_JUDGE", "spj.cpp", "-o", "spj"],
+          "env": ["PATH=/usr/bin:/bin"],
+          "files": [{
+            "content": ""
+          }, {
+            "name": "stdout",
+            "max": 32 * 1024 * 1024
+          }, {
+            "name": "stderr",
+            "max": 32 * 1024 * 1024
+          }],
+          "cpuLimit": 10000000000, // 10s
+          "memoryLimit": 536870912, // 512MB
+          "stackLimit": 536870912, // 512MB
+          "procLimit": 50,
+          "copyIn": {
+            "spj.cpp": {
+              "content": spj,
+            },
+            "testlib.h": {
+              "content": testlib,
+            }
+          },
+          "copyOut": ["stdout", "stderr"],
+          "copyOutCached": ["spj"],
+          "copyOutDir": "nywOJ_code_" + sid,
+          "strictMemoryLimit": true,
+        }]
+      }).then(res => {
+        SPJcompileResult = res.data[0];
+      });
+      SPJfileId = SPJcompileResult.fileIds['spj'];
+    }
+
     // run
     const cases = JSON.parse((await getFile(`./data/${pid}/config.json`))).cases;
 
@@ -175,10 +219,10 @@ const judgeCode = async (sid, isreJudge) => {
             "content": inputFile
           }, {
             "name": "stdout",
-            "max": 10240
+            "max": 32 * 1024 * 1024
           }, {
             "name": "stderr",
-            "max": 10240
+            "max": 32 * 1024 * 1024
           }],
           "cpuLimit": timeLimit * 1000 * 1000, // ms -> ns
           "clockLimit": timeLimit * 1000 * 1000 * 2,
@@ -208,11 +252,56 @@ const judgeCode = async (sid, isreJudge) => {
       }
       else {
         usrOutput = runResult.files.stdout;
-        await setFile(`./comparer/tmp/${sid}usr.out`, usrOutput);
-        await setFile(`./comparer/tmp/${sid}data.out`, outputFile);
-        const compareRes = await getCompareResult(sid);
-        await delFile(`./comparer/tmp/${sid}usr.out`);
-        await delFile(`./comparer/tmp/${sid}data.out`);
+        ++jid;
+        let compareRes = '';
+
+        if (pinfo.type === 0) {
+          await setFile(`./comparer/tmp/${sid}-${jid}usr.out`, usrOutput);
+          await setFile(`./comparer/tmp/${sid}-${jid}data.out`, outputFile);
+          compareRes = await getCompareResult(sid + '-' + jid);
+          await delFile(`./comparer/tmp/${sid}-${jid}usr.out`);
+          await delFile(`./comparer/tmp/${sid}-${jid}data.out`);
+        }
+        else if (pinfo.type === 1) { // spj
+          await axios.post('http://localhost:5050/run', {
+            "cmd": [{
+              "args": ["spj", "data.in", "usr.out", "data.out"],
+              "env": ["PATH=/usr/bin:/bin"],
+              "files": [{
+                "content": ""
+              }, {
+                "name": "stdout",
+                "max": 32 * 1024 * 1024
+              }, {
+                "name": "stderr",
+                "max": 32 * 1024 * 1024
+              }],
+              "cpuLimit": 5000 * 1000 * 1000, // ms -> ns, 5s
+              "clockLimit": 5000 * 1000 * 1000 * 2,
+              "memoryLimit": 512 * 1024 * 1024, // MB -> B, 512MB
+              "stackLimit": 512 * 1024 * 1024,
+              "procLimit": 50,
+              "strictMemoryLimit": true,
+              "copyIn": {
+                "spj": {
+                  "fileId": SPJfileId,
+                },
+                "data.in": {
+                  "content": inputFile,
+                },
+                "usr.out": {
+                  "content": usrOutput,
+                },
+                "data.out": {
+                  "content": outputFile,
+                }
+              },
+            }]
+          }).then(res => {
+            compareRes = res.data[0].files.stderr;
+          });
+        }
+
         judgeResult.push({
           input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
           output: usrOutput.substring(0, 255) + (usrOutput.length > 255 ? '......\n' : ''),
@@ -221,6 +310,7 @@ const judgeCode = async (sid, isreJudge) => {
           judgeResult: (compareRes.substring(0, 2) === 'ok' ? 4 : 5),
           compareResult: compareRes
         });
+
         acCase += (judgeResult[i].judgeResult === 4);
       }
       await setSubmission(sid, 1, 0, 0, 100 * acCase / totalCase, null, JSON.stringify(judgeResult));
@@ -249,8 +339,7 @@ const judgeCode = async (sid, isreJudge) => {
 
     axios.delete(`http://localhost:5050/file/${fileId}`);
   } catch (err) {
-    console.log(sid, err);
-    await setSubmission(sid, 12, 0, 0, 0, null, null);
+    await setSubmission(sid, 12, 0, 0, 0, String(err), null);
   }
 }
 

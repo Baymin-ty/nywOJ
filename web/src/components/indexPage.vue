@@ -8,7 +8,7 @@
             <el-button v-show="gid === 3" type="danger" @click="addAnnouncement">添加公告</el-button>
           </div>
         </template>
-        <el-table :data="announcements">
+        <el-table :data="announcements" v-loading="!announcements.length">
           <el-table-column prop="title" label="标题" width="auto">
             <template #default="scope">
               <span style="cursor: pointer;" @click="this.$router.push('/announcement/' + scope.row.aid)"> {{
