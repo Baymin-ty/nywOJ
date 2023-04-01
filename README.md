@@ -1,6 +1,8 @@
 # nywOJ
 > An Online Judge System
 
+### [demo: https://ty.szsyzx.cn](![]https://ty.szsyzx.cn)
+
 ### author
 + name: ty
 + School: Jiangsu Suzhou Experimental Middle School
