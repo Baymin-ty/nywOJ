@@ -163,8 +163,12 @@ const judgeCode = async (sid, isreJudge) => {
 
     // spj
     if (pinfo.type === 1) {
-      const testlib = await getFile('./comparer/testlib.h');
       const spj = await getFile(`data/${pid}/checker.cpp`);
+      if (!spj) {
+        db.query('UPDATE submission SET judgeResult=12,compileResult=? WHERE sid=?', ['No checker.cpp found, please contact the problem publisher.', sid]);
+        return;
+      }
+      const testlib = await getFile('./comparer/testlib.h');
       // compile spj
       await axios.post('http://localhost:5050/run', {
         "cmd": [{
@@ -199,6 +203,14 @@ const judgeCode = async (sid, isreJudge) => {
       }).then(res => {
         SPJcompileResult = res.data[0];
       });
+      if (SPJcompileResult.exitStatus !== 0) {
+        const error = 'SPJ Error\n' + SPJcompileResult.files.stderr;
+        db.query('UPDATE submission SET judgeResult=12,compileResult=? WHERE sid=?', [error, sid]);
+        if (isreJudge) {
+          updateProblemSubmitInfo(pid);
+        }
+        return;
+      }
       SPJfileId = SPJcompileResult.fileIds['spj'];
     }
 
