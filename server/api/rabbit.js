@@ -1,6 +1,6 @@
 const db = require('../db/index')
 let rabbitData = {};
-let lastClick = {};
+let dayClick = { 'lastClick': new Date(0), };
 
 const fill = (x) => {
     x = x.toString();
@@ -27,19 +27,25 @@ exports.all = (req, res) => {
 exports.add = (req, res) => {
     const ip = req.session.ip, uid = req.session.uid;
 
-    const dt = new Date() - lastClick.uid;
-    if (dt < 5000) {
+    if (!dayClick.lastClick || new Date().getDate() !== dayClick.lastClick.getDate()) {
+        dayClick = {};
+    }
+    if (!dayClick.uid) dayClick.uid = 0;
+    const cnt = dayClick.uid;
+    if (cnt > 10000) {
         return res.status(202).send({
-            message: "请" + (5 - Math.floor(dt / 1000)) + "秒后再点击"
+            message: "请明天再试"
         })
     }
+
     db.query('INSERT INTO clickList(uid,time,ip) values (?,?,?)', [uid, new Date(), ip], (err, data) => {
         if (err) return res.status(202).send({
             message: err.message
         });
         if (data.affectedRows > 0) {
             db.query("UPDATE userInfo SET clickCnt=clickCnt+1 WHERE uid=?", [uid]);
-            lastClick.uid = new Date();
+            dayClick.uid++;
+            dayClick.lastClick = new Date();
             return res.status(200).send({
                 message: 'success',
             });
