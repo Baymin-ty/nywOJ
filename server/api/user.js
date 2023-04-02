@@ -229,8 +229,8 @@ exports.getUserPublicInfo = (req, res) => {
 
 exports.setUserMotto = async (req, res) => {
     const motto = req.body.data;
-    if (motto.length > 200) {
-        return res.status(202).send({ message: "个签长度应在200以内" });
+    if (motto.length > 10000) {
+        return res.status(202).send({ message: "个签长度应在10000以内" });
     }
     db.query("UPDATE userInfo SET motto=? WHERE uid=?", [motto, req.session.uid], (err, data) => {
         if (err) {
