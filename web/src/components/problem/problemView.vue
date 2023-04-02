@@ -52,11 +52,12 @@
           </el-button>
         </div>
       </el-card>
-      <el-dialog v-model="dialogVisible" title="提交代码"
-        style="width:1000px;height: 600px;border-radius: 10px; text-align: center;">
-        <el-input v-model="code" type="textarea" :rows="20" resize="none" />
-        <el-divider style="margin-top: 10px; margin-bottom: 10px;" />
-        <el-button type="primary" @click="submit" style="margin: 10px;">确认提交</el-button>
+      <el-dialog v-model="dialogVisible" title="提交代码" style="width:1000px;border-radius: 5px; text-align: center;"
+        class="pd">
+        <el-divider />
+        <el-input v-model="code" type="textarea" :rows="20" resize="none" style=" padding: 10px; width: 950px;" />
+        <el-divider />
+        <el-button type="primary" @click="submit" style="margin-top: 10px;margin-bottom: 20px;">确认提交</el-button>
       </el-dialog>
     </el-col>
   </el-row>
