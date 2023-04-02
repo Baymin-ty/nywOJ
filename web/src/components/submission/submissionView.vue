@@ -76,7 +76,7 @@
           <el-table-column label="#" type="index" width="100px" />
           <el-table-column prop="judgeResult" label="结果" width="auto">
             <template #default="scope">
-              <span @click="showDetail(scope.row)" class="rlink"> {{ scope.row.judgeResult }} </span>
+              <span @click="showDetail(scope.row)" style="cursor: pointer;"> {{ scope.row.judgeResult }} </span>
             </template>
           </el-table-column>
           <el-table-column prop="time" label="用时" width="200px">
@@ -96,8 +96,7 @@
       </el-card>
     </el-col>
   </el-row>
-  <el-dialog  v-model="dialogVisible" title="测试点详情" style="width:1000px;border-radius: 10px; "
-    class="pd">
+  <el-dialog v-model="dialogVisible" title="测试点详情" style="width:1000px;border-radius: 10px; " class="pd">
     <el-divider />
     <v-md-preview :text="detailInfo"> </v-md-preview>
   </el-dialog>
