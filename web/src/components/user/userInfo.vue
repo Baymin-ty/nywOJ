@@ -4,7 +4,12 @@
       <template #header>
         <div class="card-header" style="text-align: center;">
           个人主页
-          <el-button v-show="info.uid === this.uid" type="success" @click="this.dialogVisible = true">编辑我的个性签名</el-button>
+          <el-button v-show="info.uid === this.uid" type="success" @click="this.dialogVisible = true">
+            <el-icon class="el-icon--left">
+              <Edit />
+            </el-icon>
+            编辑个性签名
+          </el-button>
           <el-dialog v-model="dialogVisible" title="编辑签名" style="width:600px;height: 600px;border-radius: 10px"
             class="pd">
             <el-divider />

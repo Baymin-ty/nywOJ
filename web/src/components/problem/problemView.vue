@@ -38,9 +38,18 @@
         </el-descriptions>
         <el-divider style="margin-top: 20px; margin-bottom: 20px;" />
         <div style="text-align: center;">
-          <el-button type="primary" @click="this.dialogVisible = true">提交代码</el-button>
-          <el-button v-show="this.gid > 1" type="danger"
-            @click="this.$router.push('/problem/edit/' + problemInfo.pid)">题目管理</el-button>
+          <el-button type="primary" @click="this.dialogVisible = true">
+            <el-icon class="el-icon--left">
+              <Upload />
+            </el-icon>
+            提交代码
+          </el-button>
+          <el-button v-show="this.gid > 1" type="danger" @click="this.$router.push('/problem/edit/' + problemInfo.pid)">
+            <el-icon class="el-icon--left">
+              <Operation />
+            </el-icon>
+            题目管理
+          </el-button>
         </div>
       </el-card>
       <el-dialog v-model="dialogVisible" title="提交代码"

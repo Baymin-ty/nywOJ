@@ -7,8 +7,18 @@
           <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
             layout="total, prev, pager, next" :total="total"></el-pagination>
           <el-button-group>
-            <el-button v-show="this.gid >= 2" type="success" @click="addProblem">添加题目</el-button>
-            <el-button type="primary" @click="all">刷新</el-button>
+            <el-button v-show="this.gid >= 2" type="success" @click="addProblem">
+              <el-icon class="el-icon--left">
+                <Plus />
+              </el-icon>
+              添加题目
+            </el-button>
+            <el-button type="primary" @click="all">
+              <el-icon class="el-icon--left">
+                <Refresh />
+              </el-icon>
+              刷新
+            </el-button>
           </el-button-group>
         </div>
       </template>

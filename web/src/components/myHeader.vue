@@ -3,9 +3,24 @@
     <el-menu-item index="/rabbit" style="height: auto;">
       <img style="width: 40px; height: 40px; margin-top: 5px; border-radius: 5px" src="../assets/icon.png">
     </el-menu-item>
-    <el-menu-item index="/">首页</el-menu-item>
-    <el-menu-item v-show="this.uid" index="/problem">题库</el-menu-item>
-    <el-menu-item v-show="this.uid" index="/submission">提交记录</el-menu-item>
+    <el-menu-item index="/">
+      <el-icon>
+        <HomeFilled />
+      </el-icon>
+      首页
+    </el-menu-item>
+    <el-menu-item v-show="this.uid" index="/problem">
+      <el-icon>
+        <Files />
+      </el-icon>
+      题库
+    </el-menu-item>
+    <el-menu-item v-show="this.uid" index="/submission">
+      <el-icon>
+        <DataAnalysis />
+      </el-icon>
+      提交记录
+    </el-menu-item>
     <el-menu-item v-show="!uid" index="/user/login">登录</el-menu-item>
     <el-menu-item v-show="!uid" index="/user/reg">注册</el-menu-item>
     <el-sub-menu index="/user/" v-show="uid">

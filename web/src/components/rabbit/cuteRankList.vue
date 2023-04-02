@@ -4,7 +4,12 @@
       <template #header>
         <div class="card-header">
           点击数排名
-          <el-button type="primary" :disabled="!finished" @click="all">更新排名</el-button>
+          <el-button type="primary" :disabled="!finished" @click="all">
+            <el-icon class="el-icon--left">
+              <Refresh />
+            </el-icon>
+            更新排名
+          </el-button>
         </div>
       </template>
       <el-table v-loading="!finished" :data="info" height="600px" :row-class-name="tableRowClassName"

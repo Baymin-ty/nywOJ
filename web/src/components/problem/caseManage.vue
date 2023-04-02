@@ -8,7 +8,12 @@
             <el-popconfirm width="100" confirm-button-text="确认" cancel-button-text="取消" title="确认清空数据?"
               @confirm="delAllCase">
               <template #reference>
-                <el-button type="danger">清空数据</el-button>
+                <el-button type="danger">
+                  <el-icon class="el-icon--left">
+                    <Delete />
+                  </el-icon>
+                  清空数据
+                </el-button>
               </template>
             </el-popconfirm>
             <el-button type="primary" @click="this.$router.push('/problem/edit/' + pid)">编辑题面</el-button>
@@ -37,7 +42,6 @@
 <script>
 import axios from 'axios';
 import store from '@/sto/store';
-import { UploadFilled } from '@element-plus/icons-vue'
 
 
 export default {
@@ -47,9 +51,6 @@ export default {
       pid: 0,
       casePreview: "",
     };
-  },
-  components: {
-    UploadFilled
   },
   methods: {
     async delAllCase() {

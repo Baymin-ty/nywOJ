@@ -53,6 +53,9 @@
           <div class=" card-header">
             代码
             <el-button v-show="gid > 1" type="danger" @click="reJudge">
+              <el-icon class="el-icon--left">
+                <Refresh />
+              </el-icon>
               重新测评
             </el-button>
           </div>

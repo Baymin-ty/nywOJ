@@ -5,7 +5,12 @@
         <template #header>
           <div class="card-header">
             公告栏
-            <el-button v-show="gid === 3" type="danger" @click="addAnnouncement">添加公告</el-button>
+            <el-button :icon="Upload" v-show="gid === 3" type="danger" @click="addAnnouncement">
+              <el-icon class="el-icon--left">
+                <Plus />
+              </el-icon>
+              添加公告
+            </el-button>
           </div>
         </template>
         <el-table :data="announcements" v-loading="!announcements.length">
@@ -26,7 +31,12 @@
         <template #header>
           <div class="card-header">
             一言（ヒトコト）
-            <el-button type="primary" @click="updateHitokoto" color="#626aef" plain>再来一个</el-button>
+            <el-button type="primary" @click="updateHitokoto" color="#626aef" plain>
+              <el-icon class="el-icon--left">
+                <Refresh />
+              </el-icon>
+              再来一个
+            </el-button>
           </div>
         </template>
         <div style="font-size: 14px; "> {{ motto.hitokoto }} </div>

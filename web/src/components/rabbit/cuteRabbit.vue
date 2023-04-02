@@ -18,7 +18,12 @@
         <template #header>
           <div class="card-header">
             戳可爱兔兔，测可爱列表
-            <el-button type="primary" :disabled="!finished" @click="all">更新信息</el-button>
+            <el-button type="primary" :disabled="!finished" @click="all">
+              <el-icon class="el-icon--left">
+                <Refresh />
+              </el-icon>
+              更新信息
+            </el-button>
           </div>
         </template>
         <el-table v-loading="!finished" :data="info" height="600px" :row-class-name="tableRowClassName"

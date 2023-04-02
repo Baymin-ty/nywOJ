@@ -8,8 +8,18 @@
             <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
               layout="total, prev, pager, next" :total="total"></el-pagination>
             <el-button-group>
-              <el-button type="success" @click="mySub">我的提交</el-button>
-              <el-button type="primary" @click="all">刷新</el-button>
+              <el-button type="success" @click="mySub">
+                <el-icon class="el-icon--left">
+                  <UserFilled />
+                </el-icon>
+                我的提交
+              </el-button>
+              <el-button type="primary" @click="all">
+                <el-icon class="el-icon--left">
+                  <Refresh />
+                </el-icon>
+                刷新
+              </el-button>
             </el-button-group>
           </div>
         </template>
@@ -81,8 +91,18 @@
           </el-form-item>
         </el-form>
         <el-divider />
-        <el-button type="primary" @click="this.all">筛选记录</el-button>
-        <el-button type="success" @click="clear">显示全部</el-button>
+        <el-button type="primary" @click="this.all">
+          <el-icon class="el-icon--left">
+            <Filter />
+          </el-icon>
+          筛选记录
+        </el-button>
+        <el-button type="success" @click="clear">
+          <el-icon class="el-icon--left">
+            <Failed />
+          </el-icon>
+          显示全部
+        </el-button>
       </el-card>
     </el-col>
   </el-row>
