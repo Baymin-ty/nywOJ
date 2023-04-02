@@ -47,7 +47,7 @@ export default {
 body {
   margin-top: 0;
   padding-right: 0 !important;
-  overflow-y: auto;
+  overflow-y: overlay;
 }
 
 .card-header {
