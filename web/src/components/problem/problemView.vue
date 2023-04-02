@@ -43,7 +43,7 @@
             @click="this.$router.push('/problem/edit/' + problemInfo.pid)">题目管理</el-button>
         </div>
       </el-card>
-      <el-dialog :lock-scroll="false" v-model="dialogVisible" title="提交代码"
+      <el-dialog v-model="dialogVisible" title="提交代码"
         style="width:1000px;height: 600px;border-radius: 10px; text-align: center;">
         <el-input v-model="code" type="textarea" :rows="20" resize="none" />
         <el-divider style="margin-top: 10px; margin-bottom: 10px;" />
