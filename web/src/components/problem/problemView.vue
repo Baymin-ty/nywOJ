@@ -27,7 +27,7 @@
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label=" 出题人">
-            <span style="cursor: pointer;" @click="this.$router.push('/user/' + problemInfo.publisherUid)"> {{
+            <span class="rlink" @click="this.$router.push('/user/' + problemInfo.publisherUid)"> {{
               problemInfo.publisher
             }}</span>
           </el-descriptions-item>

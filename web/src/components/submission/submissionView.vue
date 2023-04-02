@@ -5,13 +5,13 @@
       <el-table-column prop="sid" label="#" width="80px" />
       <el-table-column prop="title" label="题目" width="180px">
         <template #default="scope">
-          <span style="cursor: pointer;" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
+          <span class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
           }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="name" label="提交者" width="120px">
         <template #default="scope">
-          <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)">
+          <span class="rlink" @click="this.$router.push('/user/' + scope.row.uid)">
             {{ scope.row.name }}
           </span>
         </template>
@@ -76,7 +76,7 @@
           <el-table-column label="#" type="index" width="100px" />
           <el-table-column prop="judgeResult" label="结果" width="auto">
             <template #default="scope">
-              <span @click="showDetail(scope.row)" style="cursor: pointer;"> {{ scope.row.judgeResult }} </span>
+              <span @click="showDetail(scope.row)" class="rlink"> {{ scope.row.judgeResult }} </span>
             </template>
           </el-table-column>
           <el-table-column prop="time" label="用时" width="200px">

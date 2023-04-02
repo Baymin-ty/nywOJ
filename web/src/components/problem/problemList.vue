@@ -17,7 +17,7 @@
         <el-table-column prop="pid" label="#" width="100px" />
         <el-table-column prop="title" label="标题" width="auto">
           <template #default="scope">
-            <span style="cursor: pointer;" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
+            <span class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
             }}</span>
           </template>
         </el-table-column>
@@ -29,7 +29,7 @@
         <el-table-column prop="time" label="发布时间" width="200px" />
         <el-table-column prop="publisher" label="出题人" width="120px">
           <template #default="scope">
-            <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.publisherUid)">
+            <span class="rlink" @click="this.$router.push('/user/' + scope.row.publisherUid)">
               {{ scope.row.publisher }}
             </span>
           </template>

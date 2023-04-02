@@ -11,7 +11,7 @@
         <el-table :data="announcements" v-loading="!announcements.length">
           <el-table-column prop="title" label="标题" width="auto">
             <template #default="scope">
-              <span style="cursor: pointer;" @click="this.$router.push('/announcement/' + scope.row.aid)"> {{
+              <span class="rlink" @click="this.$router.push('/announcement/' + scope.row.aid)"> {{
                 scope.row.title
               }}</span>
             </template>

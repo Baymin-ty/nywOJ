@@ -18,13 +18,13 @@
           <el-table-column prop="sid" label="#" width="80px" />
           <el-table-column prop="title" label="题目" width="160px">
             <template #default="scope">
-              <span style="cursor: pointer;" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
+              <span class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
               }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="name" label="提交者" width="120px">
             <template #default="scope">
-              <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)">
+              <span class="rlink" @click="this.$router.push('/user/' + scope.row.uid)">
                 {{ scope.row.name }}
               </span>
             </template>

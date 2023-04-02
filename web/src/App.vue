@@ -52,4 +52,9 @@ body {
 .card-header {
   font-weight: bolder;
 }
+
+.rlink {
+  cursor: pointer;
+  color: #558CDD;
+}
 </style>
