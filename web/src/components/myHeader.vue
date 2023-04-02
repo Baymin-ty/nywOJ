@@ -21,13 +21,38 @@
       </el-icon>
       提交记录
     </el-menu-item>
-    <el-menu-item v-show="!uid" index="/user/login">登录</el-menu-item>
-    <el-menu-item v-show="!uid" index="/user/reg">注册</el-menu-item>
+    <el-menu-item v-show="!uid" index="/user/login">
+      <el-icon>
+        <User />
+      </el-icon>
+      登录
+    </el-menu-item>
+    <el-menu-item v-show="!uid" index="/user/reg">
+      <el-icon>
+        <CircleCheck />
+      </el-icon>
+      注册
+    </el-menu-item>
     <el-sub-menu index="/user/" v-show="uid">
       <template #title>{{ this.name }}</template>
-      <el-menu-item :width="100" :index="/user/ + this.uid"> 个人主页 </el-menu-item>
-      <el-menu-item :width="100" v-show="gid === 3" index="/admin/usermanage">用户管理</el-menu-item>
-      <span @click="logout"><el-menu-item :width="100">退出登录</el-menu-item></span>
+      <el-menu-item :width="120" :index="/user/ + this.uid">
+        <el-icon>
+          <UserFilled />
+        </el-icon>
+        个人主页
+      </el-menu-item>
+      <el-menu-item :width="120" v-show="gid === 3" index="/admin/usermanage">
+        <el-icon>
+          <Operation />
+        </el-icon>
+        用户管理
+      </el-menu-item>
+      <span @click="logout"><el-menu-item :width="120">
+          <el-icon>
+            <Close />
+          </el-icon>
+          退出登录
+        </el-menu-item></span>
     </el-sub-menu>
   </el-menu>
 </template>
