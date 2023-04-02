@@ -34,9 +34,9 @@
             <el-tag v-for="tag in problemInfo.tags" :key="tag" closable class="mx-1" @close="removeTag(tag)">
               {{ tag }}
             </el-tag>
-            <el-input v-if="inputVisible" v-model="newTag" class="ml-1 w-20" size="small" @keyup.enter="addTag"
-              @blur="addTag" style="width: 80px;" />
-            <el-button v-else class="button-new-tag ml-1" size="small" @click="inputVisible = true" style="width: 80px;">
+            <el-input v-if="inputVisible" v-model="newTag" class="ml-1 w-20" size="small" ref="inputRef"
+              @keyup.enter="addTag" @blur="addTag" style="width: 80px;" />
+            <el-button v-else class="button-new-tag ml-1" size="small" @click="showInput" style="width: 80px;">
               + New Tag
             </el-button>
           </el-descriptions-item>
@@ -101,6 +101,12 @@ export default {
           });
         }
       })
+    },
+    showInput() {
+      this.inputVisible = true;
+      this.$nextTick(() =>
+        this.$refs.inputRef.focus()
+      )
     },
     addTag() {
       if (this.newTag)
