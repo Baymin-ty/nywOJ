@@ -13,7 +13,7 @@
           <el-dialog v-model="dialogVisible" title="编辑签名" style="width:600px;height: 600px;border-radius: 10px"
             class="pd">
             <el-divider />
-            <el-input v-model="newMotto" type="textarea" placeholder="Please input" :rows="20" :maxlength="200"
+            <el-input v-model="newMotto" type="textarea" placeholder="Please input" :rows="20" :maxlength="1000"
               :show-word-limit="true" style="width:500px;margin: 20px;" resize="none" />
             <el-button type="primary" @click="updateMotto">确认修改</el-button>
           </el-dialog>
