@@ -92,15 +92,9 @@
         </el-form>
         <el-divider />
         <el-button type="primary" @click="this.all">
-          <el-icon class="el-icon--left">
-            <Filter />
-          </el-icon>
           筛选记录
         </el-button>
         <el-button type="success" @click="clear">
-          <el-icon class="el-icon--left">
-            <Failed />
-          </el-icon>
           显示全部
         </el-button>
       </el-card>

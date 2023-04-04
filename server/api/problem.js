@@ -33,42 +33,48 @@ exports.createProblem = (req, res) => {
 exports.updateProblem = (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
   const pid = req.body.pid, info = req.body.info;
-  if (!info.title || !info.description || !info.timeLimit || !info.memoryLimit || !pid) {
-    return res.status(202).send({
-      message: '请确认信息完善'
-    });
-  }
-  if (info.timeLimit > 10000 || info.timeLimit < 0) {
-    return res.status(202).send({
-      message: '时间限制最大为10000ms'
-    });
-  }
-  if (info.memoryLimit > 512 || info.memoryLimit < 0) {
-    return res.status(202).send({
-      message: '时间限制最大为512MB'
-    });
-  }
-  if (info.isPublic !== false && info.isPublic !== true) {
-    return res.status(202).send({
-      message: 'isPublic格式错误'
-    });
-  }
-  info.isPublic = info.isPublic ? 1 : 0;
-  if (info.type === '传统文本比较') info.type = 0;
-  else if (info.type === 'Special Judge') info.type = 1;
-  db.query('UPDATE problem SET title=?,description=?,timeLimit=?,memoryLimit=?,isPublic=?,type=?,tags=? WHERE pid=?', [info.title, info.description, info.timeLimit, info.memoryLimit, info.isPublic, info.type, JSON.stringify(info.tags), pid], (err, data) => {
-    if (err) return res.status(202).send({
-      message: err.message
-    });
-    if (data.affectedRows > 0) {
-      return res.status(200).send({
-        message: 'success',
-      })
-    } else {
-      return res.status(202).send({
-        message: 'error',
-      })
+
+  db.query('SELECT * FROM problem WHERE pid=?', [pid], (err, problemInfo) => {
+    if (req.session.uid !== 1 && problemInfo[0].publisher !== req.session.uid) {
+      return res.status(202).send({ message: '你只能修改自己的题目' });
     }
+    if (!info.title || !info.description || !info.timeLimit || !info.memoryLimit || !pid) {
+      return res.status(202).send({
+        message: '请确认信息完善'
+      });
+    }
+    if (info.timeLimit > 10000 || info.timeLimit < 0) {
+      return res.status(202).send({
+        message: '时间限制最大为10000ms'
+      });
+    }
+    if (info.memoryLimit > 512 || info.memoryLimit < 0) {
+      return res.status(202).send({
+        message: '时间限制最大为512MB'
+      });
+    }
+    if (info.isPublic !== false && info.isPublic !== true) {
+      return res.status(202).send({
+        message: 'isPublic格式错误'
+      });
+    }
+    info.isPublic = info.isPublic ? 1 : 0;
+    if (info.type === '传统文本比较') info.type = 0;
+    else if (info.type === 'Special Judge') info.type = 1;
+    db.query('UPDATE problem SET title=?,description=?,timeLimit=?,memoryLimit=?,isPublic=?,type=?,tags=? WHERE pid=?', [info.title, info.description, info.timeLimit, info.memoryLimit, info.isPublic, info.type, JSON.stringify(info.tags), pid], (err, data) => {
+      if (err) return res.status(202).send({
+        message: err.message
+      });
+      if (data.affectedRows > 0) {
+        return res.status(200).send({
+          message: 'success',
+        })
+      } else {
+        return res.status(202).send({
+          message: 'error',
+        })
+      }
+    });
   });
 }
 
@@ -143,13 +149,18 @@ exports.getProblemCasePreview = async (req, res) => {
 
 exports.clearCase = async (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+  const pid = req.body.pid;
+  db.query('SELECT * FROM problem WHERE pid=?', [pid], (err, data) => {
+    if (req.session.uid !== 1 && data[0].publisher !== req.session.uid) {
+      return res.status(202).send({ message: '你只能删除自己题目的数据' });
+    }
+    const dir = path.join(__dirname, `../data/${req.body.pid}`);
 
-  const dir = path.join(__dirname, `../data/${req.body.pid}`);
+    if (fs.existsSync(dir))
+      fs.rmSync(dir, {
+        recursive: true
+      });
 
-  if (fs.existsSync(dir))
-    fs.rmSync(dir, {
-      recursive: true
-    });
-
-  return res.status(200).send({ message: 'success' });
+    return res.status(200).send({ message: 'success' });
+  });
 }

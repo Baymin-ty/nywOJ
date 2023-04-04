@@ -30,7 +30,7 @@
         </div>
         <template #tip>
           <div class="el-upload__tip">
-            ZIP file with a size less than 200 MB
+            ZIP file with a size less than 100 MB
           </div>
         </template>
       </el-upload>
@@ -42,6 +42,7 @@
 <script>
 import axios from 'axios';
 import store from '@/sto/store';
+import { ElMessage } from 'element-plus'
 
 
 export default {
@@ -56,15 +57,36 @@ export default {
     async delAllCase() {
       await axios.post('/api/problem/clearCase', {
         pid: this.pid,
+      }).then(res => {
+        if (res.status !== 200) {
+          ElMessage({
+            message: res.data.message,
+            type: 'error',
+            duration: 2000,
+          });
+        } else {
+          ElMessage({
+            message: '数据已清空',
+            type: 'success',
+            duration: 1000,
+          });
+          this.casePreview = "";
+          this.all();
+        }
       });
-      this.casePreview = "";
-      this.all();
     },
-    async all() {
+    async all(op) {
       await axios.post('/api/problem/getProblemCasePreview', {
         pid: this.pid,
       }).then(res => {
         let cases = res.data.data;
+        if (!cases.length && op) {
+          ElMessage({
+            message: (op === 1 ? '数据还未上传' : '数据未处理完成或数据格式错误，请手动刷新或重新上传数据'),
+            type: 'error',
+            duration: 2000,
+          });
+        }
         this.casePreview = "";
         if (res.data.spj.length) {
           this.casePreview = "# checker.cpp\n";
@@ -101,7 +123,7 @@ export default {
     async reflushData() {
       await (this.casePreview = "> 正在处理测试点中...");
       setTimeout(() => {
-        this.all();
+        this.all(2);
       }, 1000);
     }
   },
@@ -111,7 +133,7 @@ export default {
       return;
     }
     this.pid = this.$route.params.pid;
-    this.all();
+    this.all(1);
   }
 }
 </script>
