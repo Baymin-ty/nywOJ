@@ -11,21 +11,70 @@
       </template>
       <el-table :data="info" height="600px" :cell-style="{ textAlign: 'center' }"
         :header-cell-style="{ textAlign: 'center' }">
-        <el-table-column prop="uid" label="uid" width="80px" />
-        <el-table-column prop="name" label="用户名" width="150px">
+        <el-table-column prop="uid" width="110px">
+          <template #header>
+            <div class="table-header">
+              uid
+            </div>
+            <el-input v-model="filter.uid" size="small" style="width: 80px;" @keyup.enter="all">
+              <template #prefix>
+                <el-icon class="el-input__icon">
+                  <search />
+                </el-icon>
+              </template>
+            </el-input>
+          </template>
+          <template #default="scope">
+            {{ scope.row.uid }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="name" width="150px">
+          <template #header>
+            <div class="table-header">
+              用户名
+            </div>
+            <el-input v-model="filter.name" size="small" style="width: 120px;" @keyup.enter="all">
+              <template #prefix>
+                <el-icon class="el-input__icon">
+                  <search />
+                </el-icon>
+              </template>
+            </el-input>
+          </template>
           <template #default="scope">
             <span class="rlink" v-show="!scope.row.edit" @click="this.$router.push('/user/' + scope.row.uid)">
               {{ scope.row.name }}</span>
             <el-input v-show="scope.row.edit" size="small" style="width:150px" v-model="this.tempInfo.name" />
           </template>
         </el-table-column>
-        <el-table-column prop="email" label="邮箱" width="300px">
+        <el-table-column prop="email" width="300px">
+          <template #header>
+            <div class="table-header">
+              邮箱
+            </div>
+            <el-input v-model="filter.email" size="small" style="width: 200px;" @keyup.enter="all">
+              <template #prefix>
+                <el-icon class="el-input__icon">
+                  <search />
+                </el-icon>
+              </template>
+            </el-input>
+          </template>
           <template #default="scope">
             <span v-show="!scope.row.edit"> {{ scope.row.email }} </span>
             <el-input v-show="scope.row.edit" size="small" style="width:200px" v-model="this.tempInfo.email" />
           </template>
         </el-table-column>
-        <el-table-column prop="gid" label="用户组" width="140px">
+        <el-table-column prop="gid" width="140px">
+          <template #header>
+            <div class="table-header">
+              用户组
+            </div>
+            <el-select v-model="filter.gid" class="m-2" size="small" style="width: 100px;">
+              <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value"
+                style="width: 100px; font-size: 12px; padding-left: 10px; padding-right: 10px;" />
+            </el-select>
+          </template>
           <template #default="scope">
             <span v-show="!scope.row.edit"> {{ group[scope.row.gid] }}</span>
             <el-select v-show="scope.row.edit" v-model="this.tempInfo.gid" size="small" style="width: 100px">
@@ -34,12 +83,32 @@
             </el-select>
           </template>
         </el-table-column>
-        <el-table-column prop="inUse" label="状态" width="auto">
+        <el-table-column prop="inUse" width="auto">
+          <template #header>
+            <div class="table-header">
+              状态
+            </div>
+            <el-select v-model="filter.inUse" class="m-2" size="small" style="width: 80px;">
+              <el-option v-for="item in status" :key="item.value" :label="item.label" :value="item.value"
+                style="width: 80px; font-size: 12px; padding-left: 20px; padding-right: 20px;" />
+            </el-select>
+          </template>
           <template #default="scope">
             <span> {{ scope.row.inUse ? "正常" : "封禁" }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250px">
+        <el-table-column fixed="right" width="250px">
+          <template #header>
+            <div class="table-header">
+              操作
+            </div>
+            <el-button size="small" @click="this.all">
+              筛选记录
+            </el-button>
+            <el-button size="small" @click="clear">
+              显示全部
+            </el-button>
+          </template>
           <template #default="scope">
             <span>
               <el-button size="small" :type="scope.row.edit ? 'warning' : 'primary'" plain @click="edit(scope.row)">{{
@@ -70,6 +139,13 @@ export default {
       info: [],
       group: ['', '普通用户', '管理员', '超级管理员'],
       tempInfo: {},
+      filter: {
+        uid: null,
+        name: null,
+        email: null,
+        gid: null,
+        inUse: null
+      },
       options: [{
         value: 1,
         label: '普通用户',
@@ -80,18 +156,30 @@ export default {
         value: 3,
         label: '超级管理员',
       }],
+      status: [{
+        value: 1,
+        label: '正常',
+      }, {
+        value: 2,
+        label: '封禁',
+      }]
     }
   },
   methods: {
     all() {
       axios.post('/api/admin/getUserInfoList', {
-        pageId: this.currentPage
+        pageId: this.currentPage,
+        filter: this.filter
       }).then(res => {
         this.total = res.data.total;
         this.info = res.data.userList;
         for (let i = 0; i < this.info.length; i++) this.info[i].edit = 0;
         this.finished = 1;
       });
+    },
+    clear() {
+      this.filter = { uid: null, name: null, email: null, gid: null, inUse: null };
+      this.all();
     },
     handleCurrentChange(val) {
       this.currentPage = val;
@@ -192,5 +280,10 @@ export default {
   justify-content: space-between;
   align-items: center;
   height: 20px;
+}
+
+.table-header {
+  text-align: center;
+  height: 30px;
 }
 </style>

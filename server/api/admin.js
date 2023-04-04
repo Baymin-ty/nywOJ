@@ -1,14 +1,34 @@
 const db = require('../db/index');
 
 exports.getUserInfoList = (req, res) => {
-  let pageId = req.body.pageId,
-    pageSize = 20;
+  let pageId = req.body.pageId, filter = req.body.filter, pageSize = 20;
   if (!pageId) pageId = 1;
-  let sql = "SELECT * FROM userInfo LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
+  let sql = "SELECT uid,name,email,gid,inUse FROM userInfo WHERE uid > 0 ";
+  if (filter.uid)
+    sql += `AND uid=${filter.uid} `;
+  if (filter.name)
+    sql += `AND name like \'%${filter.name}%\' `;
+  if (filter.email)
+    sql += `AND email like \'%${filter.email}%\' `;
+  if (filter.gid)
+    sql += `AND gid=${filter.gid} `;
+  if (filter.inUse)
+    sql += `AND inUse=${2 - filter.inUse} `; // fit for front-end
+  sql += " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });
-    let list = data;
-    db.query("SELECT COUNT(*) as total FROM userInfo", (err, data) => {
+    let list = data, csql = "SELECT COUNT(*) as total FROM userInfo WHERE uid > 0 ";
+    if (filter.uid)
+      csql += `AND uid=${filter.uid} `;
+    if (filter.name)
+      csql += `AND name like \'%${filter.name}%\' `;
+    if (filter.email)
+      csql += `AND email like \'%${filter.email}%\' `;
+    if (filter.gid)
+      csql += `AND gid=${filter.gid} `;
+    if (filter.inUse)
+      csql += `AND inUse=${2 - filter.inUse} `; // fit for front-end
+    db.query(csql, (err, data) => {
       if (err) return res.status(202).send({ message: err });
       return res.status(200).send({
         total: data[0].total,

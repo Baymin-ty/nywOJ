@@ -11,7 +11,7 @@
           <el-input v-model="userInfo.name" type="text" />
         </el-form-item>
         <el-form-item label="密码" prop="pass" style="margin-left: 28px">
-          <el-input v-model="userInfo.pwd" type="password" />
+          <el-input v-model="userInfo.pwd" type="password" @keyup.enter="submit" />
         </el-form-item>
         <el-button type="primary" @click="submit" style="width: 250px;">登录</el-button>
       </el-form>

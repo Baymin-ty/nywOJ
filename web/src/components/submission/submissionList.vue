@@ -79,10 +79,10 @@
         </template>
         <el-form :model="filter">
           <el-form-item>
-            <el-input v-model="filter.pid" type="text" placeholder="题目编号" />
+            <el-input v-model="filter.pid" type="text" placeholder="题目编号" @keyup.enter="all" />
           </el-form-item>
           <el-form-item>
-            <el-input v-model="filter.name" type="text" placeholder="用户名" />
+            <el-input v-model="filter.name" type="text" placeholder="用户名" @keyup.enter="all" />
           </el-form-item>
           <el-form-item>
             <el-select v-model="filter.res" placeholder="评测结果" style="width: 300px;">
