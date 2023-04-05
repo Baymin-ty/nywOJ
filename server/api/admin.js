@@ -1,6 +1,7 @@
 const db = require('../db/index');
 
 exports.getUserInfoList = (req, res) => {
+  if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
   let pageId = req.body.pageId, filter = req.body.filter, pageSize = 20;
   if (!pageId) pageId = 1;
   let sql = "SELECT uid,name,email,gid,inUse FROM userInfo WHERE uid > 0 ";
@@ -39,6 +40,7 @@ exports.getUserInfoList = (req, res) => {
 }
 
 exports.setBlock = (req, res) => {
+  if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
   const uid = req.body.uid, status = req.body.status;
   if (uid === null || status === null) {
     return res.status(202).send({
@@ -61,6 +63,7 @@ exports.setBlock = (req, res) => {
 }
 
 exports.updateUserInfo = (req, res) => {
+  if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
   const newInfo = req.body.info;
   const uid = newInfo.uid, name = newInfo.name, email = newInfo.email, gid = newInfo.gid;
   if (!uid || !name || !gid) {
@@ -83,6 +86,7 @@ exports.updateUserInfo = (req, res) => {
 }
 
 exports.addAnnouncement = (req, res) => {
+  if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
   db.query('INSERT INTO announcement(title,description,weight,time) VALUES (?,?,?,?)', ["请输入公告标题", "请输入公告描述", 10, new Date()], (err, data) => {
     if (err) return res.status(202).send({
       message: err.message
@@ -100,6 +104,7 @@ exports.addAnnouncement = (req, res) => {
 }
 
 exports.updateAnnouncement = (req, res) => {
+  if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
   const info = req.body.info;
   const aid = info.aid, title = info.title, description = info.description, weight = info.weight;
   db.query("UPDATE announcement SET title=?,description=?,weight=? WHERE aid=?", [title, description, weight, aid], (err, data) => {
