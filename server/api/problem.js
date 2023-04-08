@@ -1,3 +1,4 @@
+const SqlString = require('mysql/lib/protocol/SqlString');
 const db = require('../db/index');
 const { getFile } = require('../file');
 const fs = require('fs');
@@ -82,6 +83,7 @@ exports.getProblemList = (req, res) => {
   let pageId = req.body.pageId,
     pageSize = 20;
   if (!pageId) pageId = 1;
+  pageId = SqlString.escape(pageId);
   let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.publisher as publisherUid,u.`name` as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher" +
     (req.session.gid > 1 ? "" : " WHERE isPublic=1") + " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
   db.query(sql, (err, data) => {

@@ -1,6 +1,7 @@
 const axios = require('axios');
 const db = require('../db/index');
 const { getFile, setFile, delFile } = require('../file');
+const SqlString = require('mysql/lib/protocol/SqlString');
 const exec = require('child_process').exec;
 
 let jid = 0;
@@ -396,17 +397,24 @@ exports.getSubmissionList = (req, res) => {
     pageSize = 20;
   if (!pageId) pageId = 1;
   let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid "
+
+  pageId = SqlString.escape(pageId);
+
   sql += 'WHERE p.isPublic' + (req.session.gid < 2 ? '=1' : '<6');
   if (req.body.name) {
-    sql += ' AND u.name=\"' + req.body.name + "\"";
+    req.body.name = SqlString.escape(req.body.name);
+    sql += ' AND u.name=' + req.body.name;
   }
   if (req.body.pid) {
+    req.body.pid = SqlString.escape(req.body.pid);
     sql += ' AND p.pid=' + req.body.pid;
   }
   if (req.body.judgeRes !== null) {
+    req.body.judgeRes = SqlString.escape(req.body.judgeRes);
     sql += ' AND s.judgeResult=' + req.body.judgeRes;
   }
   sql += " ORDER BY sid DESC LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
+
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });
     let list = data;
@@ -418,7 +426,7 @@ exports.getSubmissionList = (req, res) => {
     let cntsql = "SELECT COUNT(*) as total FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ";
     cntsql += 'WHERE p.isPublic' + (req.session.gid < 2 ? '=1' : '<6');
     if (req.body.name) {
-      cntsql += ' AND u.name=\"' + req.body.name + "\"";
+      cntsql += ' AND u.name=' + req.body.name;
     }
     if (req.body.pid) {
       cntsql += ' AND p.pid=' + req.body.pid;
@@ -444,8 +452,8 @@ const toHuman = (memory) => {
 }
 
 exports.getSubmissionInfo = (req, res) => {
-  const sid = req.body.sid;
-  let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=" + sid;
+  const sid = SqlString.escape(req.body.sid);
+  let sql = 'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=' + sid;
   if (req.session.gid < 2) {
     sql += ' and p.isPublic=1';
   }

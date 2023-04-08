@@ -1,3 +1,4 @@
+const SqlString = require('mysql/lib/protocol/SqlString');
 const db = require('../db/index');
 
 exports.getUserInfoList = (req, res) => {
@@ -5,17 +6,31 @@ exports.getUserInfoList = (req, res) => {
   let pageId = req.body.pageId, filter = req.body.filter, pageSize = 20;
   if (!pageId) pageId = 1;
   let sql = "SELECT uid,name,email,gid,inUse FROM userInfo WHERE uid > 0 ";
-  if (filter.uid)
+
+  pageId = SqlString.escape(pageId);
+
+  if (filter.uid) {
+    filter.uid = SqlString.escape(filter.uid);
     sql += `AND uid=${filter.uid} `;
-  if (filter.name)
-    sql += `AND name like \'%${filter.name}%\' `;
-  if (filter.email)
-    sql += `AND email like \'%${filter.email}%\' `;
-  if (filter.gid)
+  }
+  if (filter.name) {
+    filter.name = SqlString.escape('%' + filter.name + '%');
+    sql += `AND name like ${filter.name} `;
+  }
+  if (filter.email) {
+    filter.email = SqlString.escape('%' + filter.email + '%');
+    sql += `AND email like ${filter.email} `;
+  }
+  if (filter.gid) {
+    filter.gid = SqlString.escape(filter.gid);
     sql += `AND gid=${filter.gid} `;
-  if (filter.inUse)
+  }
+  if (filter.inUse) {
+    filter.inUse = SqlString.escape(filter.inUse);
     sql += `AND inUse=${2 - filter.inUse} `; // fit for front-end
+  }
   sql += " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
+
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });
     let list = data, csql = "SELECT COUNT(*) as total FROM userInfo WHERE uid > 0 ";
