@@ -5,7 +5,7 @@
     </el-menu-item>
     <el-menu-item index="/">
       <el-icon>
-        <HomeFilled />
+        <Lollipop />
       </el-icon>
       首页
     </el-menu-item>
@@ -34,7 +34,12 @@
       注册
     </el-menu-item>
     <el-sub-menu index="/user/" v-show="uid">
-      <template #title>{{ this.name }}</template>
+      <template #title>
+        <el-icon>
+          <User />
+        </el-icon>
+        {{ this.name }}
+      </template>
       <el-menu-item :width="120" :index="/user/ + this.uid">
         <el-icon>
           <UserFilled />
