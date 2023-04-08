@@ -73,4 +73,8 @@ body {
   background-color: #b1b1b4;
   border-radius: 3px;
 }
+
+blockquote {
+  margin: 0;
+}
 </style>
