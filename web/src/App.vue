@@ -59,21 +59,6 @@ body {
   color: #558CDD;
 }
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: #c5c6c8;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background-color: #b1b1b4;
-  border-radius: 3px;
-}
-
 blockquote {
   margin: 0;
 }
