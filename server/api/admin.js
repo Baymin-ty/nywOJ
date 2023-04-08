@@ -37,9 +37,9 @@ exports.getUserInfoList = (req, res) => {
     if (filter.uid)
       csql += `AND uid=${filter.uid} `;
     if (filter.name)
-      csql += `AND name like \'%${filter.name}%\' `;
+      csql += `AND name like ${filter.name} `;
     if (filter.email)
-      csql += `AND email like \'%${filter.email}%\' `;
+      csql += `AND email like ${filter.email} `;
     if (filter.gid)
       csql += `AND gid=${filter.gid} `;
     if (filter.inUse)
