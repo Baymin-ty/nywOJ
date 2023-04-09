@@ -231,19 +231,19 @@ export default {
   height: 20px;
 }
 
-.el-card ::v-deep .el-card__body {
+.el-card :deep(.el-card__body) {
   padding: 0;
 }
 
-.el-card ::v-deep .github-markdown-body {
+.el-card :deep(.github-markdown-body) {
   padding: 0;
 }
 
-.el-card ::v-deep .v-md-hljs-cpp {
+.el-card :deep(.v-md-hljs-cpp) {
   margin-bottom: 0;
 }
 
-.el-card ::v-deep .v-md-hljs- {
+.el-card :deep(.v-md-hljs-) {
   margin-bottom: 0;
 }
 </style>
