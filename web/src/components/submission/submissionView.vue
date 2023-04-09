@@ -189,7 +189,7 @@ export default {
       await axios.post('/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {
         if (res.status === 200) {
           this.submissionInfo = res.data.data
-          this.submissionInfo.code = "```c++\n" + this.submissionInfo.code + "\n```";
+          this.submissionInfo.code = "```cpp\n" + this.submissionInfo.code + "\n```";
           this.submissionInfo.compileResult = "```\n" + this.submissionInfo.compileResult + "\n```";
           this.table[0] = this.submissionInfo;
           if (this.mounted && (this.submissionInfo.judgeResult === 'Waiting' ||
@@ -229,5 +229,17 @@ export default {
   justify-content: space-between;
   align-items: center;
   height: 20px;
+}
+
+.el-card ::v-deep .el-card__body {
+  padding: 0;
+}
+
+.el-card ::v-deep .github-markdown-body {
+  padding: 0;
+}
+
+.el-card ::v-deep .v-md-hljs-cpp {
+  margin-bottom: 0;
 }
 </style>
