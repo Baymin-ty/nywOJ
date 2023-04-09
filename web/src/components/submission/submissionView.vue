@@ -1,6 +1,6 @@
 <template>
   <el-row style="width: 1180px; margin: 0 auto;">
-    <el-table :data="table" style="margin-bottom:10px;height:80px;" :header-cell-style="{ textAlign: 'center' }"
+    <el-table :data="table" style="margin-bottom:10px;" :header-cell-style="{ textAlign: 'center' }"
       :cell-style="cellStyle2">
       <el-table-column prop="sid" label="#" width="80px" />
       <el-table-column prop="title" label="题目" width="180px">
