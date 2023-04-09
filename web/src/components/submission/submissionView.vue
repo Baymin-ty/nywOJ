@@ -1,49 +1,49 @@
 <template>
-  <el-row style="width: 1180px; margin: 0 auto;">
+  <el-row style="min-width: 600px;max-width: 1180px; margin: 0 auto;">
     <el-table :data="table" style="margin-bottom:10px;" :header-cell-style="{ textAlign: 'center' }"
       :cell-style="cellStyle2">
-      <el-table-column prop="sid" label="#" width="80px" />
-      <el-table-column prop="title" label="题目" width="180px">
+      <el-table-column prop="sid" label="#" min-width="5%" />
+      <el-table-column prop="title" label="题目" min-width="15%">
         <template #default="scope">
           <span class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
           }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="name" label="提交者" width="120px">
+      <el-table-column prop="name" label="提交者" min-width="10%">
         <template #default="scope">
           <span class="rlink" @click="this.$router.push('/user/' + scope.row.uid)">
             {{ scope.row.name }}
           </span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="评测状态" width="180px">
+      <el-table-column prop="judgeResult" label="评测状态" min-width="16%">
         <template #default="scope">
           <span>
             {{ scope.row.judgeResult }}
           </span>
         </template>
       </el-table-column>
-      <el-table-column prop="score" label="分数" width="80px">
+      <el-table-column prop="score" label="分数" min-width="5%">
         <template #default="scope">
           <span> {{ scope.row.score }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="总用时" width="auto">
+      <el-table-column prop="judgeResult" label="总用时" min-width="8%">
         <template #default="scope">
           <span> {{ scope.row.time }} ms</span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="内存" width="auto">
+      <el-table-column prop="judgeResult" label="内存" min-width="8%">
         <template #default="scope">
           <span> {{ scope.row.memory }} </span>
         </template>
       </el-table-column>
-      <el-table-column prop="codeLength" label="代码长度" width="100px">
+      <el-table-column prop="codeLength" label="代码长度" min-width="8%">
         <template #default="scope">
           <span> {{ scope.row.codeLength }} B </span>
         </template>
       </el-table-column>
-      <el-table-column prop="submitTime" label="提交时间" width="180px" />
+      <el-table-column prop="submitTime" label="提交时间" min-width="15%" />
     </el-table>
   </el-row>
   <el-row style="text-align: center; margin: 0 auto; max-width: 1200px; min-width: 600px;">
@@ -76,18 +76,18 @@
           v-show="submissionInfo.judgeResult !== 'Compilation Error' && submissionInfo.judgeResult !== 'System Error'"
           :data="submissionInfo.caseResult" height="auto" :row-class-name="tableRowClassName" :cell-style="cellStyle"
           :header-cell-style="{ textAlign: 'center' }">
-          <el-table-column label="#" type="index" width="100px" />
-          <el-table-column prop="judgeResult" label="结果" width="auto">
+          <el-table-column label="#" type="index" min-width="10%" />
+          <el-table-column prop="judgeResult" label="结果" min-width="50%">
             <template #default="scope">
               <span @click="showDetail(scope.row)" style="cursor: pointer;"> {{ scope.row.judgeResult }} </span>
             </template>
           </el-table-column>
-          <el-table-column prop="time" label="用时" width="200px">
+          <el-table-column prop="time" label="用时" min-width="20%">
             <template #default="scope">
               <span> {{ Math.floor(scope.row.time) }} ms</span>
             </template>
           </el-table-column>
-          <el-table-column prop="memory" label="内存" width="200px">
+          <el-table-column prop="memory" label="内存" min-width="20%">
             <template #default="scope">
               <span> {{ scope.row.memory }} </span>
             </template>

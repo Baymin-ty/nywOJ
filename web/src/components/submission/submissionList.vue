@@ -1,5 +1,5 @@
 <template>
-  <el-row style="text-align: center; margin: 0 auto; max-width: 1500px; min-width: 600px;">
+  <el-row style="text-align: center; margin: 0 auto; max-width: 1500px">
     <el-col :span="19">
       <el-card class="box-card" shadow="hover">
         <template #header>
@@ -70,7 +70,7 @@
         </el-table>
       </el-card>
     </el-col>
-    <el-col :span="5" style="min-width: 250px;">
+    <el-col :span="5">
       <el-card class="box-card" shadow="hover" style="height: 300px;">
         <template #header>
           <div class="card-header">

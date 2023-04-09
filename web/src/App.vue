@@ -1,5 +1,5 @@
 <template>
-  <el-container style="min-width: 600px;">
+  <el-container style="min-width: 1000px;">
     <el-header>
       <myHeader />
     </el-header>
