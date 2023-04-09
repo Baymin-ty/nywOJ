@@ -242,4 +242,8 @@ export default {
 .el-card ::v-deep .v-md-hljs-cpp {
   margin-bottom: 0;
 }
+
+.el-card ::v-deep .v-md-hljs- {
+  margin-bottom: 0;
+}
 </style>
