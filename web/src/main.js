@@ -10,6 +10,8 @@ import router from './router/router'
 
 import VMdEditor from '@kangc/v-md-editor/lib/codemirror-editor';
 import VMdPreview from '@kangc/v-md-editor/lib/preview';
+import createCopyCodePlugin from '@kangc/v-md-editor/lib/plugins/copy-code/index';
+import '@kangc/v-md-editor/lib/plugins/copy-code/copy-code.css';
 import '@kangc/v-md-editor/lib/style/codemirror-editor.css';
 import githubTheme from '@kangc/v-md-editor/lib/theme/github.js';
 import '@kangc/v-md-editor/lib/theme/style/github.css';
@@ -49,8 +51,8 @@ VMdPreview.use(githubTheme, {
 });
 
 import createKatexPlugin from '@kangc/v-md-editor/lib/plugins/katex/cdn';
-VMdEditor.use(createKatexPlugin());
-VMdPreview.use(createKatexPlugin());
+VMdEditor.use(createKatexPlugin()).use(createCopyCodePlugin());
+VMdPreview.use(createKatexPlugin()).use(createCopyCodePlugin());
 
 const app = createApp(App)
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
