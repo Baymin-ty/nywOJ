@@ -109,13 +109,7 @@ exports.login = async (req, res) => {
             req.session.gid = data[0].gid;
             db.query("UPDATE userInfo SET login_time=? WHERE uid=?", [new Date(), uid]);
             db.query("INSERT INTO loginLog(uid,time,ip) values (?,?,?) ", [uid, new Date(), req.session.ip]);
-            return res.status(200).send({
-                message: 'success', data: {
-                    uid: req.session.uid,
-                    name: req.session.name,
-                    gid: req.session.gid
-                }
-            })
+            return res.status(200).send({ message: 'success' })
         } else {
             return res.status(202).send({ message: "密码错误" })
         }
