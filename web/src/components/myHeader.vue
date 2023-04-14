@@ -1,5 +1,5 @@
 <template>
-  <el-menu class="el-menu-demo" mode="horizontal" :default-active="curPath" :router="true">
+  <el-menu class="el-menu-demo" mode="horizontal" :default-active="this.$store.state.path" :router="true">
     <img v-show="!this.$store.state.uid"
       style="width: 40px; height: 40px; margin-top: 10px; margin-right: 20px; border-radius: 5px"
       src="../assets/icon.png">
@@ -96,17 +96,9 @@ export default {
         this.$store.state.uid = 0;
         this.$store.state.name = '/';
         this.$store.state.gid = 0;
-        location.reload();
       });
+      location.reload();
     },
-  },
-  watch: {
-    '$route.path'(newVal) {
-      this.curPath = newVal;
-    }
-  },
-  mounted() {
-    setTimeout(() => { this.curPath = this.$route.path; }, 100);
   }
 }
 </script>

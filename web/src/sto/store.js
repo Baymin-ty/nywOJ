@@ -5,6 +5,7 @@ export default createStore({
         uid: 0,
         name: "/",
         gid: 0,
+        path: '',
     },
     mutations: {},
     actions: {},

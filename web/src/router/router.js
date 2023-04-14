@@ -106,6 +106,7 @@ const router = createRouter({
     caseSensitive: true
 });
 router.afterEach((to) => {
+    store.state.path = to.path;
     if (to.meta.title) {
         document.title = to.meta.title
     }
