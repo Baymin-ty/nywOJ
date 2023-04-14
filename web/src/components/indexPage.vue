@@ -52,7 +52,6 @@ import axios from "axios";
 import cuteRank from '@/components/rabbit/cuteRankList.vue'
 import rabbitData from '@/components/rabbit/rabbitClickData.vue'
 import { ElMessage } from 'element-plus'
-import store from "@/sto/store";
 
 export default {
   name: "myHeader",
@@ -93,7 +92,7 @@ export default {
     }
   },
   mounted() {
-    this.gid = store.state.gid;
+    this.gid = this.$store.state.gid;
     this.updateHitokoto();
     this.getAnnouncements();
   },

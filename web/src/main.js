@@ -6,7 +6,7 @@ import App from './App.vue'
 import axios from 'axios'
 import VueAxios from 'vue-axios'
 import router from './router/router'
-// import 'default-passive-events'
+import store from './sto/store'
 
 import VMdEditor from '@kangc/v-md-editor/lib/codemirror-editor';
 import VMdPreview from '@kangc/v-md-editor/lib/preview';
@@ -58,4 +58,4 @@ const app = createApp(App)
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
-app.use(ElementPlus).use(VueAxios, axios).use(router).use(VMdEditor).use(VMdPreview).mount('#app');
+app.use(ElementPlus).use(VueAxios, axios).use(router).use(store).use(VMdEditor).use(VMdPreview).mount('#app');

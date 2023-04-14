@@ -43,7 +43,6 @@
   </div>
 </template>
 <script>
-import store from "@/sto/store";
 import axios from "axios";
 import { ElMessage } from "element-plus";
 
@@ -155,7 +154,7 @@ export default {
     }
   },
   async mounted() {
-    if (store.state.uid) {
+    if (this.$store.state.uid) {
       this.$router.push('/');
       return;
     }

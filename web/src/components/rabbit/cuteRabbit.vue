@@ -47,7 +47,6 @@
 <script>
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import store from '@/sto/store'
 import { getNameColor } from '@/assets/common'
 
 export default {
@@ -132,8 +131,8 @@ export default {
     }
   },
   mounted: function () {
-    this.uid = store.state.uid;
-    this.name = store.state.name;
+    this.uid = this.$store.state.uid;
+    this.name = this.$store.state.name;
     this.getCnt();
     this.all();
   },

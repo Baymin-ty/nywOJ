@@ -25,7 +25,6 @@
 <script>
 import axios from 'axios';
 import { ElMessage } from 'element-plus'
-import store from '@/sto/store';
 
 export default {
   name: "announcementView",
@@ -60,7 +59,7 @@ export default {
     }
   },
   async mounted() {
-    if (store.state.gid < 3) {
+    if (this.$store.state.gid < 3) {
       this.$router.push('/');
       return;
     }

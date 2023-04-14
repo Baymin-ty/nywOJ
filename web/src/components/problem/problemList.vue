@@ -52,7 +52,6 @@
 <script>
 import axios from "axios"
 import { ElMessage } from 'element-plus'
-import store from '@/sto/store'
 
 export default {
   name: 'problemList',
@@ -98,7 +97,7 @@ export default {
     }
   },
   async mounted() {
-    this.gid = store.state.gid;
+    this.gid = this.$store.state.gid;
     this.all();
   }
 }

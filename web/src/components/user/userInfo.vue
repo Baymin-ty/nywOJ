@@ -44,7 +44,6 @@
 <script>
 import axios from "axios";
 import { ElMessage } from "element-plus";
-import store from "@/sto/store"
 
 const fill = (x) => {
   x = x.toString();
@@ -109,7 +108,7 @@ export default {
   },
   async mounted() {
     this.id = this.$route.params.uid;
-    this.uid = store.state.uid;
+    this.uid = this.$store.state.uid;
     await this.all();
   }
 }

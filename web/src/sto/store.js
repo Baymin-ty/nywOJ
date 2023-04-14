@@ -4,7 +4,7 @@ export default createStore({
     state: {
         uid: 0,
         name: "/",
-        gid: 1,
+        gid: 0,
     },
     mutations: {},
     actions: {},

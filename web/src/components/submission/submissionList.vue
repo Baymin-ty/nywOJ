@@ -106,7 +106,6 @@
 import axios from "axios"
 import { ElMessage } from 'element-plus'
 import { resColor, scoreColor } from '@/assets/common'
-import store from "@/sto/store"
 import qs from 'qs'
 
 export default {
@@ -199,7 +198,7 @@ export default {
       this.all();
     },
     mySub() {
-      this.filter.name = store.state.name;
+      this.filter.name = this.$store.state.name;
       this.all();
     },
     handleCurrentChange(val) {

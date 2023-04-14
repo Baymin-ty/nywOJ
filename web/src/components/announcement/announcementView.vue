@@ -23,7 +23,6 @@
 
 <script>
 import axios from 'axios';
-import store from '@/sto/store';
 
 export default {
   name: "announcementView",
@@ -36,7 +35,7 @@ export default {
   },
   async mounted() {
     this.aid = this.$route.params.aid;
-    this.gid = store.state.gid;
+    this.gid = this.$store.state.gid;
     await axios.post('/api/common/getAnnouncementInfo', { aid: this.aid }).then(res => {
       if (res.status === 200) {
         this.announcementInfo = res.data.data

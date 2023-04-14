@@ -19,7 +19,6 @@ import submissionView from '@/components/submission/submissionView.vue'
 
 import userManage from "@/components/admin/userManage"
 
-
 import axios from "axios";
 import store from '@/sto/store';
 
@@ -111,21 +110,25 @@ router.afterEach((to) => {
         document.title = to.meta.title
     }
 })
-router.beforeEach((to, from, next) => {
-    axios.post('/api/user/getUserInfo', {
-    }).then(res => {
-        store.state.uid = res.data.uid;
-        store.state.name = res.data.name;
-        store.state.gid = res.data.gid;
-        if (to.path === '/' || to.path === '/user/reg' || to.path === '/user/login')
+router.beforeEach(async (to, from, next) => {
+    if (!store.state.uid) {
+        await axios.post('/api/user/getUserInfo', {
+        }).then(res => {
+            if (res.status === 200) {
+                store.state.uid = res.data.uid;
+                store.state.name = res.data.name;
+                store.state.gid = res.data.gid;
+            }
+        });
+    }
+    if (to.path === '/' || to.path === '/user/reg' || to.path === '/user/login')
+        next();
+    else if (store.state.uid) {
+        if (!per[to.path] || store.state.gid >= per[to.path])
             next();
-        else if (res.data.uid) {
-            if (!per[to.path] || res.data.gid >= per[to.path])
-                next();
-        } else {
-            next({ path: '/user/login' });
-        }
-    });
+    } else {
+        next({ path: '/user/login' });
+    }
 })
 
 export default router;

@@ -66,7 +66,6 @@
 <script>
 import axios from 'axios';
 import { ElMessage } from 'element-plus'
-import store from '@/sto/store';
 
 export default {
   name: "problemView",
@@ -99,7 +98,7 @@ export default {
   },
   async mounted() {
     this.pid = this.$route.params.pid;
-    this.gid = store.state.gid;
+    this.gid = this.$store.state.gid;
     await axios.post('/api/problem/getProblemInfo', { pid: this.pid }).then(res => {
       if (res.status === 200) {
         this.problemInfo = res.data.data

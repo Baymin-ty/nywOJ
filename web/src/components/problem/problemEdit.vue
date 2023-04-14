@@ -64,7 +64,6 @@
 <script>
 import axios from 'axios';
 import { ElMessage } from 'element-plus'
-import store from '@/sto/store';
 
 export default {
   name: "problemEdit",
@@ -121,7 +120,7 @@ export default {
     }
   },
   async mounted() {
-    if (store.state.gid < 2) {
+    if (this.$store.state.gid < 2) {
       this.$router.push('/');
       return;
     }

@@ -107,7 +107,6 @@
 
 <script>
 import axios from 'axios';
-import store from '@/sto/store';
 import { resColor, scoreColor } from '@/assets/common'
 
 export default {
@@ -209,7 +208,7 @@ export default {
     this.mounted = true;
     this.sid = this.$route.params.sid;
     document.title = "提交记录";
-    this.gid = store.state.gid;
+    this.gid = this.$store.state.gid;
     await this.all();
   },
   unmounted() {

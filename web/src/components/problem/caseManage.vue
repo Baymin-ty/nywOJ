@@ -41,7 +41,6 @@
 
 <script>
 import axios from 'axios';
-import store from '@/sto/store';
 import { ElMessage } from 'element-plus'
 
 
@@ -128,7 +127,7 @@ export default {
     }
   },
   async mounted() {
-    if (store.state.gid < 2) {
+    if (this.$store.state.gid < 2) {
       this.$router.push('/');
       return;
     }
