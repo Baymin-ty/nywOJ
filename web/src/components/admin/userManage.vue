@@ -128,6 +128,7 @@
 <script>
 import axios from "axios"
 import { ElMessage } from 'element-plus'
+import qs from 'qs'
 
 export default {
   name: 'cuteRank',
@@ -167,6 +168,18 @@ export default {
   },
   methods: {
     all() {
+      let param = {}, url = location.pathname;
+      if (this.filter.uid) param.uid = this.filter.uid;
+      if (this.filter.name) param.name = this.filter.name;
+      if (this.filter.email) param.email = this.filter.email;
+      if (this.filter.gid) param.gid = this.filter.gid;
+      if (this.filter.inUse) param.inUse = this.filter.inUse;
+      if (this.currentPage > 1)
+        param.pageId = this.currentPage;
+      let nurl = qs.stringify(param);
+      if (nurl) url += ('?' + nurl);
+      history.state.current = url;
+      history.replaceState(history.state, null, url);
       axios.post('/api/admin/getUserInfoList', {
         pageId: this.currentPage,
         filter: this.filter
@@ -262,7 +275,14 @@ export default {
       row.edit ^= 1;
     }
   },
-  mounted: function () {
+  mounted() {
+    let query = this.$route.query;
+    if (query.uid) this.filter.uid = query.uid;
+    if (query.name) this.filter.name = query.name;
+    if (query.email) this.filter.email = query.email;
+    if (query.gid) this.filter.gid = parseInt(query.gid);
+    if (query.inUse) this.filter.inUse = parseInt(query.inUse);
+    if (query.pageId) this.currentPage = parseInt(query.pageId);
     this.all();
   },
 }

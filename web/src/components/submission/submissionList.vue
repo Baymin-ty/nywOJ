@@ -107,6 +107,7 @@ import axios from "axios"
 import { ElMessage } from 'element-plus'
 import { resColor, scoreColor } from '@/assets/common'
 import store from "@/sto/store"
+import qs from 'qs'
 
 export default {
   name: 'submissionList',
@@ -167,6 +168,16 @@ export default {
   },
   methods: {
     all() {
+      let param = {}, url = location.pathname;
+      if (this.filter.name) param.name = this.filter.name;
+      if (this.filter.pid) param.pid = this.filter.pid;
+      if (this.filter.res) param.res = this.filter.res;
+      if (this.currentPage > 1)
+        param.pageId = this.currentPage;
+      let nurl = qs.stringify(param);
+      if (nurl) url += ('?' + nurl);
+      history.state.current = url;
+      history.replaceState(history.state, null, url);
       axios.post('/api/judge/getSubmissionList', {
         pageId: this.currentPage,
         pid: this.filter.pid,
@@ -209,7 +220,12 @@ export default {
       return style;
     },
   },
-  async mounted() {
+  mounted() {
+    let query = this.$route.query;
+    if (query.res) this.filter.res = parseInt(query.res);
+    if (query.name) this.filter.name = query.name;
+    if (query.pid) this.filter.pid = query.pid;
+    if (query.pageId) this.currentPage = parseInt(query.pageId);
     this.all();
   }
 }
