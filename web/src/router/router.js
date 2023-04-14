@@ -30,83 +30,101 @@ const router = createRouter({
     history: createWebHistory(),
     routes: [{
         meta: {
-            title: '可爱兔兔'
+            title: '可爱兔兔',
+            activeTitle: '/rabbit'
         },
         path: '/rabbit', component: cuteRabbit,
     }, {
         meta: {
-            title: '用户登录'
+            title: '用户登录',
+            activeTitle: '/user/login'
         },
         path: '/user/login', component: userLogin,
     }, {
         meta: {
-            title: '用户注册'
+            title: '用户注册',
+            activeTitle: '/user/reg'
         },
         path: '/user/reg', component: userReg,
     }, {
         meta: {
-            title: '用户管理'
+            title: '用户管理',
+            activeTitle: '/user'
         },
         path: '/admin/usermanage', component: userManage,
     }, {
         meta: {
-            title: '用户信息'
+            title: '用户信息',
+            activeTitle: '/user'
         },
         path: '/user/:uid', component: userInfo,
     }, {
         meta: {
-            title: '题目列表'
+            title: '题目列表',
+            activeTitle: '/problem'
         },
         path: '/problem', component: problemList,
     }, {
         meta: {
-            title: '题目'
+            title: '题目',
+            activeTitle: '/problem'
         },
         path: '/problem/:pid', component: problemView,
     }, {
         meta: {
-            title: '首页'
+            title: '首页',
+            activeTitle: '/'
         },
         path: '/', component: indexPage,
     }, {
         meta: {
-            title: '题目管理'
+            title: '题目管理',
+            activeTitle: '/problem'
         },
         path: '/problem/edit/:pid', component: problemEdit,
     }, {
         meta: {
-            title: '提交记录'
+            title: '提交记录',
+            activeTitle: '/submission'
         },
         path: '/submission', component: submissionList,
     }, {
         meta: {
-            title: '提交记录详情'
+            title: '提交记录详情',
+            activeTitle: '/submission'
         },
         path: '/submission/:sid', component: submissionView,
     }, {
+        meta: {
+            title: '404 Error',
+            activeTitle: '/'
+        },
         path: '/:catchAll(.*)',
         name: '404',
         component: NotFound
     }, {
         meta: {
-            title: '公告'
+            title: '公告',
+            activeTitle: '/'
         },
         path: '/announcement/:aid', component: AnnouncementView,
     }, {
         meta: {
-            title: '编辑公告'
+            title: '编辑公告',
+            activeTitle: '/'
         },
         path: '/announcement/edit/:aid', component: AnnouncementEdit,
     }, {
         meta: {
-            title: '数据管理'
+            title: '数据管理',
+            activeTitle: '/problem'
         },
         path: '/problem/case/:pid', component: caseManage,
     }],
     caseSensitive: true
 });
 router.afterEach((to) => {
-    store.state.path = to.path;
+    store.state.activeTitle = to.meta.activeTitle;
     if (to.meta.title) {
         document.title = to.meta.title
     }

@@ -1,5 +1,5 @@
 <template>
-  <el-menu class="el-menu-demo" mode="horizontal" :default-active="this.$store.state.path" :router="true">
+  <el-menu class="el-menu-demo" mode="horizontal" :default-active="this.$store.state.activeTitle" :router="true">
     <img v-show="!this.$store.state.uid"
       style="width: 40px; height: 40px; margin-top: 10px; margin-right: 20px; border-radius: 5px"
       src="../assets/icon.png">
@@ -36,7 +36,7 @@
       </el-icon>
       注册
     </el-menu-item>
-    <el-sub-menu index="/user/" v-show="this.$store.state.uid">
+    <el-sub-menu index="/user" v-show="this.$store.state.uid">
       <template #title>
         <el-icon>
           <User />
