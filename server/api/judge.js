@@ -4,6 +4,12 @@ const { getFile, setFile, delFile } = require('../file');
 const SqlString = require('mysql/lib/protocol/SqlString');
 const exec = require('child_process').exec;
 const { Format } = require('../static');
+const async = require('async');
+
+const judgeQueue = async.queue(async (submission, completed) => {
+  await judgeCode(submission.sid, submission.isreJudge);
+  completed();
+}, 1);
 
 const judgeRes = ['Waiting',
   'Pending',
@@ -63,7 +69,7 @@ const ProblemInfo = (pid) => {
 
 const getCompareResult = (sid) => {
   return new Promise((resolve, reject) => {
-    exec(`./comparer/comparer ./comparer/data.in ./comparer/tmp/${sid}usr.out ./comparer/tmp/${sid}data.out`, (err, stdout, stderr) => {
+    exec(`./comparer/comparer ./comparer/data.in ./comparer/tmp/${sid}_usr.out ./comparer/tmp/${sid}_data.out`, (err, stdout, stderr) => {
       resolve(stderr);
     });
   }).catch(err => {
@@ -93,7 +99,6 @@ const updateProblemSubmitInfo = (pid) => {
     db.query('UPDATE problem SET acCnt=? WHERE pid=?', [data[0].cnt, pid]);
   })
 }
-
 
 const judgeCode = async (sid, isreJudge) => {
   try {
@@ -370,7 +375,7 @@ exports.submit = (req, res) => {
     });
     if (data.affectedRows > 0) {
       db.query("UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?", [pid]);
-      judgeCode(data.insertId, false);
+      judgeQueue.push({ sid: data.insertId, isreJudge: false });
       return res.status(200).send({
         sid: data.insertId
       })
@@ -473,7 +478,8 @@ exports.reJudge = async (req, res) => {
 
   await setSubmission(req.body.sid, 2, 0, 0, 0, null, null);
 
-  judgeCode(req.body.sid, true);
+  judgeQueue.push({ sid: req.body.sid, isreJudge: true });
+
   res.status(200).send({
     message: 'ok'
   });
@@ -485,7 +491,7 @@ exports.reJudgeProblem = async (req, res) => {
   db.query('SELECT sid FROM submission WHERE pid=?', [req.body.pid], async (err, data) => {
     for (let i in data) {
       await setSubmission(data[i].sid, 2, 0, 0, 0, null, null);
-      judgeCode(data[i].sid, true);
+      judgeQueue.push({ sid: data[i].sid, isreJudge: true });
     }
     return res.status(200).send({
       message: 'ok',

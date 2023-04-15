@@ -6,6 +6,7 @@
 #include "testlib.h"
 
 #define SHOW_DIFF_LENGTH 40
+#define TRIM(s) s.erase(s.find_last_not_of(" \f\t\r\v\n") + 1)
 
 int line, difcol, l, r1, r2;
 bool ok = true;
@@ -21,17 +22,8 @@ int main(int argc, char *argv[])
     Std = ans.readLine();
     usr = ouf.readLine();
 
-    while (usr.length() &&
-           (usr.back() == ' ' ||
-            usr.back() == '\n' ||
-            usr.back() == '\r'))
-      usr.pop_back();
-
-    while (Std.length() &&
-           (Std.back() == ' ' ||
-            Std.back() == '\n' ||
-            Std.back() == '\r'))
-      Std.pop_back();
+    TRIM(Std);
+    TRIM(usr);
 
     if (Std == usr)
       continue;
