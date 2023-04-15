@@ -5,8 +5,7 @@
         <div class="card-header">
           测试点管理
           <el-button-group>
-            <el-popconfirm width="100" confirm-button-text="确认" cancel-button-text="取消" title="确认清空数据?"
-              @confirm="delAllCase">
+            <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认清空数据?" @confirm="delAllCase">
               <template #reference>
                 <el-button type="danger">
                   <el-icon class="el-icon--left">
@@ -16,7 +15,16 @@
                 </el-button>
               </template>
             </el-popconfirm>
-            <el-button type="danger" @click="reJudgeProblem">重测整题</el-button>
+            <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="重测所有代码?" @confirm="reJudgeProblem">
+              <template #reference>
+                <el-button color="#626aef" plain>
+                  <el-icon class="el-icon--left">
+                    <Refresh />
+                  </el-icon>
+                  重测整题
+                </el-button>
+              </template>
+            </el-popconfirm>
             <el-button type="primary" @click="this.$router.push('/problem/edit/' + pid)">编辑题面</el-button>
           </el-button-group>
         </div>
@@ -137,6 +145,12 @@ export default {
               pid: this.pid
             }
           })
+        } else {
+          ElMessage({
+            message: '暂时无人提交',
+            type: 'error',
+            duration: 2000,
+          });
         }
       });
     }

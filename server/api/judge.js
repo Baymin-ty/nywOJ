@@ -375,7 +375,7 @@ exports.submit = (req, res) => {
     });
     if (data.affectedRows > 0) {
       db.query("UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?", [pid]);
-      judgeQueue.push({ sid: data.insertId, isreJudge: false });
+      judgeQueue.unshift({ sid: data.insertId, isreJudge: false });
       return res.status(200).send({
         sid: data.insertId
       })
