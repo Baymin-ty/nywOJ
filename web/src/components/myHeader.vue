@@ -56,10 +56,12 @@
         用户管理
       </el-menu-item>
       <el-menu-item :width="120">
-        <el-icon>
-          <Close />
-        </el-icon>
-        <span @click="logout">退出登录</span>
+        <span @click="logout">
+          <el-icon>
+            <Close />
+          </el-icon>
+          退出登录
+        </span>
       </el-menu-item>
     </el-sub-menu>
   </el-menu>
