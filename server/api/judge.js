@@ -3,17 +3,9 @@ const db = require('../db/index');
 const { getFile, setFile, delFile } = require('../file');
 const SqlString = require('mysql/lib/protocol/SqlString');
 const exec = require('child_process').exec;
+const { Format } = require('../static');
 
 let jid = 0;
-
-const fill = (x) => {
-  x = x.toString();
-  return x.length > 1 ? x : '0' + x;
-}
-
-const Format = (now) => {
-  return now.getFullYear() + '-' + fill(now.getMonth() + 1) + '-' + fill(now.getDate()) + ' ' + fill(now.getHours()) + ':' + fill(now.getMinutes()) + ':' + fill(now.getSeconds());
-}
 
 const judgeRes = ['Waiting',
   'Pending',

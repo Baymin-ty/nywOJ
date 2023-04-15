@@ -1,15 +1,7 @@
-const db = require('../db/index')
+const db = require('../db/index');
+const { Format } = require('../static');
 let rabbitData = {};
 let dayClick = {};
-
-const fill = (x) => {
-    x = x.toString();
-    return x.length > 1 ? x : '0' + x;
-}
-
-const Format = (now) => {
-    return now.getFullYear() + '-' + fill(now.getMonth() + 1) + '-' + fill(now.getDate()) + ' ' + fill(now.getHours()) + ':' + fill(now.getMinutes()) + ':' + fill(now.getSeconds());
-}
 
 exports.all = (req, res) => {
     let sql = 'SELECT clickList.id,clickList.time,clickList.uid,userInfo.name,clickList.ip,userInfo.clickCnt,userInfo.gid FROM clickList INNER JOIN userInfo ON userInfo.uid = clickList.uid ORDER BY clickList.id DESC LIMIT 20';

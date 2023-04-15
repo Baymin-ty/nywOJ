@@ -45,14 +45,6 @@
 import axios from "axios";
 import { ElMessage } from "element-plus";
 
-const fill = (x) => {
-  x = x.toString();
-  return x.length > 1 ? x : '0' + x;
-}
-
-const Format = (now) => {
-  return now.getFullYear() + '-' + fill(now.getMonth() + 1) + '-' + fill(now.getDate()) + ' ' + fill(now.getHours()) + ':' + fill(now.getMinutes()) + ':' + fill(now.getSeconds());
-}
 export default {
   name: "userInfo",
   data() {
@@ -93,8 +85,6 @@ export default {
       }).then((res) => {
         if (res.data.info) {
           this.info = res.data.info;
-          this.info.reg_time = Format(new Date(this.info.reg_time));
-          this.info.login_time = Format(new Date(this.info.login_time));
           if (this.info.uid === this.uid) this.newMotto = this.info.motto;
           if (!this.info.motto) {
             this.info.motto = "Ta暂时没有设置个签噢"

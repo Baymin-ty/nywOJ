@@ -2,6 +2,7 @@ const db = require('../db/index');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const mail = require('nodemailer');
+const { Format } = require('../static')
 
 exports.reg = async (req, res) => {
     const name = req.body.name;
@@ -223,6 +224,8 @@ exports.getUserPublicInfo = (req, res) => {
         if (err) {
             return res.status(202).send({ message: err.message });
         }
+        data[0].reg_time = Format(data[0].reg_time);
+        data[0].login_time = Format(data[0].login_time);
         return res.status(200).send({ info: data[0] });
     });
 }

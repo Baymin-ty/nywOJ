@@ -3,15 +3,7 @@ const db = require('../db/index');
 const { getFile } = require('../file');
 const fs = require('fs');
 const path = require('path');
-
-const fill = (x) => {
-  x = x.toString();
-  return x.length > 1 ? x : '0' + x;
-}
-
-const Format = (now) => {
-  return now.getFullYear() + '-' + fill(now.getMonth() + 1) + '-' + fill(now.getDate());
-}
+const { briefFormat } = require('../static');
 
 exports.createProblem = (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
@@ -89,7 +81,7 @@ exports.getProblemList = (req, res) => {
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });
     let list = data;
-    for (let i = 0; i < list.length; i++) list[i].time = Format(list[i].time);
+    for (let i = 0; i < list.length; i++) list[i].time = briefFormat(list[i].time);
     db.query("SELECT COUNT(*) as total FROM problem" + (req.session.gid > 1 ? "" : " WHERE isPublic=1"), (err, data) => {
       if (err) return res.status(202).send({ message: err });
       return res.status(200).send({
@@ -114,7 +106,7 @@ exports.getProblemInfo = (req, res) => {
     else {
       data[0].type = ptype[data[0].type];
       data[0].tags = JSON.parse(data[0].tags);
-      data[0].time = Format(data[0].time);
+      data[0].time = briefFormat(data[0].time);
       return res.status(200).send({
         data: data[0]
       });
