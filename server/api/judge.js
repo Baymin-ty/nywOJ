@@ -5,8 +5,6 @@ const SqlString = require('mysql/lib/protocol/SqlString');
 const exec = require('child_process').exec;
 const { Format } = require('../static');
 
-let jid = 0;
-
 const judgeRes = ['Waiting',
   'Pending',
   'Rejudging',
@@ -257,15 +255,14 @@ const judgeCode = async (sid, isreJudge) => {
       }
       else {
         usrOutput = runResult.files.stdout;
-        ++jid;
         let compareRes = '';
 
         if (pinfo.type === 0) {
-          await setFile(`./comparer/tmp/${sid}-${jid}usr.out`, usrOutput);
-          await setFile(`./comparer/tmp/${sid}-${jid}data.out`, outputFile);
-          compareRes = await getCompareResult(sid + '-' + jid);
-          await delFile(`./comparer/tmp/${sid}-${jid}usr.out`);
-          await delFile(`./comparer/tmp/${sid}-${jid}data.out`);
+          await setFile(`./comparer/tmp/${sid}_usr.out`, usrOutput);
+          await setFile(`./comparer/tmp/${sid}_data.out`, outputFile);
+          compareRes = await getCompareResult(sid);
+          await delFile(`./comparer/tmp/${sid}_usr.out`);
+          await delFile(`./comparer/tmp/${sid}_data.out`);
         }
         else if (pinfo.type === 1) { // spj
           await axios.post('http://localhost:5050/run', {
@@ -344,6 +341,7 @@ const judgeCode = async (sid, isreJudge) => {
 
     axios.delete(`http://localhost:5050/file/${fileId}`);
   } catch (err) {
+    console.log(err);
     await setSubmission(sid, 12, 0, 0, 0, String(err), null);
   }
 }
@@ -478,5 +476,20 @@ exports.reJudge = async (req, res) => {
   judgeCode(req.body.sid, true);
   res.status(200).send({
     message: 'ok'
+  });
+}
+
+exports.reJudgeProblem = async (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+
+  db.query('SELECT sid FROM submission WHERE pid=?', [req.body.pid], async (err, data) => {
+    for (let i in data) {
+      await setSubmission(data[i].sid, 2, 0, 0, 0, null, null);
+      judgeCode(data[i].sid, true);
+    }
+    return res.status(200).send({
+      message: 'ok',
+      total: data.length
+    });
   });
 }

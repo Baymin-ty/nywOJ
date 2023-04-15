@@ -16,6 +16,7 @@
                 </el-button>
               </template>
             </el-popconfirm>
+            <el-button type="danger" @click="reJudgeProblem">重测整题</el-button>
             <el-button type="primary" @click="this.$router.push('/problem/edit/' + pid)">编辑题面</el-button>
           </el-button-group>
         </div>
@@ -124,6 +125,20 @@ export default {
       setTimeout(() => {
         this.all(2);
       }, 1000);
+    },
+    reJudgeProblem() {
+      axios.post('/api/judge/reJudgeProblem', {
+        pid: this.pid,
+      }).then(res => {
+        if (res.data.total > 0) {
+          this.$router.push({
+            path: '/submission',
+            query: {
+              pid: this.pid
+            }
+          })
+        }
+      });
     }
   },
   async mounted() {
