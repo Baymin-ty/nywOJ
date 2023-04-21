@@ -224,8 +224,10 @@ exports.getUserPublicInfo = (req, res) => {
         if (err) {
             return res.status(202).send({ message: err.message });
         }
-        data[0].reg_time = Format(data[0].reg_time);
-        data[0].login_time = Format(data[0].login_time);
+        if (data[0].reg_time)
+            data[0].reg_time = Format(data[0].reg_time);
+        if (data[0].login_time)
+            data[0].login_time = Format(data[0].login_time);
         return res.status(200).send({ info: data[0] });
     });
 }

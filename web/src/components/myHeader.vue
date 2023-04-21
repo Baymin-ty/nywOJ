@@ -55,14 +55,14 @@
         </el-icon>
         用户管理
       </el-menu-item>
-      <el-menu-item :width="120">
-        <span @click="logout">
+      <span @click="logout">
+        <el-menu-item :width="120">
           <el-icon>
             <Close />
           </el-icon>
           退出登录
-        </span>
-      </el-menu-item>
+        </el-menu-item>
+      </span>
     </el-sub-menu>
   </el-menu>
 </template>

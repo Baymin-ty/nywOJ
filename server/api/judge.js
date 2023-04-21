@@ -9,7 +9,7 @@ const async = require('async');
 const judgeQueue = async.queue(async (submission, completed) => {
   await judgeCode(submission.sid, submission.isreJudge);
   completed();
-}, 1);
+}, 2);
 
 const judgeRes = ['Waiting',
   'Pending',
@@ -67,9 +67,9 @@ const ProblemInfo = (pid) => {
   });
 }
 
-const getCompareResult = (sid) => {
+const getCompareResult = (fileSuf) => {
   return new Promise((resolve, reject) => {
-    exec(`./comparer/comparer ./comparer/data.in ./comparer/tmp/${sid}_usr.out ./comparer/tmp/${sid}_data.out`, (err, stdout, stderr) => {
+    exec(`./comparer/comparer ./comparer/data.in ${fileSuf}usr.out ${fileSuf}data.out`, (err, stdout, stderr) => {
       resolve(stderr);
     });
   }).catch(err => {
@@ -99,6 +99,8 @@ const updateProblemSubmitInfo = (pid) => {
     db.query('UPDATE problem SET acCnt=? WHERE pid=?', [data[0].cnt, pid]);
   })
 }
+
+let jid = 1;
 
 const judgeCode = async (sid, isreJudge) => {
   try {
@@ -261,13 +263,13 @@ const judgeCode = async (sid, isreJudge) => {
       else {
         usrOutput = runResult.files.stdout;
         let compareRes = '';
-
+        const fileSuf = `./comparer/tmp/${sid}-${++jid}_`;
         if (pinfo.type === 0) {
-          await setFile(`./comparer/tmp/${sid}_usr.out`, usrOutput);
-          await setFile(`./comparer/tmp/${sid}_data.out`, outputFile);
-          compareRes = await getCompareResult(sid);
-          await delFile(`./comparer/tmp/${sid}_usr.out`);
-          await delFile(`./comparer/tmp/${sid}_data.out`);
+          await setFile(`${fileSuf}usr.out`, usrOutput);
+          await setFile(`${fileSuf}data.out`, outputFile);
+          compareRes = await getCompareResult(fileSuf);
+          await delFile(`${fileSuf}usr.out`);
+          await delFile(`${fileSuf}data.out`);
         }
         else if (pinfo.type === 1) { // spj
           await axios.post('http://localhost:5050/run', {
