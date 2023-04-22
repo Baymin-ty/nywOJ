@@ -99,6 +99,7 @@ export default {
             duration: 2000,
           });
         }
+        this.all();
       })
     },
     showInput() {
@@ -117,6 +118,14 @@ export default {
       if (this.problemInfo.tags.includes(tag)) {
         this.problemInfo.tags.splice(this.problemInfo.tags.indexOf(tag), 1);
       }
+    },
+    all() {
+      axios.post('/api/problem/getProblemInfo', { pid: this.pid }).then(res => {
+        this.problemInfo = res.data.data
+        if (!this.problemInfo.description) this.problemInfo.description = "请输入题目描述";
+        if (!this.problemInfo.title) this.problemInfo.title = "请输入题目标题";
+        this.problemInfo.isPublic = res.data.data.isPublic ? true : false;
+      });
     }
   },
   mounted() {
@@ -125,12 +134,7 @@ export default {
       return;
     }
     this.pid = this.$route.params.pid;
-    axios.post('/api/problem/getProblemInfo', { pid: this.pid }).then(res => {
-      this.problemInfo = res.data.data
-      if (!this.problemInfo.description) this.problemInfo.description = "请输入题目描述";
-      if (!this.problemInfo.title) this.problemInfo.title = "请输入题目标题";
-      this.problemInfo.isPublic = res.data.data.isPublic ? true : false;
-    });
+    this.all();
   }
 }
 </script>

@@ -55,23 +55,27 @@ export default {
             duration: 2000,
           });
         }
+        this.all();
       })
+    },
+    all() {
+      axios.post('/api/common/getAnnouncementInfo', { aid: this.aid }).then(res => {
+        if (res.status === 200) {
+          this.announcementInfo = res.data.data
+        }
+        else {
+          this.$router.go(-1);
+        }
+      });
     }
   },
-  async mounted() {
+  mounted() {
     if (this.$store.state.gid < 3) {
       this.$router.push('/');
       return;
     }
     this.aid = this.$route.params.aid;
-    await axios.post('/api/common/getAnnouncementInfo', { aid: this.aid }).then(res => {
-      if (res.status === 200) {
-        this.announcementInfo = res.data.data
-      }
-      else {
-        this.$router.go(-1);
-      }
-    });
+    this.all();
     document.title = "编辑公告";
   }
 }

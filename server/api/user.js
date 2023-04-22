@@ -224,6 +224,9 @@ exports.getUserPublicInfo = (req, res) => {
         if (err) {
             return res.status(202).send({ message: err.message });
         }
+        if (!data.length) {
+            return res.status(202).send({ message: '无此用户' });
+        }
         if (data[0].reg_time)
             data[0].reg_time = Format(data[0].reg_time);
         if (data[0].login_time)
