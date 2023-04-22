@@ -119,13 +119,13 @@ export default {
       }
     }
   },
-  async mounted() {
+  mounted() {
     if (this.$store.state.gid < 2) {
       this.$router.push('/');
       return;
     }
     this.pid = this.$route.params.pid;
-    await axios.post('/api/problem/getProblemInfo', { pid: this.pid }).then(res => {
+    axios.post('/api/problem/getProblemInfo', { pid: this.pid }).then(res => {
       this.problemInfo = res.data.data
       if (!this.problemInfo.description) this.problemInfo.description = "请输入题目描述";
       if (!this.problemInfo.title) this.problemInfo.title = "请输入题目标题";

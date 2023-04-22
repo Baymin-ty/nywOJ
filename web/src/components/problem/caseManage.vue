@@ -62,8 +62,8 @@ export default {
     };
   },
   methods: {
-    async delAllCase() {
-      await axios.post('/api/problem/clearCase', {
+    delAllCase() {
+      axios.post('/api/problem/clearCase', {
         pid: this.pid,
       }).then(res => {
         if (res.status !== 200) {
@@ -83,8 +83,8 @@ export default {
         }
       });
     },
-    async all(op) {
-      await axios.post('/api/problem/getProblemCasePreview', {
+    all(op) {
+      axios.post('/api/problem/getProblemCasePreview', {
         pid: this.pid,
       }).then(res => {
         let cases = res.data.data;
@@ -155,7 +155,7 @@ export default {
       });
     }
   },
-  async mounted() {
+  mounted() {
     if (this.$store.state.gid < 2) {
       this.$router.push('/');
       return;

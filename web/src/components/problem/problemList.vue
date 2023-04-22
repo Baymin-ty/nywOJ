@@ -96,7 +96,7 @@ export default {
       });
     }
   },
-  async mounted() {
+  mounted() {
     this.gid = this.$store.state.gid;
     this.all();
   }
