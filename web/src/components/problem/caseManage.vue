@@ -31,7 +31,7 @@
       </template>
       <el-upload v-show="!casePreview" drag action="/api/problem/uploadData" :data="{ pid: pid }" accept=".zip"
         :on-success="reflushData">
-        <el-icon class=" el-icon--upload">
+        <el-icon class="el-icon--upload">
           <UploadFilled />
         </el-icon>
         <div class="el-upload__text">
