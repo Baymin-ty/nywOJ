@@ -120,4 +120,23 @@ const common = require('./api/common');
 router.post('/api/common/getAnnouncementList', common.getAnnouncementList);
 router.post('/api/common/getAnnouncementInfo', common.getAnnouncementInfo);
 
+const contest = require('./api/contest');
+router.post('/api/contest/createContest', contest.createContest);
+router.post('/api/contest/getContestList', contest.getContestList);
+router.post('/api/contest/getContestInfo', contest.getContestInfo);
+router.post('/api/contest/updateContestInfo', contest.updateContestInfo);
+router.post('/api/contest/getPlayerList', contest.getPlayerList);
+router.post('/api/contest/addPlayer', contest.addPlayer);
+router.post('/api/contest/removePlayer', contest.removePlayer);
+router.post('/api/contest/contestReg', contest.contestReg);
+router.post('/api/contest/closeContest', contest.closeContest);
+router.post('/api/contest/updateProblemList', contest.updateProblemList);
+router.post('/api/contest/getProblemList', contest.getProblemList);
+router.post('/api/contest/getPlayerProblemList', contest.getPlayerProblemList);
+router.post('/api/contest/getProblemInfo', contest.getProblemInfo);
+router.post('/api/contest/submit', contest.submit);
+router.post('/api/contest/getSubmissionList', contest.getSubmissionList);
+router.post('/api/contest/getSubmissionInfo', contest.getSubmissionInfo);
+router.post('/api/contest/getRank', contest.getRank);
+
 module.exports = router;

@@ -11,6 +11,10 @@ const judgeQueue = async.queue(async (submission, completed) => {
   completed();
 }, 2);
 
+exports.pushSidIntoQueue = (sid) => {
+  judgeQueue.push({ sid: sid, isreJudge: false });
+}
+
 const judgeRes = ['Waiting',
   'Pending',
   'Rejudging',
@@ -377,7 +381,7 @@ exports.submit = (req, res) => {
     });
     if (data.affectedRows > 0) {
       db.query("UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?", [pid]);
-      judgeQueue.unshift({ sid: data.insertId, isreJudge: false });
+      judgeQueue.push({ sid: data.insertId, isreJudge: false });
       return res.status(200).send({
         sid: data.insertId
       })
@@ -398,6 +402,8 @@ exports.getSubmissionList = (req, res) => {
   pageId = SqlString.escape(pageId);
 
   sql += 'WHERE p.isPublic' + (req.session.gid < 2 ? '=1' : '<6');
+  sql += ' AND s.cid=0';
+
   if (req.body.name) {
     req.body.name = SqlString.escape(req.body.name);
     sql += ' AND u.name=' + req.body.name;
@@ -422,6 +428,7 @@ exports.getSubmissionList = (req, res) => {
     }
     let cntsql = "SELECT COUNT(*) as total FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ";
     cntsql += 'WHERE p.isPublic' + (req.session.gid < 2 ? '=1' : '<6');
+    cntsql += ' AND s.cid=0';
     if (req.body.name) {
       cntsql += ' AND u.name=' + req.body.name;
     }
@@ -454,6 +461,8 @@ exports.getSubmissionInfo = (req, res) => {
   if (req.session.gid < 2) {
     sql += ' and p.isPublic=1';
   }
+  sql += ' AND s.cid=0';
+
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (!data.length) return res.status(202).send({

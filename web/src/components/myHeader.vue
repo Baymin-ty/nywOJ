@@ -18,6 +18,12 @@
       </el-icon>
       题库
     </el-menu-item>
+    <el-menu-item v-show="this.$store.state.uid" index="/contest">
+      <el-icon>
+        <Trophy />
+      </el-icon>
+      比赛
+    </el-menu-item>
     <el-menu-item v-show="this.$store.state.uid" index="/submission">
       <el-icon>
         <DataAnalysis />

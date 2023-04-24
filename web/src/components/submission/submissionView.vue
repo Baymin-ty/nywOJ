@@ -185,7 +185,7 @@ export default {
       this.all();
     },
     async all() {
-      await axios.post('/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {
+      await axios.post(this.isContest ? '/api/contest/getSubmissionInfo' : '/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {
         if (res.status === 200) {
           this.submissionInfo = res.data.data
           this.submissionInfo.code = "```cpp\n" + this.submissionInfo.code + "\n```";
@@ -198,8 +198,6 @@ export default {
               this.all();
             }, 1000)
           }
-        } else {
-          this.$router.go(-1);
         }
       });
     }
@@ -207,6 +205,7 @@ export default {
   async mounted() {
     this.mounted = true;
     this.sid = this.$route.params.sid;
+    if (this.$route.query.isContest) this.isContest = true;
     document.title = "提交记录";
     this.gid = this.$store.state.gid;
     await this.all();

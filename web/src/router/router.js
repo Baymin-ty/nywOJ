@@ -16,6 +16,10 @@ import problemEdit from '@/components/problem/problemEdit.vue'
 import caseManage from '@/components/problem/caseManage.vue'
 import submissionList from '@/components/submission/submissionList.vue'
 import submissionView from '@/components/submission/submissionView.vue'
+import contestList from '@/components/contest/contestList.vue'
+import contestMain from '@/components/contest/contestMain.vue'
+import contestPlayer from '@/components/contest/contestPlayer.vue'
+import contestProblem from '@/components/contest/contestProblem.vue'
 
 import userManage from "@/components/admin/userManage"
 
@@ -120,6 +124,30 @@ const router = createRouter({
             activeTitle: '/problem'
         },
         path: '/problem/case/:pid', component: caseManage,
+    }, {
+        meta: {
+            title: '比赛列表',
+            activeTitle: '/contest'
+        },
+        path: '/contest', component: contestList,
+    }, {
+        meta: {
+            title: '比赛',
+            activeTitle: '/contest'
+        },
+        path: '/contest/:cid', component: contestMain,
+    }, {
+        meta: {
+            title: '选手列表',
+            activeTitle: '/contest'
+        },
+        path: '/contest/player/:cid', component: contestPlayer,
+    }, {
+        meta: {
+            title: '比赛题目',
+            activeTitle: '/contest'
+        },
+        path: '/contest/:cid/problem/:idx', component: contestProblem,
     }],
     caseSensitive: true
 });
