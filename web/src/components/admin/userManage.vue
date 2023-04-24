@@ -44,7 +44,7 @@
           <template #default="scope">
             <span class="rlink" v-show="!scope.row.edit" @click="this.$router.push('/user/' + scope.row.uid)">
               {{ scope.row.name }}</span>
-            <el-input v-show="scope.row.edit" size="small" style="width:150px" v-model="this.tempInfo.name" />
+            <el-input v-show="scope.row.edit" size="small" style="width:110px" v-model="this.tempInfo.name" />
           </template>
         </el-table-column>
         <el-table-column prop="email" width="300px">
