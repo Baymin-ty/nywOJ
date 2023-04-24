@@ -18,6 +18,9 @@ app.use(session({
 }));
 
 app.use((req, res, next) => {
+    res.setTimeout(5000, () => {
+        return res.status(408).send("Request Timeout");
+    });
     req.session.ip = getClientIp(req);
     if (req.session.uid) {
         if (req.url.match('^\/api\/admin') && req.session.gid !== 3)
