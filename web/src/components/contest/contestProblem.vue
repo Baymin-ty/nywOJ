@@ -36,8 +36,7 @@
             </el-icon>
             提交代码
           </el-button>
-          <el-button type="success" @click="
-            this.$router.push({
+          <el-button type="success" @click="this.$router.push({
               path: '/contest/' + this.cid,
               query: {
                 tab: 'problem'
@@ -82,6 +81,7 @@ export default {
       axios.post("/api/contest/submit", {
         cid: this.cid,
         idx: this.idx,
+        id: this.problemInfo.id,
         code: this.code
       }).then(res => {
         if (res.status === 200) {
@@ -97,8 +97,14 @@ export default {
           ElMessage({
             message: "提交失败" + res.data.message,
             type: "error",
-            duration: 2000,
+            duration: 3000,
           });
+          if (res.data.refresh) {
+            this.$router.push({
+              path: '/contest/' + this.cid,
+              query: { tab: 'problem' }
+            });
+          }
         }
       });
     }

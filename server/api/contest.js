@@ -26,12 +26,15 @@ const isReg = (uid, cid) => {
   });
 }
 
-const getPid = (cid, idx) => {
+const getPinfo = (cid, idx) => {
   return new Promise((resolve, reject) => {
     return db.query('SELECT * FROM contestProblem WHERE cid=? AND idx=? LIMIT 1', [cid, idx], (err, data) => {
       if (err) reject(err);
       if (!data.length) resolve(false);
-      else resolve(data[0].pid);
+      else resolve({
+        pid: data[0].pid,
+        id: data[0].id
+      });
     })
   }).catch(err => {
     console.log(err);
@@ -332,7 +335,7 @@ exports.getProblemInfo = (req, res) => {
     if (!data.length) return res.status(202).send({ message: '无此比赛' });
     const isReged = await isReg(req.session.uid, data[0].cid);
     if ((isReged && contestStatus(data[0]) > 0) || req.session.gid >= 2 || ((data[0].isPublic || isReged) && data[0].done)) {
-      const pid = await getPid(cid, idx);
+      const pinfo = await getPinfo(cid, idx), pid = pinfo.pid;
       if (!pid) return res.status(202).send({
         message: '无此题目'
       });
@@ -346,6 +349,7 @@ exports.getProblemInfo = (req, res) => {
           data2[0].type = ptype[data2[0].type];
           data2[0].time = briefFormat(data2[0].time);
           data2[0].idx = idx;
+          data2[0].id = pinfo.id;
           return res.status(200).send({
             data: data2[0]
           });
@@ -452,7 +456,12 @@ exports.submit = async (req, res) => {
     if (contestStatus(data[0]) !== 1) {
       return res.status(202).send({ message: '非比赛时间' });
     }
-    const pid = await getPid(cid, idx);
+    const pinfo = await getPinfo(cid, idx), pid = pinfo.pid;
+    if (req.body.id !== pinfo.id)
+      return res.status(202).send({
+        refresh: true,
+        message: '题目列表已更新，请重新查看题目列表提交'
+      });
     db.query('INSERT INTO submission(pid,uid,code,codelength,submitTime,cid) VALUES (?,?,?,?,?,?)', [pid, req.session.uid, code, code.length, new Date(), cid], (err2, data2) => {
       if (err2) return res.status(202).send({ message: err2.message });
       if (data2.affectedRows > 0) {
