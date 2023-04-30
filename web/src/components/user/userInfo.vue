@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header" style="text-align: center;">
           个人主页
-          <el-button v-show="info.uid === this.uid" type="success" @click="this.dialogVisible = true">
+          <el-button v-if="info.uid === this.uid" type="success" @click="this.dialogVisible = true">
             <el-icon class="el-icon--left">
               <Edit />
             </el-icon>

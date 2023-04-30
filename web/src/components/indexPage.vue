@@ -5,7 +5,7 @@
         <template #header>
           <div class="card-header">
             公告栏
-            <el-button v-show="gid === 3" type="danger" @click="addAnnouncement">
+            <el-button v-if="gid === 3" type="danger" @click="addAnnouncement">
               <el-icon class="el-icon--left">
                 <Plus />
               </el-icon>

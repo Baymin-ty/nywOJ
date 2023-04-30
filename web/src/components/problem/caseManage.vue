@@ -29,7 +29,7 @@
           </el-button-group>
         </div>
       </template>
-      <el-upload v-show="!casePreview" drag action="/api/problem/uploadData" :data="{ pid: pid }" accept=".zip"
+      <el-upload v-if="!casePreview" drag action="/api/problem/uploadData" :data="{ pid: pid }" accept=".zip"
         :on-success="reflushData">
         <el-icon class="el-icon--upload">
           <UploadFilled />
@@ -43,7 +43,7 @@
           </div>
         </template>
       </el-upload>
-      <v-md-preview v-show="casePreview" :text="casePreview"> </v-md-preview>
+      <v-md-preview v-if="casePreview" :text="casePreview"> </v-md-preview>
     </el-card>
   </div>
 </template>

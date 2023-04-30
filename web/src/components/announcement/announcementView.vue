@@ -6,7 +6,7 @@
           <div class="card-header">
             <p class="title">{{ announcementInfo.title }}</p>
             <p class="time">{{ announcementInfo.time }}</p>
-            <el-button v-show="this.gid === 3" type="danger" style="float: right;"
+            <el-button v-if="this.gid === 3" type="danger" style="float: right;"
               @click="this.$router.push('/announcement/edit/' + announcementInfo.aid)">
               <el-icon class="el-icon--left">
                 <Edit />

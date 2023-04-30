@@ -44,7 +44,7 @@
             </el-icon>
             提交代码
           </el-button>
-          <el-button v-show="this.gid > 1" type="danger" @click="this.$router.push('/problem/edit/' + problemInfo.pid)">
+          <el-button v-if="this.gid > 1" type="danger" @click="this.$router.push('/problem/edit/' + problemInfo.pid)">
             <el-icon class="el-icon--left">
               <Operation />
             </el-icon>

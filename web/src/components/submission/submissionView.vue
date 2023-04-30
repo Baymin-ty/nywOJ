@@ -54,7 +54,7 @@
         <template #header>
           <div class=" card-header">
             代码
-            <el-button v-show="gid > 1" type="danger" @click="reJudge">
+            <el-button v-if="gid > 1" type="danger" @click="reJudge">
               <el-icon class="el-icon--left">
                 <Refresh />
               </el-icon>
@@ -75,7 +75,7 @@
           </div>
         </template>
         <el-table
-          v-show="submissionInfo.judgeResult !== 'Compilation Error' && submissionInfo.judgeResult !== 'System Error'"
+          v-if="submissionInfo.judgeResult !== 'Compilation Error' && submissionInfo.judgeResult !== 'System Error'"
           :data="submissionInfo.caseResult" height="auto" :row-class-name="tableRowClassName" :cell-style="cellStyle"
           :header-cell-style="{ textAlign: 'center' }">
           <el-table-column label="#" type="index" min-width="10%" />

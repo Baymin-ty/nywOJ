@@ -7,7 +7,7 @@
           <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
             layout="total, prev, pager, next" :total="total"></el-pagination>
           <el-button-group>
-            <el-button v-show="this.gid >= 2" type="success" @click="addProblem">
+            <el-button v-if="this.gid >= 2" type="success" @click="addProblem">
               <el-icon class="el-icon--left">
                 <Plus />
               </el-icon>

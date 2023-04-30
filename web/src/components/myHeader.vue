@@ -1,9 +1,9 @@
 <template>
   <el-menu class="el-menu-demo" mode="horizontal" :default-active="this.$store.state.activeTitle" :router="true">
-    <img v-show="!this.$store.state.uid"
+    <img v-if="!this.$store.state.uid"
       style="width: 40px; height: 40px; margin-top: 10px; margin-right: 20px; border-radius: 5px"
       src="../assets/icon.png">
-    <el-menu-item index="/rabbit" style="height: auto;" v-show="this.$store.state.uid">
+    <el-menu-item index="/rabbit" style="height: auto;" v-if="this.$store.state.uid">
       <img style="width: 40px; height: 40px; margin-top: 5px; border-radius: 5px" src="../assets/icon.png">
     </el-menu-item>
     <el-menu-item index="/">
@@ -12,37 +12,37 @@
       </el-icon>
       首页
     </el-menu-item>
-    <el-menu-item v-show="this.$store.state.uid" index="/problem">
+    <el-menu-item v-if="this.$store.state.uid" index="/problem">
       <el-icon>
         <Files />
       </el-icon>
       题库
     </el-menu-item>
-    <el-menu-item v-show="this.$store.state.uid" index="/contest">
+    <el-menu-item v-if="this.$store.state.uid" index="/contest">
       <el-icon>
         <Trophy />
       </el-icon>
       比赛
     </el-menu-item>
-    <el-menu-item v-show="this.$store.state.uid" index="/submission">
+    <el-menu-item v-if="this.$store.state.uid" index="/submission">
       <el-icon>
         <DataAnalysis />
       </el-icon>
       提交记录
     </el-menu-item>
-    <el-menu-item v-show="!this.$store.state.uid" index="/user/login">
+    <el-menu-item v-if="!this.$store.state.uid" index="/user/login">
       <el-icon>
         <User />
       </el-icon>
       登录
     </el-menu-item>
-    <el-menu-item v-show="!this.$store.state.uid" index="/user/reg">
+    <el-menu-item v-if="!this.$store.state.uid" index="/user/reg">
       <el-icon>
         <CircleCheck />
       </el-icon>
       注册
     </el-menu-item>
-    <el-sub-menu index="/user" v-show="this.$store.state.uid">
+    <el-sub-menu index="/user" v-if="this.$store.state.uid">
       <template #title>
         <el-icon>
           <User />
@@ -55,7 +55,7 @@
         </el-icon>
         个人主页
       </el-menu-item>
-      <el-menu-item :width="120" v-show="this.$store.state.gid === 3" index="/admin/usermanage">
+      <el-menu-item :width="120" v-if="this.$store.state.gid === 3" index="/admin/usermanage">
         <el-icon>
           <Operation />
         </el-icon>
