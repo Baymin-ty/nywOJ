@@ -108,9 +108,9 @@
                       <el-button type="primary" :disabled="tmpInfo.done"
                         @click="this.tmpInfo = JSON.parse(JSON.stringify(this.contestInfo));">重新设置</el-button>
                       <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认结束比赛?(结束后无法再修改比赛)"
-                        @confirm="closeContest">
+                        @confirm=" closeContest ">
                         <template #reference>
-                          <el-button type="danger" :disabled="tmpInfo.done">
+                          <el-button type="danger" :disabled=" tmpInfo.done ">
                             结束比赛
                           </el-button>
                         </template>
@@ -120,7 +120,7 @@
                 </el-col>
               </el-row>
             </el-tab-pane>
-            <el-tab-pane name="manageP" lazy v-if="this.gid >= 2">
+            <el-tab-pane name="manageP" lazy v-if=" this.gid >= 2 ">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <SetUp />

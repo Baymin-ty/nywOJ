@@ -638,10 +638,28 @@ const getAllProblems = (cid) => {
 
 const getAllPlayers = (cid) => {
   return new Promise((resolve, reject) => {
-    return db.query('SELECT uid FROM contestPlayer WHERE cid=?', [cid], (err, data) => {
+    return db.query('SELECT uid FROM contestPlayer WHERE cid=?', [cid], async (err, data) => {
       if (err) reject(err);
-      resolve(data);
+      let users = [];
+      for (let i = 0; i < data.length; i++) {
+        users.push(data[i].uid);
+      }
+      resolve(await getAllPlayersInfo(users));
     })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
+const getAllPlayersInfo = (list) => {
+  return new Promise((resolve, reject) => {
+    if (!list.length) return [];
+    else {
+      return db.query('SELECT uid,name FROM userInfo WHERE uid in (?)', [list], (err, data) => {
+        if (err) reject(err);
+        resolve(data);
+      });
+    }
   }).catch(err => {
     console.log(err);
   });
@@ -684,13 +702,14 @@ exports.getRank = async (req, res) => {
     return res.status(403).end('403 Forbidden');
   }
 
-  let uVis = [], pidToIdx = [], pweight = [], rank = [], table = new Map(), pinfo = new Map();
+  let uVis = [], pidToIdx = [], pweight = [], rank = [], acVis = [], table = new Map(), pinfo = new Map();
   for (let i = 0; i < problems.length; i++)
     pidToIdx[problems[i].pid] = problems[i].idx, pweight[problems[i].pid] = problems[i].weight, pinfo[problems[i].idx] = problems[i].weight;
-  for (let i = 0; i < players.length; i++)
-    uVis[players[i].uid] = true, table[players[i].uid] = new Map(), table[players[i].uid]['uid'] = players[i].uid,
+  for (let i = 0; i < players.length; i++) {
+    uVis[players[i].uid] = true, table[players[i].uid] = new Map(), table[players[i].uid]['user'] = players[i],
       table[players[i].uid]['totalScore'] = table[players[i].uid]['usedTime'] = 0,
       table[players[i].uid]['detail'] = new Map(), table[players[i].uid]['submitted'] = false;
+  }
   for (let i = 0; i < submissions.length; i++) {
     submissions[i].detail = await getSubmissionDetail(submissions[i].sid);
     if (pidToIdx[submissions[i].detail.pid] && uVis[submissions[i].detail.uid]) {
@@ -701,6 +720,11 @@ exports.getRank = async (req, res) => {
       table[submissions[i].detail.uid]['totalScore'] += Math.round(submissions[i].detail.score * pweight[submissions[i].detail.pid] / 100);
       if (submissions[i].detail.score)
         table[submissions[i].detail.uid]['usedTime'] += submissions[i].detail.time;
+      if (submissions[i].detail.score === 100) {
+        if (!acVis[pidToIdx[submissions[i].detail.pid]])
+          table[submissions[i].detail.uid]['detail'][pidToIdx[submissions[i].detail.pid]].firstBlood = true;
+        acVis[pidToIdx[submissions[i].detail.pid]] = true;
+      }
       table[submissions[i].detail.uid]['submitted'] = true;
     }
   }

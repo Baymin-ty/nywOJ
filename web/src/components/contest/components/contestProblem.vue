@@ -56,16 +56,4 @@ export default {
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
-.box-card {
-  height: 700px;
-  margin: 10px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 20px;
-}
-</style>
+<style scoped></style>
