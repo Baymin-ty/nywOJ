@@ -504,7 +504,7 @@ const judgeRes = ['Waiting',
   'System Error'];
 
 exports.getSubmissionList = (req, res) => {
-  const cid = req.body.cid;
+  const cid = req.body.cid, pageId = req.body.pageId, pageSize = 20;
   db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (!data.length) return res.status(202).send({ message: '无此比赛' });
@@ -513,8 +513,8 @@ exports.getSubmissionList = (req, res) => {
     if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
       || (isReged && data[0].status > 0) // IOI赛制 且 用户已报名
       || req.session.gid >= 2)) {
-      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE cid=?',
-        [cid], async (err2, data2) => {
+      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE cid=? LIMIT ?,?',
+        [cid, (pageId - 1) * pageSize, pageSize], async (err2, data2) => {
           if (err2) return res.status(202).send({ message: err2.message });
           for (let i = 0; i < data2.length; i++) {
             data2[i].idx = await getIdx(cid, data2[i].pid);
@@ -525,7 +525,7 @@ exports.getSubmissionList = (req, res) => {
             data2[i].judgeResult = judgeRes[data2[i].judgeResult];
             data2[i].memory = toHuman(data2[i].memory);
           }
-          db.query('SELECT COUNT(*) as cnt FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE cid=?',
+          db.query('SELECT COUNT(*) as cnt FROM submission WHERE cid=?',
             [cid], async (err3, data3) => {
               if (err3) return res.status(202).send({ message: err3.message });
               return res.status(200).send({ data: data2, total: data3[0].cnt });
@@ -536,7 +536,7 @@ exports.getSubmissionList = (req, res) => {
 }
 
 exports.getLastSubmissionList = (req, res) => {
-  const cid = req.body.cid;
+  const cid = req.body.cid, pageId = req.body.pageId, pageSize = 20;
   db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (!data.length) return res.status(202).send({ message: '无此比赛' });
@@ -545,10 +545,9 @@ exports.getLastSubmissionList = (req, res) => {
     if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
       || (isReged && data[0].status > 0) // IOI赛制 且 用户已报名
       || req.session.gid >= 2)) {
-      lastSubmission = await getAllSubmissions(cid);
-      let lastSubmissions = [];
-      for (let i in lastSubmission) {
-        lastSubmissions.push(lastSubmission[i].sid);
+      let allLastSubmissions = await getAllSubmissions(cid), lastSubmissions = [];
+      for (let i = (pageId - 1) * pageSize; i < pageId * pageSize && i < allLastSubmissions.length; i++) {
+        lastSubmissions.push(allLastSubmissions[i].sid);
       }
       if (!lastSubmissions.length) {
         return res.status(200).send({ data: [], total: 0 });
@@ -565,12 +564,8 @@ exports.getLastSubmissionList = (req, res) => {
             data2[i].judgeResult = judgeRes[data2[i].judgeResult];
             data2[i].memory = toHuman(data2[i].memory);
           }
-          db.query('SELECT COUNT(*) as cnt FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
-            [lastSubmissions], async (err3, data3) => {
-              if (err3) return res.status(202).send({ message: err3.message });
-              return res.status(200).send({ data: data2, total: data3[0].cnt });
-            })
-        })
+          return res.status(200).send({ data: data2, total: allLastSubmissions.length });
+        });
     } else return res.status(403).end('403 Forbidden');
   });
 }
