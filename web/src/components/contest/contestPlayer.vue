@@ -74,7 +74,6 @@ export default {
       });
     },
     removePlayer() {
-      console.log(this.removeList);
       axios.post('/api/contest/removePlayer', {
         list: this.removeList
       }).then(res => {
