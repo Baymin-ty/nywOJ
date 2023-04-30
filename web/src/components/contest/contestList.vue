@@ -121,7 +121,7 @@ export default {
         if (res.status === 200) {
           this.$router.push({
             path: '/contest/' + res.data.cid,
-            query: { tab: 'manage' }
+            query: { tab: 'manageC' }
           });
         } else {
           ElMessage({

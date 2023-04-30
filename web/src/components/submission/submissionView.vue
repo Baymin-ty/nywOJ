@@ -5,8 +5,10 @@
       <el-table-column prop="sid" label="#" min-width="5%" />
       <el-table-column prop="title" label="题目" min-width="15%">
         <template #default="scope">
-          <span class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
+          <span v-if="!isContest" class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)"> {{
+            scope.row.title
           }}</span>
+          <span v-if="isContest"> {{ scope.row.title }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="name" label="提交者" min-width="10%">
@@ -191,7 +193,7 @@ export default {
           this.submissionInfo.code = "```cpp\n" + this.submissionInfo.code + "\n```";
           this.submissionInfo.compileResult = "```\n" + this.submissionInfo.compileResult + "\n```";
           this.table[0] = this.submissionInfo;
-          if (this.mounted && (this.submissionInfo.judgeResult === 'Waiting' ||
+          if (!this.submissionInfo.unShown && this.mounted && (this.submissionInfo.judgeResult === 'Waiting' ||
             this.submissionInfo.judgeResult === 'Pending' ||
             this.submissionInfo.judgeResult === 'Rejudging')) {
             setTimeout(() => {

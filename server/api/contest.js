@@ -53,7 +53,7 @@ const getIdx = (cid, pid) => {
 exports.createContest = (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
   db.query('INSERT INTO contest(title,host,start,length,type,isPublic) VALUES (?,?,?,?,?,?)', [
-    '请输入比赛标题', req.session.uid, new Date(2121, 10, 22), 300, 0, 0], (err, data) => {
+    '请输入比赛标题', req.session.uid, new Date(2121, 10, 22), 180, 0, 0], (err, data) => {
       if (err) return res.status(202).send({
         message: err.message
       });
@@ -142,7 +142,7 @@ exports.getContestList = (req, res) => {
   if (!pageId) pageId = 1;
   pageId = SqlString.escape(pageId);
   let sql = "SELECT c.cid,c.title,c.start,c.length,c.isPublic,c.type,c.host,c.done,u.name as hostName FROM contest c INNER JOIN userInfo u ON u.uid = c.host" +
-    " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
+    " ORDER BY c.start DESC LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
   db.query(sql, async (err, data) => {
     if (err) return res.status(202).send({ message: err });
     let list = data;
@@ -310,7 +310,8 @@ exports.getPlayerProblemList = (req, res) => {
   db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (!data.length) return res.status(202).send({ message: '无此比赛' });
-    if (((await isReg(req.session.uid, data[0].cid)) && contestStatus(data[0]) > 0) || req.session.gid >= 2 || (data[0].isPublic && data[0].done)) {
+    const isReged = await isReg(req.session.uid, data[0].cid);
+    if ((isReged && contestStatus(data[0]) > 0) || req.session.gid >= 2 || ((data[0].isPublic || isReged) && data[0].done)) {
       db.query('SELECT cp.idx,p.title,cp.weight,p.publisher as publisherUid,u.name as publisher FROM contestProblem cp INNER JOIN problem p ON cp.pid = p.pid INNER JOIN userInfo u ON p.publisher = u.uid WHERE cp.cid=?', [cid], (err2, data2) => {
         if (err2) return res.status(202).send({ message: err2 });
         return res.status(200).send({
@@ -329,7 +330,8 @@ exports.getProblemInfo = (req, res) => {
   db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (!data.length) return res.status(202).send({ message: '无此比赛' });
-    if (((await isReg(req.session.uid, data[0].cid)) && contestStatus(data[0]) > 0) || req.session.gid >= 2 || (data[0].isPublic && data[0].done)) {
+    const isReged = await isReg(req.session.uid, data[0].cid);
+    if ((isReged && contestStatus(data[0]) > 0) || req.session.gid >= 2 || ((data[0].isPublic || isReged) && data[0].done)) {
       const pid = await getPid(cid, idx);
       if (!pid) return res.status(202).send({
         message: '无此题目'
@@ -386,6 +388,7 @@ const addProblem = (problem, cid) => {
 
 
 exports.updateProblemList = (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
   const cid = req.body.cid, list = req.body.list;
   let unilist = [], vis = [];
   for (let i = 0; i < list.length; i++) {
@@ -395,8 +398,8 @@ exports.updateProblemList = (req, res) => {
     if (!vis[list[i].pid]) {
       vis[list[i].pid] = true;
       list[i].weight = parseInt(list[i].weight);
-      if (list[i].weight < 10 || list[i].weight > 1000) {
-        return res.status(202).send({ message: `题目#${list[i].pid}的满分应为[10,1000]之间的整数` });
+      if (list[i].weight < 10 || list[i].weight > 10000) {
+        return res.status(202).send({ message: `题目#${list[i].pid}的满分应为[10,10000]之间的整数` });
       }
       unilist.push({
         pid: list[i].pid,
@@ -493,12 +496,13 @@ const judgeRes = ['Waiting',
 
 exports.getSubmissionList = (req, res) => {
   const cid = req.body.cid;
-  db.query('SELECT * FROM contest WHERE cid=?', [cid], (err, data) => {
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (!data.length) return res.status(202).send({ message: '无此比赛' });
     data[0].status = contestStatus(data[0]);
-    if (((data[0].status === 3 && data[0].isPublic) // 确认结束
-      || (isReg(req.session.uid, cid) && data[0].type === 1 && data[0].status > 0) // IOI赛制 且 用户已报名
+    const isReged = await isReg(req.session.uid, cid);
+    if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
+      || (isReged && data[0].status > 0) // IOI赛制 且 用户已报名
       || req.session.gid >= 2)) {
       db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE cid=?',
         [cid], async (err2, data2) => {
@@ -507,10 +511,56 @@ exports.getSubmissionList = (req, res) => {
             data2[i].idx = await getIdx(cid, data2[i].pid);
             data2[i].pid = null;
             data2[i].submitTime = Format(data2[i].submitTime);
+            if (!data[0].type && !data[0].done && req.session.gid === 1)
+              data2[i].score = data2[i].judgeResult = data2[i].time = data2[i].memory = 0;
             data2[i].judgeResult = judgeRes[data2[i].judgeResult];
             data2[i].memory = toHuman(data2[i].memory);
           }
-          return res.status(200).send({ data: data2 });
+          db.query('SELECT COUNT(*) as cnt FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE cid=?',
+            [cid], async (err3, data3) => {
+              if (err3) return res.status(202).send({ message: err3.message });
+              return res.status(200).send({ data: data2, total: data3[0].cnt });
+            })
+        })
+    } else return res.status(403).end('403 Forbidden');
+  });
+}
+
+exports.getLastSubmissionList = (req, res) => {
+  const cid = req.body.cid;
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    data[0].status = contestStatus(data[0]);
+    const isReged = await isReg(req.session.uid, cid);
+    if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
+      || (isReged && data[0].status > 0) // IOI赛制 且 用户已报名
+      || req.session.gid >= 2)) {
+      lastSubmission = await getAllSubmissions(cid);
+      let lastSubmissions = [];
+      for (let i in lastSubmission) {
+        lastSubmissions.push(lastSubmission[i].sid);
+      }
+      if (!lastSubmissions.length) {
+        return res.status(200).send({ data: [], total: 0 });
+      }
+      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
+        [lastSubmissions], async (err2, data2) => {
+          if (err2) return res.status(202).send({ message: err2.message });
+          for (let i = 0; i < data2.length; i++) {
+            data2[i].idx = await getIdx(cid, data2[i].pid);
+            data2[i].pid = null;
+            data2[i].submitTime = Format(data2[i].submitTime);
+            if (!data[0].type && !data[0].done && req.session.gid === 1)
+              data2[i].score = data2[i].judgeResult = data2[i].time = data2[i].memory = 0;
+            data2[i].judgeResult = judgeRes[data2[i].judgeResult];
+            data2[i].memory = toHuman(data2[i].memory);
+          }
+          db.query('SELECT COUNT(*) as cnt FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
+            [lastSubmissions], async (err3, data3) => {
+              if (err3) return res.status(202).send({ message: err3.message });
+              return res.status(200).send({ data: data2, total: data3[0].cnt });
+            })
         })
     } else return res.status(403).end('403 Forbidden');
   });
@@ -525,18 +575,24 @@ exports.getSubmissionInfo = (req, res) => {
         message: 'error'
       });
       else {
-        db.query('SELECT * FROM contest WHERE cid=?', [data[0].cid], (err2, data2) => {
+        db.query('SELECT * FROM contest WHERE cid=?', [data[0].cid], async (err2, data2) => {
           if (err2) return res.status(202).send({ message: err2 });
           if (!data2.length) return res.status(202).send({ message: '无此比赛' });
           data2[0].status = contestStatus(data2[0]);
-          if ((data2[0].status === 3 && data2[0].isPublic) || req.session.uid === data[0].uid || req.session.gid > 1) {
+          if ((data2[0].status === 3 && (data2[0].isPublic || (await isReg(req.session.uid, data[0].cid)))) || req.session.uid === data[0].uid || req.session.gid > 1) {
             data[0].caseResult = JSON.parse(data[0].caseResult);
+            if (!data2[0].type && !data2[0].done && req.session.gid === 1) {
+              data[0].caseResult = null;
+              data[0].score = data[0].judgeResult = data[0].time = data[0].memory = 0;
+              data[0].unShown = true;
+            }
             for (let i in data[0].caseResult) {
               if (!(req.session.gid > 1 || data2[0].status === 3))
-                data[0].caseResult[i].input = data[0].caseResult[i].output = data[0].caseResult[i].compareResult = '比赛进行中......';
+                data[0].caseResult[i].input = data[0].caseResult[i].output = data[0].caseResult[i].compareResult = '比赛进行中...\n';
               data[0].caseResult[i].judgeResult = judgeRes[data[0].caseResult[i].judgeResult];
               data[0].caseResult[i].memory = toHuman(data[0].caseResult[i].memory);
             }
+            data[0].pid = null;
             data[0].memory = toHuman(data[0].memory);
             data[0].submitTime = Format(data[0].submitTime);
             data[0].judgeResult = judgeRes[data[0].judgeResult];
@@ -593,26 +649,46 @@ const getSubmissionDetail = (sid) => {
   });
 }
 
+const getContestInfo = (cid) => {
+  return new Promise((resolve, reject) => {
+    return db.query('SELECT * FROM contest WHERE cid=?', [cid], (err, data) => {
+      if (err) reject(err);
+      resolve(data[0]);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
 exports.getRank = async (req, res) => {
   const cid = req.body.cid,
     submissions = await getAllSubmissions(cid),
     problems = await getAllProblems(cid),
-    players = await getAllPlayers(cid);
-  let uVis = [], pidToIdx = [], pweight = [], rank = [], table = new Map();
+    players = await getAllPlayers(cid),
+    contestInfo = await getContestInfo(cid),
+    isReged = await isReg(req.session.uid, cid),
+    status = contestStatus(contestInfo);
+
+  if (!(((status === 3 && (contestInfo.isPublic || isReged)) // 确认结束
+    || (isReged && contestInfo.type === 1 && status > 0) // IOI赛制 且 用户已报名
+    || req.session.gid >= 2))) {
+    return res.status(403).end('403 Forbidden');
+  }
+
+  let uVis = [], pidToIdx = [], pweight = [], rank = [], table = new Map(), pinfo = new Map();
   for (let i = 0; i < problems.length; i++)
-    pidToIdx[problems[i].pid] = problems[i].idx, pweight[problems[i].pid] = problems[i].weight;
+    pidToIdx[problems[i].pid] = problems[i].idx, pweight[problems[i].pid] = problems[i].weight, pinfo[problems[i].idx] = problems[i].weight;
   for (let i = 0; i < players.length; i++)
     uVis[players[i].uid] = true, table[players[i].uid] = new Map(), table[players[i].uid]['uid'] = players[i].uid,
       table[players[i].uid]['totalScore'] = table[players[i].uid]['usedTime'] = 0,
-      table[players[i].uid]['detail'] = [], table[players[i].uid]['submitted'] = false;
+      table[players[i].uid]['detail'] = new Map(), table[players[i].uid]['submitted'] = false;
   for (let i = 0; i < submissions.length; i++) {
     submissions[i].detail = await getSubmissionDetail(submissions[i].sid);
     if (pidToIdx[submissions[i].detail.pid] && uVis[submissions[i].detail.uid]) {
-      table[submissions[i].detail.uid]['detail'].push({
-        idx: pidToIdx[submissions[i].detail.pid],
+      table[submissions[i].detail.uid]['detail'][pidToIdx[submissions[i].detail.pid]] = {
         score: Math.round(submissions[i].detail.score * pweight[submissions[i].detail.pid] / 100),
         time: submissions[i].detail.time
-      });
+      };
       table[submissions[i].detail.uid]['totalScore'] += Math.round(submissions[i].detail.score * pweight[submissions[i].detail.pid] / 100);
       if (submissions[i].detail.score)
         table[submissions[i].detail.uid]['usedTime'] += submissions[i].detail.time;
@@ -631,5 +707,5 @@ exports.getRank = async (req, res) => {
       } else return a.usedTime - b.usedTime; //升序
     } else return b.totalScore - a.totalScore; //降序
   });
-  return res.status(200).send({ data: rank });
+  return res.status(200).send({ data: rank, problem: pinfo });
 }

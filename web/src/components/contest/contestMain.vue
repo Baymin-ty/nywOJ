@@ -50,7 +50,7 @@
               </template>
               <contestProblem />
             </el-tab-pane>
-            <el-tab-pane name="submission" lazy v-if="viewAuth">
+            <el-tab-pane name="submission" lazy v-if="joinAuth || viewAuth">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <DataAnalysis />

@@ -1,5 +1,16 @@
 <template>
-  <el-table :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }" :cell-style="cellStyle">
+  <div class="header">
+    <el-switch v-model="lastOnly" class="mb-2" active-text="最后一次提交" inactive-text="所有提交" @change="all" />
+    <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
+      layout="total, prev, pager, next" :total="total"></el-pagination>
+    <el-button type="primary" @click="all">
+      <el-icon class="el-icon--left">
+        <Refresh />
+      </el-icon>
+      刷新
+    </el-button>
+  </div>
+  <el-table :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }" :cell-style="cellStyle" :row-class-name="tableRowClassName">
     <el-table-column prop="sid" label="#" min-width="5%" />
     <el-table-column prop="title" label="题目" min-width="15%">
       <template #default="scope">
@@ -51,18 +62,23 @@
 import axios from "axios"
 import { ElMessage } from 'element-plus'
 import { resColor, scoreColor } from '@/assets/common'
+import store from '@/sto/store'
 
 export default {
   name: 'submissionList',
   data() {
     return {
       submissionList: [],
+      currentPage: 1,
+      total: 10,
+      lastOnly: false,
     }
   },
   methods: {
     all() {
-      axios.post('/api/contest/getSubmissionList', {
-        cid: this.cid
+      axios.post(this.lastOnly ? '/api/contest/getLastSubmissionList' : '/api/contest/getSubmissionList', {
+        cid: this.cid,
+        pageId: this.currentPage
       }).then(res => {
         this.submissionList = res.data.data;
         this.total = res.data.total;
@@ -73,6 +89,13 @@ export default {
           duration: 2000,
         });
       });
+    },
+    handleCurrentChange(val) {
+      this.currentPage = val;
+      this.all();
+    },
+    tableRowClassName(obj) {
+      return (obj.row.uid === this.uid ? 'success' : '');
     },
     cellStyle({ row, columnIndex }) {
       let style = {};
@@ -89,6 +112,7 @@ export default {
     },
   },
   mounted() {
+    this.uid = store.state.uid;
     this.cid = this.$route.params.cid;
     this.all();
   }
@@ -97,15 +121,10 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-.box-card {
-  height: 700px;
-  margin: 10px;
-}
-
-.card-header {
+.header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 20px;
+  height: 40px;
 }
 </style>

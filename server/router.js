@@ -136,6 +136,7 @@ router.post('/api/contest/getPlayerProblemList', contest.getPlayerProblemList);
 router.post('/api/contest/getProblemInfo', contest.getProblemInfo);
 router.post('/api/contest/submit', contest.submit);
 router.post('/api/contest/getSubmissionList', contest.getSubmissionList);
+router.post('/api/contest/getLastSubmissionList', contest.getLastSubmissionList);
 router.post('/api/contest/getSubmissionInfo', contest.getSubmissionInfo);
 router.post('/api/contest/getRank', contest.getRank);
 

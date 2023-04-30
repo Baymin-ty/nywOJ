@@ -30,7 +30,6 @@ export default {
       problemList: [],
       gid: 1,
       cid: 0,
-      currentPage: 1,
     }
   },
   methods: {
