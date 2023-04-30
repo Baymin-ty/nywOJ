@@ -1,7 +1,15 @@
 <template>
   <el-table :data="problemList" height="600px" :header-cell-style="{ textAlign: 'center' }"
     :cell-style="{ textAlign: 'center' }">
-    <el-table-column prop="idx" label="#" min-width="10%" />
+    <el-table-column type="index" min-width="10%">
+      <template #header>
+        <el-button circle @click="all" color="#626aef" plain>
+          <el-icon>
+            <Refresh />
+          </el-icon>
+        </el-button>
+      </template>
+    </el-table-column>
     <el-table-column prop="title" label="标题" min-width="50%">
       <template #default="scope">
         <span class="rlink" @click="this.$router.push('/contest/' + cid + '/problem/' + scope.row.idx)">
