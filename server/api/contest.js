@@ -620,6 +620,17 @@ const getAllSubmissions = (cid) => {
   });
 }
 
+const getUserAllSubmissions = (cid, uid) => {
+  return new Promise((resolve, reject) => {
+    return db.query('SELECT sid FROM contestLastSubmission WHERE cid=? AND uid=?', [cid, uid], (err, data) => {
+      if (err) reject(err);
+      resolve(data);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
 const getAllProblems = (cid) => {
   return new Promise((resolve, reject) => {
     return db.query('SELECT pid,idx,weight FROM contestProblem WHERE cid=?', [cid], (err, data) => {
@@ -736,4 +747,68 @@ exports.getRank = async (req, res) => {
     } else return b.totalScore - a.totalScore; //降序
   });
   return res.status(200).send({ data: rank, problem: pinfo });
+}
+
+exports.getSingleUserLastSubmission = async (req, res) => {
+  const cid = req.body.cid, uid = req.body.uid;
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    data[0].status = contestStatus(data[0]);
+    const isReged = await isReg(req.session.uid, cid);
+    if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
+      || (isReged && data[0].status > 0) // IOI赛制 且 用户已报名
+      || req.session.gid >= 2)) {
+      let lastSubmission = await getUserAllSubmissions(cid, uid), lastSubmissions = [];
+      for (let i in lastSubmission) {
+        lastSubmissions.push(lastSubmission[i].sid);
+      }
+      if (!lastSubmissions.length) {
+        return res.status(200).send({ data: [], total: 0 });
+      }
+      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
+        [lastSubmissions], async (err2, data2) => {
+          if (err2) return res.status(202).send({ message: err2.message });
+          for (let i = 0; i < data2.length; i++) {
+            data2[i].idx = await getIdx(cid, data2[i].pid);
+            data2[i].pid = null;
+            data2[i].submitTime = Format(data2[i].submitTime);
+            if (!data[0].type && !data[0].done && req.session.gid === 1)
+              data2[i].score = data2[i].judgeResult = data2[i].time = data2[i].memory = 0;
+            data2[i].judgeResult = judgeRes[data2[i].judgeResult];
+            data2[i].memory = toHuman(data2[i].memory);
+          }
+          return res.status(200).send({ data: data2 });
+        });
+    } else return res.status(403).end('403 Forbidden');
+  });
+}
+
+exports.getSingleUserProblemSubmission = (req, res) => {
+  const cid = req.body.cid, uid = req.body.uid, idx = req.body.idx;
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    data[0].status = contestStatus(data[0]);
+    const isReged = await isReg(req.session.uid, cid);
+    if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
+      || (isReged && data[0].status > 0) // IOI赛制 且 用户已报名
+      || req.session.gid >= 2)) {
+      const pinfo = await getPinfo(cid, idx);
+      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.cid=? AND s.uid=? AND s.pid=? ORDER BY s.sid DESC',
+        [cid, uid, pinfo.pid], async (err2, data2) => {
+          if (err2) return res.status(202).send({ message: err2.message });
+          for (let i = 0; i < data2.length; i++) {
+            data2[i].idx = idx;
+            data2[i].pid = null;
+            data2[i].submitTime = Format(data2[i].submitTime);
+            if (!data[0].type && !data[0].done && req.session.gid === 1)
+              data2[i].score = data2[i].judgeResult = data2[i].time = data2[i].memory = 0;
+            data2[i].judgeResult = judgeRes[data2[i].judgeResult];
+            data2[i].memory = toHuman(data2[i].memory);
+          }
+          return res.status(200).send({ data: data2 });
+        })
+    } else return res.status(403).end('403 Forbidden');
+  });
 }

@@ -34,6 +34,10 @@ li,
   --el-table-tr-bg-color: var(--el-color-success-light-9);
 }
 
+.el-table .warning {
+  --el-table-tr-bg-color: var(--el-color-warning-light-9);
+}
+
 .el-header {
   padding: 0;
   position: sticky;

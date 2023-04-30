@@ -139,5 +139,7 @@ router.post('/api/contest/getSubmissionList', contest.getSubmissionList);
 router.post('/api/contest/getLastSubmissionList', contest.getLastSubmissionList);
 router.post('/api/contest/getSubmissionInfo', contest.getSubmissionInfo);
 router.post('/api/contest/getRank', contest.getRank);
+router.post('/api/contest/getSingleUserLastSubmission', contest.getSingleUserLastSubmission);
+router.post('/api/contest/getSingleUserProblemSubmission', contest.getSingleUserProblemSubmission);
 
 module.exports = router;
