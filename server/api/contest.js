@@ -653,7 +653,7 @@ const getAllPlayers = (cid) => {
 
 const getAllPlayersInfo = (list) => {
   return new Promise((resolve, reject) => {
-    if (!list.length) return [];
+    if (!list.length) resolve([]);
     else {
       return db.query('SELECT uid,name FROM userInfo WHERE uid in (?)', [list], (err, data) => {
         if (err) reject(err);
