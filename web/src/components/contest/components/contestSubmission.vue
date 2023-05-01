@@ -10,7 +10,8 @@
       刷新
     </el-button>
   </div>
-  <el-table :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }" :cell-style="cellStyle" :row-class-name="tableRowClassName">
+  <el-table :data="submissionList" height="560px" :header-cell-style="{ textAlign: 'center' }" :cell-style="cellStyle"
+    :row-class-name="tableRowClassName">
     <el-table-column prop="sid" label="#" min-width="5%" />
     <el-table-column prop="title" label="题目" min-width="15%">
       <template #default="scope">

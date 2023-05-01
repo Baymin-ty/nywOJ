@@ -513,7 +513,7 @@ exports.getSubmissionList = (req, res) => {
     if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
       || (isReged && data[0].status > 0) // IOI赛制 且 用户已报名
       || req.session.gid >= 2)) {
-      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE cid=? LIMIT ?,?',
+      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE cid=?  ORDER BY s.sid DESC LIMIT ?,?',
         [cid, (pageId - 1) * pageSize, pageSize], async (err2, data2) => {
           if (err2) return res.status(202).send({ message: err2.message });
           for (let i = 0; i < data2.length; i++) {
