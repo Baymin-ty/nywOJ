@@ -41,18 +41,18 @@ exports.reg = async (req, res) => {
             message: "两次输入的密码不一致"
         })
     }
-    let ok = true;
-    await axios.get('https://v.api.aa1.cn/api/api-mgc/index.php', {
-        params: {
-            msg: name,
-        }
-    }).then(res => {
-        if (res.data.num === '1')
-            ok = false;
-    });
-    if (!ok) return res.status(202).send({
-        message: "用户名中存在敏感词"
-    });
+    // let ok = true;
+    // await axios.get('https://v.api.aa1.cn/api/api-mgc/index.php', {
+    //     params: {
+    //         msg: name,
+    //     }
+    // }).then(res => {
+    //     if (res.data.num === '1')
+    //         ok = false;
+    // });
+    // if (!ok) return res.status(202).send({
+    //     message: "用户名中存在敏感词"
+    // });
     db.query("SELECT uid FROM userInfo WHERE name=?", [name], (err, data) => {
         if (err) return res.status(202).send({
             message: err.message
