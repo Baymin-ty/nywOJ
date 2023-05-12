@@ -18,11 +18,11 @@ module.exports = defineConfig({
           common: {
             name: 'ty',
             chunks: 'all',
-            minChunks: 1,
-            minSize: 300000,
-            maxSize: 500000,
-            priority: 1,
-            reuseExistingChunk: true
+            // minChunks: 1,
+            // minSize: 300000,
+            // maxSize: 500000,
+            // priority: 1,
+            // reuseExistingChunk: true
           },
         }
       })
