@@ -39,7 +39,7 @@
                 </el-icon>
                 比赛介绍
               </template>
-              <v-md-preview :text="contestInfo.description" />
+              <v-md-preview :text="contestInfo.description" style="min-height: 600px;" />
             </el-tab-pane>
             <el-tab-pane name="problem" lazy v-if="joinAuth || viewAuth">
               <template #label>

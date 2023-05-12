@@ -25,7 +25,7 @@
       </div>
     </el-col>
     <el-col :span="18">
-      <el-table style="margin-left: 30px;" :data="problemList" min-height="600px"
+      <el-table style="margin-left: 30px;min-height: 600px;" :data="problemList" min-height="600px"
         :header-cell-style="{ textAlign: 'center' }" :cell-style="{ textAlign: 'center' }">
         <el-table-column fixed="left" label="删除" min-width="10%">
           <template #default="scope">
