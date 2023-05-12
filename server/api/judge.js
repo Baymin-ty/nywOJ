@@ -352,7 +352,7 @@ const judgeCode = async (sid, isreJudge) => {
     if (acCase === totalCase) {
       finalRes = 4, score = 100;
       db.query("UPDATE problem SET acCnt=acCnt+1 WHERE pid=?", [pid]);
-      db.query("SELECT COUNT(*) as cnt FROM submission WHERE uid=? AND judgeResult=4 AND sid!=? LIMIT 1", [sinfo.uid, sinfo.sid], (err, data) => {
+      db.query("SELECT COUNT(*) as cnt FROM submission WHERE uid=? AND judgeResult=4 AND sid!=? AND pid=? LIMIT 1", [sinfo.uid, sinfo.sid, sinfo.pid], (err, data) => {
         if (!err && data[0].cnt === 0) {
           let bonus = randomInt(10000, 100000);
           db.query("UPDATE userInfo SET clickCnt=clickCnt+? WHERE uid=?", [bonus, sinfo.uid]);
