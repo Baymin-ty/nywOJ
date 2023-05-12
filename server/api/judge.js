@@ -5,6 +5,7 @@ const SqlString = require('mysql/lib/protocol/SqlString');
 const exec = require('child_process').exec;
 const { Format } = require('../static');
 const async = require('async');
+const { randomInt } = require('crypto');
 
 const judgeQueue = async.queue(async (submission, completed) => {
   await judgeCode(submission.sid, submission.isreJudge);
@@ -110,6 +111,15 @@ const judgeCode = async (sid, isreJudge) => {
   try {
     let sinfo = await SubmissionInfo(sid);
     if (!sinfo) return;
+
+    if (isreJudge) {
+      db.query("SELECT bonus,uid FROM submission WHERE sid=?", [sid], (err, data) => {
+        if (!err && data[0].bonus) {
+          db.query("UPDATE userInfo SET clickCnt=clickCnt-? WHERE uid=?", [data[0].bonus, data[0].uid]);
+          db.query("UPDATE submission SET bonus=0 WHERE sid=?", [sid]);
+        }
+      });
+    }
 
     const pid = sinfo.pid;
     let pinfo = await ProblemInfo(pid);
@@ -342,8 +352,14 @@ const judgeCode = async (sid, isreJudge) => {
     if (acCase === totalCase) {
       finalRes = 4, score = 100;
       db.query("UPDATE problem SET acCnt=acCnt+1 WHERE pid=?", [pid]);
+      db.query("SELECT COUNT(*) as cnt FROM submission WHERE uid=? AND judgeResult=4 AND sid!=? LIMIT 1", [sinfo.uid, sinfo.sid], (err, data) => {
+        if (!err && data[0].cnt === 0) {
+          let bonus = randomInt(10000, 100000);
+          db.query("UPDATE userInfo SET clickCnt=clickCnt+? WHERE uid=?", [bonus, sinfo.uid]);
+          db.query("UPDATE submission SET bonus=? WHERE sid=?", [bonus, sinfo.sid]);
+        }
+      })
     }
-
     await setSubmission(sid, finalRes, totalTime, maxMemory, score, null, JSON.stringify(judgeResult));
 
     if (isreJudge) {
