@@ -12,8 +12,8 @@
           </el-button>
         </div>
       </template>
-      <el-table v-loading="!finished" :data="info" height="600px" :row-class-name="tableRowClassName"
-        :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
+      <el-table v-loading="!finished" :data="info" height="600px" :row-style="{ height: '30px' }"
+        :row-class-name="tableRowClassName" :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
         <el-table-column label="#" type="index" width="80px" />
         <el-table-column prop="name" label="用户名" width="150px">
           <template #default="scope">
@@ -22,7 +22,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="clickCnt" label="点击次数" width="130px" />
-        <el-table-column :show-overflow-tooltip=true prop="motto" label="个性签名" width="auto">
+        <el-table-column prop="motto" label="个性签名" width="auto">
           <template #default="scope">
             <span> {{ scope.row.motto }} </span>
           </template>

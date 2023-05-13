@@ -154,6 +154,17 @@ export default {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   font-weight: 600;
+  animation: 10s linear 0s infinite normal none running hue;
+}
+
+@keyframes hue {
+  from {
+    -webkit-filter: hue-rotate(0deg);
+  }
+
+  to {
+    -webkit-filter: hue-rotate(-360deg);
+  }
 }
 
 .box-card {

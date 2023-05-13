@@ -68,6 +68,10 @@ exports.getRankInfo = (req, res) => {
         if (err) return res.status(202).send({
             message: err.message
         });
+        for (let i = 0; i < data.length; i++) {
+            if (String(data[i].motto).length > 50)
+                data[i].motto = data[i].motto.substring(0, 50) + '...';
+        }
         return res.status(200).send({
             data: data
         });
