@@ -3,7 +3,7 @@
 </template>
 
 <script>
-import * as monaco from "monaco-editor";
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 
 export default {
   name: "monacoEditor",
@@ -19,7 +19,7 @@ export default {
     },
     height: {
       type: Number,
-      default: 600
+      default: 500
     }
   },
   mounted() {
@@ -29,6 +29,7 @@ export default {
     init() {
       this.$refs.container.innerHTML = "";
       this.editorOptions = this.monacoOptions;
+      this.editorOptions.automaticLayout = true;
       this.monacoEditor = monaco.editor.create(
         this.$refs.container,
         this.editorOptions
@@ -41,6 +42,6 @@ export default {
     getVal() {
       return this.monacoEditor.getValue();
     }
-  },
+  }
 };
 </script>

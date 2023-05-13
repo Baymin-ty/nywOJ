@@ -83,7 +83,6 @@ export default {
       uid: 0,
       name: "/",
       gid: 1,
-      dialogVisible: false,
       money: 50,
       curPath: '',
       options: [{

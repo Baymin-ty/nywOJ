@@ -91,7 +91,7 @@ export default {
           }
         }
         else {
-          this.$router.push({ path: '/' });
+          this.$router.go(-1);
         }
       });
     }

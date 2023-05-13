@@ -39,9 +39,11 @@
       </template>
     </el-table-column>
   </el-table>
-  <el-dialog v-model="dialogVisible" title="提交记录" width="1200px" center style="border-radius: 10px;">
+  <el-dialog v-model="dialogVisible" title="提交记录" width="1200px" center style="border-radius: 10px;" class="pd">
+    <el-divider />
     <el-table :data="subList" height="600px" :header-cell-style="{ textAlign: 'center' }"
-      :cell-style="submissionCellStyle" :row-class-name="submissionTableRowClassName">
+      :cell-style="submissionCellStyle" :row-class-name="submissionTableRowClassName"
+      style="padding-left: 20px;padding-right: 20px;">
       <el-table-column prop="sid" label="#" min-width="5%" />
       <el-table-column prop="title" label="题目" min-width="15%">
         <template #default="scope">
@@ -215,9 +217,5 @@ export default {
   line-height: 1.2em;
   font-size: 15px;
   font-weight: 500;
-}
-
-.clickable {
-  background-color: red;
 }
 </style>

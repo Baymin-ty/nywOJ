@@ -55,7 +55,8 @@ body {
   overflow-y: overlay;
 }
 
-.card-header {
+.card-header,
+.el-dialog__header {
   font-weight: bolder;
 }
 
