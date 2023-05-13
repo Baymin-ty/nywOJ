@@ -39,27 +39,28 @@
       </template>
     </el-table-column>
   </el-table>
-  <el-dialog v-model="dialogVisible" title="提交记录" width="1200px" center style="border-radius: 10px;" class="pd">
+  <el-dialog v-model="dialogVisible" title="提交记录" width="1200px" center style="border-radius: 10px; padding-bottom: 10px;"
+    class="pd">
     <el-divider />
-    <el-table :data="subList" height="600px" :header-cell-style="{ textAlign: 'center' }"
-      :cell-style="submissionCellStyle" :row-class-name="submissionTableRowClassName"
-      style="padding-left: 20px;padding-right: 20px;">
+    <el-table :data="subList" style="height: 600px; width: auto; margin-left: 10px;margin-right: 10px;"
+      :header-cell-style="{ textAlign: 'center' }" :cell-style="submissionCellStyle"
+      :row-class-name="submissionTableRowClassName">
       <el-table-column prop="sid" label="#" min-width="5%" />
-      <el-table-column prop="title" label="题目" min-width="15%">
+      <el-table-column prop="title" label="题目" min-width="10%">
         <template #default="scope">
           <span class="rlink" @click="this.$router.push('/contest/' + cid + '/problem/' + scope.row.idx)"> {{
             scope.row.title
           }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="name" label="提交者" min-width="12%">
+      <el-table-column prop="name" label="提交者" min-width="10%">
         <template #default="scope">
           <span class="rlink" @click="this.$router.push('/user/' + scope.row.uid)">
             {{ scope.row.name }}
           </span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="评测状态" min-width="13%">
+      <el-table-column prop="judgeResult" label="评测状态" min-width="15%">
         <template #default="scope">
           <span style="cursor: pointer;"
             @click="this.$router.push({ path: '/submission/' + scope.row.sid, query: { isContest: true } })">
@@ -72,22 +73,22 @@
           <span> {{ scope.row.score }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="总用时" min-width="10%">
+      <el-table-column prop="judgeResult" label="总用时" min-width="8%">
         <template #default="scope">
           <span> {{ scope.row.time }} ms</span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="内存" min-width="10%">
+      <el-table-column prop="judgeResult" label="内存" min-width="8%">
         <template #default="scope">
           <span> {{ scope.row.memory }} </span>
         </template>
       </el-table-column>
-      <el-table-column prop="codeLength" label="代码长度" min-width="10%">
+      <el-table-column prop="codeLength" label="代码长度" min-width="8%">
         <template #default="scope">
           <span> {{ scope.row.codeLength }} B </span>
         </template>
       </el-table-column>
-      <el-table-column prop="submitTime" label="提交时间" min-width="19%" />
+      <el-table-column prop="submitTime" label="提交时间" min-width="15%" />
     </el-table>
   </el-dialog>
 </template>
