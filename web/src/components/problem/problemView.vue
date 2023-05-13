@@ -105,7 +105,7 @@ export default {
         this.problemInfo.isPublic = res.data.data.isPublic ? true : false;
       }
       else {
-        this.$router.go(-1);
+        this.$router.push({ path: '/' });
       }
     });
     document.title = "题目 — " + this.problemInfo.title;

@@ -118,7 +118,7 @@ export default {
         this.problemInfo = res.data.data;
       }
       else {
-        this.$router.go(-1);
+        this.$router.push({ path: '/' });
       }
     });
     document.title = "比赛题目 — " + this.problemInfo.title;

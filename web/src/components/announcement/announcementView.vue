@@ -41,7 +41,7 @@ export default {
         this.announcementInfo = res.data.data
       }
       else {
-        this.$router.go(-1);
+        this.$router.push({ path: '/' });
       }
     });
     document.title = "公告 — " + this.announcementInfo.title;
