@@ -7,7 +7,17 @@
             <p class="title">T{{ problemInfo.idx }}、{{ problemInfo.title }}</p>
           </div>
         </template>
-        <v-md-preview :text="problemInfo.description"> </v-md-preview>
+        <monacoEditor v-if="isSubmit" ref="codeEditor" :monacoOptions="monacoOptions" v-model="monacoOptions.value" />
+        <div v-if="isSubmit" style="text-align: center;">
+          <el-divider />
+          <el-button type="primary" @click="submit">
+            <el-icon class="el-icon--left">
+              <Upload />
+            </el-icon>
+            确认提交
+          </el-button>
+        </div>
+        <v-md-preview v-show="!isSubmit" :text="problemInfo.description"> </v-md-preview>
       </el-card>
     </el-col>
     <el-col :span="6">
@@ -30,18 +40,24 @@
         </el-descriptions>
         <el-divider style="margin-top: 20px; margin-bottom: 20px;" />
         <div style="text-align: center;">
-          <el-button type="primary" @click="this.dialogVisible = true">
+          <el-button v-if="!this.isSubmit" type="primary" @click="this.isSubmit = true">
             <el-icon class="el-icon--left">
               <Upload />
             </el-icon>
             提交代码
           </el-button>
+          <el-button v-if="this.isSubmit" type="success" @click="this.isSubmit = false">
+            <el-icon class="el-icon--left">
+              <RefreshLeft />
+            </el-icon>
+            返回题目
+          </el-button>
           <el-button type="success" @click="this.$router.push({
-              path: '/contest/' + this.cid,
-              query: {
-                tab: 'problem'
-              }
-            })">
+            path: '/contest/' + this.cid,
+            query: {
+              tab: 'problem'
+            }
+          })">
             <el-icon class="el-icon--left">
               <RefreshLeft />
             </el-icon>
@@ -49,13 +65,6 @@
           </el-button>
         </div>
       </el-card>
-      <el-dialog v-model="dialogVisible" title="提交代码" style="width:1000px;border-radius: 5px; text-align: center;"
-        class="pd">
-        <el-divider />
-        <el-input v-model="code" type="textarea" :rows="20" resize="none" style=" padding: 10px; width: 950px;" />
-        <el-divider />
-        <el-button type="primary" @click="submit" style="margin-top: 10px;margin-bottom: 20px;">确认提交</el-button>
-      </el-dialog>
     </el-col>
   </el-row>
 </template>
@@ -63,6 +72,7 @@
 <script>
 import axios from 'axios';
 import { ElMessage } from 'element-plus'
+import monacoEditor from '@/components/monacoEditor.vue'
 
 export default {
   name: "contestProblemView",
@@ -71,13 +81,22 @@ export default {
       cid: 0,
       pid: 0,
       gid: 1,
-      dialogVisible: false,
       problemInfo: {},
       code: "",
+      isSubmit: false,
+      monacoOptions: {
+        value: '',
+        readOnly: false,
+        language: "cpp",
+      },
     };
+  },
+  components: {
+    monacoEditor
   },
   methods: {
     submit() {
+      this.code = this.$refs.codeEditor.getVal();
       axios.post("/api/contest/submit", {
         cid: this.cid,
         idx: this.idx,
@@ -90,7 +109,7 @@ export default {
             type: "success",
             duration: 1000,
           });
-          this.dialogVisible = false;
+          this.isSubmit = false;
           this.code = '';
         }
         else {

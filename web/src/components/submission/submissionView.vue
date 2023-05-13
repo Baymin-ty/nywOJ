@@ -62,7 +62,7 @@
             </el-button>
           </div>
         </template>
-        <v-md-preview :text="submissionInfo.code"> </v-md-preview>
+        <monacoEditor v-if="hasTaken" ref="codeEditor" :monacoOptions="monacoOptions" v-model="monacoOptions.value" />
       </el-card>
     </el-col>
   </el-row>
@@ -110,6 +110,7 @@
 <script>
 import axios from 'axios';
 import { resColor, scoreColor } from '@/assets/common'
+import monacoEditor from '@/components/monacoEditor.vue'
 
 export default {
   name: "problemView",
@@ -119,10 +120,20 @@ export default {
       table: [],
       submissionInfo: [],
       code: '',
+      hasTaken: false,
+      isContest: false,
       dialogVisible: false,
       detailInfo: '',
-      mounted: false
+      mounted: false,
+      monacoOptions: {
+        value: '',
+        readOnly: true,
+        language: "cpp",
+      },
     }
+  },
+  components: {
+    monacoEditor
   },
   methods: {
     tableRowClassName(obj) {
@@ -189,8 +200,9 @@ export default {
     async all() {
       await axios.post(this.isContest ? '/api/contest/getSubmissionInfo' : '/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {
         if (res.status === 200) {
-          this.submissionInfo = res.data.data
-          this.submissionInfo.code = "```cpp\n" + this.submissionInfo.code + "\n```";
+          this.submissionInfo = res.data.data;
+          this.monacoOptions.value = this.submissionInfo.code;
+          this.hasTaken = true;
           this.submissionInfo.compileResult = "```\n" + this.submissionInfo.compileResult + "\n```";
           this.table[0] = this.submissionInfo;
           if (!this.submissionInfo.unShown && this.mounted && (this.submissionInfo.judgeResult === 'Waiting' ||
