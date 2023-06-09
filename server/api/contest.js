@@ -511,7 +511,7 @@ exports.getSubmissionList = (req, res) => {
     data[0].status = contestStatus(data[0]);
     const isReged = await isReg(req.session.uid, cid);
     if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
-      || (isReged && data[0].status > 0) // IOI赛制 且 用户已报名
+      || (isReged && data[0].status > 0) // 用户已报名
       || req.session.gid >= 2)) {
       db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE cid=?  ORDER BY s.sid DESC LIMIT ?,?',
         [cid, (pageId - 1) * pageSize, pageSize], async (err2, data2) => {
@@ -757,7 +757,7 @@ exports.getSingleUserLastSubmission = async (req, res) => {
     data[0].status = contestStatus(data[0]);
     const isReged = await isReg(req.session.uid, cid);
     if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
-      || (isReged && data[0].status > 0) // IOI赛制 且 用户已报名
+      || (isReged && data[0].status > 0) // 用户已报名
       || req.session.gid >= 2)) {
       let lastSubmission = await getUserAllSubmissions(cid, uid), lastSubmissions = [];
       for (let i in lastSubmission) {
@@ -792,7 +792,7 @@ exports.getSingleUserProblemSubmission = (req, res) => {
     data[0].status = contestStatus(data[0]);
     const isReged = await isReg(req.session.uid, cid);
     if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
-      || (isReged && data[0].status > 0) // IOI赛制 且 用户已报名
+      || (isReged && data[0].status > 0) // 用户已报名
       || req.session.gid >= 2)) {
       const pinfo = await getPinfo(cid, idx);
       db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.cid=? AND s.uid=? AND s.pid=? ORDER BY s.sid DESC',
