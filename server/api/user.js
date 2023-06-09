@@ -2,7 +2,8 @@ const db = require('../db/index');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const mail = require('nodemailer');
-const { Format } = require('../static')
+const { Format } = require('../static');
+const config = require('../config.json');
 
 exports.reg = async (req, res) => {
     const name = req.body.name;
@@ -169,8 +170,8 @@ exports.sendEmailVerifyCode = async (req, res) => {
         port: 465,
         secureConnection: true,
         auth: {
-            user: 'nywojservice@163.com',
-            pass: '123'
+            user: config.EMAIL.username,
+            pass: config.EMAIL.password
         }
     })
 

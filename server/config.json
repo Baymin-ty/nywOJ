@@ -1,0 +1,11 @@
+{
+  "DB": {
+    "username": "root",
+    "password": "114514",
+    "databasename": "test"
+  },
+  "EMAIL": {
+    "username": "nywojservice@163.com",
+    "password": "pwd"
+  }
+}

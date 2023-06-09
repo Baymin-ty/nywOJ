@@ -4,12 +4,24 @@ const app = express()
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const router = require('./router')
+const config = require('./config.json')
+const MySQLStore = require('express-mysql-session')(session);
+const options = {
+    host: 'localhost',
+    port: 3306,
+    user: config.DB.username,
+    password: config.DB.password,
+    database: config.DB.databasename
+};
+
+const sessionStore = new MySQLStore(options);
 
 const getClientIp = (req) => {
     return req.headers['x-forwarded-for'];
 }
 
 app.use(session({
+    store: sessionStore,
     secret: '114514-nywOJ-1919810',
     resave: true,
     saveUninitialized: true,
@@ -18,8 +30,11 @@ app.use(session({
 }));
 
 app.use((req, res, next) => {
-    res.setTimeout(5000, () => {
-        return res.status(408).send("Request Timeout");
+    if (!req.headers.referer || !req.headers.referer.match('^https:\/\/ty.szsyzx.cn\/')) {
+        return res.status(403).end('403 Forbidden');
+    }
+    res.setTimeout(10000, () => {
+        return res.status(408).end("Request Timeout");
     });
     req.session.ip = getClientIp(req);
     if (req.session.uid) {
