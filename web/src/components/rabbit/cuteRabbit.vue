@@ -7,10 +7,15 @@
             Tiddar (uid: {{ this.uid }} 用户名: {{ this.name }})
           </div>
         </template>
-        <el-button style="height: 500px; width: 400px" @click="fun" round :disabled="!finished">
-          <img class="round" alt="Rabbit" src="@/assets/rabbit.jpg">
+        <el-button style="height: 500px; width: 400px;" @click="fun" round :disabled="!finished">
+          <img v-if="!this.opt" class="round" alt="Rabbit" src="@/assets/rabbit.jpg">
+          <img v-if="this.opt" class="round" alt="Rabbit" src="@/assets/nrabbit.jpg">
         </el-button>
-        <h1 class="rainbow"> 你戳了兔兔 {{ cnt }} 下</h1>
+        <h1 class="rainbow">
+          <span @click="this.opt ^= 1">
+            你戳了兔兔 {{ cnt }} 下
+          </span>
+        </h1>
       </el-card>
     </el-col>
     <el-col :span="14">
@@ -58,7 +63,8 @@ export default {
       info: [],
       uid: 0,
       name: "请登录",
-      ok: true
+      ok: true,
+      opt: 0
     }
   },
   methods: {
