@@ -58,7 +58,7 @@ exports.createContest = (req, res) => {
   db.query('INSERT INTO contest(title,host,start,length,type,isPublic) VALUES (?,?,?,?,?,?)', [
     '请输入比赛标题', req.session.uid, new Date(2121, 10, 22), 180, 0, 0], (err, data) => {
       if (err) return res.status(202).send({
-        message: err.message
+        message: err
       });
       if (data.affectedRows > 0) {
         return res.status(200).send({
@@ -111,7 +111,7 @@ exports.updateContestInfo = (req, res) => {
     db.query('UPDATE contest SET title=?,description=?,start=?,length=?,type=?,isPublic=? WHERE cid=?',
       [info.title, info.description, new Date(info.start), info.length, info.type, info.isPublic, cid], (err, data) => {
         if (err) return res.status(202).send({
-          message: err.message
+          message: err
         });
         if (data.affectedRows > 0) {
           return res.status(200).send({
@@ -276,7 +276,7 @@ exports.closeContest = (req, res) => {
     }
     db.query('UPDATE contest SET done=1 WHERE cid=?', [cid], (err, data) => {
       if (err) return res.status(202).send({
-        message: err.message
+        message: err
       });
       if (data.affectedRows > 0) {
         return res.status(200).send({
@@ -463,7 +463,7 @@ exports.submit = async (req, res) => {
         message: '题目列表已更新，请重新查看题目列表提交'
       });
     db.query('INSERT INTO submission(pid,uid,code,codelength,submitTime,cid) VALUES (?,?,?,?,?,?)', [pid, req.session.uid, code, code.length, new Date(), cid], (err2, data2) => {
-      if (err2) return res.status(202).send({ message: err2.message });
+      if (err2) return res.status(202).send({ message: err2 });
       if (data2.affectedRows > 0) {
         db.query('UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?', [pid]);
         db.query('DELETE FROM contestLastSubmission WHERE cid=? AND uid=? AND idx=?', [cid, uid, idx], () => {
@@ -515,7 +515,7 @@ exports.getSubmissionList = (req, res) => {
       || req.session.gid >= 2)) {
       db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE cid=?  ORDER BY s.sid DESC LIMIT ?,?',
         [cid, (pageId - 1) * pageSize, pageSize], async (err2, data2) => {
-          if (err2) return res.status(202).send({ message: err2.message });
+          if (err2) return res.status(202).send({ message: err2 });
           for (let i = 0; i < data2.length; i++) {
             data2[i].idx = await getIdx(cid, data2[i].pid);
             data2[i].pid = null;
@@ -554,7 +554,7 @@ exports.getLastSubmissionList = (req, res) => {
       }
       db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
         [lastSubmissions], async (err2, data2) => {
-          if (err2) return res.status(202).send({ message: err2.message });
+          if (err2) return res.status(202).send({ message: err2 });
           for (let i = 0; i < data2.length; i++) {
             data2[i].idx = await getIdx(cid, data2[i].pid);
             data2[i].pid = null;
@@ -768,7 +768,7 @@ exports.getSingleUserLastSubmission = async (req, res) => {
       }
       db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
         [lastSubmissions], async (err2, data2) => {
-          if (err2) return res.status(202).send({ message: err2.message });
+          if (err2) return res.status(202).send({ message: err2 });
           for (let i = 0; i < data2.length; i++) {
             data2[i].idx = await getIdx(cid, data2[i].pid);
             data2[i].pid = null;
@@ -797,7 +797,7 @@ exports.getSingleUserProblemSubmission = (req, res) => {
       const pinfo = await getPinfo(cid, idx);
       db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.cid=? AND s.uid=? AND s.pid=? ORDER BY s.sid DESC',
         [cid, uid, pinfo.pid], async (err2, data2) => {
-          if (err2) return res.status(202).send({ message: err2.message });
+          if (err2) return res.status(202).send({ message: err2 });
           for (let i = 0; i < data2.length; i++) {
             data2[i].idx = idx;
             data2[i].pid = null;

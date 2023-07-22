@@ -393,7 +393,7 @@ exports.submit = (req, res) => {
   }
   db.query('INSERT INTO submission(pid,uid,code,codelength,submitTime) VALUES (?,?,?,?,?)', [pid, req.session.uid, code, code.length, new Date()], (err, data) => {
     if (err) return res.status(202).send({
-      message: err.message
+      message: err
     });
     if (data.affectedRows > 0) {
       db.query("UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?", [pid]);

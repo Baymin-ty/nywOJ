@@ -7,7 +7,7 @@ exports.all = (req, res) => {
     let sql = 'SELECT clickList.id,clickList.time,clickList.uid,userInfo.name,clickList.ip,userInfo.clickCnt,userInfo.gid FROM clickList INNER JOIN userInfo ON userInfo.uid = clickList.uid ORDER BY clickList.id DESC LIMIT 20';
     db.query(sql, (err, data) => {
         if (err) return res.status(202).send({
-            message: err.message
+            message: err
         });
         for (let i = 0; i < data.length; i++) data[i].time = Format(data[i].time);
         return res.status(200).send({
@@ -33,7 +33,7 @@ exports.add = (req, res) => {
 
     db.query('INSERT INTO clickList(uid,time,ip) values (?,?,?)', [uid, new Date(), ip], (err, data) => {
         if (err) return res.status(202).send({
-            message: err.message
+            message: err
         });
         if (data.affectedRows > 0) {
             db.query("UPDATE userInfo SET clickCnt=clickCnt+1 WHERE uid=?", [uid]);
@@ -56,7 +56,7 @@ exports.getClickCnt = (req, res) => {
     let sql = 'SELECT clickCnt FROM userInfo WHERE uid=?';
     db.query(sql, [uid], (err, data) => {
         if (err) return res.status(202).send({
-            message: err.message
+            message: err
         });
         return res.status(200).send({ clickCnt: data[0].clickCnt });
     })
@@ -66,7 +66,7 @@ exports.getRankInfo = (req, res) => {
     let sql = 'SELECT uid,name,clickCnt,motto,gid FROM userInfo GROUP BY uid ORDER BY clickCnt DESC LIMIT 20';
     db.query(sql, (err, data) => {
         if (err) return res.status(202).send({
-            message: err.message
+            message: err
         });
         for (let i = 0; i < data.length; i++) {
             if (String(data[i].motto).length > 50)

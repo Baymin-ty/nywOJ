@@ -56,7 +56,7 @@ exports.reg = async (req, res) => {
     // });
     db.query("SELECT uid FROM userInfo WHERE name=?", [name], (err, data) => {
         if (err) return res.status(202).send({
-            message: err.message
+            message: err
         });
         if (data.length) return res.status(202).send({
             message: "此用户名已被注册"
@@ -66,9 +66,10 @@ exports.reg = async (req, res) => {
             const password = bcrypt.hashSync(pwd, 12);
             db.query("INSERT INTO userInfo(name,pwd,reg_time,email) values (?,?,?,?)", [name, password, time, email], (err, data) => {
                 if (err) return res.status(202).send({
-                    message: err.message
+                    message: err
                 });
                 if (data.affectedRows > 0) {
+                    req.session.verifyCode = req.session.vertifiedEmail = null;
                     return res.status(200).send({
                         message: 'success'
                     });
@@ -96,7 +97,7 @@ exports.login = async (req, res) => {
             message: "请先注册后再登录"
         });
         if (err) return res.status(202).send({
-            message: err.message
+            message: err
         });
         const uid = data[0].uid, password = data[0].pwd, inUse = data[0].inUse;
         if (!inUse) {
@@ -186,7 +187,7 @@ exports.sendEmailVerifyCode = async (req, res) => {
         if (!err) {
             return res.status(200).send({ message: "success" });
         } else {
-            return res.status(202).send({ message: err.message });
+            return res.status(202).send({ message: err });
         }
     })
 }
@@ -207,7 +208,7 @@ exports.setUserEmail = async (req, res) => {
     }
     db.query("SELECT email FROM userInfo WHERE email=?", [req.session.verifyCode.email], (err, data) => {
         if (err) return res.status(202).send({
-            message: err.message
+            message: err
         });
         if (data.length) return res.status(202).send({
             message: "此邮箱已绑定过其他账号"
@@ -223,7 +224,7 @@ exports.getUserPublicInfo = (req, res) => {
     const uid = req.body.id;
     db.query("SELECT uid,name,email,reg_time,login_time,clickCnt,inUse,gid,motto FROM userInfo WHERE uid=?", [uid], (err, data) => {
         if (err) {
-            return res.status(202).send({ message: err.message });
+            return res.status(202).send({ message: err });
         }
         if (!data.length) {
             return res.status(202).send({ message: '无此用户' });
@@ -243,7 +244,7 @@ exports.setUserMotto = async (req, res) => {
     }
     db.query("UPDATE userInfo SET motto=? WHERE uid=?", [motto, req.session.uid], (err, data) => {
         if (err) {
-            return res.status(202).send({ message: err.message });
+            return res.status(202).send({ message: err });
         }
         return res.status(200).send({ message: 'success' });
     });

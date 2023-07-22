@@ -9,7 +9,7 @@ exports.createProblem = (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
   db.query('INSERT INTO problem(title,description,publisher,time,tags) VALUES (?,?,?,?,?)', ["请输入题目标题", "请输入题目描述", req.session.uid, new Date(), JSON.stringify(['请修改题目标签'])], (err, data) => {
     if (err) return res.status(202).send({
-      message: err.message
+      message: err
     });
     if (data.affectedRows > 0) {
       return res.status(200).send({
@@ -56,7 +56,7 @@ exports.updateProblem = (req, res) => {
     else if (info.type === 'Special Judge') info.type = 1;
     db.query('UPDATE problem SET title=?,description=?,timeLimit=?,memoryLimit=?,isPublic=?,type=?,tags=? WHERE pid=?', [info.title, info.description, info.timeLimit, info.memoryLimit, info.isPublic, info.type, JSON.stringify(info.tags), pid], (err, data) => {
       if (err) return res.status(202).send({
-        message: err.message
+        message: err
       });
       if (data.affectedRows > 0) {
         return res.status(200).send({

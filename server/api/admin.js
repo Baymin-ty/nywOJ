@@ -104,7 +104,7 @@ exports.addAnnouncement = (req, res) => {
   if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
   db.query('INSERT INTO announcement(title,description,weight,time) VALUES (?,?,?,?)', ["请输入公告标题", "请输入公告描述", 10, new Date()], (err, data) => {
     if (err) return res.status(202).send({
-      message: err.message
+      message: err
     });
     if (data.affectedRows > 0) {
       return res.status(200).send({
