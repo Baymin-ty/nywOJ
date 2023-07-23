@@ -49,20 +49,26 @@
         </el-icon>
         {{ this.$store.state.name }}
       </template>
-      <el-menu-item :width="120" :index="/user/ + this.$store.state.uid">
+      <el-menu-item :index="/user/ + this.$store.state.uid">
         <el-icon>
           <UserFilled />
         </el-icon>
         个人主页
       </el-menu-item>
-      <el-menu-item :width="120" v-if="this.$store.state.gid === 3" index="/admin/usermanage">
+      <el-menu-item index="/user/edit">
+        <el-icon>
+          <Edit />
+        </el-icon>
+        编辑资料
+      </el-menu-item>
+      <el-menu-item v-if="this.$store.state.gid === 3" index="/admin/usermanage">
         <el-icon>
           <Operation />
         </el-icon>
         用户管理
       </el-menu-item>
       <span @click="logout">
-        <el-menu-item :width="120">
+        <el-menu-item>
           <el-icon>
             <Close />
           </el-icon>

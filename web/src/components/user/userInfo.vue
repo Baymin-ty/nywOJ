@@ -1,119 +1,121 @@
 <template>
-  <div style="margin: 0 auto; max-width: 1500px;">
-    <el-card class="box-card" shadow="hover">
-      <template #header>
-        <div class="card-header" style="text-align: center;">
-          个人主页
-          <el-button v-if="info.uid === this.uid" type="success" @click="this.dialogVisible = true">
-            <el-icon class="el-icon--left">
-              <Edit />
-            </el-icon>
-            编辑个性签名
-          </el-button>
-          <el-dialog v-model="dialogVisible" title="编辑签名" style="width:600px;height: 600px;border-radius: 10px"
-            class="pd">
-            <el-divider />
-            <el-input v-model="newMotto" type="textarea" placeholder="Please input" :rows="20" :maxlength="1000"
-              :show-word-limit="true" style="width:500px;margin: 20px;" resize="none" />
-            <el-button type="primary" @click="updateMotto">确认修改</el-button>
-          </el-dialog>
+  <div style="margin: auto;max-width: 1000px;min-width: 800px;">
+    <el-row>
+      <el-col :span="7">
+        <div style="margin: 0 20px;">
+          <el-avatar shape="square" :size="250" :src="avatarAddress" />
         </div>
-      </template>
-      <el-row>
-        <el-col :span="18">
-          <el-card class="box-card" style="overflow-y: auto; height: 600px; margin: auto;" shadow="never">
-            <v-md-preview :text="this.info.motto"></v-md-preview>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-descriptions direction="vertical" :column="1" border style="margin: 10px;">
-            <el-descriptions-item label="uid"> {{ info.uid }}</el-descriptions-item>
-            <el-descriptions-item label="用户名"> {{ info.name }}</el-descriptions-item>
-            <el-descriptions-item label="电子邮件">{{ info.email }}</el-descriptions-item>
-            <el-descriptions-item label="兔兔点击数">{{ info.clickCnt }}</el-descriptions-item>
-            <el-descriptions-item label="用户角色">{{ group[info.gid] }}</el-descriptions-item>
-            <el-descriptions-item label="登录时间">{{ info.login_time }}</el-descriptions-item>
-            <el-descriptions-item label="注册时间">{{ info.reg_time }}</el-descriptions-item>
-          </el-descriptions>
-        </el-col>
-      </el-row>
-    </el-card>
+        <div id="name">
+          {{ info.name }}
+        </div>
+        <el-button v-if="this.$store.state.uid === parseInt(this.uid)" type="info" plain
+          @click="this.$router.push('/user/edit/');" id="modify">修改资料</el-button>
+        <div v-if="info.email" class="infos">
+          <span class="subtitle">邮箱</span>
+          <span style="float: right;">{{ info.email }}</span>
+        </div>
+        <div class="infos">
+          <span class="subtitle">用户类型</span>
+          <span style="float: right;">{{ group[info.gid] }}</span>
+        </div>
+        <div class="infos">
+          <span class="subtitle">注册时间</span>
+          <span style="float: right;">{{ info.reg_time }}</span>
+        </div>
+        <div v-if="info.login_time" class="infos">
+          <span class="subtitle">登录时间</span>
+          <span style="float: right;">{{ info.login_time }}</span>
+        </div>
+        <div class="infos">
+          <span class="subtitle">兔兔点击数</span>
+          <span style="float: right;">{{ info.clickCnt }}</span>
+        </div>
+      </el-col>
+      <el-col :span="17">
+        <el-card id="main" shadow="never">
+          <v-md-preview :text="info.motto" />
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script>
 import axios from "axios";
-import { ElMessage } from "element-plus";
 
 export default {
   name: "userInfo",
   data() {
     return {
       uid: 0,
-      id: 0,
-      dialogVisible: false,
       info: {},
       newMotto: '/',
+      avatarAddress: '',
       group: ['', '普通用户', '管理员', '超级管理员'],
     }
   },
   methods: {
-    updateMotto() {
-      axios.post('/api/user/setUserMotto', {
-        data: this.newMotto
-      }).then((res) => {
-        if (res.status === 200) {
-          ElMessage({
-            message: '更新个签成功',
-            type: 'success',
-            duration: 1000,
-          });
-          this.dialogVisible = false;
-          this.all();
-        } else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
-        }
-      });
-    },
     all() {
       axios.post('/api/user/getUserPublicInfo', {
-        id: this.id
+        uid: this.uid
       }).then((res) => {
         if (res.data.info) {
           this.info = res.data.info;
-          if (this.info.uid === this.uid) this.newMotto = this.info.motto;
           if (!this.info.motto) {
-            this.info.motto = "Ta暂时没有设置个签噢"
+            this.info.motto = "Ta暂时没有编辑个人主页噢"
           }
+          this.avatarAddress = this.getAvatarAddress(this.info.qq);
         }
         else {
           this.$router.go(-1);
         }
       });
-    }
+    },
+    getAvatarAddress(qq) {
+      if (!qq || !qq.length) return 'https://cdn.ty.szsyzx.cn/default-avatar.svg';
+      return `https://q1.qlogo.cn/g?b=qq&nk=${qq}&s=5`;
+    },
   },
   async mounted() {
-    this.id = this.$route.params.uid;
-    this.uid = this.$store.state.uid;
+    this.uid = this.$route.params.uid;
     await this.all();
   }
 }
 </script>
 
 <style scoped>
-.box-card {
-  height: 700px;
-  margin: 10px;
+#name {
+  font-size: 25px;
+  font-weight: 600;
+  margin: 10px 20px 15px;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 20px;
+#modify {
+  width: 250px;
+  height: 35px;
+  margin: 0 20px 15px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #3f3f3f;
+}
+
+.infos {
+  width: 250px;
+  height: 30px;
+  margin: 5px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #656565;
+}
+
+.subtitle {
+  float: left;
+  color: #3f3f3f;
+  font-weight: 600;
+}
+
+#main {
+  min-height: 400px;
+  overflow-y: scroll;
 }
 </style>

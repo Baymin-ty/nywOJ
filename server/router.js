@@ -25,6 +25,11 @@ router.post('/api/user/setUserEmail', user.setUserEmail);
 router.post('/api/user/getUserInfo', user.getUserInfo);
 router.post('/api/user/getUserPublicInfo', user.getUserPublicInfo);
 router.post('/api/user/setUserMotto', user.setUserMotto);
+router.post('/api/user/listSessions', user.listSessions);
+router.post('/api/user/revokeSession', user.revokeSession);
+router.post('/api/user/updateUserPublicInfo', user.updateUserPublicInfo);
+router.post('/api/user/modifyPassword', user.modifyPassword);
+router.post('/api/user/listAudits', user.listAudits);
 
 const admin = require('./api/admin');
 

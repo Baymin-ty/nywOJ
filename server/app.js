@@ -25,19 +25,23 @@ app.use(session({
     secret: '114514-nywOJ-1919810',
     resave: true,
     saveUninitialized: true,
-    cookie: { maxAge: 86400 * 1000 * 7 },
+    cookie: { maxAge: parseInt(config.SESSION.expire) },
     name: 'token'
 }));
+const parser = require('ua-parser-js');
+const db = require('./db/index');
 
 app.use((req, res, next) => {
-    if (!req.headers.referer || !req.headers.referer.match('^https:\/\/ty.szsyzx.cn\/')) {
-        return res.status(403).end('403 Forbidden');
-    }
+    // if (!req.headers.referer || !req.headers.referer.match('^https:\/\/ty.szsyzx.cn\/')) {
+    //     return res.status(403).end('403 Forbidden');
+    // }
     res.setTimeout(10000, () => {
         return res.status(408).end("Request Timeout");
     });
     req.session.ip = getClientIp(req);
+    req.useragent = parser(req.headers['user-agent']);
     if (req.session.uid) {
+        db.query('UPDATE userSession SET lastact=? WHERE token=? AND uid=?', [new Date(), req.sessionID, req.session.uid]);
         if (req.url.match('^\/api\/admin') && req.session.gid !== 3)
             res.status(403).end('403 Forbidden');
         next();

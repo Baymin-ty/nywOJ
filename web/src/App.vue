@@ -56,8 +56,10 @@ body {
 }
 
 .card-header,
-.el-dialog__header {
+.el-dialog__header,
+.el-form-item__label {
   font-weight: bolder;
+  color: #3f3f3f;
 }
 
 .rlink {

@@ -20,6 +20,7 @@ import contestList from '@/components/contest/contestList.vue'
 import contestMain from '@/components/contest/contestMain.vue'
 import contestPlayer from '@/components/contest/contestPlayer.vue'
 import contestProblem from '@/components/contest/contestProblem.vue'
+import userEdit from '@/components/user/edit/userEdit.vue'
 
 import userManage from "@/components/admin/userManage"
 
@@ -148,6 +149,12 @@ const router = createRouter({
             activeTitle: '/contest'
         },
         path: '/contest/:cid/problem/:idx', component: contestProblem,
+    }, {
+        meta: {
+            title: '用户设置',
+            activeTitle: '/user'
+        },
+        path: '/user/edit', component: userEdit,
     }],
     caseSensitive: true
 });
@@ -165,6 +172,7 @@ router.beforeEach(async (to, from, next) => {
                 store.state.uid = res.data.uid;
                 store.state.name = res.data.name;
                 store.state.gid = res.data.gid;
+                store.state.ip = res.data.ip;
             }
         });
     }

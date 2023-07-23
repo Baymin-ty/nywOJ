@@ -2,18 +2,22 @@ const db = require('../db/index');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const mail = require('nodemailer');
-const { Format } = require('../static');
+const { Format, ip2loc, msFormat, recordEvent, eventList, eventExp, briefFormat } = require('../static');
 const config = require('../config.json');
 
 exports.reg = async (req, res) => {
     const name = req.body.name;
     const pwd = req.body.pwd;
     const rePwd = req.body.rePwd;
-    const email = req.session.vertifiedEmail;
+    const email = req.session.verifiedEmail.email;
     if (!email) {
         return res.status(202).send({
             message: "请先验证邮箱"
         })
+    }
+    const time = new Date().getTime();
+    if (time > req.session.verifiedEmail.expire) {
+        return res.status(202).send({ message: "操作超时，请重新绑定邮箱" });
     }
     if (!name || !pwd || !rePwd) {
         return res.status(202).send({
@@ -69,7 +73,7 @@ exports.reg = async (req, res) => {
                     message: err
                 });
                 if (data.affectedRows > 0) {
-                    req.session.verifyCode = req.session.vertifiedEmail = null;
+                    req.session.verifyCode = null;
                     return res.status(200).send({
                         message: 'success'
                     });
@@ -101,6 +105,7 @@ exports.login = async (req, res) => {
         });
         const uid = data[0].uid, password = data[0].pwd, inUse = data[0].inUse;
         if (!inUse) {
+            recordEvent(req, 'user.loginFail.userBlocked', null, uid);
             return res.status(202).send({
                 message: '你号没了'
             });
@@ -110,10 +115,13 @@ exports.login = async (req, res) => {
             req.session.name = data[0].name;
             req.session.email = data[0].email;
             req.session.gid = data[0].gid;
+            recordEvent(req, 'user.login');
             db.query("UPDATE userInfo SET login_time=? WHERE uid=?", [new Date(), uid]);
-            db.query("INSERT INTO loginLog(uid,time,ip) values (?,?,?) ", [uid, new Date(), req.session.ip]);
+            db.query("INSERT INTO userSession(uid,token,browser,os,loginIp,loginLoc,time,lastact) values (?,?,?,?,?,?,?,?)",
+                [uid, req.sessionID, `${req.useragent.browser.name} ${req.useragent.browser.version}`, `${req.useragent.os.name} ${req.useragent.os.version}`, req.session.ip, ip2loc(req.session.ip), new Date(), new Date()]);
             return res.status(200).send({ message: 'success' })
         } else {
+            recordEvent(req, 'user.loginFail.wrongPassword', { password: pwd }, uid);
             return res.status(202).send({ message: "密码错误" })
         }
     });
@@ -131,6 +139,8 @@ exports.getUserInfo = (req, res) => {
 }
 
 exports.logout = (req, res) => {
+    recordEvent(req, 'user.logout');
+    db.query("UPDATE userSession SET time=? WHERE token=?", [new Date(0), req.sessionID]);
     req.session.destroy();
     return res.status(200).send({ message: "success" });
 }
@@ -183,6 +193,11 @@ exports.sendEmailVerifyCode = async (req, res) => {
         text: "你正在nywOJ进行绑定邮箱操作,验证码为 " + verifyCode + "\n该验证码3分钟内有效。"
     }
 
+    if (req.body.update) {
+        mailOptions.subject = 'nywOJ修改邮箱验证码';
+        mailOptions.text = "你正在nywOJ进行修改邮箱操作(用户名: " + req.session.name + "), 验证码为 " + verifyCode + "\n该验证码3分钟内有效。"
+    }
+
     transporter.sendMail(mailOptions, (err) => {
         if (!err) {
             return res.status(200).send({ message: "success" });
@@ -214,15 +229,44 @@ exports.setUserEmail = async (req, res) => {
             message: "此邮箱已绑定过其他账号"
         });
         else {
-            req.session.vertifiedEmail = req.session.verifyCode.email;
-            return res.status(200).send({ message: "验证成功" });
+            if (req.body.update) {
+                db.query("SELECT email FROM userInfo WHERE uid=?", [req.session.uid], (err2, data2) => {
+                    if (err2) {
+                        return res.status(202).send({ message: err2 });
+                    }
+                    const detail = {};
+                    detail.email = {
+                        'old': data2[0].email,
+                        'new': req.session.verifyCode.email,
+                    }
+                    db.query("UPDATE userInfo SET email=? WHERE uid=?",
+                        [req.session.verifyCode.email, req.session.uid], (err3, data3) => {
+                            if (err3) return res.status(202).send({
+                                message: err3
+                            });
+                            req.session.email = req.session.verifyCode.email;
+                            revokeAllSessions(req.session.uid, req.sessionID);
+                            recordEvent(req, 'auth.changeEmail', detail);
+                            req.session.verifyCode = null;
+                            return res.status(200).send({ message: "更新邮箱成功" });
+                        });
+                })
+            }
+            else {
+                req.session.verifiedEmail = {
+                    email: req.session.verifyCode.email,
+                    expire: new Date().getTime() + 10 * 60 * 1000,
+                }
+                req.session.verifyCode = null;
+                return res.status(200).send({ message: "验证成功,请在10分钟内完成注册操作" });
+            }
         }
     })
 }
 
 exports.getUserPublicInfo = (req, res) => {
-    const uid = req.body.id;
-    db.query("SELECT uid,name,email,reg_time,login_time,clickCnt,inUse,gid,motto FROM userInfo WHERE uid=?", [uid], (err, data) => {
+    const uid = req.body.uid;
+    db.query("SELECT uid,name,email,reg_time,login_time,clickCnt,inUse,gid,motto,qq FROM userInfo WHERE uid=?", [uid], (err, data) => {
         if (err) {
             return res.status(202).send({ message: err });
         }
@@ -230,9 +274,13 @@ exports.getUserPublicInfo = (req, res) => {
             return res.status(202).send({ message: '无此用户' });
         }
         if (data[0].reg_time)
-            data[0].reg_time = Format(data[0].reg_time);
+            data[0].reg_time = briefFormat(data[0].reg_time);
         if (data[0].login_time)
-            data[0].login_time = Format(data[0].login_time);
+            data[0].login_time = briefFormat(data[0].login_time);
+        if (req.session.gid !== 3 && req.session.uid !== data[0].uid) {
+            delete data[0].login_time;
+            delete data[0].email;
+        }
         return res.status(200).send({ info: data[0] });
     });
 }
@@ -240,12 +288,135 @@ exports.getUserPublicInfo = (req, res) => {
 exports.setUserMotto = async (req, res) => {
     const motto = req.body.data;
     if (motto.length > 1000) {
-        return res.status(202).send({ message: "个签长度应在1000以内" });
+        return res.status(202).send({ message: "个人主页长度应在1000以内" });
     }
     db.query("UPDATE userInfo SET motto=? WHERE uid=?", [motto, req.session.uid], (err, data) => {
         if (err) {
             return res.status(202).send({ message: err });
         }
         return res.status(200).send({ message: 'success' });
+    });
+}
+
+exports.listSessions = (req, res) => {
+    db.query("SELECT * FROM userSession WHERE uid=? AND TIMESTAMPDIFF(SECOND,time,NOW()) < ? ORDER BY lastact DESC", [req.session.uid, config.SESSION.expire / 1000], (err, data) => {
+        if (err) {
+            return res.status(202).send({ message: err });
+        }
+        const now = new Date().getTime();
+        for (let i = 0; i < data.length; i++) {
+            delete data[i].id;
+            if (data[i].token === req.sessionID)
+                data[i].lastact = '当前会话';
+            else data[i].lastact = msFormat(now - new Date(data[i].lastact).getTime());
+            data[i].time = Format(data[i].time);
+        }
+        return res.status(200).send({ data: data });
+    })
+}
+
+exports.revokeSession = (req, res) => {
+    if (req.body.revokeAll) {
+        revokeAllSessions(req.session.uid, req.sessionID);
+        recordEvent(req, 'auth.revokeAllSessions');
+        return res.status(200).send({ message: "ok" });
+    }
+    const token = req.body.token;
+    db.query("SELECT * FROM userSession WHERE uid=? AND token=?", [req.session.uid, token], (err, data) => {
+        if (err) {
+            return res.status(202).send({ message: err });
+        }
+        if (!data.length) {
+            return res.status(202).send({ message: '无效token' });
+        }
+        recordEvent(req, 'auth.revokeSession');
+        db.query("UPDATE sessions SET expires=? WHERE session_id=?", [0, token]);
+        db.query("UPDATE userSession SET time=? WHERE uid=? AND token=?", [new Date(0), req.session.uid, token]);
+        return res.status(200).send({ message: "ok" });
+    })
+}
+
+const revokeAllSessions = async (uid, curToken) => {
+    db.query("UPDATE sessions SET expires=? WHERE session_id!=?", [0, uid, curToken]);
+    db.query("UPDATE userSession SET time=? WHERE uid=? AND token!=?", [new Date(0), uid, curToken]);
+    return;
+}
+
+exports.updateUserPublicInfo = (req, res) => {
+    const info = req.body.userInfo;
+    db.query("SELECT * FROM userInfo WHERE uid=?", [req.session.uid], (err, data) => {
+        if (err) {
+            return res.status(202).send({ message: err });
+        }
+        db.query("UPDATE userInfo SET qq=?,motto=? WHERE uid=?", [info.qq, info.motto, req.session.uid], (err2, data2) => {
+            if (err2) {
+                return res.status(202).send({ message: err2 });
+            }
+            const detail = {};
+            if (data[0].qq !== info.qq)
+                detail.qq = {
+                    'old': data[0].qq,
+                    'new': info.qq,
+                }
+            if (data[0].motto !== info.motto)
+                detail.motto = {
+                    'old': data[0].motto,
+                    'new': info.motto,
+                }
+            recordEvent(req, 'user.updateProfile', detail)
+            return res.status(200).send({ message: "ok" });
+        });
+    })
+}
+
+exports.listAudits = (req, res) => {
+    const pageId = req.body.pageId, pageSize = 10;
+    db.query("SELECT * FROM userAudit WHERE uid=? ORDER BY id DESC LIMIT ?,?",
+        [req.session.uid, (pageId - 1) * pageSize, pageSize], (err, data) => {
+            if (err) {
+                return res.status(202).send({ message: err });
+            }
+            for (let i = 0; i < data.length; i++) {
+                delete data[i].id;
+                data[i].eventExp = eventExp[data[i].event];
+                data[i].event = eventList[data[i].event];
+                data[i].time = Format(data[i].time);
+            }
+            db.query("SELECT COUNT(*) as cnt FROM userAudit WHERE uid=?", [req.session.uid], (err2, data2) => {
+                if (err2) {
+                    return res.status(202).send({ message: err2 });
+                }
+                return res.status(200).send({ data: data, total: data2[0].cnt });
+            })
+        })
+}
+
+exports.modifyPassword = (req, res) => {
+    const newPwd = req.body.newPwd;
+    if (newPwd.new !== newPwd.rep) {
+        return res.status(202).send({ message: "两次密码不一致" });
+    }
+    if (newPwd.new.length > 31 || newPwd.new.length < 6) {
+        return res.status(202).send({
+            message: "密码长度应在6~31之间"
+        })
+    }
+    db.query("SELECT pwd FROM userInfo WHERE uid=?", [req.session.uid], (err, data) => {
+        if (err) {
+            return res.status(202).send({ message: err });
+        }
+        if (bcrypt.compareSync(newPwd.old, data[0].pwd)) {
+            const updPwd = bcrypt.hashSync(newPwd.new, 12);
+            db.query('UPDATE userInfo SET pwd=? WHERE uid=?', [updPwd, req.session.uid], (err2, data2) => {
+                if (err2) {
+                    return res.status(202).send({ message: err2 });
+                }
+                recordEvent(req, 'auth.changePassword');
+                revokeAllSessions(req.session.uid, req.sessionID);
+                return res.status(200).send({ message: "ok" });
+            })
+        } else {
+            return res.status(202).send({ message: "旧密码错误" });
+        }
     });
 }
