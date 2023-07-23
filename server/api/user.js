@@ -337,8 +337,25 @@ exports.revokeSession = (req, res) => {
 }
 
 const revokeAllSessions = async (uid, curToken) => {
-    db.query("UPDATE sessions SET expires=? WHERE session_id!=?", [0, uid, curToken]);
-    db.query("UPDATE userSession SET time=? WHERE uid=? AND token!=?", [new Date(0), uid, curToken]);
+    db.query("SELECT * FROM userSession WHERE uid=? AND TIMESTAMPDIFF(SECOND,time,NOW()) < ?", [uid, config.SESSION.expire / 1000], (err, data) => {
+        if (err) {
+            console.log(err);
+            return;
+        }
+        let sessionList = [];
+        for (i in data) {
+            if (data[i].token !== curToken)
+                sessionList.push(data[i].token);
+        }
+        db.query("UPDATE sessions SET expires=? WHERE session_id in(?)", [0, sessionList], (err, data) => {
+            if (err)
+                console.log(err);
+        });
+        db.query("UPDATE userSession SET time=? WHERE token in(?)", [new Date(0), sessionList], (err, data) => {
+            if (err)
+                console.log(err);
+        });
+    })
     return;
 }
 
