@@ -11,7 +11,7 @@
     </el-button>
   </div>
   <el-table :data="submissionList" height="560px" :header-cell-style="{ textAlign: 'center' }" :cell-style="cellStyle"
-    :row-class-name="tableRowClassName">
+    :row-class-name="tableRowClassName" v-loading="!finished">
     <el-table-column prop="sid" label="#" min-width="5%" />
     <el-table-column prop="title" label="题目" min-width="15%">
       <template #default="scope">
@@ -73,16 +73,19 @@ export default {
       currentPage: 1,
       total: 10,
       lastOnly: false,
+      finished: false
     }
   },
   methods: {
     all() {
+      this.finished = false;
       axios.post(this.lastOnly ? '/api/contest/getLastSubmissionList' : '/api/contest/getSubmissionList', {
         cid: this.cid,
         pageId: this.currentPage
       }).then(res => {
         this.submissionList = res.data.data;
         this.total = res.data.total;
+        this.finished = true;
       }).catch(err => {
         ElMessage({
           message: '获取提交记录失败' + err.message,

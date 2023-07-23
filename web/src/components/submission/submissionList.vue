@@ -24,7 +24,7 @@
           </div>
         </template>
         <el-table :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }"
-          :cell-style="cellStyle">
+          :cell-style="cellStyle" v-loading="!finished">
           <el-table-column prop="sid" label="#" width="80px" />
           <el-table-column prop="title" label="题目" width="160px">
             <template #default="scope">
@@ -114,6 +114,7 @@ export default {
     return {
       submissionList: [],
       total: 0,
+      finished: false,
       currentPage: 1,
       filter: {
         pid: null,
@@ -167,6 +168,7 @@ export default {
   },
   methods: {
     all() {
+      this.finished = false;
       let param = {}, url = location.pathname;
       if (this.filter.name) param.name = this.filter.name;
       if (this.filter.pid) param.pid = this.filter.pid;
@@ -185,6 +187,7 @@ export default {
       }).then(res => {
         this.submissionList = res.data.data;
         this.total = res.data.total;
+        this.finished = true;
       }).catch(err => {
         ElMessage({
           message: '获取提交记录失败' + err.message,

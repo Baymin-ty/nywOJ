@@ -10,7 +10,7 @@
         </div>
       </template>
       <el-table :data="info" height="600px" :cell-style="{ textAlign: 'center' }"
-        :header-cell-style="{ textAlign: 'center' }">
+        :header-cell-style="{ textAlign: 'center' }" v-loading="!loadingFinished">
         <el-table-column prop="uid" width="110px">
           <template #header>
             <div class="table-header">
@@ -137,6 +137,7 @@ export default {
       total: 0,
       finished: 1,
       currentPage: 1,
+      loadingFinished: false,
       info: [],
       group: ['', '普通用户', '管理员', '超级管理员'],
       tempInfo: {},
@@ -168,6 +169,7 @@ export default {
   },
   methods: {
     all() {
+      this.loadingFinished = false;
       let param = {}, url = location.pathname;
       if (this.filter.uid) param.uid = this.filter.uid;
       if (this.filter.name) param.name = this.filter.name;
@@ -184,6 +186,7 @@ export default {
         pageId: this.currentPage,
         filter: this.filter
       }).then(res => {
+        this.loadingFinished = true;
         this.total = res.data.total;
         this.info = res.data.userList;
         for (let i = 0; i < this.info.length; i++) this.info[i].edit = 0;

@@ -23,7 +23,7 @@
         </div>
       </template>
       <el-table :data="contestList" height="600px" :header-cell-style="{ textAlign: 'center' }"
-        :cell-style="{ textAlign: 'center' }">
+        :cell-style="{ textAlign: 'center' }" v-loading="!finished">
         <el-table-column prop="cid" label="#" min-width="5%" />
         <el-table-column prop="title" label="标题" min-width="25%">
           <template #default="scope">
@@ -86,6 +86,7 @@ export default {
       contestList: [],
       total: 0,
       gid: 1,
+      finished: false,
       currentPage: 1,
       tagType: {
         '未开始': '',
@@ -97,6 +98,7 @@ export default {
   },
   methods: {
     all() {
+      this.finished = false;
       axios.post('/api/contest/getContestList', {
         pageId: this.currentPage
       }).then(res => {
@@ -104,6 +106,7 @@ export default {
         for (let i = 0; i < this.contestList.length; i++)
           this.contestList[i].isPublic = !!this.contestList[i].isPublic;
         this.total = res.data.total;
+        this.finished = true;
       }).catch(err => {
         ElMessage({
           message: '获取比赛列表失败' + err.message,

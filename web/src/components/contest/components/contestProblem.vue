@@ -1,6 +1,6 @@
 <template>
   <el-table :data="problemList" height="600px" :header-cell-style="{ textAlign: 'center' }"
-    :cell-style="{ textAlign: 'center' }">
+    :cell-style="{ textAlign: 'center' }" v-loading="!finished">
     <el-table-column type="index" min-width="10%">
       <template #header>
         <el-button circle @click="all" color="#626aef" plain>
@@ -38,14 +38,17 @@ export default {
       problemList: [],
       gid: 1,
       cid: 0,
+      finished: false
     }
   },
   methods: {
     all() {
+      this.finished = false;
       axios.post('/api/contest/getPlayerProblemList', {
         cid: this.cid
       }).then(res => {
         this.problemList = res.data.data;
+        this.finished = true;
       }).catch(err => {
         ElMessage({
           message: '获取题目列表失败' + err.message,

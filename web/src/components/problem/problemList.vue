@@ -23,7 +23,7 @@
         </div>
       </template>
       <el-table :data="problemList" height="600px" :header-cell-style="{ textAlign: 'center' }"
-        :cell-style="{ textAlign: 'center' }">
+        :cell-style="{ textAlign: 'center' }" v-loading="!finished">
         <el-table-column prop="pid" label="#" width="100px" />
         <el-table-column prop="title" label="标题" width="auto">
           <template #default="scope">
@@ -61,15 +61,18 @@ export default {
       total: 0,
       gid: 1,
       currentPage: 1,
+      finished: false
     }
   },
   methods: {
     all() {
+      this.finished = false;
       axios.post('/api/problem/getProblemList', {
         pageId: this.currentPage
       }).then(res => {
         this.problemList = res.data.data;
         this.total = res.data.total;
+        this.finished = true;
       }).catch(err => {
         ElMessage({
           message: '获取题目列表失败' + err.message,

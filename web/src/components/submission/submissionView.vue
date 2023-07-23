@@ -1,7 +1,7 @@
 <template>
   <el-row style="min-width: 600px;max-width: 1180px; margin: 0 auto;">
     <el-table :data="table" style="margin-bottom:10px;" :header-cell-style="{ textAlign: 'center' }"
-      :cell-style="cellStyle2">
+      :cell-style="cellStyle2" v-loading="!finished">
       <el-table-column prop="sid" label="#" min-width="5%" />
       <el-table-column prop="title" label="题目" min-width="15%">
         <template #default="scope">
@@ -123,6 +123,7 @@ export default {
       hasTaken: false,
       isContest: false,
       dialogVisible: false,
+      finished: false,
       detailInfo: '',
       mounted: false,
       monacoOptions: {
@@ -198,6 +199,7 @@ export default {
       this.all();
     },
     async all() {
+      this.finished = false;
       await axios.post(this.isContest ? '/api/contest/getSubmissionInfo' : '/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {
         if (res.status === 200) {
           this.submissionInfo = res.data.data;
@@ -205,6 +207,7 @@ export default {
           this.hasTaken = true;
           this.submissionInfo.compileResult = "```\n" + this.submissionInfo.compileResult + "\n```";
           this.table[0] = this.submissionInfo;
+          this.finished = true;
           if (!this.submissionInfo.unShown && this.mounted && (this.submissionInfo.judgeResult === 'Waiting' ||
             this.submissionInfo.judgeResult === 'Pending' ||
             this.submissionInfo.judgeResult === 'Rejudging')) {

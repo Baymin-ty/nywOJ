@@ -25,7 +25,7 @@
         </div>
       </template>
       <el-table :data="playerList" height="600px" @selection-change="select" :header-cell-style="{ textAlign: 'center' }"
-        :cell-style="{ textAlign: 'center' }">
+        :cell-style="{ textAlign: 'center' }" v-loading="!finished">
         <el-table-column v-if="this.gid >= 2" type="selection" min-width="10%" />
         <el-table-column prop="uid" label="uid" min-width="20%" />
         <el-table-column prop="name" label="用户名" min-width="70%">
@@ -51,6 +51,7 @@ export default {
       playerList: [],
       removeList: [],
       total: 0,
+      finished: false,
       gid: 1,
       cid: 0,
       currentPage: 1,
@@ -59,12 +60,14 @@ export default {
   },
   methods: {
     all() {
+      this.finished = false;
       axios.post('/api/contest/getPlayerList', {
         cid: this.cid,
         pageId: this.currentPage
       }).then(res => {
         this.playerList = res.data.data;
         this.total = res.data.total;
+        this.finished = true;
       }).catch(err => {
         ElMessage({
           message: '获取选手列表失败' + err.message,

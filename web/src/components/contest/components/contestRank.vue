@@ -1,7 +1,7 @@
 <template>
   <el-table :data="rankList.data" height="600px" :header-cell-style="{ textAlign: 'center' }" :cell-style="CellStyle"
     :row-style="{ height: '50px' }" :row-class-name="tableRowClassName" :cell-class-name="cellClassName"
-    @cell-click="getExSubmission">
+    @cell-click="getExSubmission" v-loading="!finished">
     <el-table-column fixed="left" max-width="10%" min-width="60px">
       <template #header>
         <el-button circle @click="all" color="#626aef" plain>
@@ -109,14 +109,17 @@ export default {
       dialogVisible: false,
       gid: 1,
       cid: 0,
+      finished: false
     };
   },
   methods: {
     all() {
+      this.finished = false;
       axios.post("/api/contest/getRank", {
         cid: this.cid
       }).then(res => {
         this.rankList = res.data;
+        this.finished = true;
       }).catch(err => {
         ElMessage({
           message: "获取比赛排行失败" + err.message,
