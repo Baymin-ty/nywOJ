@@ -1,6 +1,6 @@
 <template>
-  <el-row style="margin: auto;max-width: 1500px;">
-    <el-col :span="10">
+  <div style="margin: auto;max-width: 1500px;min-width: 1300px; ">
+    <div style="min-width: 500px; ;width: 40%;display: inline-block;  ">
       <el-card class="box-card" shadow="hover" style="text-align: center;">
         <template #header>
           <div class="card-header">
@@ -17,8 +17,8 @@
           </span>
         </h1>
       </el-card>
-    </el-col>
-    <el-col :span="14">
+    </div>
+    <div style="display: inline-block; width: 60%;">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -33,20 +33,20 @@
         </template>
         <el-table v-loading="!finished" :data="info" height="600px" :row-class-name="tableRowClassName"
           :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
-          <el-table-column prop="id" label="#" width="100px" />
-          <el-table-column prop="time" label="点击时间" width="180px" />
-          <el-table-column prop="uid" label="uid" width="80px" />
-          <el-table-column prop="name" label="用户名" width="150px">
+          <el-table-column prop="id" label="#" min-width="15%" />
+          <el-table-column prop="time" label="点击时间" min-width="23%" />
+          <el-table-column prop="name" label="用户名" min-width="15%">
             <template #default="scope">
               <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)"> {{ scope.row.name
               }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="ip" label="IP" width="auto" />
+          <el-table-column prop="ip" label="IP" min-width="20%" />
+          <el-table-column prop="iploc" label="IP属地" min-width="27%" />
         </el-table>
       </el-card>
-    </el-col>
-  </el-row>
+    </div>
+  </div>
 </template>
 
 <script>
@@ -127,7 +127,7 @@ export default {
     cellStyle({ row, columnIndex }) {
       let style = {};
       style['textAlign'] = 'center';
-      if (columnIndex === 3) {
+      if (columnIndex === 2) {
         style['font-weight'] = 500;
         style['color'] = getNameColor(row.gid, row.clickCnt);
         if (style['color'] === '#8e44ad')

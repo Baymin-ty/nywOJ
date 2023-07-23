@@ -1,10 +1,10 @@
 const db = require('../db/index');
-const { Format } = require('../static');
+const { Format, ip2loc } = require('../static');
 let rabbitData = {};
 let dayClick = {};
 
 exports.all = (req, res) => {
-    let sql = 'SELECT clickList.id,clickList.time,clickList.uid,userInfo.name,clickList.ip,userInfo.clickCnt,userInfo.gid FROM clickList INNER JOIN userInfo ON userInfo.uid = clickList.uid ORDER BY clickList.id DESC LIMIT 20';
+    let sql = 'SELECT clickList.id,clickList.time,clickList.uid,userInfo.name,clickList.ip,clickList.iploc,userInfo.clickCnt,userInfo.gid FROM clickList INNER JOIN userInfo ON userInfo.uid = clickList.uid ORDER BY clickList.id DESC LIMIT 20';
     db.query(sql, (err, data) => {
         if (err) return res.status(202).send({
             message: err
@@ -31,7 +31,8 @@ exports.add = (req, res) => {
         })
     }
 
-    db.query('INSERT INTO clickList(uid,time,ip) values (?,?,?)', [uid, new Date(), ip], (err, data) => {
+    const iploc = ip2loc(ip);
+    db.query('INSERT INTO clickList(uid,time,ip,iploc) values (?,?,?,?)', [uid, new Date(), ip, iploc], (err, data) => {
         if (err) return res.status(202).send({
             message: err
         });

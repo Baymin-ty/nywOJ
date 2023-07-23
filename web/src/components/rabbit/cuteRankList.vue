@@ -4,12 +4,6 @@
       <template #header>
         <div class="card-header">
           点击数排名
-          <el-button type="primary" :disabled="!finished" @click="all">
-            <el-icon class="el-icon--left">
-              <Refresh />
-            </el-icon>
-            更新排名
-          </el-button>
         </div>
       </template>
       <el-table v-loading="!finished" :data="info" height="600px" :row-style="{ height: '30px' }"
@@ -22,7 +16,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="clickCnt" label="点击次数" width="130px" />
-        <el-table-column prop="motto" label="个性签名" width="auto">
+        <el-table-column prop="motto" label="个人主页" width="auto">
           <template #default="scope">
             <span> {{ scope.row.motto }} </span>
           </template>
