@@ -1,51 +1,53 @@
 <template>
-  <div style="margin: auto;max-width: 1500px;min-width: 1300px; ">
-    <div style="min-width: 500px; ;width: 40%;display: inline-block;  ">
-      <el-card class="box-card" shadow="hover" style="text-align: center;">
-        <template #header>
-          <div class="card-header">
-            Tiddar (uid: {{ this.uid }} 用户名: {{ this.name }})
-          </div>
-        </template>
-        <el-button style="height: 500px; width: 400px;" @click="fun" round :disabled="!finished">
-          <img v-if="!this.opt" class="round" alt="Rabbit" src="@/assets/rabbit.jpg">
-          <img v-if="this.opt" class="round" alt="Rabbit" src="@/assets/nrabbit.jpg">
-        </el-button>
-        <h1 class="rainbow">
-          <span @click="this.opt ^= 1">
-            你戳了兔兔 {{ cnt }} 下
-          </span>
-        </h1>
-      </el-card>
-    </div>
-    <div style="display: inline-block; width: 60%;">
-      <el-card class="box-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            戳可爱兔兔，测可爱列表
-            <el-button type="primary" :disabled="!finished" @click="all">
-              <el-icon class="el-icon--left">
-                <Refresh />
-              </el-icon>
-              更新信息
-            </el-button>
-          </div>
-        </template>
-        <el-table v-loading="!finished" :data="info" height="600px" :row-class-name="tableRowClassName"
-          :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
-          <el-table-column prop="id" label="#" min-width="15%" />
-          <el-table-column prop="time" label="点击时间" min-width="23%" />
-          <el-table-column prop="name" label="用户名" min-width="15%">
-            <template #default="scope">
-              <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)"> {{ scope.row.name
-              }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="ip" label="IP" min-width="20%" />
-          <el-table-column prop="iploc" label="IP属地" min-width="27%" />
-        </el-table>
-      </el-card>
-    </div>
+  <div style="margin: auto;max-width: 1500px;min-width: 1300px;">
+    <el-row>
+      <el-col :span="10">
+        <el-card class="box-card" shadow="hover" style="text-align: center;">
+          <template #header>
+            <div class="card-header">
+              Tiddar (uid: {{ this.uid }} 用户名: {{ this.name }})
+            </div>
+          </template>
+          <el-button style="height: 500px; width: 400px;" @click="fun" round :disabled="!finished">
+            <img v-if="!this.opt" class="round" alt="Rabbit" src="@/assets/rabbit.jpg">
+            <img v-if="this.opt" class="round" alt="Rabbit" src="@/assets/nrabbit.jpg">
+          </el-button>
+          <h1 class="rainbow">
+            <span @click="this.opt ^= 1">
+              你戳了兔兔 {{ cnt }} 下
+            </span>
+          </h1>
+        </el-card>
+      </el-col>
+      <el-col :span="14">
+        <el-card class="box-card" shadow="hover">
+          <template #header>
+            <div class="card-header">
+              戳可爱兔兔，测可爱列表
+              <el-button type="primary" :disabled="!finished" @click="all">
+                <el-icon class="el-icon--left">
+                  <Refresh />
+                </el-icon>
+                更新信息
+              </el-button>
+            </div>
+          </template>
+          <el-table v-loading="!finished" :data="info" height="600px" :row-class-name="tableRowClassName"
+            :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
+            <el-table-column prop="id" label="#" min-width="15%" />
+            <el-table-column prop="time" label="点击时间" min-width="23%" />
+            <el-table-column prop="name" label="用户名" min-width="15%">
+              <template #default="scope">
+                <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)"> {{ scope.row.name
+                }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="ip" label="IP" min-width="20%" />
+            <el-table-column prop="iploc" label="IP属地" min-width="27%" />
+          </el-table>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
