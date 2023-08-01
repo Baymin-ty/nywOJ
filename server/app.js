@@ -7,8 +7,8 @@ const router = require('./router')
 const config = require('./config.json')
 const MySQLStore = require('express-mysql-session')(session);
 const options = {
-    host: 'localhost',
-    port: 3306,
+    host: config.DB.host,
+    port: config.DB.port,
     user: config.DB.username,
     password: config.DB.password,
     database: config.DB.databasename
