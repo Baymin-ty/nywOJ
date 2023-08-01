@@ -351,14 +351,16 @@ const judgeCode = async (sid, isreJudge) => {
 
     if (acCase === totalCase) {
       finalRes = 4, score = 100;
-      db.query("UPDATE problem SET acCnt=acCnt+1 WHERE pid=?", [pid]);
-      db.query("SELECT COUNT(*) as cnt FROM submission WHERE uid=? AND judgeResult=4 AND sid!=? AND pid=? LIMIT 1", [sinfo.uid, sinfo.sid, sinfo.pid], (err, data) => {
-        if (!err && data[0].cnt === 0) {
-          let bonus = randomInt(10000, 100000);
-          db.query("UPDATE userInfo SET clickCnt=clickCnt+? WHERE uid=?", [bonus, sinfo.uid]);
-          db.query("UPDATE submission SET bonus=? WHERE sid=?", [bonus, sinfo.sid]);
-        }
-      })
+      if (!sinfo.cid) {
+        db.query("UPDATE problem SET acCnt=acCnt+1 WHERE pid=?", [pid]);
+        db.query("SELECT COUNT(*) as cnt FROM submission WHERE uid=? AND judgeResult=4 AND sid!=? AND pid=? LIMIT 1", [sinfo.uid, sinfo.sid, sinfo.pid], (err, data) => {
+          if (!err && data[0].cnt === 0) {
+            let bonus = randomInt(10000, 100000);
+            db.query("UPDATE userInfo SET clickCnt=clickCnt+? WHERE uid=?", [bonus, sinfo.uid]);
+            db.query("UPDATE submission SET bonus=? WHERE sid=?", [bonus, sinfo.sid]);
+          }
+        })
+      }
     }
     await setSubmission(sid, finalRes, totalTime, maxMemory, score, null, JSON.stringify(judgeResult));
 
