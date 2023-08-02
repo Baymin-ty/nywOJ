@@ -137,10 +137,10 @@ const judgeCode = async (sid, isreJudge) => {
           "content": ""
         }, {
           "name": "stdout",
-          "max": 32 * 1024 * 1024
+          "max": 64 * 1024 * 1024
         }, {
           "name": "stderr",
-          "max": 32 * 1024 * 1024
+          "max": 64 * 1024 * 1024
         }],
         "cpuLimit": 10000000000, // 10s
         "memoryLimit": 536870912, // 512MB
@@ -190,10 +190,10 @@ const judgeCode = async (sid, isreJudge) => {
             "content": ""
           }, {
             "name": "stdout",
-            "max": 32 * 1024 * 1024
+            "max": 64 * 1024 * 1024
           }, {
             "name": "stderr",
-            "max": 32 * 1024 * 1024
+            "max": 64 * 1024 * 1024
           }],
           "cpuLimit": 10000000000, // 10s
           "memoryLimit": 536870912, // 512MB
@@ -243,10 +243,10 @@ const judgeCode = async (sid, isreJudge) => {
             "content": inputFile
           }, {
             "name": "stdout",
-            "max": 32 * 1024 * 1024
+            "max": 64 * 1024 * 1024
           }, {
             "name": "stderr",
-            "max": 32 * 1024 * 1024
+            "max": 64 * 1024 * 1024
           }],
           "cpuLimit": timeLimit * 1000 * 1000, // ms -> ns
           "clockLimit": timeLimit * 1000 * 1000 * 2,
@@ -294,10 +294,10 @@ const judgeCode = async (sid, isreJudge) => {
                 "content": ""
               }, {
                 "name": "stdout",
-                "max": 32 * 1024 * 1024
+                "max": 64 * 1024 * 1024
               }, {
                 "name": "stderr",
-                "max": 32 * 1024 * 1024
+                "max": 64 * 1024 * 1024
               }],
               "cpuLimit": 5000 * 1000 * 1000, // ms -> ns, 5s
               "clockLimit": 5000 * 1000 * 1000 * 2,
