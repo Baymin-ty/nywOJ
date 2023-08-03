@@ -82,7 +82,7 @@
           :data="submissionInfo.singleCaseResult" height="auto" :row-class-name="tableRowClassName"
           :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
           <el-table-column prop="caseId" label="#" min-width="10%" />
-          <el-table-column prop="subtaskId" label="子任务编号" min-width="10%" />
+          <el-table-column prop="subtaskId" label="子任务" min-width="10%" />
           <el-table-column prop="judgeResult" label="结果" min-width="40%">
             <template #default="scope">
               <span> {{ scope.row.result }} </span>
