@@ -101,7 +101,7 @@
         </el-table>
         <caseDisplay
           v-if="submissionInfo.judgeResult !== 'Compilation Error' && submissionInfo.judgeResult !== 'System Error' && submissionInfo.subtaskInfo"
-          :subtaskInfo="submissionInfo.subtaskInfo" :finalRes="submissionInfo.judgeResult" />
+          :subtaskInfo="submissionInfo.subtaskInfo" />
         <v-md-preview
           v-show="submissionInfo.judgeResult === 'Compilation Error' || submissionInfo.judgeResult === 'System Error'"
           :text="submissionInfo.compileResult" />

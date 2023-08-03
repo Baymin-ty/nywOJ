@@ -94,17 +94,11 @@ export default {
       default: [],
       required: true,
     },
-    finalRes: {
-      default: '',
-      required: true,
-    },
   },
   data() {
     return {
       resColor: resColor
     }
-  },
-  mounted() {
   },
 }
 </script>
