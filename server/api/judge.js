@@ -610,7 +610,7 @@ exports.reJudge = async (req, res) => {
   await setSubmission(req.body.sid, 2, 0, 0, 0, null, null);
 
   judgeQueue.push({ sid: req.body.sid, isreJudge: true });
-
+  await clearCase(req.body.sid);
   res.status(200).send({
     message: 'ok'
   });
