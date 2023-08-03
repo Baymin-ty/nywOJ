@@ -1,14 +1,17 @@
 <template>
   <el-row style="min-width: 600px;max-width: 1180px; margin: 0 auto;">
     <el-table :data="table" style="margin-bottom:10px;" :header-cell-style="{ textAlign: 'center' }"
-      :cell-style="cellStyle2" v-loading="!finished">
+      :cell-style="cellStyle2">
       <el-table-column prop="sid" label="#" min-width="5%" />
       <el-table-column prop="title" label="题目" min-width="15%">
         <template #default="scope">
-          <span v-if="!isContest" class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)"> {{
-            scope.row.title
-          }}</span>
-          <span v-if="isContest"> {{ scope.row.title }}</span>
+          <span class="rlink" @click="this.$router.push(
+            !isContest ?
+              '/problem/' + scope.row.pid :
+              '/contest/' + scope.row.cid + '/problem/' + scope.row.idx
+          )">
+            {{ scope.row.title }}
+          </span>
         </template>
       </el-table-column>
       <el-table-column prop="name" label="提交者" min-width="10%">
@@ -30,12 +33,12 @@
           <span> {{ scope.row.score }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="总用时" min-width="8%">
+      <el-table-column label="总用时" min-width="8%">
         <template #default="scope">
           <span> {{ scope.row.time }} ms</span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="内存" min-width="8%">
+      <el-table-column label="内存" min-width="8%">
         <template #default="scope">
           <span> {{ scope.row.memory }} </span>
         </template>
@@ -75,13 +78,14 @@
           </div>
         </template>
         <el-table
-          v-if="submissionInfo.judgeResult !== 'Compilation Error' && submissionInfo.judgeResult !== 'System Error'"
-          :data="submissionInfo.caseResult" height="auto" :row-class-name="tableRowClassName" :cell-style="cellStyle"
-          :header-cell-style="{ textAlign: 'center' }">
-          <el-table-column label="#" type="index" min-width="10%" />
-          <el-table-column prop="judgeResult" label="结果" min-width="50%">
+          v-if="submissionInfo.judgeResult !== 'Compilation Error' && submissionInfo.judgeResult !== 'System Error' && !submissionInfo.done"
+          :data="submissionInfo.singleCaseResult" height="auto" :row-class-name="tableRowClassName"
+          :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
+          <el-table-column prop="caseId" label="#" min-width="10%" />
+          <el-table-column prop="subtaskId" label="子任务编号" min-width="10%" />
+          <el-table-column prop="judgeResult" label="结果" min-width="40%">
             <template #default="scope">
-              <span @click="showDetail(scope.row)" style="cursor: pointer;"> {{ scope.row.judgeResult }} </span>
+              <span> {{ scope.row.result }} </span>
             </template>
           </el-table-column>
           <el-table-column prop="time" label="用时" min-width="20%">
@@ -95,22 +99,22 @@
             </template>
           </el-table-column>
         </el-table>
+        <caseDisplay
+          v-if="submissionInfo.judgeResult !== 'Compilation Error' && submissionInfo.judgeResult !== 'System Error' && submissionInfo.subtaskInfo"
+          :subtaskInfo="submissionInfo.subtaskInfo" :finalRes="submissionInfo.judgeResult" />
         <v-md-preview
           v-show="submissionInfo.judgeResult === 'Compilation Error' || submissionInfo.judgeResult === 'System Error'"
           :text="submissionInfo.compileResult" />
       </el-card>
     </el-col>
   </el-row>
-  <el-dialog v-model="dialogVisible" title="测试点详情" style="width:1000px;border-radius: 10px; " class="pd">
-    <el-divider />
-    <v-md-preview :text="detailInfo"> </v-md-preview>
-  </el-dialog>
 </template>
 
 <script>
 import axios from 'axios';
 import { resColor, scoreColor } from '@/assets/common'
 import monacoEditor from '@/components/monacoEditor.vue'
+import caseDisplay from './caseDisplay.vue'
 
 export default {
   name: "problemView",
@@ -122,8 +126,6 @@ export default {
       code: '',
       hasTaken: false,
       isContest: false,
-      dialogVisible: false,
-      finished: false,
       detailInfo: '',
       mounted: false,
       monacoOptions: {
@@ -134,18 +136,19 @@ export default {
     }
   },
   components: {
-    monacoEditor
+    monacoEditor,
+    caseDisplay
   },
   methods: {
     tableRowClassName(obj) {
-      return (obj.row.judgeResult == 'Accepted' ? 'success' : '');
+      return (obj.row.result == 'Accepted' ? 'success' : '');
     },
     cellStyle({ row, columnIndex }) {
       let style = {};
       style['textAlign'] = 'center';
-      if (columnIndex === 1) {
+      if (columnIndex === 2) {
         style['font-weight'] = 500;
-        style['color'] = resColor[row.judgeResult];
+        style['color'] = resColor[row.result];
       }
       return style;
     },
@@ -162,44 +165,11 @@ export default {
       }
       return style;
     },
-    showDetail(row) {
-      this.detailInfo = '### Summary\n'
-
-      this.detailInfo += '- result: `' + row.judgeResult + '`\n'
-      this.detailInfo += '- time: `' + Math.floor(row.time) + ' ms`\n'
-      this.detailInfo += '- memory: `' + row.memory + '`\n'
-
-      this.detailInfo += '### Input\n';
-      this.detailInfo += '```\n';
-      this.detailInfo += row.input;
-
-      if (row.input && row.input[row.input.length - 1] !== '\n')
-        this.detailInfo += '\n';
-
-      this.detailInfo += '```\n';
-
-      this.detailInfo += '### Output\n';
-      this.detailInfo += '```\n';
-      this.detailInfo += row.output;
-
-      if (row.output && row.output[row.output.length - 1] !== '\n')
-        this.detailInfo += '\n';
-
-      this.detailInfo += '```\n';
-
-      this.detailInfo += '### Checker\n';
-      this.detailInfo += '```\n';
-      this.detailInfo += row.compareResult;
-      this.detailInfo += '```\n';
-
-      this.dialogVisible = true;
-    },
     async reJudge() {
       await axios.post('/api/judge/reJudge', { sid: this.sid });
       this.all();
     },
     async all() {
-      this.finished = false;
       await axios.post(this.isContest ? '/api/contest/getSubmissionInfo' : '/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {
         if (res.status === 200) {
           this.submissionInfo = res.data.data;
@@ -207,7 +177,6 @@ export default {
           this.hasTaken = true;
           this.submissionInfo.compileResult = "```\n" + this.submissionInfo.compileResult + "\n```";
           this.table[0] = this.submissionInfo;
-          this.finished = true;
           if (!this.submissionInfo.unShown && this.mounted && (this.submissionInfo.judgeResult === 'Waiting' ||
             this.submissionInfo.judgeResult === 'Pending' ||
             this.submissionInfo.judgeResult === 'Rejudging')) {
@@ -246,19 +215,9 @@ export default {
   height: 20px;
 }
 
-.el-card :deep(.el-card__body) {
-  padding: 0;
-}
-
-.el-card :deep(.github-markdown-body) {
-  padding: 0;
-}
-
-.el-card :deep(.v-md-hljs-cpp) {
-  margin-bottom: 0;
-}
-
-.el-card :deep(.v-md-hljs-) {
-  margin-bottom: 0;
+.sub {
+  padding: 15px;
+  border-style: solid;
+  border-radius: 5px;
 }
 </style>

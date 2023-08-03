@@ -15,6 +15,18 @@
                 </el-button>
               </template>
             </el-popconfirm>
+            <el-button type="success" plain @click="updateSubtaskId">
+              <el-icon class="el-icon--left">
+                <CircleCheck />
+              </el-icon>
+              保存子任务
+            </el-button>
+            <el-button type="warning" @click="addSubtask">
+              <el-icon class="el-icon--left">
+                <CirclePlus />
+              </el-icon>
+              新增子任务
+            </el-button>
             <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="重测所有代码?" @confirm="reJudgeProblem">
               <template #reference>
                 <el-button color="#626aef" plain>
@@ -29,8 +41,8 @@
           </el-button-group>
         </div>
       </template>
-      <el-upload v-if="!casePreview" drag action="/api/problem/uploadData" :data="{ pid: pid }" accept=".zip"
-        :on-success="reflushData">
+      <el-upload v-if="!cases.length" drag action="/api/problem/uploadData" :data="{ pid: pid }" accept=".zip"
+        :on-success="reflushData" v-loading="!finished">
         <el-icon class="el-icon--upload">
           <UploadFilled />
         </el-icon>
@@ -43,7 +55,65 @@
           </div>
         </template>
       </el-upload>
-      <v-md-preview v-if="casePreview" :text="casePreview"> </v-md-preview>
+      <div class="cases" v-if="cases.length">
+        <el-table :data="this.subtask" style="padding-bottom: 5px;" :header-cell-style="{ textAlign: 'center' }"
+          :cell-style="{ textAlign: 'center' }">
+          <el-table-column fixed="left" label="删除" min-width="10%">
+            <template #default="scope">
+              <el-button link type="primary" size="small" @click.prevent="this.subtask.splice(scope.$index, 1)">
+                <el-icon>
+                  <CloseBold />
+                </el-icon>
+              </el-button>
+            </template>
+          </el-table-column>
+          <el-table-column label="子任务编号" min-width="20%">
+            <template #default="scope">
+              <span> {{ scope.row.index }} </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="子任务分数" min-width="30%">
+            <template #default="scope">
+              <el-input style="max-width: 120px;" v-model="scope.row.score">
+                <template #append>分</template>
+              </el-input>
+            </template>
+          </el-table-column>
+          <el-table-column label="记分方式" min-width="40%">
+            <template #default="scope">
+              <el-radio-group v-model="scope.row.option">
+                <el-radio-button :label="0">每个测试点等分</el-radio-button>
+                <el-radio-button :label="1">全部通过后得全分</el-radio-button>
+              </el-radio-group>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-for="i in cases" :key="i.input">
+          <div class="header">
+            Case #{{ i.index }}
+            <div class="subtask">
+              <el-input v-model="i.subtaskId">
+                <template #prepend>子任务编号</template>
+              </el-input>
+            </div>
+          </div>
+          <el-divider />
+          <span class="attach">
+            {{ i.inName }}
+          </span>
+          <pre>{{ i.input }}</pre>
+          <span class="attach">
+            {{ i.outName }}
+          </span>
+          <pre>{{ i.output }}</pre>
+        </div>
+        <div v-if="this.spj.length">
+          <div class="header">
+            Checker.cpp
+          </div>
+          <v-md-preview :text="this.spj" />
+        </div>
+      </div>
     </el-card>
   </div>
 </template>
@@ -52,13 +122,15 @@
 import axios from 'axios';
 import { ElMessage } from 'element-plus'
 
-
 export default {
   name: "problemEdit",
   data() {
     return {
       pid: 0,
-      casePreview: "",
+      cases: [],
+      finished: false,
+      spj: '',
+      subtask: [],
     };
   },
   methods: {
@@ -78,61 +150,47 @@ export default {
             type: 'success',
             duration: 1000,
           });
-          this.casePreview = "";
+          this.spj = "";
           this.all();
         }
       });
     },
     all(op) {
+      this.finished = false;
       axios.post('/api/problem/getProblemCasePreview', {
         pid: this.pid,
       }).then(res => {
-        let cases = res.data.data;
-        if (!cases.length && op) {
+        this.cases = res.data.data;
+        this.subtask = res.data.subtask;
+        if (res.data.spj) {
+          this.spj += "```c++\n";
+          this.spj += res.data.spj;
+
+          if (res.data.spj && res.data.spj[res.data.spj.length - 1] !== '\n')
+            this.spj += '\n';
+          this.spj += "```\n";
+        }
+        if (!this.cases.length && op) {
           ElMessage({
             message: (op === 1 ? '数据还未上传' : '数据未处理完成或数据格式错误，请手动刷新或重新上传数据'),
             type: 'error',
             duration: 2000,
           });
         }
-        this.casePreview = "";
-        if (res.data.spj.length) {
-          this.casePreview = "# checker.cpp\n";
-
-          this.casePreview += "```c++\n";
-          this.casePreview += res.data.spj;
-
-          if (res.data.spj && res.data.spj[res.data.spj.length - 1] !== '\n')
-            this.casePreview += '\n';
-          this.casePreview += "```\n";
-        }
-        for (let i = 0; i < cases.length; i++) {
-          this.casePreview += '# Case ' + cases[i].index + '\n';
-          this.casePreview += '### Input\n';
-          this.casePreview += '```\n';
-          this.casePreview += cases[i].input;
-
-          if (cases[i].input && cases[i].input[cases[i].input.length - 1] !== '\n')
-            this.casePreview += '\n';
-
-          this.casePreview += '```\n';
-
-          this.casePreview += '### Output\n';
-          this.casePreview += '```\n';
-          this.casePreview += cases[i].output;
-
-          if (cases[i].output && cases[i].output[cases[i].output.length - 1] !== '\n')
-            this.casePreview += '\n';
-
-          this.casePreview += '```\n';
-        }
+        this.finished = true;
       });
     },
-    async reflushData() {
-      await (this.casePreview = "> 正在处理测试点中...");
-      setTimeout(() => {
+    async reflushData(res) {
+      if (res.err) {
+        ElMessage({
+          message: '上传错误' + res.err,
+          type: 'error',
+          duration: 3000,
+        });
+      }
+      else {
         this.all(2);
-      }, 1000);
+      }
     },
     reJudgeProblem() {
       axios.post('/api/judge/reJudgeProblem', {
@@ -153,6 +211,48 @@ export default {
           });
         }
       });
+    },
+    updateSubtaskId() {
+      for (let i in this.cases)
+        if (!this.cases[i].subtaskId)
+          this.cases[i].subtaskId = 0;
+      for (let i in this.subtask)
+        this.subtask[i].score = Number(this.subtask[i].score);
+      axios.post('/api/problem/updateSubtaskId', {
+        subtask: this.subtask,
+        pid: this.pid,
+        cases: this.cases
+      }).then(res => {
+        if (res.status === 200) {
+          ElMessage({
+            message: '更新成功',
+            type: 'success',
+            duration: 1000,
+          });
+          this.all();
+        } else {
+          ElMessage({
+            message: '更新失败' + res.data.message,
+            type: 'error',
+            duration: 2000,
+          });
+        }
+      })
+    },
+    addSubtask() {
+      if (!this.subtask.length) {
+        this.subtask.push({
+          index: 1,
+          score: 0,
+          option: 1
+        });
+      } else {
+        this.subtask.push({
+          index: this.subtask[this.subtask.length - 1].index + 1,
+          score: 0,
+          option: 1
+        });
+      }
     }
   },
   mounted() {
@@ -177,5 +277,48 @@ export default {
   justify-content: space-between;
   align-items: center;
   height: 20px;
+}
+
+.header {
+  padding-top: 5px;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.attach {
+  font-size: 16px;
+  font-weight: 600;
+  color: #464646;
+}
+
+pre {
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  display: block;
+  max-height: 160px;
+  overflow: auto;
+  padding: 10px;
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+  word-break: break-all;
+  word-wrap: break-word;
+  color: #333;
+  background-color: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+:deep(.github-markdown-body) {
+  padding: 10px 0;
+}
+
+.cases {
+  padding: 0 10px 20px 10px;
+}
+
+.subtask {
+  float: right;
+  width: 180px;
 }
 </style>

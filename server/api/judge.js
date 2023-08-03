@@ -5,7 +5,7 @@ const SqlString = require('mysql/lib/protocol/SqlString');
 const exec = require('child_process').exec;
 const { Format } = require('../static');
 const async = require('async');
-const { randomInt } = require('crypto');
+
 
 const judgeQueue = async.queue(async (submission, completed) => {
   await judgeCode(submission.sid, submission.isreJudge);
@@ -96,6 +96,11 @@ const setSubmission = (sid, judgeResult, time, memory, score, compileResult, cas
   });
 }
 
+const updateSubmissionDetail = (sid, caseId, input, output, time, memory, result, compareResult, subtaskId) => {
+  db.query('INSERT INTO submissionDetail(sid,caseId,input,output,time,memory,result,compareResult,subtaskId) values(?,?,?,?,?,?,?,?,?)',
+    [sid, caseId, input, output, time, memory, result, compareResult, subtaskId]);
+}
+
 const updateProblemSubmitInfo = (pid) => {
   db.query('SELECT COUNT(*) as cnt FROM submission WHERE pid=?', [pid], (err, data) => {
     db.query('UPDATE problem SET submitCnt=? WHERE pid=?', [data[0].cnt, pid]);
@@ -105,21 +110,25 @@ const updateProblemSubmitInfo = (pid) => {
   })
 }
 
+const clearCase = (sid) => {
+  return new Promise((resolve, reject) => {
+    db.query('DELETE FROM submissionDetail WHERE sid=?', [sid], (err, data) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(data);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
 let jid = 1;
 
 const judgeCode = async (sid, isreJudge) => {
   try {
     let sinfo = await SubmissionInfo(sid);
     if (!sinfo) return;
-
-    if (isreJudge) {
-      db.query("SELECT bonus,uid FROM submission WHERE sid=?", [sid], (err, data) => {
-        if (!err && data[0].bonus) {
-          db.query("UPDATE userInfo SET clickCnt=clickCnt-? WHERE uid=?", [data[0].bonus, data[0].uid]);
-          db.query("UPDATE submission SET bonus=0 WHERE sid=?", [sid]);
-        }
-      });
-    }
 
     const pid = sinfo.pid;
     let pinfo = await ProblemInfo(pid);
@@ -128,6 +137,7 @@ const judgeCode = async (sid, isreJudge) => {
     await setSubmission(sid, 1, 0, 0, 0, null, null);
     const code = sinfo.code, timeLimit = pinfo.timeLimit, memoryLimit = pinfo.memoryLimit;
 
+    await clearCase(sid);
     // compile
     await axios.post('http://localhost:5050/run', {
       "cmd": [{
@@ -227,9 +237,10 @@ const judgeCode = async (sid, isreJudge) => {
     }
 
     // run
-    const cases = JSON.parse((await getFile(`./data/${pid}/config.json`))).cases;
+    const config = JSON.parse((await getFile(`./data/${pid}/config.json`)));
+    const cases = config.cases, subtasks = config.subtask;
 
-    let runResult = {}, judgeResult = [], totalCase = cases.length, acCase = 0;
+    let runResult = {}, judgeResult = [];
 
     for (let i in cases) {
       const inputFile = (await getFile(`./data/${pid}/${cases[i].input}`));
@@ -264,14 +275,28 @@ const judgeCode = async (sid, isreJudge) => {
         runResult = res.data[0];
       });
 
+      runResult.time = runResult.time / 1000 / 1000; // ms
+      runResult.time = Math.max(1, Math.floor(runResult.time));
+      runResult.memory /= 1024; // KB
+      runResult.memory = Math.max(1, Math.floor(runResult.memory));
+
       if (runResult.status !== 'Accepted') {
+        updateSubmissionDetail(
+          /*sid*/sid,
+          /*caseId*/cases[i].index,
+          /*input*/inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
+          /*output*/runResult.files.stderr,
+          /*time*/runResult.time, // ms
+          /*memory*/runResult.memory, // kB
+          /*result*/ resToIndex[runResult.status],
+          /*compareRes*/'',
+          /*subtaskId*/cases[i].subtaskId
+        );
         judgeResult.push({
-          input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
-          output: runResult.files.stderr,
-          time: runResult.time / 1000 / 1000, // ms
-          memory: runResult.memory / 1024, // kB
-          judgeResult: resToIndex[runResult.status],
-          compareResult: '',
+          time: runResult.time,
+          memory: runResult.memory,
+          subtaskId: cases[i].subtaskId,
+          judgeResult: resToIndex[runResult.status]
         });
       }
       else {
@@ -324,45 +349,86 @@ const judgeCode = async (sid, isreJudge) => {
             compareRes = res.data[0].files.stderr;
           });
         }
-
+        updateSubmissionDetail(
+          /*sid*/sid,
+          /*caseId*/cases[i].index,
+          /*input*/inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
+          /*output*/usrOutput.substring(0, 255) + (usrOutput.length > 255 ? '......\n' : ''),
+          /*time*/runResult.time, // ms
+          /*memory*/runResult.memory, // kB
+          /*result*/(compareRes.substring(0, 2) === 'ok' ? 4 : 5),
+          /*compareRes*/compareRes,
+          /*subtaskId*/cases[i].subtaskId
+        );
         judgeResult.push({
-          input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
-          output: usrOutput.substring(0, 255) + (usrOutput.length > 255 ? '......\n' : ''),
-          time: runResult.time / 1000 / 1000, // ms
-          memory: runResult.memory / 1024, // kB
+          time: runResult.time,
+          memory: runResult.memory,
+          subtaskId: cases[i].subtaskId,
           judgeResult: (compareRes.substring(0, 2) === 'ok' ? 4 : 5),
-          compareResult: compareRes
         });
-
-        acCase += (judgeResult[i].judgeResult === 4);
-      }
-      await setSubmission(sid, 1, 0, 0, 100 * acCase / totalCase, null, JSON.stringify(judgeResult));
-    }
-
-    let finalRes = 12, totalTime = 0, maxMemory = 0;
-    for (i in judgeResult) {
-      totalTime += judgeResult[i].time;
-      maxMemory = Math.max(maxMemory, judgeResult[i].memory);
-      if (judgeResult[i].judgeResult === 4) continue;
-      finalRes = Math.min(finalRes, judgeResult[i].judgeResult);
-    }
-
-    let score = Math.ceil(100 * acCase / totalCase);
-
-    if (acCase === totalCase) {
-      finalRes = 4, score = 100;
-      if (!sinfo.cid) {
-        db.query("UPDATE problem SET acCnt=acCnt+1 WHERE pid=?", [pid]);
-        db.query("SELECT COUNT(*) as cnt FROM submission WHERE uid=? AND judgeResult=4 AND sid!=? AND pid=? LIMIT 1", [sinfo.uid, sinfo.sid, sinfo.pid], (err, data) => {
-          if (!err && data[0].cnt === 0) {
-            let bonus = randomInt(10000, 100000);
-            db.query("UPDATE userInfo SET clickCnt=clickCnt+? WHERE uid=?", [bonus, sinfo.uid]);
-            db.query("UPDATE submission SET bonus=? WHERE sid=?", [bonus, sinfo.sid]);
-          }
-        })
       }
     }
-    await setSubmission(sid, finalRes, totalTime, maxMemory, score, null, JSON.stringify(judgeResult));
+
+    let subtaskInfo = new Map();
+    for (i in subtasks) {
+      subtaskInfo[subtasks[i].index] = new Map();
+      subtaskInfo[subtasks[i].index]['subtaskStatus'] = [];
+      subtaskInfo[subtasks[i].index]['time'] = subtaskInfo[subtasks[i].index].memory = 0;
+      subtaskInfo[subtasks[i].index]['res'] = 12;
+      subtaskInfo[subtasks[i].index]['score'] = 0;
+      subtaskInfo[subtasks[i].index]['fullScore'] = subtasks[i].score;
+      subtaskInfo[subtasks[i].index]['option'] = subtasks[i].option;
+    }
+    for (i in judgeResult)
+      subtaskInfo[judgeResult[i].subtaskId]['subtaskStatus'].push(judgeResult[i]);
+
+    for (i in subtaskInfo) {
+      let acNum = 0, totalNum = 0;
+      for (j in subtaskInfo[i]['subtaskStatus']) {
+        totalNum++;
+        subtaskInfo[i]['time'] += subtaskInfo[i]['subtaskStatus'][j].time;
+        subtaskInfo[i]['memory'] = Math.max(subtaskInfo[i]['memory'], subtaskInfo[i]['subtaskStatus'][j].memory);
+        if (subtaskInfo[i]['subtaskStatus'][j].judgeResult === 4) {
+          acNum++;
+          continue;
+        }
+        subtaskInfo[i]['res'] = Math.min(subtaskInfo[i]['res'], subtaskInfo[i]['subtaskStatus'][j].judgeResult);
+      }
+      if (!subtaskInfo[i]['option']) { // 测试点等分 
+        subtaskInfo[i]['score'] = Math.ceil(subtaskInfo[i]['fullScore'] * 1.0 * acNum / totalNum);
+      }
+      if (acNum === totalNum) {
+        subtaskInfo[i]['res'] = 4;
+        subtaskInfo[i]['score'] = subtaskInfo[i]['fullScore'];
+      }
+    }
+
+    let finalRes = 12, totalTime = 0, maxMemory = 0, totalScore = 0, acSub = 0, totalSub = 0, subtaskList = [];
+    for (i in subtaskInfo) {
+      totalSub++;
+      totalTime += subtaskInfo[i]['time'];
+      maxMemory = Math.max(maxMemory, subtaskInfo[i]['memory']);
+      totalScore += subtaskInfo[i]['score'];
+      subtaskList.push({
+        index: i,
+        time: subtaskInfo[i]['time'],
+        memory: subtaskInfo[i]['memory'],
+        res: subtaskInfo[i]['res'],
+        score: subtaskInfo[i]['score'],
+        fullScore: subtaskInfo[i]['fullScore'],
+        option: subtaskInfo[i]['option']
+      });
+      if (subtaskInfo[i]['res'] === 4) {
+        acSub++;
+        continue;
+      }
+      finalRes = Math.min(finalRes, subtaskInfo[i]['res']);
+    }
+    if (acSub === totalSub) {
+      finalRes = 4;
+      totalScore = 100;
+    }
+    await setSubmission(sid, finalRes, totalTime, maxMemory, totalScore, null, JSON.stringify(subtaskList));
 
     if (isreJudge) {
       updateProblemSubmitInfo(pid);
@@ -473,6 +539,19 @@ const toHuman = (memory) => {
   return memory;
 }
 
+const getCaseDetail = (sid) => {
+  return new Promise((resolve, reject) => {
+    db.query('SELECT * FROM submissionDetail WHERE sid=?', [sid], (err, data) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(data);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
 exports.getSubmissionInfo = (req, res) => {
   const sid = SqlString.escape(req.body.sid);
   let sql = 'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=' + sid;
@@ -481,16 +560,39 @@ exports.getSubmissionInfo = (req, res) => {
   }
   sql += ' AND s.cid=0';
 
-  db.query(sql, (err, data) => {
+  db.query(sql, async (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (!data.length) return res.status(202).send({
       message: 'error'
     });
     else {
       data[0].caseResult = JSON.parse(data[0].caseResult);
-      for (let i in data[0].caseResult) {
-        data[0].caseResult[i].judgeResult = judgeRes[data[0].caseResult[i].judgeResult];
-        data[0].caseResult[i].memory = toHuman(data[0].caseResult[i].memory);
+      data[0].singleCaseResult = await getCaseDetail(req.body.sid);
+      data[0].done = false;
+      if (data[0].caseResult) {
+        let subtaskInfo = {};
+        for (let i in data[0].caseResult) {
+          data[0].caseResult[i].index = parseInt(data[0].caseResult[i].index);
+          data[0].caseResult[i].res = judgeRes[data[0].caseResult[i].res];
+          data[0].caseResult[i].memory = toHuman(data[0].caseResult[i].memory);
+          subtaskInfo[data[0].caseResult[i].index] = new Map();
+          subtaskInfo[data[0].caseResult[i].index]['info'] = data[0].caseResult[i];
+          subtaskInfo[data[0].caseResult[i].index]['cases'] = [];
+        }
+        for (let i in data[0].singleCaseResult) {
+          data[0].singleCaseResult[i].result = judgeRes[data[0].singleCaseResult[i].result];
+          data[0].singleCaseResult[i].memory = toHuman(data[0].singleCaseResult[i].memory);
+          subtaskInfo[data[0].singleCaseResult[i].subtaskId]['cases'].push(data[0].singleCaseResult[i]);
+        }
+        data[0].subtaskInfo = subtaskInfo;
+        data[0].done = true;
+        delete data[0].caseResult;
+        delete data[0].singleCaseResult;
+      } else {
+        for (let i in data[0].singleCaseResult) {
+          data[0].singleCaseResult[i].result = judgeRes[data[0].singleCaseResult[i].result];
+          data[0].singleCaseResult[i].memory = toHuman(data[0].singleCaseResult[i].memory);
+        }
       }
       data[0].memory = toHuman(data[0].memory);
       data[0].submitTime = Format(data[0].submitTime);

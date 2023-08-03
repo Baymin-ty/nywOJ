@@ -47,6 +47,7 @@ router.post('/api/problem/getProblemInfo', problem.getProblemInfo);
 router.post('/api/problem/updateProblem', problem.updateProblem);
 router.post('/api/problem/getProblemCasePreview', problem.getProblemCasePreview);
 router.post('/api/problem/clearCase', problem.clearCase);
+router.post('/api/problem/updateSubtaskId', problem.updateSubtaskId);
 
 const upload = multer({
   fileFilter: (req, file, cb) => {
@@ -73,9 +74,12 @@ const upload = multer({
 
 const process = (str) => {
   let res = str;
-  while (!(res[0] >= '0' && res[0] <= '9'))
+  while (res.length && !(res[0] >= '0' && res[0] <= '9'))
     res = res.substring(1);
-  return Number(res);
+  if (!res.length)
+    return -1;
+  else
+    return Number(res);
 }
 
 router.post('/api/problem/uploadData', upload.single('file'), (req, res) => {
@@ -86,13 +90,25 @@ router.post('/api/problem/uploadData', upload.single('file'), (req, res) => {
       if (err) return res.status(202).send({
         err: err
       });
-      let cases = [];
+      let cases = [], indexVis = new Map();
       for (i in file) {
         if (file[i].substring(file[i].length - 3) === '.in') {
           const name = file[i].substring(0, file[i].length - 3);
           if (fs.existsSync(path.join(__dirname, `./data/${req.body.pid}/${name}.out`))) {
+            let index = process(name);
+            if (!index || typeof index !== 'number' || index === -1) {
+              return res.status(202).send({
+                err: `测试点${name}命名不符合规范(前缀)(数字).in/.out`
+              });
+            }
+            if (indexVis[index] === true) {
+              return res.status(202).send({
+                err: `测试点${name}中数字id重复`
+              });
+            }
+            indexVis[index] = true;
             cases.push({
-              index: process(name),
+              index: index,
               input: name + '.in',
               output: name + '.out',
             });
@@ -102,13 +118,26 @@ router.post('/api/problem/uploadData', upload.single('file'), (req, res) => {
       cases.sort((a, b) => {
         return a.index - b.index;
       });
-      await setFile(`${req.file.destination}/config.json`, JSON.stringify({ cases: cases }));
+      let uniqueCases = [];
+      for (let i = 0; i < cases.length; i++) {
+        uniqueCases.push({
+          index: i + 1,
+          input: cases[i].input,
+          output: cases[i].output,
+          subtaskId: 1
+        })
+      }
+      let subtask = [{
+        index: 1,
+        score: 100,
+        option: 0
+      }];
+      await setFile(`${req.file.destination}/config.json`, JSON.stringify({ cases: uniqueCases, subtask: subtask }));
+      res.json({
+        file: req.file
+      })
     });
   });
-
-  res.json({
-    file: req.file
-  })
 })
 
 

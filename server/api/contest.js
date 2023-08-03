@@ -570,6 +570,20 @@ exports.getLastSubmissionList = (req, res) => {
   });
 }
 
+const getCaseDetail = (sid) => {
+  return new Promise((resolve, reject) => {
+    db.query('SELECT * FROM submissionDetail WHERE sid=?', [sid], (err, data) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(data);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
+
 exports.getSubmissionInfo = (req, res) => {
   const sid = req.body.sid;
   db.query('SELECT s.sid,s.uid,s.cid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=?',
@@ -585,18 +599,48 @@ exports.getSubmissionInfo = (req, res) => {
           data2[0].status = contestStatus(data2[0]);
           if ((data2[0].status === 3 && (data2[0].isPublic || (await isReg(req.session.uid, data[0].cid)))) || req.session.uid === data[0].uid || req.session.gid > 1) {
             data[0].caseResult = JSON.parse(data[0].caseResult);
+            data[0].singleCaseResult = await getCaseDetail(sid);
+            data[0].done = false;
+            if (data[0].caseResult) {
+              let subtaskInfo = {};
+              for (let i in data[0].caseResult) {
+                data[0].caseResult[i].index = parseInt(data[0].caseResult[i].index);
+                data[0].caseResult[i].res = judgeRes[data[0].caseResult[i].res];
+                data[0].caseResult[i].memory = toHuman(data[0].caseResult[i].memory);
+                subtaskInfo[data[0].caseResult[i].index] = new Map();
+                subtaskInfo[data[0].caseResult[i].index]['info'] = data[0].caseResult[i];
+                subtaskInfo[data[0].caseResult[i].index]['cases'] = [];
+              }
+              for (let i in data[0].singleCaseResult) {
+                data[0].singleCaseResult[i].result = judgeRes[data[0].singleCaseResult[i].result];
+                data[0].singleCaseResult[i].memory = toHuman(data[0].singleCaseResult[i].memory);
+                if (!(req.session.gid > 1 || data2[0].status === 3)) {
+                  data[0].singleCaseResult[i].input = '正在比赛中...';
+                  data[0].singleCaseResult[i].output = '正在比赛中...';
+                  data[0].singleCaseResult[i].compareResult = '正在比赛中...';
+                }
+                subtaskInfo[data[0].singleCaseResult[i].subtaskId]['cases'].push(data[0].singleCaseResult[i]);
+              }
+              data[0].subtaskInfo = subtaskInfo;
+              data[0].done = true;
+              delete data[0].caseResult;
+              delete data[0].singleCaseResult;
+            } else {
+              for (let i in data[0].singleCaseResult) {
+                delete data[0].singleCaseResult[i].input;
+                delete data[0].singleCaseResult[i].output;
+                delete data[0].singleCaseResult[i].compareResult;
+                data[0].singleCaseResult[i].result = judgeRes[data[0].singleCaseResult[i].result];
+                data[0].singleCaseResult[i].memory = toHuman(data[0].singleCaseResult[i].memory);
+              }
+            }
             if (!data2[0].type && !data2[0].done && req.session.gid === 1) {
-              data[0].caseResult = null;
+              data[0].caseResult = data[0].singleCaseResult = data[0].subtaskInfo = null;
               data[0].score = data[0].judgeResult = data[0].time = data[0].memory = 0;
               data[0].unShown = true;
             }
-            for (let i in data[0].caseResult) {
-              if (!(req.session.gid > 1 || data2[0].status === 3))
-                data[0].caseResult[i].input = data[0].caseResult[i].output = data[0].caseResult[i].compareResult = '比赛进行中...\n';
-              data[0].caseResult[i].judgeResult = judgeRes[data[0].caseResult[i].judgeResult];
-              data[0].caseResult[i].memory = toHuman(data[0].caseResult[i].memory);
-            }
-            data[0].pid = null;
+            data[0].idx = await getIdx(data[0].cid, data[0].pid);
+            delete data[0].pid;
             data[0].memory = toHuman(data[0].memory);
             data[0].submitTime = Format(data[0].submitTime);
             data[0].judgeResult = judgeRes[data[0].judgeResult];
