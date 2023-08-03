@@ -630,3 +630,19 @@ exports.reJudgeProblem = async (req, res) => {
     });
   });
 }
+
+exports.reJudgeContest = async (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+
+  db.query('SELECT sid FROM submission WHERE cid=?', [req.body.cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    for (let i in data) {
+      await setSubmission(data[i].sid, 2, 0, 0, 0, null, null);
+      judgeQueue.push({ sid: data[i].sid, isreJudge: true });
+    }
+    return res.status(200).send({
+      message: 'ok',
+      total: data.length
+    });
+  });
+}

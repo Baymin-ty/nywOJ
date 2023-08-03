@@ -39,28 +39,27 @@
       </template>
     </el-table-column>
   </el-table>
-  <el-dialog v-model="dialogVisible" title="提交记录" width="1200px" center style="border-radius: 10px; padding-bottom: 10px;"
+  <el-dialog v-model="dialogVisible" title="提交记录" width="1000px" center style="border-radius: 10px; padding-bottom: 10px;"
     class="pd">
     <el-divider />
-    <el-table :data="subList" style="height: 600px; width: auto; margin-left: 10px;margin-right: 10px;"
+    <el-table :data="subList" style="min-height: 200px; width: auto; margin-left: 10px;margin-right: 10px;"
       :header-cell-style="{ textAlign: 'center' }" :cell-style="submissionCellStyle"
       :row-class-name="submissionTableRowClassName">
-      <el-table-column prop="sid" label="#" min-width="5%" />
-      <el-table-column prop="title" label="题目" min-width="10%">
+      <el-table-column prop="title" label="题目" min-width="25%">
         <template #default="scope">
           <span class="rlink" @click="this.$router.push('/contest/' + cid + '/problem/' + scope.row.idx)"> {{
             scope.row.title
           }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="name" label="提交者" min-width="10%">
+      <el-table-column prop="name" label="提交者" min-width="15%">
         <template #default="scope">
           <span class="rlink" @click="this.$router.push('/user/' + scope.row.uid)">
             {{ scope.row.name }}
           </span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="评测状态" min-width="15%">
+      <el-table-column prop="judgeResult" label="评测状态" min-width="20%">
         <template #default="scope">
           <span style="cursor: pointer;"
             @click="this.$router.push({ path: '/submission/' + scope.row.sid, query: { isContest: true } })">
@@ -68,27 +67,17 @@
           </span>
         </template>
       </el-table-column>
-      <el-table-column prop="score" label="分数" min-width="6%">
+      <el-table-column prop="score" label="分数" min-width="10%">
         <template #default="scope">
           <span> {{ scope.row.score }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="总用时" min-width="8%">
-        <template #default="scope">
-          <span> {{ scope.row.time }} ms</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="judgeResult" label="内存" min-width="8%">
-        <template #default="scope">
-          <span> {{ scope.row.memory }} </span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="codeLength" label="代码长度" min-width="8%">
+      <el-table-column prop="codeLength" label="代码长度" min-width="10%">
         <template #default="scope">
           <span> {{ scope.row.codeLength }} B </span>
         </template>
       </el-table-column>
-      <el-table-column prop="submitTime" label="提交时间" min-width="15%" />
+      <el-table-column prop="submitTime" label="提交时间" min-width="20%" />
     </el-table>
   </el-dialog>
 </template>
@@ -189,11 +178,11 @@ export default {
     submissionCellStyle({ row, columnIndex }) {
       let style = {};
       style['textAlign'] = 'center';
-      if (columnIndex === 3) {
+      if (columnIndex === 2) {
         style['font-weight'] = 500;
         style['color'] = resColor[row.judgeResult];
       }
-      if (columnIndex === 4) {
+      if (columnIndex === 3) {
         style['font-weight'] = 500;
         style['color'] = scoreColor[Math.floor(row.score / 10)];
       }

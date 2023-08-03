@@ -107,10 +107,18 @@
                       <el-button type="danger" @click="updateContest" :disabled="tmpInfo.done">更新比赛</el-button>
                       <el-button type="primary" :disabled="tmpInfo.done"
                         @click="this.tmpInfo = JSON.parse(JSON.stringify(this.contestInfo));">重新设置</el-button>
-                      <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认结束比赛?(结束后无法再修改比赛)"
-                        @confirm=" closeContest ">
+                      <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认重测该场比赛所有提交?"
+                        @confirm="reJudgeContest">
                         <template #reference>
-                          <el-button type="danger" :disabled=" tmpInfo.done ">
+                          <el-button type="warning" :disabled="tmpInfo.done">
+                            重测比赛
+                          </el-button>
+                        </template>
+                      </el-popconfirm>
+                      <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认结束比赛?(结束后无法再修改比赛)"
+                        @confirm="closeContest">
+                        <template #reference>
+                          <el-button type="danger" :disabled="tmpInfo.done">
                             结束比赛
                           </el-button>
                         </template>
@@ -120,7 +128,7 @@
                 </el-col>
               </el-row>
             </el-tab-pane>
-            <el-tab-pane name="manageP" lazy v-if=" this.gid >= 2 ">
+            <el-tab-pane name="manageP" lazy v-if="this.gid >= 2">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <SetUp />
@@ -268,6 +276,31 @@ export default {
           });
         }
         this.all();
+      });
+    },
+    reJudgeContest() {
+      axios.post('/api/judge/reJudgeContest', {
+        cid: this.cid,
+      }).then(res => {
+        if (res.status === 200) {
+          ElMessage({
+            message: '重测成功',
+            type: 'success',
+            duration: 1000,
+          });
+          this.$router.push({
+            path: '/contest/' + this.cid,
+            query: {
+              tab: 'submission'
+            }
+          });
+        } else {
+          ElMessage({
+            message: '重测失败' + res.data.message,
+            type: 'error',
+            duration: 2000,
+          });
+        }
       });
     }
   },
