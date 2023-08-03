@@ -102,6 +102,7 @@ export default {
 }
 
 pre {
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   display: block;
   overflow: auto;
   padding: 10px;
