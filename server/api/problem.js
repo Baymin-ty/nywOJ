@@ -77,7 +77,7 @@ exports.getProblemList = (req, res) => {
     pageSize = 20;
   if (!pageId) pageId = 1;
   pageId = SqlString.escape(pageId);
-  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.publisher as publisherUid,u.`name` as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher" +
+  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.publisher as publisherUid,u.`name` as publisher,p.isPublic FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher" +
     (req.session.gid > 1 ? "" : " WHERE isPublic=1") + " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });

@@ -13,7 +13,8 @@
     <el-table-column prop="title" label="标题" min-width="50%">
       <template #default="scope">
         <span class="rlink" @click="this.$router.push('/contest/' + cid + '/problem/' + scope.row.idx)">
-          {{ scope.row.title }}</span>
+          {{ scope.row.title }}
+        </span>
       </template>
     </el-table-column>
     <el-table-column prop="weight" label="满分" min-width="20%" />

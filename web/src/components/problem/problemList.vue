@@ -27,8 +27,12 @@
         <el-table-column prop="pid" label="#" width="100px" />
         <el-table-column prop="title" label="标题" width="auto">
           <template #default="scope">
-            <span class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
-            }}</span>
+            <span class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)">
+              {{ scope.row.title }}
+            </span>
+            <el-icon id="hidden" v-if="!scope.row.isPublic">
+              <Hide />
+            </el-icon>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="AC/提交" width="150px">

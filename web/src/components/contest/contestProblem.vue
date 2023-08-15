@@ -32,9 +32,9 @@
           <el-descriptions-item label="空间限制"> {{ problemInfo.memoryLimit }} MB</el-descriptions-item>
           <el-descriptions-item label="题目类型"> {{ problemInfo.type }} </el-descriptions-item>
           <el-descriptions-item label=" 出题人">
-            <span class="rlink" @click="this.$router.push('/user/' + problemInfo.publisherUid)"> {{
-              problemInfo.publisher
-            }}</span>
+            <span class="rlink" @click="this.$router.push('/user/' + problemInfo.publisherUid)">
+              {{ problemInfo.publisher }}
+            </span>
           </el-descriptions-item>
           <el-descriptions-item label="发布时间"> {{ problemInfo.time }} </el-descriptions-item>
         </el-descriptions>

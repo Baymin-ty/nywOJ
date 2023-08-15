@@ -366,7 +366,7 @@ exports.getProblemList = (req, res) => {
   db.query('SELECT * FROM contest WHERE cid=?', [cid], (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (!data.length) return res.status(202).send({ message: '无此比赛' });
-    db.query('SELECT cp.idx,cp.pid,p.title,p.time,cp.weight,p.publisher as publisherUid,u.name as publisher FROM contestProblem cp INNER JOIN problem p ON cp.pid = p.pid INNER JOIN userInfo u ON p.publisher = u.uid WHERE cp.cid=?', [cid], (err2, data2) => {
+    db.query('SELECT cp.idx,cp.pid,p.title,p.time,cp.weight,p.isPublic,p.publisher as publisherUid,u.name as publisher FROM contestProblem cp INNER JOIN problem p ON cp.pid = p.pid INNER JOIN userInfo u ON p.publisher = u.uid WHERE cp.cid=?', [cid], (err2, data2) => {
       if (err2) return res.status(202).send({ message: err2 });
       for (let i = 0; i < data2.length; i++) {
         data2[i].time = briefFormat(data2[i].time);
