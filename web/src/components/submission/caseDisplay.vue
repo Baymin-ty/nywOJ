@@ -1,7 +1,7 @@
 <template>
   <div>
-    <el-collapse accordion>
-      <el-collapse-item v-for="subtask in subtaskInfo" :key="subtask.index">
+    <el-collapse accordion v-model="active">
+      <el-collapse-item v-for="subtask in subtaskInfo" :key="subtask.info.index" :name="subtask.info.index">
         <template #title>
           <el-col :span="4">
             <span class="tag">
@@ -97,7 +97,8 @@ export default {
   },
   data() {
     return {
-      resColor: resColor
+      resColor: resColor,
+      active: 1
     }
   },
 }

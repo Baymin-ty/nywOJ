@@ -481,12 +481,13 @@ exports.getSubmissionList = (req, res) => {
   let pageId = req.body.pageId,
     pageSize = 20;
   if (!pageId) pageId = 1;
-  let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid "
+  let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.cid,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid "
 
   pageId = SqlString.escape(pageId);
 
   sql += 'WHERE p.isPublic' + (req.session.gid < 2 ? '=1' : '<6');
-  sql += ' AND s.cid=0';
+  if (!req.body.queryAll || req.session.gid === 1)
+    sql += ' AND s.cid=0';
 
   if (req.body.name) {
     req.body.name = SqlString.escape(req.body.name);
@@ -512,7 +513,10 @@ exports.getSubmissionList = (req, res) => {
     }
     let cntsql = "SELECT COUNT(*) as total FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ";
     cntsql += 'WHERE p.isPublic' + (req.session.gid < 2 ? '=1' : '<6');
-    cntsql += ' AND s.cid=0';
+
+    if (!req.body.queryAll || req.session.gid === 1)
+      cntsql += ' AND s.cid=0';
+
     if (req.body.name) {
       cntsql += ' AND u.name=' + req.body.name;
     }

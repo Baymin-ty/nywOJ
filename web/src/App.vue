@@ -70,4 +70,8 @@ body {
 blockquote {
   margin: 0;
 }
+
+#hidden {
+  margin: 5px;
+}
 </style>

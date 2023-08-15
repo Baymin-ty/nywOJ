@@ -12,6 +12,9 @@
           )">
             {{ scope.row.title }}
           </span>
+          <el-icon id="hidden" v-if="!scope.row.isPublic && !isContest">
+            <Hide />
+          </el-icon>
         </template>
       </el-table-column>
       <el-table-column prop="name" label="提交者" min-width="10%">

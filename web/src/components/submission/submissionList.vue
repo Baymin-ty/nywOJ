@@ -1,105 +1,105 @@
 <template>
-  <el-row style="text-align: center; margin: 0 auto; max-width: 1500px">
-    <el-col :span="19">
-      <el-card class="box-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            评测列表
-            <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
-              layout="total, prev, pager, next" :total="total"></el-pagination>
-            <el-button-group>
-              <el-button type="success" @click="mySub">
-                <el-icon class="el-icon--left">
-                  <UserFilled />
-                </el-icon>
-                我的提交
-              </el-button>
-              <el-button type="primary" @click="all">
-                <el-icon class="el-icon--left">
-                  <Refresh />
-                </el-icon>
-                刷新
-              </el-button>
-            </el-button-group>
-          </div>
-        </template>
-        <el-table :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }"
-          :cell-style="cellStyle" v-loading="!finished">
-          <el-table-column prop="sid" label="#" width="80px" />
-          <el-table-column prop="title" label="题目" width="160px">
-            <template #default="scope">
-              <span class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)"> {{ scope.row.title
-              }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="name" label="提交者" width="120px">
-            <template #default="scope">
-              <span class="rlink" @click="this.$router.push('/user/' + scope.row.uid)">
-                {{ scope.row.name }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="judgeResult" label="评测状态" width="180px">
-            <template #default="scope">
-              <span style="cursor: pointer;" @click="this.$router.push('/submission/' + scope.row.sid)">
-                {{ scope.row.judgeResult }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="score" label="分数" width="auto">
-            <template #default="scope">
-              <span> {{ scope.row.score }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="judgeResult" label="总用时" width="100px">
-            <template #default="scope">
-              <span> {{ scope.row.time }} ms</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="judgeResult" label="内存" width="100px">
-            <template #default="scope">
-              <span> {{ scope.row.memory }} </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="codeLength" label="代码长度" width="100px">
-            <template #default="scope">
-              <span> {{ scope.row.codeLength }} B </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="submitTime" label="提交时间" width="180px" />
-        </el-table>
-      </el-card>
-    </el-col>
-    <el-col :span="5">
-      <el-card class="box-card" shadow="hover" style="height: 300px;">
-        <template #header>
-          <div class="card-header">
-            筛选记录
-          </div>
-        </template>
-        <el-form :model="filter">
+  <div style="text-align: center; margin: 0 auto; max-width: 1400px">
+    <el-card class="box-card" shadow="hover">
+      <template #header>
+        <div class="card-header">
+          评测列表
+          <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
+            layout="total, prev, pager, next" :total="total"></el-pagination>
+          <el-button-group>
+            <el-button type="success" @click="mySub">
+              <el-icon class="el-icon--left">
+                <UserFilled />
+              </el-icon>
+              我的提交
+            </el-button>
+            <el-button type="primary" @click="all">
+              <el-icon class="el-icon--left">
+                <Refresh />
+              </el-icon>
+              刷新
+            </el-button>
+          </el-button-group>
+        </div>
+      </template>
+      <div style="display: inline-flex;">
+        <el-form :inline="true" :model="filter">
           <el-form-item>
-            <el-input v-model="filter.pid" type="text" placeholder="题目编号" @keyup.enter="all" />
+            <el-input v-model="filter.pid" type="text" placeholder="题目编号" style="width: 100px;" @keyup.enter="all" />
           </el-form-item>
           <el-form-item>
-            <el-input v-model="filter.name" type="text" placeholder="用户名" @keyup.enter="all" />
+            <el-input v-model="filter.name" type="text" placeholder="用户名" style="width: 150px;" @keyup.enter="all" />
           </el-form-item>
           <el-form-item>
-            <el-select v-model="filter.res" placeholder="评测结果" style="width: 300px;">
+            <el-select v-model="filter.res" placeholder="评测结果" style="width: 200px;">
               <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
         </el-form>
-        <el-divider />
-        <el-button type="primary" @click="this.all">
-          筛选记录
-        </el-button>
-        <el-button type="success" @click="clear">
-          显示全部
-        </el-button>
-      </el-card>
-    </el-col>
-  </el-row>
+        <span v-if="this.$store.state.gid >= 2" style="font-size: 14px; font-weight: 600; margin:0 20px 0 10px;">
+          比赛提交：
+          <el-switch v-model="queryAll" class="mb-2" active-text="显示" inactive-text="隐藏" @change="all" />
+        </span>
+        <el-button-group>
+          <el-button type="primary" @click="this.all">
+            筛选记录
+          </el-button>
+          <el-button type="success" @click="clear">
+            显示全部
+          </el-button>
+        </el-button-group>
+      </div>
+      <el-table :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }" :cell-style="cellStyle"
+        :row-class-name="tableRowClassName" v-loading="!finished">
+        <el-table-column prop="sid" label="#" width="100px" />
+        <el-table-column prop="title" label="题目" min-width="200px">
+          <template #default="scope">
+            <span class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)">
+              {{ scope.row.title }}
+            </span>
+            <el-icon id="hidden" v-if="!scope.row.isPublic">
+              <Hide />
+            </el-icon>
+          </template>
+        </el-table-column>
+        <el-table-column prop="name" label="提交者" width="150px">
+          <template #default="scope">
+            <span class="rlink" @click="this.$router.push('/user/' + scope.row.uid)">
+              {{ scope.row.name }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="judgeResult" label="评测状态" width="180px">
+          <template #default="scope">
+            <span style="cursor: pointer;" @click="go2s(scope)">
+              {{ scope.row.judgeResult }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="score" label="分数" width="100px">
+          <template #default="scope">
+            <span> {{ scope.row.score }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="judgeResult" label="总用时" width="120px">
+          <template #default="scope">
+            <span> {{ scope.row.time }} ms</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="judgeResult" label="内存" width="120px">
+          <template #default="scope">
+            <span> {{ scope.row.memory }} </span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="codeLength" label="代码长度" width="100px">
+          <template #default="scope">
+            <span> {{ scope.row.codeLength }} B </span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="submitTime" label="提交时间" fixed="right" width="180px" />
+      </el-table>
+    </el-card>
+  </div>
 </template>
 
 <script>
@@ -121,6 +121,7 @@ export default {
         name: null,
         res: null
       },
+      queryAll: false,
       options: [{
         value: -1,
         label: '不限结果',
@@ -173,6 +174,7 @@ export default {
       if (this.filter.name) param.name = this.filter.name;
       if (this.filter.pid) param.pid = this.filter.pid;
       if (this.filter.res) param.res = this.filter.res;
+      if (this.queryAll) param.queryAll = true;
       if (this.currentPage > 1)
         param.pageId = this.currentPage;
       let nurl = qs.stringify(param);
@@ -183,7 +185,8 @@ export default {
         pageId: this.currentPage,
         pid: this.filter.pid,
         name: this.filter.name,
-        judgeRes: (this.filter.res === -1 ? null : this.filter.res)
+        judgeRes: (this.filter.res === -1 ? null : this.filter.res),
+        queryAll: this.queryAll
       }).then(res => {
         this.submissionList = res.data.data;
         this.total = res.data.total;
@@ -208,6 +211,15 @@ export default {
       this.currentPage = val;
       this.all();
     },
+    tableRowClassName(obj) {
+      return (obj.row.cid ? 'warning' : '');
+    },
+    go2s(scope) {
+      if (!scope.row.cid)
+        this.$router.push('/submission/' + scope.row.sid);
+      else
+        this.$router.push({ path: '/submission/' + scope.row.sid, query: { isContest: true } })
+    },
     cellStyle({ row, columnIndex }) {
       let style = {};
       style['textAlign'] = 'center';
@@ -227,6 +239,7 @@ export default {
     if (query.res) this.filter.res = parseInt(query.res);
     if (query.name) this.filter.name = query.name;
     if (query.pid) this.filter.pid = query.pid;
+    if (query.queryAll) this.queryAll = true;
     if (query.pageId) this.currentPage = parseInt(query.pageId);
     this.all();
   }
@@ -236,7 +249,7 @@ export default {
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 .box-card {
-  height: 700px;
+  height: 750px;
   margin: 10px;
 }
 
@@ -245,5 +258,9 @@ export default {
   justify-content: space-between;
   align-items: center;
   height: 20px;
+}
+
+.el-form--inline .el-form-item {
+  margin-right: 15px;
 }
 </style>
