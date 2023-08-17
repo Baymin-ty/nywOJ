@@ -1,5 +1,5 @@
 <template>
-  <div style="margin: auto;max-width: 1500px;min-width: 1300px;">
+  <div style="margin: auto;max-width: 1500px;">
     <el-row>
       <el-col :span="10">
         <el-card class="box-card" shadow="hover" style="text-align: center;">
