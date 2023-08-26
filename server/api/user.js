@@ -299,7 +299,7 @@ exports.setUserMotto = async (req, res) => {
 }
 
 exports.listSessions = (req, res) => {
-    db.query("SELECT * FROM userSession WHERE uid=? AND TIMESTAMPDIFF(SECOND,time,NOW()) < ? ORDER BY lastact DESC", [req.session.uid, config.SESSION.expire / 1000], (err, data) => {
+    db.query("SELECT * FROM userSession WHERE uid=? AND TIMESTAMPDIFF(SECOND,lastact,NOW()) < ? AND time != ? ORDER BY lastact DESC", [req.session.uid, config.SESSION.expire / 1000, new Date(0)], (err, data) => {
         if (err) {
             return res.status(202).send({ message: err });
         }
