@@ -121,7 +121,7 @@ exports.login = async (req, res) => {
                 [uid, req.sessionID, `${req.useragent.browser.name} ${req.useragent.browser.version}`, `${req.useragent.os.name} ${req.useragent.os.version}`, req.session.ip, ip2loc(req.session.ip), new Date(), new Date()]);
             return res.status(200).send({ message: 'success' })
         } else {
-            recordEvent(req, 'user.loginFail.wrongPassword', { password: pwd }, uid);
+            recordEvent(req, 'user.loginFail.wrongPassword', null, uid);
             return res.status(202).send({ message: "密码错误" })
         }
     });

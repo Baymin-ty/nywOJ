@@ -76,7 +76,7 @@ exports.recordEvent = (req, reason, detail, uid) => {
   }
   db.query('INSERT INTO userAudit(uid,event,ip,iploc,time,browser,os,detail) values(?,?,?,?,?,?,?,?)', [
     req.session.uid || uid, eventId, req.session.ip, this.ip2loc(req.session.ip), new Date(),
-    `${req.useragent.browser.name} ${req.useragent.browser.version}`, `${req.useragent.os.name} ${req.useragent.os.version}`, JSON.stringify(detail, null, 2)
+    `${req.useragent.browser.name} ${req.useragent.browser.version}`, `${req.useragent.os.name} ${req.useragent.os.version}`, detail ? JSON.stringify(detail, null, 2) : null
   ], (err, data) => {
     if (err)
       console.log(err);
