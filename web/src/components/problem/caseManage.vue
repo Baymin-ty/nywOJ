@@ -88,9 +88,13 @@
             </template>
           </el-table-column>
         </el-table>
-        <div v-for="i in cases" :key="i.input">
+        <div v-for="i in cases" :key="i.index">
           <div class="header">
-            Case #{{ i.index }}
+            <span>
+              Case #{{ i.index }}
+            </span>
+            <el-button type="primary" style="vertical-align: middle; margin: 8px;" plain size="small" @click="edit(i)"
+              v-text="i.edit ? '保存' : '编辑'" />
             <div class="subtask">
               <el-input v-model="i.subtaskId">
                 <template #prepend>子任务编号</template>
@@ -101,11 +105,13 @@
           <span class="attach">
             {{ i.inName }}
           </span>
-          <pre>{{ i.input }}</pre>
+          <el-input type="textarea" v-if="i.edit" :autosize="{ minRows: 2, maxRows: 12 }" v-model="i.input" />
+          <pre v-else v-text="i.input" />
           <span class="attach">
             {{ i.outName }}
           </span>
-          <pre>{{ i.output }}</pre>
+          <el-input type="textarea" v-if="i.edit" :autosize="{ minRows: 2, maxRows: 12 }" v-model="i.output" />
+          <pre v-else v-text="i.output" />
         </div>
         <div v-if="this.spj.length">
           <div class="header">
@@ -253,6 +259,45 @@ export default {
           option: 1
         });
       }
+    },
+    edit(i) {
+      if (!i.edit) {
+        axios.post('/api/problem/getCase', {
+          pid: this.pid,
+          caseInfo: i
+        }).then(res => {
+          if (res.status === 200) {
+            i.edit = true;
+            i.input = res.data.input;
+            i.output = res.data.output;
+          } else {
+            ElMessage({
+              message: '获取测试点错误' + res.data.message,
+              type: 'error',
+              duration: 2000,
+            });
+          }
+        });
+      } else {
+        axios.post('/api/problem/updateCase', {
+          pid: this.pid,
+          caseInfo: i
+        }).then(res => {
+          if (res.status === 200) {
+            i.edit = false;
+            ElMessage({
+              message: '保存成功',
+              type: 'success',
+            });
+          } else {
+            ElMessage({
+              message: '保存失败' + res.data.message,
+              type: 'error',
+              duration: 2000,
+            });
+          }
+        });
+      }
     }
   },
   mounted() {
@@ -307,6 +352,20 @@ pre {
   background-color: #f5f5f5;
   border: 1px solid #ccc;
   border-radius: 4px;
+}
+
+:deep(textarea) {
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  display: block;
+  overflow: auto;
+  padding: 10px;
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+  word-break: break-all;
+  word-wrap: break-word;
+  color: #333;
 }
 
 :deep(.github-markdown-body) {

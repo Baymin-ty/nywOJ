@@ -1,10 +1,9 @@
 const SqlString = require('mysql/lib/protocol/SqlString');
 const db = require('../db/index');
-const { getFile } = require('../file');
+const { getFile, setFile } = require('../file');
 const fs = require('fs');
 const path = require('path');
 const { briefFormat } = require('../static');
-const { setFile } = require('../file');
 
 exports.createProblem = (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
@@ -139,7 +138,8 @@ exports.getProblemCasePreview = async (req, res) => {
       outName: cases[i].output,
       subtaskId: cases[i].subtaskId,
       input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
-      output: outputFile.substring(0, 255) + (outputFile.length > 255 ? '......\n' : '')
+      output: outputFile.substring(0, 255) + (outputFile.length > 255 ? '......\n' : ''),
+      edit: false,
     }
   }
   return res.status(200).send({
@@ -238,7 +238,48 @@ exports.updateSubtaskId = async (req, res) => {
       await setFile(`./data/${pid}/config.json`, JSON.stringify({ cases: newCases, subtask: subtask }));
       return res.status(200).send({ message: 'success' });
     } catch (err) {
-      return res.status(202).send({ message: err });
+      return res.status(202).send({ message: String(err) });
+    }
+  });
+}
+
+exports.getCase = (req, res) => {
+  const pid = req.body.pid, caseInfo = req.body.caseInfo;
+  db.query('SELECT * FROM problem WHERE pid=?', [pid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (req.session.uid !== 1 && data[0].publisher !== req.session.uid) {
+      return res.status(202).send({ message: '权限不足' });
+    }
+    if (!fs.existsSync(`./data/${pid}/${caseInfo.inName}`) ||
+      !fs.existsSync(`./data/${pid}/${caseInfo.outName}`)) {
+      return res.status(202).send({ message: "未找到测试点" });
+    }
+    const inputFile = (await getFile(`./data/${pid}/${caseInfo.inName}`)),
+      outputFile = (await getFile(`./data/${pid}/${caseInfo.outName}`));
+    return res.status(200).send({
+      input: inputFile,
+      output: outputFile
+    });
+  });
+}
+
+exports.updateCase = (req, res) => {
+  const pid = req.body.pid, caseInfo = req.body.caseInfo;
+  db.query('SELECT * FROM problem WHERE pid=?', [pid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (req.session.uid !== 1 && data[0].publisher !== req.session.uid) {
+      return res.status(202).send({ message: '权限不足' });
+    }
+    if (!fs.existsSync(`./data/${pid}/${caseInfo.inName}`) ||
+      !fs.existsSync(`./data/${pid}/${caseInfo.outName}`)) {
+      return res.status(202).send({ message: "未找到测试点" });
+    }
+    try {
+      await setFile(`./data/${pid}/${caseInfo.inName}`, caseInfo.input);
+      await setFile(`./data/${pid}/${caseInfo.outName}`, caseInfo.output);
+      return res.status(200).send({ message: 'ok' });
+    } catch (err) {
+      return res.status(202).send({ message: String(err) });
     }
   });
 }
