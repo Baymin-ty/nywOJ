@@ -179,23 +179,23 @@ exports.updateSubtaskId = async (req, res) => {
       for (let i in subtask) {
         if (typeof subtask[i].index !== "number")
           return res.status(202).send({
-            message: `子任务编号非法`
+            message: `子任务 #${subtask[i].index} 编号非法`
           });
-        if (typeof subtask[i].score !== "number" || subtask[i].score < 1 || subtask[i].score > 100)
+        if (!Number.isInteger(subtask[i].score) || subtask[i].score < 1 || subtask[i].score > 100)
           return res.status(202).send({
-            message: `子任务分数应在[1,100]之间`
+            message: `子任务 #${subtask[i].index} 分数应为[1,100]之间的整数`
           });
         if (subtask[i].option !== 0 && subtask[i].option !== 1)
           return res.status(202).send({
-            message: `记分方式非法`
+            message: `子任务 #${subtask[i].index} 记分方式非法`
           });
         if (subtaskMap.has(subtask[i].index))
           return res.status(202).send({
-            message: `子任务编号重复`
+            message: `子任务 #${subtask[i].index} 编号重复`
           });
         if (subtask[i].index < 1 || subtask[i].index > 100)
           return res.status(202).send({
-            message: `子任务编号应在[1,100]之间`
+            message: `子任务 #${subtask[i].index} 应在[1,100]之间`
           });
         subtaskMap.set(subtask[i].index, subtask[i].score);
         totalScore += subtask[i].score;
@@ -209,11 +209,11 @@ exports.updateSubtaskId = async (req, res) => {
         if (fs.existsSync(`./data/${pid}/${cases[i].inName}`) && fs.existsSync(`./data/${pid}/${cases[i].outName}`)) {
           if (!subtaskMap.has(Number(cases[i].subtaskId))) {
             return res.status(202).send({
-              message: `测试点#${cases[i].index}所属子任务#${Number(cases[i].subtaskId)}未定义`
+              message: `测试点 #${cases[i].index} 所属子任务 #${Number(cases[i].subtaskId)} 未定义`
             });
           }
           newCases.push({
-            index: cases[i].index,
+            index: Number(i) + 1,
             input: cases[i].inName,
             output: cases[i].outName,
             subtaskId: Number(cases[i].subtaskId)
@@ -229,7 +229,7 @@ exports.updateSubtaskId = async (req, res) => {
         subtaskVis[subtask[i].index];
         if (!subtaskVis.has(subtask[i].index))
           return res.status(202).send({
-            message: `子任务#${subtask[i].index}中没有测试点`
+            message: `子任务 #${subtask[i].index} 中没有测试点`
           });
       }
       newCases.sort((a, b) => {
