@@ -328,6 +328,8 @@ exports.downloadCase = (req, res) => {
   const pid = req.query.pid, index = req.query.index;
   db.query('SELECT * FROM problem WHERE pid=?', [pid], async (err, data) => {
     if (err) return res.status(202).send({ message: err });
+    if (!data.length || !fs.existsSync(`./data/${pid}/config.json`))
+      return res.status(202).send({ message: 'Not Found Error' });
     if (req.session.uid !== 1 && data[0].publisher !== req.session.uid) {
       return res.status(202).send({ message: '你只能下载自己题目的测试点' });
     }
