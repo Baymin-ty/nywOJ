@@ -103,15 +103,15 @@
           </div>
           <el-divider />
           <span class="attach">
-            {{ i.inName }}
+            {{ i.inName }} | {{ i.input.size }} | create: {{ i.input.create }} | modified: {{ i.input.modified }}
           </span>
-          <el-input type="textarea" v-if="i.edit" :autosize="{ minRows: 2, maxRows: 12 }" v-model="i.input" />
-          <pre v-else v-text="i.input" />
+          <el-input type="textarea" v-if="i.edit" :autosize="{ minRows: 2, maxRows: 12 }" v-model="i.input.content" />
+          <pre v-else v-text="i.input.content" />
           <span class="attach">
-            {{ i.outName }}
+            {{ i.outName }} | {{ i.output.size }} | create: {{ i.output.create }} | modified: {{ i.output.modified }}
           </span>
-          <el-input type="textarea" v-if="i.edit" :autosize="{ minRows: 2, maxRows: 12 }" v-model="i.output" />
-          <pre v-else v-text="i.output" />
+          <el-input type="textarea" v-if="i.edit" :autosize="{ minRows: 2, maxRows: 12 }" v-model="i.output.content" />
+          <pre v-else v-text="i.output.content" />
         </div>
         <div v-if="this.spj.length">
           <div class="header">
@@ -268,11 +268,11 @@ export default {
         }).then(res => {
           if (res.status === 200) {
             i.edit = true;
-            i.input = res.data.input;
-            i.output = res.data.output;
+            i.input.content = res.data.input;
+            i.output.content = res.data.output;
           } else {
             ElMessage({
-              message: '获取测试点错误' + res.data.message,
+              message: res.data.message,
               type: 'error',
               duration: 2000,
             });
@@ -285,6 +285,8 @@ export default {
         }).then(res => {
           if (res.status === 200) {
             i.edit = false;
+            i.input.modified = res.data.inputM;
+            i.output.modified = res.data.outputM;
             ElMessage({
               message: '保存成功',
               type: 'success',
@@ -331,9 +333,10 @@ export default {
 }
 
 .attach {
-  font-size: 16px;
-  font-weight: 600;
-  color: #464646;
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: #585858;
 }
 
 pre {
@@ -342,7 +345,7 @@ pre {
   max-height: 160px;
   overflow: auto;
   padding: 10px;
-  margin: 0 0 10px;
+  margin: 10px 0;
   font-size: 14px;
   font-weight: 400;
   line-height: 1;
@@ -359,7 +362,7 @@ pre {
   display: block;
   overflow: auto;
   padding: 10px;
-  margin: 0 0 10px;
+  margin: 10px 0;
   font-size: 14px;
   font-weight: 400;
   line-height: 1;

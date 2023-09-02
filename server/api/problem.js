@@ -3,7 +3,7 @@ const db = require('../db/index');
 const { getFile, setFile } = require('../file');
 const fs = require('fs');
 const path = require('path');
-const { briefFormat } = require('../static');
+const { briefFormat, Format, bFormat } = require('../static');
 
 exports.createProblem = (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
@@ -130,15 +130,28 @@ exports.getProblemCasePreview = async (req, res) => {
 
   let previewList = [];
   for (let i in cases) {
-    const inputFile = (await getFile(`./data/${pid}/${cases[i].input}`));
-    const outputFile = (await getFile(`./data/${pid}/${cases[i].output}`));
+    const inputFile = (await getFile(`./data/${pid}/${cases[i].input}`)),
+      inputStat = fs.statSync(`./data/${pid}/${cases[i].input}`);
+    const outputFile = (await getFile(`./data/${pid}/${cases[i].output}`)),
+      outputStat = fs.statSync(`./data/${pid}/${cases[i].output}`);
+
     previewList[i] = {
       index: cases[i].index,
       inName: cases[i].input,
       outName: cases[i].output,
       subtaskId: cases[i].subtaskId,
-      input: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
-      output: outputFile.substring(0, 255) + (outputFile.length > 255 ? '......\n' : ''),
+      input: {
+        content: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
+        size: bFormat(inputStat.size),
+        create: Format(inputStat.birthtime),
+        modified: Format(inputStat.mtime)
+      },
+      output: {
+        content: outputFile.substring(0, 255) + (outputFile.length > 255 ? '......\n' : ''),
+        size: bFormat(outputStat.size),
+        create: Format(outputStat.birthtime),
+        modified: Format(outputStat.mtime)
+      },
       edit: false,
     }
   }
@@ -248,14 +261,20 @@ exports.getCase = (req, res) => {
   db.query('SELECT * FROM problem WHERE pid=?', [pid], async (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (req.session.uid !== 1 && data[0].publisher !== req.session.uid) {
-      return res.status(202).send({ message: '权限不足' });
+      return res.status(202).send({ message: '你只能编辑自己题目的测试点' });
     }
     if (!fs.existsSync(`./data/${pid}/${caseInfo.inName}`) ||
       !fs.existsSync(`./data/${pid}/${caseInfo.outName}`)) {
       return res.status(202).send({ message: "未找到测试点" });
     }
     const inputFile = (await getFile(`./data/${pid}/${caseInfo.inName}`)),
-      outputFile = (await getFile(`./data/${pid}/${caseInfo.outName}`));
+      inputStat = fs.statSync(`./data/${pid}/${caseInfo.inName}`);
+    const outputFile = (await getFile(`./data/${pid}/${caseInfo.outName}`)),
+      outputStat = fs.statSync(`./data/${pid}/${caseInfo.outName}`);
+    if (inputStat.size + outputStat.size > 5 * 1024 * 1024)
+      return res.status(202).send({
+        message: `超过编辑大小限制 5MB`
+      });
     return res.status(200).send({
       input: inputFile,
       output: outputFile
@@ -275,9 +294,13 @@ exports.updateCase = (req, res) => {
       return res.status(202).send({ message: "未找到测试点" });
     }
     try {
-      await setFile(`./data/${pid}/${caseInfo.inName}`, caseInfo.input);
-      await setFile(`./data/${pid}/${caseInfo.outName}`, caseInfo.output);
-      return res.status(200).send({ message: 'ok' });
+      await setFile(`./data/${pid}/${caseInfo.inName}`, caseInfo.input.content);
+      await setFile(`./data/${pid}/${caseInfo.outName}`, caseInfo.output.content);
+      return res.status(200).send({
+        inputM: Format(fs.statSync(`./data/${pid}/${caseInfo.inName}`).mtime),
+        outputM: Format(fs.statSync(`./data/${pid}/${caseInfo.outName}`).mtime),
+        message: 'ok'
+      });
     } catch (err) {
       return res.status(202).send({ message: String(err) });
     }
