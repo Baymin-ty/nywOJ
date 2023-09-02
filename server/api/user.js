@@ -197,7 +197,11 @@ exports.sendEmailVerifyCode = async (req, res) => {
     mailOptions.subject = 'nywOJ修改邮箱验证码';
     mailOptions.text = "你正在nywOJ进行修改邮箱操作(用户名: " + req.session.name + "), 验证码为 " + verifyCode + "\n该验证码3分钟内有效。"
   }
-
+  if (req.session.uid) {
+    recordEvent(req, 'auth.sendEmailVerifyCode', {
+      to: email
+    });
+  }
   transporter.sendMail(mailOptions, (err) => {
     if (!err) {
       return res.status(200).send({ message: "success" });

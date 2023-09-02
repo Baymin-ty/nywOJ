@@ -4,7 +4,7 @@ const db = require('../db/index');
 const { getFile, setFile } = require('../file');
 const fs = require('fs');
 const path = require('path');
-const { briefFormat, Format, bFormat } = require('../static');
+const { briefFormat, Format, bFormat, recordEvent } = require('../static');
 
 exports.createProblem = (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
@@ -167,16 +167,22 @@ exports.clearCase = async (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
   const pid = req.body.pid;
   db.query('SELECT * FROM problem WHERE pid=?', [pid], (err, data) => {
+    if (err || !data.length) {
+      return res.status(202).send({ message: 'error' });
+    }
     if (req.session.uid !== 1 && data[0].publisher !== req.session.uid) {
       return res.status(202).send({ message: '你只能删除自己题目的数据' });
     }
     const dir = path.join(__dirname, `../data/${req.body.pid}`);
 
+    recordEvent(req, 'problem.delAllCases', {
+      pid: pid
+    });
+
     if (fs.existsSync(dir))
       fs.rmSync(dir, {
         recursive: true
       });
-
     return res.status(200).send({ message: 'success' });
   });
 }
@@ -250,6 +256,9 @@ exports.updateSubtaskId = async (req, res) => {
         return a.index - b.index;
       });
       await setFile(`./data/${pid}/config.json`, JSON.stringify({ cases: newCases, subtask: subtask }));
+      recordEvent(req, 'problem.updateConfig', {
+        pid: pid
+      });
       return res.status(200).send({ message: 'success' });
     } catch (err) {
       return res.status(202).send({ message: String(err) });
@@ -297,6 +306,10 @@ exports.updateCase = (req, res) => {
     try {
       await setFile(`./data/${pid}/${caseInfo.inName}`, caseInfo.input.content);
       await setFile(`./data/${pid}/${caseInfo.outName}`, caseInfo.output.content);
+      recordEvent(req, 'problem.updateCase', {
+        pid: pid,
+        index: caseInfo.index
+      });
       return res.status(200).send({
         inputM: Format(fs.statSync(`./data/${pid}/${caseInfo.inName}`).mtime),
         outputM: Format(fs.statSync(`./data/${pid}/${caseInfo.outName}`).mtime),
@@ -329,11 +342,20 @@ exports.downloadCase = (req, res) => {
         });
       }
     }
-    if (typeof index === 'undefined')
+    if (typeof index === 'undefined') {
       files.push({
         path: `./data/${pid}/config.json`,
         name: 'config.json'
       });
+      recordEvent(req, 'problem.downloadCase', {
+        pid: pid
+      });
+    } else {
+      recordEvent(req, 'problem.downloadCase', {
+        pid: pid,
+        index: index
+      });
+    }
     const fileName = (index ? `nywoj_Testdata_#${pid}_case#${index}` : `nywoj_Testdata_#${pid}`) + '.zip';
     return res.zip(files, fileName);
   });

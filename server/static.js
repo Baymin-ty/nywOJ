@@ -67,7 +67,11 @@ exports.eventList = [
   'auth.changeEmail',
   'auth.revokeSession',
   'auth.revokeAllSessions',
-  'auth.sendEmailVerifyCode'
+  'auth.sendEmailVerifyCode',
+  'problem.delAllCases',
+  'problem.updateCase',
+  'problem.downloadCase',
+  'problem.updateConfig',
 ];
 
 exports.eventExp = [
@@ -80,7 +84,11 @@ exports.eventExp = [
   '修改邮箱',
   '下线会话',
   '下线除当前对话外所有对话',
-  '发送邮箱验证码'
+  '发送邮箱验证码',
+  '删除所有测试数据',
+  '修改测试数据',
+  '下载测试数据',
+  '修改题目配置',
 ]
 
 
