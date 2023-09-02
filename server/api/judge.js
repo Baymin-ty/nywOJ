@@ -3,7 +3,7 @@ const db = require('../db/index');
 const { getFile, setFile, delFile } = require('../file');
 const SqlString = require('mysql/lib/protocol/SqlString');
 const exec = require('child_process').exec;
-const { Format } = require('../static');
+const { Format, kbFormat } = require('../static');
 const async = require('async');
 
 
@@ -509,7 +509,7 @@ exports.getSubmissionList = (req, res) => {
     for (let i = 0; i < list.length; i++) {
       list[i].submitTime = Format(list[i].submitTime);
       list[i].judgeResult = judgeRes[list[i].judgeResult];
-      list[i].memory = toHuman(list[i].memory);
+      list[i].memory = kbFormat(list[i].memory);
     }
     let cntsql = "SELECT COUNT(*) as total FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ";
     cntsql += 'WHERE p.isPublic' + (req.session.gid < 2 ? '=1' : '<6');
@@ -534,13 +534,6 @@ exports.getSubmissionList = (req, res) => {
       });
     });
   });
-}
-
-const toHuman = (memory) => {
-  if (memory >= 1024)
-    memory = Math.round(memory / 1024 * 100) / 100 + ' MB';
-  else memory += ' KB';
-  return memory;
 }
 
 const getCaseDetail = (sid) => {
@@ -578,14 +571,14 @@ exports.getSubmissionInfo = (req, res) => {
         for (let i in data[0].caseResult) {
           data[0].caseResult[i].index = parseInt(data[0].caseResult[i].index);
           data[0].caseResult[i].res = judgeRes[data[0].caseResult[i].res];
-          data[0].caseResult[i].memory = toHuman(data[0].caseResult[i].memory);
+          data[0].caseResult[i].memory = kbFormat(data[0].caseResult[i].memory);
           subtaskInfo[data[0].caseResult[i].index] = new Map();
           subtaskInfo[data[0].caseResult[i].index]['info'] = data[0].caseResult[i];
           subtaskInfo[data[0].caseResult[i].index]['cases'] = [];
         }
         for (let i in data[0].singleCaseResult) {
           data[0].singleCaseResult[i].result = judgeRes[data[0].singleCaseResult[i].result];
-          data[0].singleCaseResult[i].memory = toHuman(data[0].singleCaseResult[i].memory);
+          data[0].singleCaseResult[i].memory = kbFormat(data[0].singleCaseResult[i].memory);
           subtaskInfo[data[0].singleCaseResult[i].subtaskId]['cases'].push(data[0].singleCaseResult[i]);
         }
         data[0].subtaskInfo = subtaskInfo;
@@ -595,10 +588,10 @@ exports.getSubmissionInfo = (req, res) => {
       } else {
         for (let i in data[0].singleCaseResult) {
           data[0].singleCaseResult[i].result = judgeRes[data[0].singleCaseResult[i].result];
-          data[0].singleCaseResult[i].memory = toHuman(data[0].singleCaseResult[i].memory);
+          data[0].singleCaseResult[i].memory = kbFormat(data[0].singleCaseResult[i].memory);
         }
       }
-      data[0].memory = toHuman(data[0].memory);
+      data[0].memory = kbFormat(data[0].memory);
       data[0].submitTime = Format(data[0].submitTime);
       data[0].judgeResult = judgeRes[data[0].judgeResult];
       return res.status(200).send({

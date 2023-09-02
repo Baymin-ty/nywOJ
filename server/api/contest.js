@@ -1,5 +1,5 @@
 const db = require('../db/index');
-const { briefFormat, Format } = require('../static');
+const { briefFormat, Format, kbFormat } = require('../static');
 const SqlString = require('mysql/lib/protocol/SqlString');
 const { pushSidIntoQueue } = require('./judge');
 const ctype = ['OI', 'IOI'];
@@ -482,13 +482,6 @@ exports.submit = async (req, res) => {
   });
 }
 
-const toHuman = (memory) => {
-  if (memory >= 1024)
-    memory = Math.round(memory / 1024 * 100) / 100 + ' MB';
-  else memory += ' KB';
-  return memory;
-}
-
 const judgeRes = ['Waiting',
   'Pending',
   'Rejudging',
@@ -523,7 +516,7 @@ exports.getSubmissionList = (req, res) => {
             if (!data[0].type && !data[0].done && req.session.gid === 1)
               data2[i].score = data2[i].judgeResult = data2[i].time = data2[i].memory = 0;
             data2[i].judgeResult = judgeRes[data2[i].judgeResult];
-            data2[i].memory = toHuman(data2[i].memory);
+            data2[i].memory = kbFormat(data2[i].memory);
           }
           db.query('SELECT COUNT(*) as cnt FROM submission WHERE cid=?',
             [cid], async (err3, data3) => {
@@ -562,7 +555,7 @@ exports.getLastSubmissionList = (req, res) => {
             if (!data[0].type && !data[0].done && req.session.gid === 1)
               data2[i].score = data2[i].judgeResult = data2[i].time = data2[i].memory = 0;
             data2[i].judgeResult = judgeRes[data2[i].judgeResult];
-            data2[i].memory = toHuman(data2[i].memory);
+            data2[i].memory = kbFormat(data2[i].memory);
           }
           return res.status(200).send({ data: data2, total: allLastSubmissions.length });
         });
@@ -606,14 +599,14 @@ exports.getSubmissionInfo = (req, res) => {
               for (let i in data[0].caseResult) {
                 data[0].caseResult[i].index = parseInt(data[0].caseResult[i].index);
                 data[0].caseResult[i].res = judgeRes[data[0].caseResult[i].res];
-                data[0].caseResult[i].memory = toHuman(data[0].caseResult[i].memory);
+                data[0].caseResult[i].memory = kbFormat(data[0].caseResult[i].memory);
                 subtaskInfo[data[0].caseResult[i].index] = new Map();
                 subtaskInfo[data[0].caseResult[i].index]['info'] = data[0].caseResult[i];
                 subtaskInfo[data[0].caseResult[i].index]['cases'] = [];
               }
               for (let i in data[0].singleCaseResult) {
                 data[0].singleCaseResult[i].result = judgeRes[data[0].singleCaseResult[i].result];
-                data[0].singleCaseResult[i].memory = toHuman(data[0].singleCaseResult[i].memory);
+                data[0].singleCaseResult[i].memory = kbFormat(data[0].singleCaseResult[i].memory);
                 if (!(req.session.gid > 1 || data2[0].status === 3)) {
                   data[0].singleCaseResult[i].input = '正在比赛中...';
                   data[0].singleCaseResult[i].output = '正在比赛中...';
@@ -631,7 +624,7 @@ exports.getSubmissionInfo = (req, res) => {
                 delete data[0].singleCaseResult[i].output;
                 delete data[0].singleCaseResult[i].compareResult;
                 data[0].singleCaseResult[i].result = judgeRes[data[0].singleCaseResult[i].result];
-                data[0].singleCaseResult[i].memory = toHuman(data[0].singleCaseResult[i].memory);
+                data[0].singleCaseResult[i].memory = kbFormat(data[0].singleCaseResult[i].memory);
               }
             }
             if (!data2[0].type && !data2[0].done && req.session.gid === 1) {
@@ -641,7 +634,7 @@ exports.getSubmissionInfo = (req, res) => {
             }
             data[0].idx = await getIdx(data[0].cid, data[0].pid);
             delete data[0].pid;
-            data[0].memory = toHuman(data[0].memory);
+            data[0].memory = kbFormat(data[0].memory);
             data[0].submitTime = Format(data[0].submitTime);
             data[0].judgeResult = judgeRes[data[0].judgeResult];
             return res.status(200).send({
@@ -820,7 +813,7 @@ exports.getSingleUserLastSubmission = async (req, res) => {
             if (!data[0].type && !data[0].done && req.session.gid === 1)
               data2[i].score = data2[i].judgeResult = data2[i].time = data2[i].memory = 0;
             data2[i].judgeResult = judgeRes[data2[i].judgeResult];
-            data2[i].memory = toHuman(data2[i].memory);
+            data2[i].memory = kbFormat(data2[i].memory);
           }
           return res.status(200).send({ data: data2 });
         });
@@ -849,7 +842,7 @@ exports.getSingleUserProblemSubmission = (req, res) => {
             if (!data[0].type && !data[0].done && req.session.gid === 1)
               data2[i].score = data2[i].judgeResult = data2[i].time = data2[i].memory = 0;
             data2[i].judgeResult = judgeRes[data2[i].judgeResult];
-            data2[i].memory = toHuman(data2[i].memory);
+            data2[i].memory = kbFormat(data2[i].memory);
           }
           return res.status(200).send({ data: data2 });
         })

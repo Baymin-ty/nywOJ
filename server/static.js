@@ -41,6 +41,22 @@ exports.msFormat = (ms) => {
     return `${Math.floor(second)} 秒前`;
 }
 
+exports.kbFormat = (memory) => {
+  if (memory >= 1024)
+    memory = Math.round(memory / 1024 * 100) / 100 + ' MB';
+  else memory += ' KB';
+  return memory;
+}
+
+exports.bFormat = (memory) => {
+  if (memory >= 1024 * 1024)
+    memory = Math.round(memory / 1024 / 1024 * 100) / 100 + ' MB';
+  else if (memory >= 1024)
+    memory = Math.round(memory / 1024 * 100) / 100 + ' KB';
+  else memory += ' B';
+  return memory;
+}
+
 exports.eventList = [
   'user.login',
   'user.loginFail.wrongPassword',
