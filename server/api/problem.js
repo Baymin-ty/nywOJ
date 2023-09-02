@@ -1,3 +1,4 @@
+require('express-zip');
 const SqlString = require('mysql/lib/protocol/SqlString');
 const db = require('../db/index');
 const { getFile, setFile } = require('../file');
@@ -304,5 +305,36 @@ exports.updateCase = (req, res) => {
     } catch (err) {
       return res.status(202).send({ message: String(err) });
     }
+  });
+}
+
+exports.downloadCase = (req, res) => {
+  const pid = req.query.pid, index = req.query.index;
+  db.query('SELECT * FROM problem WHERE pid=?', [pid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (req.session.uid !== 1 && data[0].publisher !== req.session.uid) {
+      return res.status(202).send({ message: '你只能下载自己题目的测试点' });
+    }
+    const cases = JSON.parse(await (getFile(`./data/${pid}/config.json`))).cases;
+    let files = [];
+    for (let i in cases) {
+      if (typeof index === 'undefined' || cases[i].index === parseInt(index)) {
+        files.push({
+          path: `./data/${pid}/${cases[i].input}`,
+          name: cases[i].input
+        });
+        files.push({
+          path: `./data/${pid}/${cases[i].output}`,
+          name: cases[i].output
+        });
+      }
+    }
+    if (typeof index === 'undefined')
+      files.push({
+        path: `./data/${pid}/config.json`,
+        name: 'config.json'
+      });
+    const fileName = (index ? `nywoj_Testdata_#${pid}_case#${index}` : `nywoj_Testdata_#${pid}`) + '.zip';
+    return res.zip(files, fileName);
   });
 }

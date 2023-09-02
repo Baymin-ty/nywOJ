@@ -3,7 +3,11 @@
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          测试点管理
+          <div>
+            测试点管理
+            <el-button style="vertical-align: middle; margin-left: 8px;" plain size="small" v-text="'下载'"
+              @click="downloadCase(0)" />
+          </div>
           <el-button-group>
             <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认清空数据?" @confirm="delAllCase">
               <template #reference>
@@ -93,8 +97,10 @@
             <span>
               Case #{{ i.index }}
             </span>
-            <el-button :type="(i.edit > 1 ? 'danger' : 'primary')" style="vertical-align: middle; margin: 8px;" plain
-              size="small" @click="edit(i)" v-text="i.edit ? (i.edit === 1 ? '取消' : '保存') : '编辑'" />
+            <el-button :type="(i.edit > 1 ? 'danger' : 'primary')" style="vertical-align: middle; margin-left: 10px;"
+              plain size="small" @click="edit(i)" v-text="i.edit ? (i.edit === 1 ? '取消' : '保存') : '编辑'" />
+            <el-button style="vertical-align: middle; margin-left: 8px;" plain size="small" v-text="'下载'"
+              @click="downloadCase(i.index)" />
             <div class="subtask">
               <el-input v-model="i.subtaskId">
                 <template #prepend>子任务编号</template>
@@ -306,6 +312,11 @@ export default {
           }
         });
       }
+    },
+    downloadCase(index) {
+      let url = '/api/problem/downloadCase?pid=' + this.pid;
+      if (index) url += ('&index=' + index);
+      window.location.href = url;
     }
   },
   mounted() {

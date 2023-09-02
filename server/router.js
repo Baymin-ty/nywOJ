@@ -50,6 +50,7 @@ router.post('/api/problem/clearCase', problem.clearCase);
 router.post('/api/problem/updateSubtaskId', problem.updateSubtaskId);
 router.post('/api/problem/getCase', problem.getCase);
 router.post('/api/problem/updateCase', problem.updateCase);
+router.get('/api/problem/downloadCase', problem.downloadCase);
 
 const upload = multer({
   fileFilter: (req, file, cb) => {
