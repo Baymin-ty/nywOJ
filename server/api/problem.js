@@ -267,6 +267,7 @@ exports.updateSubtaskId = async (req, res) => {
 }
 
 exports.getCase = (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
   const pid = req.body.pid, caseInfo = req.body.caseInfo;
   db.query('SELECT * FROM problem WHERE pid=?', [pid], async (err, data) => {
     if (err) return res.status(202).send({ message: err });
@@ -293,6 +294,7 @@ exports.getCase = (req, res) => {
 }
 
 exports.updateCase = (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
   const pid = req.body.pid, caseInfo = req.body.caseInfo;
   db.query('SELECT * FROM problem WHERE pid=?', [pid], async (err, data) => {
     if (err) return res.status(202).send({ message: err });
@@ -322,6 +324,7 @@ exports.updateCase = (req, res) => {
 }
 
 exports.downloadCase = (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
   const pid = req.query.pid, index = req.query.index;
   db.query('SELECT * FROM problem WHERE pid=?', [pid], async (err, data) => {
     if (err) return res.status(202).send({ message: err });
