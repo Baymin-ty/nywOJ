@@ -152,7 +152,7 @@ exports.getProblemCasePreview = async (req, res) => {
         create: Format(outputStat.birthtime),
         modified: Format(outputStat.mtime)
       },
-      edit: false,
+      edit: 0,
     }
   }
   return res.status(200).send({

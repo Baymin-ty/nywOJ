@@ -93,8 +93,8 @@
             <span>
               Case #{{ i.index }}
             </span>
-            <el-button type="primary" style="vertical-align: middle; margin: 8px;" plain size="small" @click="edit(i)"
-              v-text="i.edit ? '保存' : '编辑'" />
+            <el-button :type="(i.edit > 1 ? 'danger' : 'primary')" style="vertical-align: middle; margin: 8px;" plain
+              size="small" @click="edit(i)" v-text="i.edit ? (i.edit === 1 ? '取消' : '保存') : '编辑'" />
             <div class="subtask">
               <el-input v-model="i.subtaskId">
                 <template #prepend>子任务编号</template>
@@ -105,12 +105,14 @@
           <span class="attach">
             {{ i.inName }} | {{ i.input.size }} | create: {{ i.input.create }} | modified: {{ i.input.modified }}
           </span>
-          <el-input type="textarea" v-if="i.edit" :autosize="{ minRows: 2, maxRows: 12 }" v-model="i.input.content" />
+          <el-input type="textarea" @input="i.edit = 2" v-if="i.edit" :autosize="{ minRows: 2, maxRows: 12 }"
+            v-model="i.input.content" />
           <pre v-else v-text="i.input.content" />
           <span class="attach">
             {{ i.outName }} | {{ i.output.size }} | create: {{ i.output.create }} | modified: {{ i.output.modified }}
           </span>
-          <el-input type="textarea" v-if="i.edit" :autosize="{ minRows: 2, maxRows: 12 }" v-model="i.output.content" />
+          <el-input type="textarea" @input="i.edit = 2" v-if="i.edit" :autosize="{ minRows: 2, maxRows: 12 }"
+            v-model="i.output.content" />
           <pre v-else v-text="i.output.content" />
         </div>
         <div v-if="this.spj.length">
@@ -267,7 +269,7 @@ export default {
           caseInfo: i
         }).then(res => {
           if (res.status === 200) {
-            i.edit = true;
+            i.edit = 1;
             i.input.content = res.data.input;
             i.output.content = res.data.output;
           } else {
@@ -279,12 +281,16 @@ export default {
           }
         });
       } else {
+        if (i.edit === 1) {
+          i.edit = 0;
+          return;
+        }
         axios.post('/api/problem/updateCase', {
           pid: this.pid,
           caseInfo: i
         }).then(res => {
           if (res.status === 200) {
-            i.edit = false;
+            i.edit = 0;
             i.input.modified = res.data.inputM;
             i.output.modified = res.data.outputM;
             ElMessage({
