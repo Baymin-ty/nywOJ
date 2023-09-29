@@ -427,6 +427,7 @@ const judgeCode = async (sid, isreJudge) => {
     if (acSub === totalSub) {
       finalRes = 4;
       totalScore = 100;
+      db.query('UPDATE problem SET acCnt=acCnt+1 WHERE pid=?', [pid]);
     }
     await setSubmission(sid, finalRes, totalTime, maxMemory, totalScore, null, JSON.stringify(subtaskList));
 
