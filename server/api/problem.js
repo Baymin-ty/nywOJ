@@ -44,7 +44,7 @@ exports.updateProblem = (req, res) => {
     }
     if (info.memoryLimit > 512 || info.memoryLimit < 0) {
       return res.status(202).send({
-        message: '时间限制最大为512MB'
+        message: '空间限制最大为512MB'
       });
     }
     if (info.isPublic !== false && info.isPublic !== true) {
