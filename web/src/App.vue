@@ -74,4 +74,8 @@ blockquote {
 #hidden {
   margin: 5px;
 }
+
+.el-card__header {
+  padding: 15px 18px;
+}
 </style>
