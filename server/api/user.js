@@ -145,20 +145,32 @@ exports.logout = (req, res) => {
   return res.status(200).send({ message: "success" });
 }
 
+let lastSent = {};
+
 exports.sendEmailVerifyCode = async (req, res) => {
   const email = req.body.email;
-  const retoken = req.body.retoken;
-  let recapt = await axios.get("https://www.recaptcha.net/recaptcha/api/siteverify", {
-    params: {
-      secret: "6LcEKJIkAAAAACAlGysXJJowd7Vrcbc08Ghtd58C",
-      response: retoken
+  // const retoken = req.body.retoken;
+  // let recapt = await axios.get("https://www.recaptcha.net/recaptcha/api/siteverify", {
+  //   params: {
+  //     secret: "6LcEKJIkAAAAACAlGysXJJowd7Vrcbc08Ghtd58C",
+  //     response: retoken
+  //   }
+  // });
+  // if (!recapt.data.success) {
+  //   return res.status(202).send({
+  //     message: "请先进行人机验证"
+  //   })
+  // }
+
+  if (lastSent[req.session.ip]) {
+    let rest = (new Date().getTime() - lastSent[req.session.ip] - 30 * 1000);
+    if (rest < 0) {
+      return res.status(202).send({
+        message: `请 ${Math.ceil(rest / -1000)} 秒后再试`
+      })
     }
-  });
-  if (!recapt.data.success) {
-    return res.status(202).send({
-      message: "请先进行人机验证"
-    })
   }
+
   const emailExp = /^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/;
   if (!emailExp.test(email)) {
     return res.status(202).send({
@@ -204,6 +216,7 @@ exports.sendEmailVerifyCode = async (req, res) => {
   }
   transporter.sendMail(mailOptions, (err) => {
     if (!err) {
+      lastSent[req.session.ip] = new Date().getTime();
       return res.status(200).send({ message: "success" });
     } else {
       return res.status(202).send({ message: err });

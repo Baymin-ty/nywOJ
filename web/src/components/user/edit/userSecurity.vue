@@ -139,12 +139,15 @@ export default {
       });
     },
     recaptcha() {
-      if (this.recap) return;
-      this.recap = 1;
-      window.grecaptcha.render("grecaptcha", {
-        sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
-        callback: this.sendVerifyCode
-      });
+      this.sendVerifyCode();
+      return;
+
+      // if (this.recap) return;
+      // this.recap = 1;
+      // window.grecaptcha.render("grecaptcha", {
+      //   sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
+      //   callback: this.sendVerifyCode
+      // });
     }
   },
   mounted() {

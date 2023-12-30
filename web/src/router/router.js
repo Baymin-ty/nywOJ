@@ -166,8 +166,7 @@ router.afterEach((to) => {
 })
 router.beforeEach(async (to, from, next) => {
     if (!store.state.uid) {
-        await axios.post('/api/user/getUserInfo', {
-        }).then(res => {
+        await axios.post('/api/user/getUserInfo').then(res => {
             if (res.status === 200) {
                 store.state.uid = res.data.uid;
                 store.state.name = res.data.name;
