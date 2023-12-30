@@ -364,6 +364,8 @@ const revokeAllSessions = async (uid, curToken) => {
       if (data[i].token !== curToken)
         sessionList.push(data[i].token);
     }
+    if (!sessionList.length)
+      return;
     db.query("UPDATE sessions SET expires=? WHERE session_id in(?)", [0, sessionList], (err, data) => {
       if (err)
         console.log(err);

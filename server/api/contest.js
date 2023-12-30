@@ -227,6 +227,8 @@ exports.removePlayer = (req, res) => {
   for (let i = 0; i < req.body.list.length; i++) {
     rmIds.push(req.body.list[i].id);
   }
+  if (!rmIds.length)
+    return;
   db.query('DELETE FROM contestPlayer WHERE id in(?)', [rmIds], (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (data.affectedRows > 0)
