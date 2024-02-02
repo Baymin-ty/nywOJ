@@ -12,7 +12,7 @@
             <img v-if="!this.opt" class="round" alt="Rabbit" src="@/assets/rabbit.jpg">
             <img v-if="this.opt" class="round" alt="Rabbit" src="@/assets/nrabbit.jpg">
           </el-button>
-          <h1 class="rainbow">
+          <h1 class="rainbow" style="font-size: 35px;">
             <span @click="this.opt ^= 1">
               你戳了兔兔 {{ cnt }} 下
             </span>
@@ -152,27 +152,6 @@ export default {
 .round {
   height: 480px;
   border-radius: 15px;
-}
-
-.rainbow {
-  margin: 10px;
-  font-size: 35px;
-  background-image: linear-gradient(92deg, rgb(38, 243, 93) 0%, rgb(254, 171, 58) 100%);
-  color: rgb(38, 82, 243);
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 600;
-  animation: 10s linear 0s infinite normal none running hue;
-}
-
-@keyframes hue {
-  from {
-    -webkit-filter: hue-rotate(0deg);
-  }
-
-  to {
-    -webkit-filter: hue-rotate(-360deg);
-  }
 }
 
 .box-card {
