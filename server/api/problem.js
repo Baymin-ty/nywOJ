@@ -130,32 +130,39 @@ exports.getProblemCasePreview = async (req, res) => {
   const cases = data.cases;
 
   let previewList = [];
-  for (let i in cases) {
-    const inputFile = (await getFile(`./data/${pid}/${cases[i].input}`)),
-      inputStat = fs.statSync(`./data/${pid}/${cases[i].input}`);
-    const outputFile = (await getFile(`./data/${pid}/${cases[i].output}`)),
-      outputStat = fs.statSync(`./data/${pid}/${cases[i].output}`);
-
-    previewList[i] = {
-      index: cases[i].index,
-      inName: cases[i].input,
-      outName: cases[i].output,
-      subtaskId: cases[i].subtaskId,
-      input: {
-        content: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
-        size: bFormat(inputStat.size),
-        create: Format(inputStat.birthtime),
-        modified: Format(inputStat.mtime)
-      },
-      output: {
-        content: outputFile.substring(0, 255) + (outputFile.length > 255 ? '......\n' : ''),
-        size: bFormat(outputStat.size),
-        create: Format(outputStat.birthtime),
-        modified: Format(outputStat.mtime)
-      },
-      edit: 0,
-    }
+  if (fs.existsSync(`./data/${pid}/preview.json`)) {
+    previewList = JSON.parse(await getFile(`./data/${pid}/preview.json`));
   }
+  else {
+    for (let i in cases) {
+      const inputFile = (await getFile(`./data/${pid}/${cases[i].input}`)),
+        inputStat = fs.statSync(`./data/${pid}/${cases[i].input}`);
+      const outputFile = (await getFile(`./data/${pid}/${cases[i].output}`)),
+        outputStat = fs.statSync(`./data/${pid}/${cases[i].output}`);
+
+      previewList[i] = {
+        index: cases[i].index,
+        inName: cases[i].input,
+        outName: cases[i].output,
+        subtaskId: cases[i].subtaskId,
+        input: {
+          content: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
+          size: bFormat(inputStat.size),
+          create: Format(inputStat.birthtime),
+          modified: Format(inputStat.mtime)
+        },
+        output: {
+          content: outputFile.substring(0, 255) + (outputFile.length > 255 ? '......\n' : ''),
+          size: bFormat(outputStat.size),
+          create: Format(outputStat.birthtime),
+          modified: Format(outputStat.mtime)
+        },
+        edit: 0,
+      }
+    }
+    setFile(`./data/${pid}/preview.json`, JSON.stringify(previewList));
+  }
+
   return res.status(200).send({
     data: previewList,
     spj: spj,
@@ -312,6 +319,9 @@ exports.updateCase = (req, res) => {
         pid: pid,
         index: caseInfo.index
       });
+      if (fs.existsSync(`./data/${pid}/preview.json`)) {
+        fs.rmSync(`./data/${pid}/preview.json`);
+      }
       return res.status(200).send({
         inputM: Format(fs.statSync(`./data/${pid}/${caseInfo.inName}`).mtime),
         outputM: Format(fs.statSync(`./data/${pid}/${caseInfo.outName}`).mtime),
@@ -352,6 +362,12 @@ exports.downloadCase = (req, res) => {
         path: `./data/${pid}/config.json`,
         name: 'config.json'
       });
+      if (fs.existsSync(`./data/${pid}/checker.cpp`)) {
+        files.push({
+          path: `./data/${pid}/checker.cpp`,
+          name: 'checker.cpp'
+        });
+      }
       recordEvent(req, 'problem.downloadCase', {
         pid: pid
       });
