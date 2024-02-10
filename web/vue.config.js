@@ -1,4 +1,5 @@
 const { defineConfig } = require('@vue/cli-service')
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin')
 module.exports = defineConfig({
   transpileDependencies: true,
@@ -16,14 +17,15 @@ module.exports = defineConfig({
     if (process.env.NODE_ENV === 'production') {
       config.optimization.splitChunks({
         cacheGroups: {
+          monacoEditor: {
+            test: /[\\/]node_modules[\\/]monaco-editor[\\/]/,
+            name: 'monaco-editor',
+            chunks: 'all',
+            priority: 20,
+          },
           common: {
             name: 'ty',
             chunks: 'all',
-            // minChunks: 1,
-            // minSize: 300000,
-            // maxSize: 500000,
-            // priority: 1,
-            // reuseExistingChunk: true
           },
         }
       })
@@ -31,9 +33,8 @@ module.exports = defineConfig({
   },
   configureWebpack: {
     plugins: [
-      new MonacoWebpackPlugin({
-        languages: ['cpp']
-      })
+      new BundleAnalyzerPlugin(),
+      new MonacoWebpackPlugin({ languages: ['cpp'] })
     ]
   }
 });

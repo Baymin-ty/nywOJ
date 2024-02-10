@@ -7,15 +7,17 @@
             <p class="title">#{{ problemInfo.pid }}、{{ problemInfo.title }}</p>
           </div>
         </template>
-        <monacoEditor v-if="isSubmit" ref="codeEditor" :monacoOptions="monacoOptions" v-model="monacoOptions.value" />
-        <div v-if="isSubmit" style="text-align: center;">
+        <div v-if="isSubmit">
+          <monacoEditor :value="code" @update:value="code = $event" />
           <el-divider />
-          <el-button type="primary" @click="submit">
-            <el-icon class="el-icon--left">
-              <Upload />
-            </el-icon>
-            确认提交
-          </el-button>
+          <div style="text-align: center;">
+            <el-button type="primary" @click="submit">
+              <el-icon class="el-icon--left">
+                <Upload />
+              </el-icon>
+              确认提交
+            </el-button>
+          </div>
         </div>
         <v-md-preview v-show="!isSubmit" :text="problemInfo.description"> </v-md-preview>
       </el-card>
@@ -85,12 +87,7 @@ export default {
       gid: 1,
       problemInfo: {},
       code: '',
-      isSubmit: false,
-      monacoOptions: {
-        value: '',
-        readOnly: false,
-        language: "cpp",
-      },
+      isSubmit: false
     }
   },
   components: {
@@ -98,7 +95,6 @@ export default {
   },
   methods: {
     submit() {
-      this.code = this.$refs.codeEditor.getVal();
       axios.post('/api/judge/submit', {
         pid: this.pid,
         code: this.code

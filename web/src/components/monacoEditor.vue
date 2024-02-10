@@ -1,47 +1,100 @@
 <template>
-  <div ref="container" :style="`height: ${height}px`"></div>
+  <div ref="editorContainer" :style="`height: ${height}px`" />
 </template>
 
 <script>
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+import { defineComponent, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 
-export default {
-  name: "monacoEditor",
+export default defineComponent({
+  name: 'monacoEditor',
+
   props: {
-    monacoOptions: {
-      type: Object,
-      default: () => {
-        return {
-          value: "",
-          theme: "vs",
-        };
-      }
+    language: {
+      type: String,
+      default: 'cpp',
+    },
+    value: {
+      type: String,
+      default: '// your code\n',
+    },
+    theme: {
+      type: String,
+      default: 'vs-light',
+    },
+    readOnly: {
+      type: Boolean,
+      default: false,
     },
     height: {
       type: Number,
-      default: 500
-    }
-  },
-  mounted() {
-    this.init();
-  },
-  methods: {
-    init() {
-      this.$refs.container.innerHTML = "";
-      this.editorOptions = this.monacoOptions;
-      this.editorOptions.automaticLayout = true;
-      this.monacoEditor = monaco.editor.create(
-        this.$refs.container,
-        this.editorOptions
-      );
-      this.monacoEditor.onDidChangeModelContent(() => {
-        this.$emit("change", this.monacoEditor.getValue());
-        this.$emit("input", this.monacoEditor.getValue());
-      });
+      default: 550
     },
-    getVal() {
-      return this.monacoEditor.getValue();
+    fontSize: {
+      type: Number,
+      default: 15
     }
-  }
-};
+  },
+
+
+  emits: ['update:value'], // 定义一个自定义事件，用于更新父组件的 value
+
+  setup(props, { emit }) {
+    const editorContainer = ref(null);
+    let editor;
+
+    onMounted(async () => {
+      const monacoEditor = await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor');
+      editor = monacoEditor.editor.create(editorContainer.value, {
+        value: props.value,
+        language: props.language,
+        theme: props.theme,
+        readOnly: props.readOnly,
+        fontSize: props.fontSize,
+        automaticLayout: true
+      });
+
+      // 监听编辑器内容变化
+      editor.onDidChangeModelContent(() => {
+        const newValue = editor.getValue();
+        emit('update:value', newValue);
+      });
+    });
+
+    watch(() => props.value, (newValue) => {
+      if (editor && newValue !== editor.getValue()) {
+        editor.setValue(newValue);
+      }
+    });
+
+    watch(() => props.language, (newLanguage) => {
+      if (editor) {
+        editor.setModelLanguage(editor.getModel(), newLanguage);
+      }
+    });
+
+    watch(() => props.readOnly, (newReadOnly) => {
+      if (editor) {
+        editor.updateOptions({ readOnly: newReadOnly });
+      }
+    });
+
+    watch(() => props.fontSize, (newSize) => {
+      if (editor) {
+        editor.updateOptions({ fontSize: newSize });
+      }
+    });
+
+    onBeforeUnmount(() => {
+      if (editor) {
+        editor.dispose();
+      }
+    });
+
+    return {
+      editorContainer,
+    };
+  },
+});
 </script>
+
+<style scoped></style>

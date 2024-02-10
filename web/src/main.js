@@ -16,8 +16,12 @@ import '@kangc/v-md-editor/lib/style/codemirror-editor.css';
 import githubTheme from '@kangc/v-md-editor/lib/theme/github.js';
 import '@kangc/v-md-editor/lib/theme/style/github.css';
 
-// highlightjs
-import hljs from 'highlight.js';
+// highlightjs 核心代码
+import hljs from 'highlight.js/lib/core';
+// 按需引入语言包
+import cpp from 'highlight.js/lib/languages/cpp';
+
+hljs.registerLanguage('cpp', cpp);
 
 // codemirror 编辑器的相关资源
 import Codemirror from 'codemirror';

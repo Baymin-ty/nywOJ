@@ -68,7 +68,7 @@
             </el-button>
           </div>
         </template>
-        <monacoEditor v-if="hasTaken" ref="codeEditor" :monacoOptions="monacoOptions" v-model="monacoOptions.value" />
+        <monacoEditor v-if="hasTaken" :value="code" @update:value="code = $event" :readOnly="true" />
       </el-card>
     </el-col>
   </el-row>
@@ -176,7 +176,7 @@ export default {
       await axios.post(this.isContest ? '/api/contest/getSubmissionInfo' : '/api/judge/getSubmissionInfo', { sid: this.sid }).then(res => {
         if (res.status === 200) {
           this.submissionInfo = res.data.data;
-          this.monacoOptions.value = this.submissionInfo.code;
+          this.code = this.submissionInfo.code;
           this.hasTaken = true;
           this.submissionInfo.compileResult = "```\n" + this.submissionInfo.compileResult + "\n```";
           this.table[0] = this.submissionInfo;
