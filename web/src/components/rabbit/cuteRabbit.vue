@@ -1,25 +1,24 @@
 <template>
   <div style="margin: auto;max-width: 1500px;">
     <el-row>
-      <el-col :span="10">
+      <el-col :span="9">
         <el-card class="box-card" shadow="hover" style="text-align: center;">
           <template #header>
             <div class="card-header">
               Tiddar (uid: {{ this.uid }} 用户名: {{ this.name }})
             </div>
           </template>
-          <el-button style="height: 500px; width: 400px;" @click="fun" round :disabled="!finished">
-            <img v-if="!this.opt" class="round" alt="Rabbit" src="@/assets/rabbit.jpg">
-            <img v-if="this.opt" class="round" alt="Rabbit" src="@/assets/nrabbit.jpg">
+          <el-button style="height: 500px; width: 350px;" @click="fun" round :disabled="!finished">
+            <img class="round" :alt="pic[opt].name" :src="pic[opt].loc">
           </el-button>
           <h1 class="rainbow" style="font-size: 35px;">
-            <span @click="this.opt ^= 1">
+            <span @click="opt = (opt + 1) % tot">
               你戳了兔兔 {{ cnt }} 下
             </span>
           </h1>
         </el-card>
       </el-col>
-      <el-col :span="14">
+      <el-col :span="15">
         <el-card class="box-card" shadow="hover">
           <template #header>
             <div class="card-header">
@@ -35,15 +34,15 @@
           <el-table v-loading="!finished" :data="info" height="600px" :row-class-name="tableRowClassName"
             :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
             <el-table-column prop="id" label="#" min-width="15%" />
-            <el-table-column prop="time" label="点击时间" min-width="23%" />
+            <el-table-column prop="time" label="点击时间" min-width="25%" />
             <el-table-column prop="name" label="用户名" min-width="15%">
               <template #default="scope">
-                <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)"> {{ scope.row.name
-                }}</span>
+                <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)">
+                  {{ scope.row.name }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="ip" label="IP" min-width="20%" />
-            <el-table-column prop="iploc" label="IP属地" min-width="27%" />
+            <el-table-column prop="iploc" label="IP属地" min-width="25%" />
           </el-table>
         </el-card>
       </el-col>
@@ -66,7 +65,22 @@ export default {
       uid: 0,
       name: "请登录",
       ok: true,
-      opt: 0
+      opt: 0,
+      tot: 3,
+      pic: [
+        {
+          name: '兔兔',
+          loc: require('@/assets/rabbit.jpg')
+        },
+        {
+          name: '兔兔(拟人)',
+          loc: require('@/assets/nrabbit.jpg')
+        },
+        {
+          name: '龙龙',
+          loc: require('@/assets/longlong.jpg')
+        }
+      ]
     }
   },
   methods: {
