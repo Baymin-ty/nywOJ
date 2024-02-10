@@ -17,7 +17,7 @@ const options = {
 const sessionStore = new MySQLStore(options);
 
 const getClientIp = (req) => {
-  return req.headers['x-forwarded-for'];
+  return req.headers['x-forwarded-for'].split(',')[0];
 }
 
 app.use(session({
