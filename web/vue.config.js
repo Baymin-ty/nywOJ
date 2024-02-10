@@ -33,7 +33,7 @@ module.exports = defineConfig({
   },
   configureWebpack: {
     plugins: [
-      new BundleAnalyzerPlugin(),
+      // new BundleAnalyzerPlugin(),
       new MonacoWebpackPlugin({ languages: ['cpp'] })
     ]
   }
