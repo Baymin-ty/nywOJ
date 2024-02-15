@@ -1,7 +1,7 @@
 <template>
   <div style="margin: auto;max-width: 1500px;">
     <el-row>
-      <el-col :span="9">
+      <el-col :xs="24" :sm="24" :md="9">
         <el-card class="box-card" shadow="hover" style="text-align: center;">
           <template #header>
             <div class="card-header">
@@ -18,7 +18,7 @@
           </h1>
         </el-card>
       </el-col>
-      <el-col :span="15">
+      <el-col :xs="24" :sm="24" :md="15">
         <el-card class="box-card" shadow="hover">
           <template #header>
             <div class="card-header">

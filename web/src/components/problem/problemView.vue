@@ -1,6 +1,6 @@
 <template>
   <el-row style="margin: auto;max-width: 1500px;min-width: 600px;">
-    <el-col :span="18">
+    <el-col :xs="24" :sm="24" :md="18">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -22,7 +22,7 @@
         <v-md-preview v-show="!isSubmit" :text="problemInfo.description"> </v-md-preview>
       </el-card>
     </el-col>
-    <el-col :span="6">
+    <el-col :xs="24" :sm="24" :md="6">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">

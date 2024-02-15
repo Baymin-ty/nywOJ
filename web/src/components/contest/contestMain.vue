@@ -76,10 +76,10 @@
                 比赛管理
               </template>
               <el-row>
-                <el-col :span="15">
-                  <v-md-editor height="600px" style="padding-right: 100px;" v-model="tmpInfo.description"></v-md-editor>
+                <el-col :xs="24" :sm="24" :md="15" style="margin-bottom: 20px;">
+                  <v-md-editor height="580px" style="padding-right: 100px;" v-model="tmpInfo.description"></v-md-editor>
                 </el-col>
-                <el-col :span="9" style="padding-left: 30px;">
+                <el-col :xs="24" :sm="24" :md="9" style="padding-left: 30px;">
                   <el-form>
                     <el-form-item label="比赛标题">
                       <el-input v-model="tmpInfo.title" :disabled="tmpInfo.done" />

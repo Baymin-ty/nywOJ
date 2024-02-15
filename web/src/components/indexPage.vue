@@ -1,6 +1,6 @@
 <template>
-  <el-row style="margin: auto;max-width: 1500px;min-width: 600px;">
-    <el-col :span="16">
+  <el-row style="margin: auto;max-width: 1500px;">
+    <el-col :xs="24" :sm="24" :md="16">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -19,19 +19,19 @@
           </div>
         </template>
         <el-table :data="announcements" v-loading="!announcements.length">
-          <el-table-column prop="title" label="标题" width="auto">
+          <el-table-column prop="title" label="标题" min-width="60%">
             <template #default="scope">
               <span class="rlink" @click="this.$router.push('/announcement/' + scope.row.aid)"> {{
                 scope.row.title
               }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="time" label="发布时间" width="200px" />
+          <el-table-column prop="time" label="发布时间" min-width="40%" />
         </el-table>
       </el-card>
       <cuteRank />
     </el-col>
-    <el-col :span="8" style="min-width: 300px;">
+    <el-col :xs="24" :sm="24" :md="8">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">

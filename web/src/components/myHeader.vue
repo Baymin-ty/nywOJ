@@ -1,10 +1,8 @@
 <template>
-  <el-menu class="el-menu-demo" mode="horizontal" :default-active="this.$store.state.activeTitle" :router="true">
-    <img v-if="!this.$store.state.uid"
-      style="width: 40px; height: 40px; margin-top: 10px; margin-right: 20px; border-radius: 5px"
-      src="../assets/icon.png">
-    <el-menu-item index="/rabbit" style="height: auto;" v-if="this.$store.state.uid">
-      <img style="width: 40px; height: 40px; margin-top: 5px; border-radius: 5px" src="../assets/icon.png">
+  <el-menu mode="horizontal" :default-active="this.$store.state.activeTitle" :router="true">
+    <img v-if="!this.$store.state.uid" style="margin-top: 10px; margin-right: 20px" src="../assets/icon.png" class="icon">
+    <el-menu-item index="/rabbit" style="height: auto" v-if="this.$store.state.uid">
+      <img style="margin-top: 5px;" src="../assets/icon.png" class="icon">
     </el-menu-item>
     <el-menu-item index="/">
       <el-icon>
@@ -117,10 +115,10 @@ export default {
 </script>
 
 <style>
-.round {
-  height: 400px;
-  border-radius: 10px;
-  margin: 10px;
+.icon {
+  border-radius: 5px;
+  width: 40px;
+  height: 40px;
 }
 
 .pd .el-dialog__body {

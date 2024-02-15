@@ -1,5 +1,5 @@
 <template>
-  <el-container style="min-width: 1000px;">
+  <el-container style="min-width: 992px;">
     <el-header>
       <myHeader />
     </el-header>
@@ -118,5 +118,11 @@ blockquote {
 
 #footer>div {
   margin: 5px;
+}
+
+@media (max-width: 768px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
 }
 </style>
