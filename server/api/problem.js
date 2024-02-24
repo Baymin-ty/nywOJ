@@ -266,6 +266,9 @@ exports.updateSubtaskId = async (req, res) => {
       recordEvent(req, 'problem.updateConfig', {
         pid: pid
       });
+      if (fs.existsSync(`./data/${pid}/preview.json`)) {
+        fs.rmSync(`./data/${pid}/preview.json`);
+      }
       return res.status(200).send({ message: 'success' });
     } catch (err) {
       return res.status(202).send({ message: String(err) });
