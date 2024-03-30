@@ -37,11 +37,15 @@ exports.add = (req, res) => {
       message: err
     });
     if (data.affectedRows > 0) {
-      db.query("UPDATE userInfo SET clickCnt=clickCnt+1 WHERE uid=?", [uid]);
-      dayClick[uid]++;
-      dayClick.lastClick = new Date();
-      return res.status(200).send({
-        message: 'success',
+      db.query("UPDATE userInfo SET clickCnt=clickCnt+1 WHERE uid=?", [uid], (err2, data2) => {
+        if (err2) return res.status(202).send({
+          message: err2
+        });
+        dayClick[uid]++;
+        dayClick.lastClick = new Date();
+        return res.status(200).send({
+          message: 'success',
+        });
       });
     } else {
       return res.status(202).send({

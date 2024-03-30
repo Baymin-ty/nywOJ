@@ -8,7 +8,7 @@
               Tiddar (uid: {{ this.uid }} 用户名: {{ this.name }})
             </div>
           </template>
-          <el-button style="height: 500px; width: 350px;" @click="fun" round :disabled="!finished">
+          <el-button style="height: 500px; width: 350px;" @click="add()" round :disabled="!finished">
             <img class="round" :alt="pic[opt].name" :src="pic[opt].loc">
           </el-button>
           <h1 class="rainbow" style="font-size: 35px;">
@@ -84,11 +84,6 @@ export default {
     }
   },
   methods: {
-    async fun() {
-      await this.add();
-      this.getCnt();
-      this.all();
-    },
     all() {
       this.finished = 0;
       axios.post('/api/rabbit/all').then(res => {
@@ -114,14 +109,16 @@ export default {
         });
       });
     },
-    add() {
-      axios.post('/api/rabbit/add').then(res => {
+    async add() {
+      await axios.post('/api/rabbit/add').then(res => {
         if (res.status === 200) {
           ElMessage({
             message: '添加点击信息成功',
             type: 'success',
             duration: 1000,
           });
+          this.all();
+          this.getCnt();
         } else {
           ElMessage({
             message: '添加点击信息失败' + res.data.message,
