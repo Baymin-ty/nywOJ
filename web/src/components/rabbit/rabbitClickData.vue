@@ -37,7 +37,7 @@ export default {
           this.userCnt[i] = res.data.data[i].userCnt;
         }
       } else ElMessage({
-        message: '请稍后再试',
+        message: res.data.message,
         type: 'error',
         duration: 2000,
       });
