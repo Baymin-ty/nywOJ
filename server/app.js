@@ -35,9 +35,6 @@ app.use((req, res, next) => {
   // if (!req.headers.referer || !req.headers.referer.match('^https:\/\/ty.szsyzx.cn\/')) {
   //     return res.status(403).end('403 Forbidden');
   // }
-  res.setTimeout(10000, () => {
-    return res.status(408).end("Request Timeout");
-  });
   req.session.ip = getClientIp(req);
   req.useragent = parser(req.headers['user-agent']);
   if (req.session.uid) {

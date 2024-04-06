@@ -25,7 +25,7 @@ exports.add = (req, res) => {
   if (!dayClick[uid]) dayClick[uid] = 0;
   const cnt = dayClick[uid];
 
-  if (cnt > 10000) {
+  if (cnt >= 10000) {
     return res.status(202).send({
       message: "请明天再试"
     })
