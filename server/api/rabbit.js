@@ -86,24 +86,27 @@ exports.getRankInfo = (req, res) => {
 }
 
 exports.getClickData = (req, res) => {
-  const quid = req.body.uid;
+  let quid = req.body.uid, day = req.body.day;
+  if (typeof day === 'undefined' || day > 100)
+    day = 6;
+  else day = day - 1;
   const sql = `
   SELECT 
     date,
     SUM(click) AS clickCnt,
     COUNT(DISTINCT uid) AS userCnt
   FROM rabbitstat
-  WHERE date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) ` +
+  WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? DAY) ` +
     (typeof quid !== 'undefined' ? `AND uid = ${SqlString.escape(quid)} ` : "") +
     `GROUP BY date
   ORDER BY date;
   `;
-  db.query(sql, (err, data) => {
+  db.query(sql, [day], (err, data) => {
     if (err) return res.status(202).send({
       message: err
     });
     let mp = [], now = new Date();
-    for (let i = 6; i >= 0; i--)
+    for (let i = day; i >= 0; i--)
       mp[Format(new Date(now.getTime() - 1000 * 3600 * 24 * i)).substring(5, 10)] = [0, 0];
     for (let i = 0; i < data.length; i++)
       mp[Format(data[i].date).substring(5, 10)] = [data[i].clickCnt, data[i].userCnt];
