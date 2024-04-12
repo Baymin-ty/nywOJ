@@ -3,7 +3,7 @@
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          更新于: {{ updateTime }}
+          点击数统计
         </div>
       </template>
       <div id="clickCnt" style="max-width:1000px; margin: 0 auto;" :style="{ width: '100%', height: '300px' }"></div>
@@ -24,13 +24,11 @@ export default {
       date: [],
       clickCnt: [],
       userCnt: [],
-      updateTime: null,
     }
   },
   async mounted() {
     await axios.post('/api/rabbit/getClickData').then(res => {
       if (res.status === 200) {
-        this.updateTime = res.data.updateTime;
         for (let i = 0; i < res.data.data.length; i++) {
           this.date[i] = res.data.data[i].date;
           this.clickCnt[i] = res.data.data[i].clickCnt;
@@ -43,108 +41,100 @@ export default {
       });
     }).catch(err => {
       ElMessage({
-        message: '添加点击信息失败' + err.message,
+        message: '获取统计信息失败' + err.message,
         type: 'error',
         duration: 2000,
       });
     });
     let clickCnt = chart.init(document.getElementById("clickCnt"));
     clickCnt.setOption({
-      "grid": {
-        "left": 10,
-        "top": 60,
-        "right": 10,
-        "bottom": 50,
-        "containLabel": true
+      grid: {
+        left: 10,
+        top: 60,
+        right: 10,
+        bottom: 50,
+        containLabel: true
       },
-      "title": {
-        "show": true,
-        "text": "每日点击总次数",
-        "left": "center",
-        "top": "top"
+      title: {
+        show: true,
+        text: '每日点击总次数',
+        left: 'center',
+        top: 'top'
       },
-      "xAxis": {
-        "type": "category",
-        "data": this.date,
-        "axisLine": {
-          "show": true
+      xAxis: {
+        type: 'category',
+        data: this.date,
+        axisLine: {
+          show: true
         },
-        "axisTick": {
-          "show": false
+      },
+      yAxis: {
+        type: 'value',
+      },
+      tooltip: {
+        show: true,
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
         }
       },
-      "yAxis": {
-        "type": "value",
-        "axisLine": {
-          "show": false
-        },
-        "axisTick": {
-          "show": false
-        }
-      },
-      "tooltip": {
-        "show": true,
-        "trigger": "axis",
-        "axisPointer": {
-          "type": "none"
-        }
-      },
-      "series": [
+      series: [
         {
-          "name": "总次数",
-          "type": "line",
-          "color": "#5470c6",
-          "data": this.clickCnt
-        }
+          name: '总次数',
+          type: 'bar',
+          color: '#5470c6',
+          barWidth: '60%',
+          label: {
+            show: true,
+            position: 'top'
+          },
+          data: this.clickCnt
+        },
       ]
     });
     let userCnt = chart.init(document.getElementById("userCnt"));
     userCnt.setOption({
-      "grid": {
-        "left": 10,
-        "top": 60,
-        "right": 10,
-        "bottom": 50,
-        "containLabel": true
+      grid: {
+        left: 10,
+        top: 60,
+        right: 10,
+        bottom: 50,
+        containLabel: true
       },
-      "title": {
-        "show": true,
-        "text": "每日点击用户数",
-        "left": "center",
-        "top": "top"
+      title: {
+        show: true,
+        text: '每日点击用户数',
+        left: 'center',
+        top: 'top'
       },
-      "xAxis": {
-        "type": "category",
-        "data": this.date,
-        "axisLine": {
-          "show": true
+      xAxis: {
+        type: 'category',
+        data: this.date,
+        axisLine: {
+          show: true
         },
-        "axisTick": {
-          "show": false
+      },
+      yAxis: {
+        type: 'value',
+      },
+      tooltip: {
+        show: true,
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
         }
       },
-      "yAxis": {
-        "type": "value",
-        "axisLine": {
-          "show": false
-        },
-        "axisTick": {
-          "show": false
-        }
-      },
-      "tooltip": {
-        "show": true,
-        "trigger": "axis",
-        "axisPointer": {
-          "type": "none"
-        }
-      },
-      "series": [
+      series: [
         {
-          "name": "用户数",
-          "type": "line",
-          "color": "green",
-          "data": this.userCnt
+          name: '用户数',
+          type: 'bar',
+          color: 'green',
+          barWidth: '60%',
+          label: {
+            show: true,
+            position: 'top'
+          },
+          data: this.userCnt
         }
       ]
     });
