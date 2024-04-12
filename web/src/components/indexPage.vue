@@ -23,7 +23,7 @@
             <template #default="scope">
               <span class="rlink" @click="this.$router.push('/announcement/' + scope.row.aid)"> {{
                 scope.row.title
-              }}</span>
+                }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="time" label="发布时间" min-width="40%" />
@@ -66,7 +66,7 @@ export default {
   },
   data() {
     return {
-      motto: '',
+      motto: {},
       announcements: [],
       gid: 0,
     }
@@ -74,7 +74,15 @@ export default {
   methods: {
     updateHitokoto() {
       axios.post('https://v1.hitokoto.cn/?c=a').then(res => {
-        this.motto = res.data
+        if (res.status === 200)
+          this.motto = res.data
+        else {
+          this.motto.hitokoto = "加载一言时发生错误。";
+          this.motto.from = "/";
+        }
+      }).catch(() => {
+        this.motto.hitokoto = "加载一言时发生错误。";
+        this.motto.from = "/";
       });
     },
     getAnnouncements() {
