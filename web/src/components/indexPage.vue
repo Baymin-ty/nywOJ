@@ -23,7 +23,7 @@
             <template #default="scope">
               <span class="rlink" @click="this.$router.push('/announcement/' + scope.row.aid)"> {{
                 scope.row.title
-              }}</span>
+                }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="time" label="发布时间" min-width="40%" />
