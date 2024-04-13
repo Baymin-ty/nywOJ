@@ -2,6 +2,9 @@ const { defineConfig } = require('@vue/cli-service')
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin')
 module.exports = defineConfig({
+  publicPath: process.env.NODE_ENV === 'production'
+    ? 'https://cdn.ty.szsyzx.cn/'
+    : '/',
   transpileDependencies: true,
   productionSourceMap: false,
   devServer: {
