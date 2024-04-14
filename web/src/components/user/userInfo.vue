@@ -32,6 +32,7 @@
         </div>
       </el-col>
       <el-col :span="17">
+        <div id="clickCnt" :style="{ width: '100%', height: '200px', textAlign: 'center' }"></div>
         <el-card id="main" shadow="never">
           <v-md-preview :text="info.motto" />
         </el-card>
@@ -42,6 +43,7 @@
 
 <script>
 import axios from "axios";
+import chart from '@/chart/myChart'
 
 export default {
   name: "userInfo",
@@ -52,6 +54,8 @@ export default {
       newMotto: '/',
       avatarAddress: '',
       group: ['', '普通用户', '管理员', '超级管理员'],
+      date: [],
+      clickCnt: [],
     }
   },
   methods: {
@@ -75,10 +79,69 @@ export default {
       if (!qq || !qq.length) return 'https://cdn.ty.szsyzx.cn/default-avatar.svg';
       return `https://q1.qlogo.cn/g?b=qq&nk=${qq}&s=5`;
     },
+    async getUserClickData() {
+      await axios.post('/api/rabbit/getClickData', {
+        uid: this.uid,
+        day: 14
+      }).then(res => {
+        for (let i = 0; i < res.data.data.length; i++) {
+          this.date[i] = res.data.data[i].date;
+          this.clickCnt[i] = res.data.data[i].clickCnt;
+        }
+      });
+      let clickCnt = chart.init(document.getElementById("clickCnt"));
+      clickCnt.setOption({
+        grid: {
+          left: 10,
+          top: 40,
+          right: 10,
+          bottom: 10,
+          containLabel: true
+        },
+        title: {
+          show: true,
+          text: '兔兔每日点击数',
+          left: 'center',
+          top: 'top'
+        },
+        xAxis: {
+          type: 'category',
+          data: this.date,
+          axisLine: {
+            show: true
+          },
+        },
+        yAxis: {
+          type: 'value',
+        },
+        tooltip: {
+          show: true,
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        series: [
+          {
+            name: '次数',
+            type: 'bar',
+            color: '#5470c6',
+            barWidth: '60%',
+            label: {
+              show: true,
+              position: 'top'
+            },
+            data: this.clickCnt
+          },
+        ]
+      });
+      window.onresize = () => { clickCnt.resize() };
+    }
   },
-  async mounted() {
+  mounted() {
     this.uid = this.$route.params.uid;
-    await this.all();
+    this.all();
+    this.getUserClickData();
   }
 }
 </script>
