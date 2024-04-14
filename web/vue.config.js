@@ -3,7 +3,7 @@ const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPl
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin')
 module.exports = defineConfig({
   publicPath: process.env.NODE_ENV === 'production'
-    ? 'https://cdn.ty.szsyzx.cn/'
+    ? 'https://cdn.ty.szsyzx.cn/static/'
     : '/',
   transpileDependencies: true,
   productionSourceMap: false,
