@@ -272,7 +272,10 @@ export default {
       if (!i.edit) {
         axios.post('/api/problem/getCase', {
           pid: this.pid,
-          caseInfo: i
+          caseInfo: {
+            inName: i.inName,
+            outName: i.outName
+          }
         }).then(res => {
           if (res.status === 200) {
             i.edit = 1;

@@ -1,6 +1,6 @@
 <template>
   <el-row style="margin: auto;max-width: 1500px;min-width: 800px;">
-    <el-col :span="18">
+    <el-col :xs="24" :sm="24" :md="18">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -11,7 +11,7 @@
         <v-md-editor height="600px" v-model="problemInfo.description"></v-md-editor>
       </el-card>
     </el-col>
-    <el-col :span="6">
+    <el-col :xs="24" :sm="24" :md="6">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -43,7 +43,7 @@
           <el-descriptions-item label=" 出题人">
             <span class="rlink" @click="this.$router.push('/user/' + problemInfo.publisherUid)"> {{
               problemInfo.publisher
-            }}</span>
+              }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="发布时间"> {{ problemInfo.time }} </el-descriptions-item>
           <el-descriptions-item label="是否公开">
