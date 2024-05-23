@@ -16,7 +16,9 @@
             </el-button-group>
           </div>
         </template>
-        <v-md-editor height="600px" v-model="announcementInfo.description"></v-md-editor>
+        <v-md-editor height="600px"
+          left-toolbar="undo redo clear | h bold italic strikethrough quote | ul ol table hr | link image code"
+          v-model="announcementInfo.description"></v-md-editor>
       </el-card>
     </el-col>
   </el-row>

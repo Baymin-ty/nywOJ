@@ -77,7 +77,9 @@
               </template>
               <el-row>
                 <el-col :xs="24" :sm="24" :md="15" style="margin-bottom: 20px;">
-                  <v-md-editor height="580px" style="padding-right: 100px;" v-model="tmpInfo.description"></v-md-editor>
+                  <v-md-editor height="580px"
+                    left-toolbar="undo redo clear | h bold italic strikethrough quote | ul ol table hr | link image code"
+                    style="padding-right: 100px;" v-model="tmpInfo.description"></v-md-editor>
                 </el-col>
                 <el-col :xs="24" :sm="24" :md="9" style="padding-left: 30px;">
                   <el-form>

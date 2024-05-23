@@ -46,7 +46,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="time" label="发布时间" width="200px" />
-        <el-table-column prop="publisher" label="出题人" width="120px">
+        <el-table-column prop="publisher" label="出题人" width="160px">
           <template #default="scope">
             <span class="rlink" @click="this.$router.push('/user/' + scope.row.publisherUid)">
               {{ scope.row.publisher }}

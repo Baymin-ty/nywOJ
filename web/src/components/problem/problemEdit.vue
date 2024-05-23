@@ -8,7 +8,9 @@
                 style="width: 200px;" /></p>
           </div>
         </template>
-        <v-md-editor height="600px" v-model="problemInfo.description"></v-md-editor>
+        <v-md-editor height="600px"
+          left-toolbar="undo redo clear | h bold italic strikethrough quote | ul ol table hr | link image code"
+          v-model="problemInfo.description"></v-md-editor>
       </el-card>
     </el-col>
     <el-col :xs="24" :sm="24" :md="6">
@@ -43,7 +45,7 @@
           <el-descriptions-item label=" 出题人">
             <span class="rlink" @click="this.$router.push('/user/' + problemInfo.publisherUid)"> {{
               problemInfo.publisher
-              }}</span>
+            }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="发布时间"> {{ problemInfo.time }} </el-descriptions-item>
           <el-descriptions-item label="是否公开">
