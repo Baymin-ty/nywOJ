@@ -175,7 +175,14 @@ router.beforeEach(async (to, from, next) => {
             }
         });
     }
-    if (to.path === '/' || to.path === '/user/reg' || to.path === '/user/login')
+    if (to.path === '/' ||
+        to.path === '/user/reg' ||
+        to.path === '/user/login' ||
+        to.path === '/rabbit' ||
+        to.path === '/problem' ||
+        to.path === '/contest' ||
+        to.path === '/submission' ||
+        /^\/announcement\/\w+$/.test(to.path))
         next();
     else if (store.state.uid) {
         if (!per[to.path] || store.state.gid >= per[to.path])

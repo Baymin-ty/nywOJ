@@ -1,7 +1,6 @@
 <template>
   <el-menu mode="horizontal" :default-active="this.$store.state.activeTitle" :router="true">
-    <img v-if="!this.$store.state.uid" style="margin-top: 10px; margin-right: 20px" src="../assets/icon.png" class="icon">
-    <el-menu-item index="/rabbit" style="height: auto" v-if="this.$store.state.uid">
+    <el-menu-item index="/rabbit" style="height: auto">
       <img style="margin-top: 5px;" src="../assets/icon.png" class="icon">
     </el-menu-item>
     <el-menu-item index="/">
@@ -10,19 +9,19 @@
       </el-icon>
       首页
     </el-menu-item>
-    <el-menu-item v-if="this.$store.state.uid" index="/problem">
+    <el-menu-item index="/problem">
       <el-icon>
         <Files />
       </el-icon>
       题库
     </el-menu-item>
-    <el-menu-item v-if="this.$store.state.uid" index="/contest">
+    <el-menu-item index="/contest">
       <el-icon>
         <Trophy />
       </el-icon>
       比赛
     </el-menu-item>
-    <el-menu-item v-if="this.$store.state.uid" index="/submission">
+    <el-menu-item index="/submission">
       <el-icon>
         <DataAnalysis />
       </el-icon>
