@@ -99,6 +99,7 @@ export default {
       });
     },
     getCnt() {
+      if (!this.uid) return;
       axios.post('/api/rabbit/getClickCnt').then(res => {
         this.cnt = res.data.clickCnt;
       }).catch(err => {
@@ -110,6 +111,14 @@ export default {
       });
     },
     async add() {
+      if (!this.uid) {
+        ElMessage({
+          message: '请先登录',
+          type: 'error',
+          duration: 2000,
+        });
+        return;
+      }
       await axios.post('/api/rabbit/add').then(res => {
         if (res.status === 200) {
           ElMessage({

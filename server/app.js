@@ -57,6 +57,7 @@ app.use((req, res, next) => {
       res.status(403).end('403 Forbidden');
     next();
   } else {
+    req.session.gid = 1;
     if (req.url === '/api/user/login' ||
       req.url === '/api/user/reg' ||
       req.url === '/api/user/setUserEmail' ||
@@ -64,7 +65,13 @@ app.use((req, res, next) => {
       req.url === '/api/user/getUserInfo' ||
       req.url === '/api/common/getAnnouncementList' ||
       req.url === '/api/rabbit/getRankInfo' ||
-      req.url === '/api/rabbit/getClickData'
+      req.url === '/api/rabbit/getClickData' ||
+      // grant new access
+      req.url === '/api/problem/getProblemList' ||
+      req.url === '/api/rabbit/all' ||
+      req.url === '/api/contest/getContestList' ||
+      req.url === '/api/judge/getSubmissionList' ||
+      req.url === '/api/common/getAnnouncementInfo'
     )
       next();
     else res.status(404).end('404 Not Found');
