@@ -165,6 +165,9 @@ router.afterEach((to) => {
     }
 })
 router.beforeEach(async (to, from, next) => {
+    if (window.location.hostname !== 'ty.szsyzx.cn' && window.location.hostname !== 'localhost') {
+        window.location.href = 'https://ty.szsyzx.cn';
+    }
     if (!store.state.uid) {
         await axios.post('/api/user/getUserInfo').then(res => {
             if (res.status === 200) {
