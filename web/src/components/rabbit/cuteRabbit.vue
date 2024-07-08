@@ -33,9 +33,9 @@
           </template>
           <el-table v-loading="!finished" :data="info" height="600px" :row-class-name="tableRowClassName"
             :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
-            <el-table-column prop="id" label="#" min-width="15%" />
+            <el-table-column prop="id" label="#" min-width="13%" />
             <el-table-column prop="time" label="点击时间" min-width="25%" />
-            <el-table-column prop="name" label="用户名" min-width="15%">
+            <el-table-column prop="name" label="用户名" min-width="17%">
               <template #default="scope">
                 <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)">
                   {{ scope.row.name }}</span>
@@ -158,7 +158,7 @@ export default {
       return style;
     }
   },
-  mounted: function () {
+  mounted() {
     this.uid = this.$store.state.uid;
     this.name = this.$store.state.name;
     this.getCnt();
