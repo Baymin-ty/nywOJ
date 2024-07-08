@@ -7,6 +7,7 @@ export default createStore({
         gid: 0,
         ip: '',
         path: '',
+        avatar: ''
     },
     mutations: {},
     actions: {},

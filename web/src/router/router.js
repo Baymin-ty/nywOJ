@@ -175,6 +175,7 @@ router.beforeEach(async (to, from, next) => {
                 store.state.name = res.data.name;
                 store.state.gid = res.data.gid;
                 store.state.ip = res.data.ip;
+                store.state.avatar = res.data.avatar;
             }
         });
     }

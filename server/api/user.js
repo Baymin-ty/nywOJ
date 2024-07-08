@@ -128,13 +128,34 @@ exports.login = async (req, res) => {
 }
 
 exports.getUserInfo = (req, res) => {
-  if (req.session.uid) return res.status(200).send({
-    uid: req.session.uid,
-    name: req.session.name,
-    email: req.session.email,
-    ip: req.session.ip,
-    gid: req.session.gid,
-  });
+  if (req.session.uid) {
+    db.query("SELECT * FROM userInfo WHERE uid=?", [req.session.uid], (err, data) => {
+      if (!data.length) return res.status(202).send({
+        message: "获取用户信息错误"
+      });
+      if (err) return res.status(202).send({
+        message: err
+      });
+      req.session.name = data[0].name;
+      req.session.email = data[0].email;
+      req.session.gid = data[0].gid;
+      if (!data[0].inUse) {
+        req.session.destroy();
+        return res.status(202).send({ message: "请先登录" });
+      }
+      if (data[0].qq)
+        req.session.avatar = `https://q1.qlogo.cn/g?b=qq&nk=${data[0].qq}&s=3`
+      else req.session.avatar = 'https://cdn.ty.szsyzx.cn/default-avatar.svg'
+      return res.status(200).send({
+        uid: req.session.uid,
+        name: req.session.name,
+        email: req.session.email,
+        ip: req.session.ip,
+        gid: req.session.gid,
+        avatar: req.session.avatar
+      });
+    });
+  }
   else return res.status(202).send({ message: "请先登录" });
 }
 
