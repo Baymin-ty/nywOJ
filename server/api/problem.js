@@ -52,10 +52,15 @@ exports.updateProblem = (req, res) => {
         message: 'isPublic格式错误'
       });
     }
+    if (info.level < 0 || info.level > 5) {
+      return res.status(202).send({
+        message: '难度评级格式错误'
+      });
+    }
     info.isPublic = info.isPublic ? 1 : 0;
     if (info.type === '传统文本比较') info.type = 0;
     else if (info.type === 'Special Judge') info.type = 1;
-    db.query('UPDATE problem SET title=?,description=?,timeLimit=?,memoryLimit=?,isPublic=?,type=?,tags=? WHERE pid=?', [info.title, info.description, info.timeLimit, info.memoryLimit, info.isPublic, info.type, JSON.stringify(info.tags), pid], (err, data) => {
+    db.query('UPDATE problem SET title=?,description=?,timeLimit=?,memoryLimit=?,isPublic=?,type=?,tags=?,level=? WHERE pid=?', [info.title, info.description, info.timeLimit, info.memoryLimit, info.isPublic, info.type, JSON.stringify(info.tags), info.level, pid], (err, data) => {
       if (err) return res.status(202).send({
         message: err
       });
@@ -77,7 +82,7 @@ exports.getProblemList = (req, res) => {
     pageSize = 20;
   if (!pageId) pageId = 1;
   pageId = SqlString.escape(pageId);
-  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.publisher as publisherUid,u.`name` as publisher,p.isPublic FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher" +
+  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.level,p.publisher as publisherUid,u.`name` as publisher,p.isPublic FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher" +
     (req.session.gid > 1 ? "" : " WHERE isPublic=1") + " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });
@@ -97,7 +102,7 @@ const ptype = ['传统文本比较', 'Special Judge'];
 
 exports.getProblemInfo = (req, res) => {
   const pid = req.body.pid;
-  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.description,p.time,p.timeLimit,p.memoryLimit,p.isPublic,p.type,p.tags,p.publisher as publisherUid,u.`name` as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=? "
+  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.description,p.time,p.timeLimit,p.memoryLimit,p.isPublic,p.type,p.tags,p.level,p.publisher as publisherUid,u.`name` as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=? "
     + (req.session.gid > 1 ? "" : "AND isPublic=1");
   db.query(sql, [pid], (err, data) => {
     if (err) return res.status(202).send({ message: err });

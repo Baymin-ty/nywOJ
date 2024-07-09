@@ -38,10 +38,15 @@
               {{ tag }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label=" 出题人">
-            <span class="rlink" @click="this.$router.push('/user/' + problemInfo.publisherUid)"> {{
-              problemInfo.publisher
-            }}</span>
+          <el-descriptions-item label="难度评级">
+            <el-button size="small" :color="levels[problemInfo.level]?.color ?? '#BFBFBF'" :dark="true">
+              <span style="color: white; font-weight: 600; font-size: 14px;">
+                {{ levels[problemInfo.level]?.label ?? '未知难度' }} </span>
+            </el-button>
+          </el-descriptions-item>
+          <el-descriptions-item label="出题人">
+            <span class="rlink" @click="this.$router.push('/user/' + problemInfo.publisherUid)">
+              {{ problemInfo.publisher }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="发布时间"> {{ problemInfo.time }} </el-descriptions-item>
           <el-descriptions-item label="是否公开">
@@ -87,7 +92,33 @@ export default {
       gid: 1,
       problemInfo: {},
       code: '',
-      isSubmit: false
+      isSubmit: false,
+      levels: [
+        {
+          label: '暂未评级',
+          color: '#BFBFBF'
+        },
+        {
+          label: '入门',
+          color: '#FE4C61'
+        },
+        {
+          label: '普及',
+          color: '#FFC116'
+        },
+        {
+          label: '提高',
+          color: '#52C41A'
+        },
+        {
+          label: '省选',
+          color: '#3498DB'
+        },
+        {
+          label: 'NOI/NOI+',
+          color: '#0E1D69'
+        },
+      ],
     }
   },
   components: {

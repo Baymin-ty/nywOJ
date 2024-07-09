@@ -40,12 +40,20 @@
             </el-icon>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="AC/提交" width="150px">
+        <el-table-column prop="level" label="难度评级" width="150px">
+          <template #default="scope">
+            <el-button size="small" :color="levels[scope.row.level]?.color ?? '#BFBFBF'" :dark="true">
+              <span style="color: white; font-weight: 600; font-size: 14px;">
+                {{ levels[scope.row.level]?.label ?? '未知难度' }} </span>
+            </el-button>
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="AC/提交" width="120px">
           <template #default="scope">
             <span> {{ scope.row.acCnt }} / {{ scope.row.submitCnt }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="time" label="发布时间" width="200px" />
+        <el-table-column prop="time" label="发布时间" width="120px" />
         <el-table-column prop="publisher" label="出题人" width="160px">
           <template #default="scope">
             <span class="rlink" @click="this.$router.push('/user/' + scope.row.publisherUid)">
@@ -70,7 +78,33 @@ export default {
       total: 0,
       gid: 1,
       currentPage: 1,
-      finished: false
+      finished: false,
+      levels: [
+        {
+          label: '暂未评级',
+          color: '#BFBFBF'
+        },
+        {
+          label: '入门',
+          color: '#FE4C61'
+        },
+        {
+          label: '普及',
+          color: '#FFC116'
+        },
+        {
+          label: '提高',
+          color: '#52C41A'
+        },
+        {
+          label: '省选',
+          color: '#3498DB'
+        },
+        {
+          label: 'NOI/NOI+',
+          color: '#0E1D69'
+        },
+      ],
     }
   },
   methods: {

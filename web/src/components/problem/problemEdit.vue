@@ -42,10 +42,14 @@
               + New Tag
             </el-button>
           </el-descriptions-item>
+          <el-descriptions-item label="难度评级">
+            <el-select v-model="problemInfo.level" placeholder="难度评级" style="width: 150px;">
+              <el-option v-for="item in levels" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-descriptions-item>
           <el-descriptions-item label=" 出题人">
-            <span class="rlink" @click="this.$router.push('/user/' + problemInfo.publisherUid)"> {{
-              problemInfo.publisher
-            }}</span>
+            <span class="rlink" @click="this.$router.push('/user/' + problemInfo.publisherUid)">
+              {{ problemInfo.publisher }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="发布时间"> {{ problemInfo.time }} </el-descriptions-item>
           <el-descriptions-item label="是否公开">
@@ -78,6 +82,32 @@ export default {
       ptype: [
         { value: 0, label: '传统文本比较' },
         { value: 1, label: 'Special Judge' }
+      ],
+      levels: [
+        {
+          value: 0,
+          label: '暂未评级',
+        },
+        {
+          value: 1,
+          label: '入门',
+        },
+        {
+          value: 2,
+          label: '普及',
+        },
+        {
+          value: 3,
+          label: '提高',
+        },
+        {
+          value: 4,
+          label: '省选',
+        },
+        {
+          value: 5,
+          label: 'NOI/NOI+',
+        },
       ],
     }
   },
