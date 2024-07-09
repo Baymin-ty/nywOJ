@@ -52,6 +52,7 @@ router.post('/api/problem/getCase', problem.getCase);
 router.post('/api/problem/updateCase', problem.updateCase);
 router.get('/api/problem/downloadCase', problem.downloadCase);
 
+const MAX_TOTAL_SIZE = 200 * 1024 * 1024; // 200MB limit
 const upload = multer({
   fileFilter: (req, file, cb) => {
     cb(null, (req.session.gid >= 2));
@@ -74,7 +75,6 @@ const upload = multer({
   })
 });
 
-
 const process = (str) => {
   let res = str;
   while (res.length && !(res[0] >= '0' && res[0] <= '9'))
@@ -93,6 +93,20 @@ router.post('/api/problem/uploadData', upload.single('file'), (req, res) => {
       if (err) return res.status(202).send({
         err: err
       });
+      if (req.session.gid < 3) {
+        let totalSize = 0;
+        for (let f of file) {
+          const filePath = path.join(req.file.destination, f);
+          const stats = fs.statSync(filePath);
+          totalSize += stats.size;
+          if (totalSize > MAX_TOTAL_SIZE) {
+            fs.rmSync(req.file.destination, { recursive: true, force: true });
+            return res.status(202).send({
+              err: "Total uncompressed size exceeds 200MB limit"
+            });
+          }
+        }
+      }
       let cases = [], indexVis = new Map();
       for (i in file) {
         if (file[i].substring(file[i].length - 3) === '.in') {
