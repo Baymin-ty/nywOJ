@@ -24,7 +24,7 @@ exports.ip2loc = (ip) => {
   else if (res.country) res.country += " ";
   if (res.province === res.city || `${res.province}市` === res.city) res.province = "";
   const cityResult = res.country + res.province + res.city;
-  if (!cityResult) return null;
+  if (!cityResult) return 'unknown iploc';
   if (res.isp && cityResult !== res.isp) return `${cityResult} ${res.isp}`;
   return cityResult;
 }
