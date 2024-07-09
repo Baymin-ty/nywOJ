@@ -70,7 +70,11 @@ exports.getClickCnt = (req, res) => {
 }
 
 exports.getRankInfo = (req, res) => {
-  let sql = 'SELECT uid,name,clickCnt,motto,gid FROM userInfo GROUP BY uid ORDER BY clickCnt DESC LIMIT 20';
+  let pageId = req.body.pageId,
+    pageSize = 20;
+  if (!pageId) pageId = 1;
+  pageId = SqlString.escape(pageId);
+  let sql = 'SELECT uid,name,clickCnt,motto,gid,qq FROM userInfo GROUP BY uid ORDER BY clickCnt DESC LIMIT ' + (pageId - 1) * pageSize + ',' + pageSize;
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({
       message: err
@@ -78,9 +82,18 @@ exports.getRankInfo = (req, res) => {
     for (let i = 0; i < data.length; i++) {
       if (String(data[i].motto).length > 50)
         data[i].motto = data[i].motto.substring(0, 50) + '...';
+      data[i].rk = (pageId - 1) * pageSize + i + 1;
+      data[i].avatar =
+        data[i].qq ? `https://q1.qlogo.cn/g?b=qq&nk=${data[i].qq}&s=3`
+          : 'https://cdn.ty.szsyzx.cn/default-avatar.svg';
+
     }
-    return res.status(200).send({
-      data: data
+    db.query("SELECT COUNT(*) as total FROM userInfo", (err2, data2) => {
+      if (err2) return res.status(202).send({ message: err2 });
+      return res.status(200).send({
+        total: data2[0].total,
+        data: data
+      });
     });
   })
 }
