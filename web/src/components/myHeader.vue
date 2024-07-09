@@ -41,7 +41,7 @@
     </el-menu-item>
     <el-sub-menu index="/user" v-if="this.$store.state.uid">
       <template #title>
-        <el-avatar :size="40" :src="this.$store.state.avatar" />
+        <el-avatar :size="35" :src="this.$store.state.avatar" />
         <span style="padding-left: 8px;"> {{ this.$store.state.name }} </span> 
       </template>
       <el-menu-item :index="/user/ + this.$store.state.uid">
