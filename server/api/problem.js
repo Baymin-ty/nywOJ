@@ -273,6 +273,10 @@ exports.updateSubtaskId = async (req, res) => {
           return res.status(202).send({
             message: `子任务 #${subtask[i].index} 应在[1,100]之间`
           });
+        if (!subtask[i].option && subtask[i].skip)
+          return res.status(202).send({
+            message: `测试点等分的subtask无法设置遇TLE止测`
+          });
         subtaskMap.set(subtask[i].index, subtask[i].score);
         totalScore += subtask[i].score;
       }

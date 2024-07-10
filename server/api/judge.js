@@ -29,7 +29,8 @@ const judgeRes = ['Waiting',
   'Output Limit Exceeded',
   'Dangerous System Call',
   'System Error',
-  'Canceled'];
+  'Canceled',
+  'Skipped'];
 
 const resToIndex = {
   'Waiting': 0,
@@ -241,9 +242,33 @@ const judgeCode = async (sid, isreJudge) => {
     const config = JSON.parse((await getFile(`./data/${pid}/config.json`)));
     const cases = config.cases, subtasks = config.subtask;
 
-    let runResult = {}, judgeResult = [];
+    let runResult = {}, judgeResult = [], isSkip = new Map();
+
+    for (sub of subtasks)
+      if (sub.skip)
+        isSkip[sub.index] = 1;
 
     for (let i in cases) {
+      if (isSkip[cases[i].subtaskId] === 2) { //Skipped
+        updateSubmissionDetail(
+          /*sid*/sid,
+          /*caseId*/cases[i].index,
+          /*input*/'',
+          /*output*/'',
+          /*time*/0, // ms
+          /*memory*/0, // kB
+          /*result*/ 14,
+          /*compareRes*/'',
+          /*subtaskId*/cases[i].subtaskId
+        );
+        judgeResult.push({
+          time: 0,
+          memory: 0,
+          subtaskId: cases[i].subtaskId,
+          judgeResult: 14
+        });
+        continue;
+      }
       const inputFile = (await getFile(`./data/${pid}/${cases[i].input}`));
       const outputFile = (await getFile(`./data/${pid}/${cases[i].output}`));
       let usrOutput = "";
@@ -299,6 +324,8 @@ const judgeCode = async (sid, isreJudge) => {
           subtaskId: cases[i].subtaskId,
           judgeResult: resToIndex[runResult.status]
         });
+        if (runResult.status === 'Time Limit Exceeded' && isSkip[cases[i].subtaskId] == 1)
+          isSkip[cases[i].subtaskId] = 2;
       }
       else {
         usrOutput = runResult.files.stdout;
@@ -567,6 +594,7 @@ exports.getSubmissionInfo = (req, res) => {
     else {
       data[0].caseResult = JSON.parse(data[0].caseResult);
       data[0].singleCaseResult = await getCaseDetail(req.body.sid);
+      data[0].singleCaseResult.sort((a, b) => a.caseId - b.caseId);
       data[0].done = false;
       if (data[0].caseResult) {
         let subtaskInfo = {};

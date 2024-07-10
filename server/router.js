@@ -148,7 +148,8 @@ router.post('/api/problem/uploadData', upload.single('file'), (req, res) => {
       let subtask = [{
         index: 1,
         score: 100,
-        option: 0
+        option: 0,
+        skip: false
       }];
       await setFile(`${req.file.destination}/config.json`, JSON.stringify({ cases: uniqueCases, subtask: subtask }));
       res.json({

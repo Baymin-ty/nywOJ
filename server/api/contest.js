@@ -497,7 +497,8 @@ const judgeRes = ['Waiting',
   'Output Limit Exceeded',
   'Dangerous System Call',
   'System Error',
-  'Canceled'];
+  'Canceled',
+  'Skipped'];
 
 exports.getSubmissionList = (req, res) => {
   const cid = req.body.cid, pageId = req.body.pageId, pageSize = 20;
@@ -596,6 +597,7 @@ exports.getSubmissionInfo = (req, res) => {
           if ((data2[0].status === 3 && (data2[0].isPublic || (await isReg(req.session.uid, data[0].cid)))) || req.session.uid === data[0].uid || req.session.gid > 1) {
             data[0].caseResult = JSON.parse(data[0].caseResult);
             data[0].singleCaseResult = await getCaseDetail(sid);
+            data[0].singleCaseResult.sort((a, b) => a.caseId - b.caseId);
             data[0].done = false;
             if (data[0].caseResult) {
               let subtaskInfo = {};
