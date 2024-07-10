@@ -81,16 +81,47 @@ exports.updateProblem = (req, res) => {
 
 exports.getProblemList = (req, res) => {
   let pageId = req.body.pageId,
-    pageSize = 20;
+    pageSize = 20, filter = req.body.filter;
   if (!pageId) pageId = 1;
   pageId = SqlString.escape(pageId);
-  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.level,p.publisher as publisherUid,u.`name` as publisher,p.isPublic FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher" +
-    (req.session.gid > 1 ? "" : " WHERE isPublic=1") + " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
+
+  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.level,p.tags,p.publisher as publisherUid,u.`name` as publisher,p.isPublic FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher " +
+    (req.session.gid > 1 ? "WHERE 1=1 " : "WHERE isPublic=1 ");
+  if (filter.publisherUid) {
+    filter.publisherUid = SqlString.escape(filter.publisherUid);
+    sql += `AND publisher=${filter.publisherUid} `;
+  }
+  if (filter.level !== null) {
+    filter.level = SqlString.escape(filter.level);
+    sql += `AND level=${filter.level} `;
+  }
+  if (filter.name) {
+    filter.name = SqlString.escape('%' + filter.name + '%');
+    sql += `AND title like ${filter.name} `;
+  }
+  if (filter.tags?.length) {
+    sql += `AND JSON_CONTAINS(tags, '${JSON.stringify(filter.tags)}') `;
+  }
+  sql += " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
+
   db.query(sql, (err, data) => {
     if (err) return res.status(202).send({ message: err });
     let list = data;
-    for (let i = 0; i < list.length; i++) list[i].time = briefFormat(list[i].time);
-    db.query("SELECT COUNT(*) as total FROM problem" + (req.session.gid > 1 ? "" : " WHERE isPublic=1"), (err, data) => {
+    for (let i = 0; i < list.length; i++) {
+      list[i].time = briefFormat(list[i].time);
+      list[i].tags = JSON.parse(list[i].tags);
+    }
+
+    let totsql = "SELECT COUNT(*) as total FROM problem " + (req.session.gid > 1 ? "WHERE 1=1 " : "WHERE isPublic=1 ");
+    if (filter.publisherUid)
+      totsql += `AND publisher=${filter.publisherUid} `;
+    if (filter.level)
+      totsql += `AND level=${filter.level} `;
+    if (filter.name)
+      totsql += `AND title like ${filter.name} `;
+    if (filter.tags?.length)
+      totsql += `AND JSON_CONTAINS(tags, '${JSON.stringify(filter.tags)}') `;
+    db.query(totsql, (err, data) => {
       if (err) return res.status(202).send({ message: err });
       return res.status(200).send({
         total: data[0].total,
@@ -390,4 +421,15 @@ exports.downloadCase = (req, res) => {
     const fileName = (index ? `nywoj_Testdata_#${pid}_case#${index}` : `nywoj_Testdata_#${pid}`) + '.zip';
     return res.zip(files, fileName);
   });
+}
+
+exports.getProblemTags = (req, res) => {
+  db.query(`SELECT DISTINCT JSON_UNQUOTE(value) AS tag
+          FROM problem,
+          JSON_TABLE(tags, '$[*]' COLUMNS (value JSON PATH '$')) AS jt
+          WHERE JSON_VALID(tags);`, [], (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    const tags = data.map(data => data.tag);
+    return res.status(200).send(tags);
+  })
 }

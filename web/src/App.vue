@@ -74,6 +74,7 @@ body {
 }
 
 .rlink {
+  font-weight: 500;
   cursor: pointer;
   color: #558CDD;
 }

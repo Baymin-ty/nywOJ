@@ -1,6 +1,6 @@
 <template>
   <el-row style="margin: auto;max-width: 1500px;min-width: 600px;">
-    <el-col :xs="24" :sm="24" :md="18">
+    <el-col :xs="24" :sm="24" :md="17">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -22,7 +22,7 @@
         <v-md-preview v-show="!isSubmit" :text="problemInfo.description"> </v-md-preview>
       </el-card>
     </el-col>
-    <el-col :xs="24" :sm="24" :md="6">
+    <el-col :xs="24" :sm="24" :md="7">
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
@@ -34,12 +34,14 @@
           <el-descriptions-item label="空间限制"> {{ problemInfo.memoryLimit }} MB</el-descriptions-item>
           <el-descriptions-item label="题目类型"> {{ problemInfo.type }} </el-descriptions-item>
           <el-descriptions-item label="题目标签">
-            <el-tag v-for="tag in problemInfo.tags" :key="tag" class="mx-1">
-              {{ tag }}
+            <el-tag v-for="tag in problemInfo.tags" :key="tag" :color="getTagColor(tag)"
+              @click="this.$router.push({ path: '/problem', query: { tags: JSON.stringify([tag]) } })">
+              <span class="tag-text">{{ tag }} </span>
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="难度评级">
-            <el-button size="small" :color="levels[problemInfo.level]?.color ?? '#BFBFBF'" :dark="true">
+            <el-button size="small" :color="levels[problemInfo.level]?.color ?? '#BFBFBF'" :dark="true"
+              @click="this.$router.push({ path: '/problem', query: { level: problemInfo.level } })">
               <span style="color: white; font-weight: 600; font-size: 14px;">
                 {{ levels[problemInfo.level]?.label ?? '未知难度' }} </span>
             </el-button>
@@ -115,9 +117,20 @@ export default {
           color: '#3498DB'
         },
         {
-          label: 'NOI/NOI+',
+          label: 'NOI / NOI+',
           color: '#0E1D69'
         },
+      ],
+      tagColorList: [
+        '#2d8cf0',
+        '#3f51b5',
+        '#9c27b0',
+        '#009688',
+        '#19be6b',
+        '#689f38',
+        '#ff9900',
+        '#E91E63',
+        '#ed4014'
       ],
     }
   },
@@ -140,6 +153,15 @@ export default {
           });
         }
       });
+    },
+    hash(str) {
+      let t = 0;
+      for (let i = 0; i < str.length; i++)
+        t = 31 * t + str.charCodeAt(i);
+      return t;
+    },
+    getTagColor(tag) {
+      return this.tagColorList[this.hash(tag) % this.tagColorList.length];
     },
   },
   async mounted() {
@@ -172,7 +194,13 @@ export default {
 }
 
 .el-tag {
+  cursor: pointer;
   margin-right: 5px;
-  margin-bottom: 5px;
+}
+
+.tag-text {
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
 }
 </style>

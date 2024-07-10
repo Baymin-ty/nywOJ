@@ -51,6 +51,7 @@ router.post('/api/problem/updateSubtaskId', problem.updateSubtaskId);
 router.post('/api/problem/getCase', problem.getCase);
 router.post('/api/problem/updateCase', problem.updateCase);
 router.get('/api/problem/downloadCase', problem.downloadCase);
+router.post('/api/problem/getProblemTags', problem.getProblemTags);
 
 const MAX_TOTAL_SIZE = 200 * 1024 * 1024; // 200MB limit
 const upload = multer({
