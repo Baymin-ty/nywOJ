@@ -69,8 +69,8 @@
             <div class="title-container">
               <div class="title-left">标题</div>
               <div class="tags-right">
-                <div @click="tagVisible = !tagVisible" class="rlink">{{ tagVisible ? '隐藏' : '显示' }}</div>
-                <div>算法标签</div>
+                <span @click="tagVisible = !tagVisible" class="rlink">{{ tagVisible ? '隐藏' : '显示' }}</span>
+                <span>算法标签</span>
               </div>
             </div>
           </template>

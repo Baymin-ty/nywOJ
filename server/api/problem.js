@@ -48,6 +48,16 @@ exports.updateProblem = (req, res) => {
           message: '空间限制最大为512MB'
         });
       }
+      if (info.tags?.length > 5) {
+        return res.status(202).send({
+          message: '题目标签最多设置5个'
+        });
+      }
+      for (t of info.tags)
+        if (t.length > 10)
+          return res.status(202).send({
+            message: '单个标签长度不能大于10'
+          });
     }
     if (info.isPublic !== false && info.isPublic !== true) {
       return res.status(202).send({
