@@ -28,7 +28,8 @@ const judgeRes = ['Waiting',
   'Segmentation Fault',
   'Output Limit Exceeded',
   'Dangerous System Call',
-  'System Error'];
+  'System Error',
+  'Canceled'];
 
 const resToIndex = {
   'Waiting': 0,
@@ -643,4 +644,14 @@ exports.reJudgeContest = async (req, res) => {
       total: data.length
     });
   });
+}
+
+exports.cancelSubmission = (req, res) => {
+  if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
+  db.query('UPDATE submission SET judgeResult=13,score=0 WHERE sid=?', [req.body.sid], (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    else res.status(200).send({
+      message: 'ok',
+    });
+  })
 }

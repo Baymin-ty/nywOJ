@@ -139,6 +139,8 @@ pre {
 }
 
 .tag {
+  align-items: center;
+  display: flex;
   font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-weight: 600;
   font-size: 13.5px;
@@ -149,7 +151,7 @@ pre {
   color: #606266;
 }
 
-.el-icon {
-  vertical-align: middle;
+:deep(.el-icon) {
+  margin-right: 5px;
 }
 </style>

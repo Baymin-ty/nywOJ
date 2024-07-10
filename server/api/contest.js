@@ -496,7 +496,8 @@ const judgeRes = ['Waiting',
   'Segmentation Fault',
   'Output Limit Exceeded',
   'Dangerous System Call',
-  'System Error'];
+  'System Error',
+  'Canceled'];
 
 exports.getSubmissionList = (req, res) => {
   const cid = req.body.cid, pageId = req.body.pageId, pageSize = 20;

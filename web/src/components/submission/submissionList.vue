@@ -49,8 +49,8 @@
           </el-button>
         </el-button-group>
       </div>
-      <el-table :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }" :cell-style="cellStyle"
-        :row-class-name="tableRowClassName" v-loading="!finished">
+      <el-table :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }"
+        :cell-style="cellStyle" :row-class-name="tableRowClassName" v-loading="!finished">
         <el-table-column prop="sid" label="#" width="100px" />
         <el-table-column prop="title" label="题目" min-width="200px">
           <template #default="scope">
@@ -164,6 +164,9 @@ export default {
       }, {
         value: 12,
         label: 'System Error',
+      }, {
+        value: 13,
+        label: 'Cancaled',
       }],
     }
   },

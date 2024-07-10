@@ -39,17 +39,16 @@
       </template>
     </el-table-column>
   </el-table>
-  <el-dialog v-model="dialogVisible" title="提交记录" width="1000px" center style="border-radius: 10px; padding-bottom: 10px;"
-    class="pd">
+  <el-dialog v-if="dialogVisible" v-model="dialogVisible" title="提交记录" width="1000px" center
+    style="border-radius: 10px; padding-bottom: 10px;" class="pd">
     <el-divider />
     <el-table :data="subList" style="min-height: 200px; width: auto; margin-left: 10px;margin-right: 10px;"
       :header-cell-style="{ textAlign: 'center' }" :cell-style="submissionCellStyle"
       :row-class-name="submissionTableRowClassName">
       <el-table-column prop="title" label="题目" min-width="25%">
         <template #default="scope">
-          <span class="rlink" @click="this.$router.push('/contest/' + cid + '/problem/' + scope.row.idx)"> {{
-            scope.row.title
-          }}</span>
+          <span class="rlink" @click="this.$router.push('/contest/' + cid + '/problem/' + scope.row.idx)">
+            {{ scope.row.title }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="name" label="提交者" min-width="15%">

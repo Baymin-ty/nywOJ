@@ -60,12 +60,25 @@
         <template #header>
           <div class=" card-header">
             代码
-            <el-button v-if="gid > 1" type="danger" @click="reJudge">
-              <el-icon class="el-icon--left">
-                <Refresh />
-              </el-icon>
-              重新测评
-            </el-button>
+            <el-button-group>
+              <el-popconfirm v-if="gid > 2" confirm-button-text="确认" cancel-button-text="取消" title="确认取消评测?"
+                @confirm="cancelSubmission">
+                <template #reference>
+                  <el-button type="warning">
+                    <el-icon class="el-icon--left">
+                      <CloseBold />
+                    </el-icon>
+                    取消评测
+                  </el-button>
+                </template>
+              </el-popconfirm>
+              <el-button v-if="gid > 1" type="danger" @click="reJudge">
+                <el-icon class="el-icon--left">
+                  <Refresh />
+                </el-icon>
+                重新测评
+              </el-button>
+            </el-button-group>
           </div>
         </template>
         <monacoEditor v-if="hasTaken" :value="code" @update:value="code = $event" :readOnly="true" />
@@ -118,6 +131,7 @@ import axios from 'axios';
 import { resColor, scoreColor } from '@/assets/common'
 import monacoEditor from '@/components/monacoEditor.vue'
 import caseDisplay from './caseDisplay.vue'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: "problemView",
@@ -187,6 +201,23 @@ export default {
               this.all();
             }, 1000)
           }
+        }
+      });
+    },
+    cancelSubmission() {
+      axios.post('/api/judge/cancelSubmission', { sid: this.sid }).then(res => {
+        if (res.status === 200) {
+          ElMessage({
+            message: '取消成功',
+            type: 'success',
+          });
+          this.all();
+        } else {
+          ElMessage({
+            message: '取消失败',
+            type: 'error',
+            duration: 2000
+          });
         }
       });
     }
