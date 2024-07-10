@@ -37,15 +37,17 @@ exports.updateProblem = (req, res) => {
         message: '请确认信息完善'
       });
     }
-    if (info.timeLimit > 10000 || info.timeLimit < 0) {
-      return res.status(202).send({
-        message: '时间限制最大为10000ms'
-      });
-    }
-    if (info.memoryLimit > 512 || info.memoryLimit < 0) {
-      return res.status(202).send({
-        message: '空间限制最大为512MB'
-      });
+    if (req.session.gid < 3) {
+      if (info.timeLimit > 10000 || info.timeLimit < 0) {
+        return res.status(202).send({
+          message: '时间限制最大为10000ms'
+        });
+      }
+      if (info.memoryLimit > 512 || info.memoryLimit < 0) {
+        return res.status(202).send({
+          message: '空间限制最大为512MB'
+        });
+      }
     }
     if (info.isPublic !== false && info.isPublic !== true) {
       return res.status(202).send({
