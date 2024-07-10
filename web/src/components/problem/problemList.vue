@@ -45,7 +45,7 @@
             <el-select v-model="filter.tags" multiple filterable clearable placeholder="题目标签" style="width: 400px;"
               @change="all">
               <el-option v-for="tag in tagList" :key="tag" :label="tag" :value="tag">
-                <el-tag :color="getTagColor(tag)" @click="queryTag(tag)">
+                <el-tag type="info" :color="getTagColor(tag)">
                   <span class="tag-text">{{ tag }} </span>
                 </el-tag>
               </el-option>
@@ -64,7 +64,16 @@
       <el-table :data="problemList" height="600px" :header-cell-style="{ textAlign: 'center' }" :cell-style="cellStyle"
         v-loading="!finished">
         <el-table-column prop="pid" label="#" width="100px" />
-        <el-table-column prop="title" label="标题" width="auto">
+        <el-table-column prop="title" width="auto">
+          <template #header>
+            <div class="title-container">
+              <div class="title-left">标题</div>
+              <div class="tags-right">
+                <div @click="tagVisible = !tagVisible" class="rlink">{{ tagVisible ? '隐藏' : '显示' }}</div>
+                <div>算法标签</div>
+              </div>
+            </div>
+          </template>
           <template #default="scope">
             <div class="title-container">
               <div class="title-left">
@@ -76,7 +85,8 @@
                 </el-icon>
               </div>
               <div class="tags-right">
-                <el-tag v-for="tag in scope.row.tags" :key="tag" :color="getTagColor(tag)" @click="queryTag(tag)">
+                <el-tag v-show="tagVisible" type="info" v-for="tag in scope.row.tags" :key="tag"
+                  :color="getTagColor(tag)" @click="queryTag(tag)">
                   <span class="tag-text">{{ tag }} </span>
                 </el-tag>
               </div>
@@ -160,6 +170,10 @@ export default {
           label: 'NOI / NOI+',
           color: '#0E1D69'
         },
+        {
+          index: 6,
+          label: '不限难度',
+        },
       ],
       tagColorList: [
         '#2d8cf0',
@@ -173,6 +187,7 @@ export default {
         '#ed4014'
       ],
       tagList: [],
+      tagVisible: true,
     }
   },
   methods: {
@@ -271,9 +286,9 @@ export default {
     this.gid = this.$store.state.gid;
     let query = this.$route.query;
     if (query.name) this.filter.name = query.name;
-    if (query.level) this.filter.level = query.level;
+    if (query.level) this.filter.level = parseInt(query.level);
     if (query.tags) this.filter.tags = JSON.parse(query.tags);
-    if (query.publisherUid) this.filter.publisherUid = query.publisherUid;
+    if (query.publisherUid) this.filter.publisherUid = parseInt(query.publisherUid);
     if (query.pageId) this.currentPage = parseInt(query.pageId);
     this.all();
   }

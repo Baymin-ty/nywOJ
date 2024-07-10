@@ -84,6 +84,7 @@ exports.getProblemList = (req, res) => {
     pageSize = 20, filter = req.body.filter;
   if (!pageId) pageId = 1;
   pageId = SqlString.escape(pageId);
+  if (filter.level === 6) filter.level = null;
 
   let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.level,p.tags,p.publisher as publisherUid,u.`name` as publisher,p.isPublic FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher " +
     (req.session.gid > 1 ? "WHERE 1=1 " : "WHERE isPublic=1 ");

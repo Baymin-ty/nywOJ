@@ -152,9 +152,4 @@ export default {
   margin: 0;
   font-size: 25px;
 }
-
-.el-tag {
-  margin-right: 5px;
-  margin-bottom: 5px;
-}
 </style>

@@ -33,7 +33,7 @@
             </el-select>
           </el-descriptions-item>
           <el-descriptions-item label="题目标签">
-            <el-tag v-for="tag in problemInfo.tags" :key="tag" closable @close="removeTag(tag)"
+            <el-tag type="info" v-for="tag in problemInfo.tags" :key="tag" closable @close="removeTag(tag)"
               :color="getTagColor(tag)"
               @click="this.$router.push({ path: '/problem', query: { tags: JSON.stringify([tag]) } })">
               <span class="tag-text">{{ tag }} </span>
