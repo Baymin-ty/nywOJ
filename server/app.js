@@ -79,8 +79,8 @@ app.use((req, res, next) => {
   }
 });
 
-app.use(bodyParser.json({ limit: "10mb" }));  //配置解析，用于解析json和urlencoded格式的数据
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(express.json({ extended: true, limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors())              //配置跨域
 app.use(router)              //配置路由
 

@@ -5,7 +5,9 @@ const db = mysql.createPool({
   port: config.DB.port,
   user: config.DB.username,
   password: config.DB.password,
-  database: config.DB.databasename
+  database: config.DB.databasename,
+  charset: 'utf8mb4',
+  collation: 'utf8mb4_unicode_ci'
 });
 
 module.exports = db;
