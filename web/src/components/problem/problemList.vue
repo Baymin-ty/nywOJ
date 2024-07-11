@@ -69,8 +69,8 @@
             <div class="title-container">
               <div class="title-left">标题</div>
               <div class="tags-right">
-                <span @click="tagVisible = !tagVisible" class="rlink">{{ tagVisible ? '隐藏' : '显示' }}</span>
-                <span>算法标签</span>
+                <el-button size="small" round @click="tagVisible = !tagVisible">
+                  {{ tagVisible ? '隐藏标签' : '显示标签' }}</el-button>
               </div>
             </div>
           </template>
