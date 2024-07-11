@@ -176,7 +176,7 @@ export default {
       let param = {}, url = location.pathname;
       if (this.filter.name) param.name = this.filter.name;
       if (this.filter.pid) param.pid = this.filter.pid;
-      if (this.filter.res) param.res = this.filter.res;
+      if (this.filter.res !== null) param.res = this.filter.res;
       if (this.queryAll) param.queryAll = true;
       if (this.currentPage > 1)
         param.pageId = this.currentPage;

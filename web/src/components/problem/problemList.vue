@@ -195,7 +195,7 @@ export default {
       this.finished = false;
       let param = {}, url = location.pathname;
       if (this.filter.name) param.name = this.filter.name;
-      if (this.filter.level) param.level = this.filter.level;
+      if (this.filter.level !== null) param.level = this.filter.level;
       if (this.filter.publisherUid) param.publisherUid = this.filter.publisherUid;
       if (this.filter.tags?.length) param.tags = JSON.stringify(this.filter.tags);
       if (this.currentPage > 1)
