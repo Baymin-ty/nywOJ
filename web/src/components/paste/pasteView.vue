@@ -16,13 +16,26 @@
                 时间: <span class="time"> {{ paste.time }}</span>
               </span>
             </div>
-            <el-button v-if="this.gid === 3 || this.$store.state.uid === paste.uid" type="danger" style="float: right;"
-              @click="this.$router.push('/paste/edit/' + paste.mark)">
-              <el-icon class="el-icon--left">
-                <Edit />
-              </el-icon>
-              编辑剪贴板
-            </el-button>
+            <div style="float: right;">
+              <el-button-group v-if="this.gid === 3 || this.$store.state.uid === paste.uid" style="">
+                <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认删除剪贴板?" @confirm="delPaste">
+                  <template #reference>
+                    <el-button type="warning">
+                      <el-icon class="el-icon--left">
+                        <Delete />
+                      </el-icon>
+                      删除剪贴板
+                    </el-button>
+                  </template>
+                </el-popconfirm>
+                <el-button type="danger" style="float: right;" @click="this.$router.push('/paste/edit/' + paste.mark)">
+                  <el-icon class="el-icon--left">
+                    <Edit />
+                  </el-icon>
+                  编辑剪贴板
+                </el-button>
+              </el-button-group>
+            </div>
           </div>
         </template>
         <v-md-preview :text="paste.content"> </v-md-preview>
@@ -44,22 +57,45 @@ export default {
       paste: {},
     }
   },
+  methods: {
+    async all() {
+      await axios.post('/api/common/getPaste', { mark: this.mark }).then(res => {
+        if (res.status === 200) {
+          this.paste = res.data.data
+        }
+        else {
+          ElMessage({
+            message: '获取剪贴板失败' + res.data.message,
+            type: 'error',
+            duration: 2000,
+          });
+        }
+      });
+      document.title = "剪贴板 — " + this.paste.title;
+    },
+    delPaste() {
+      axios.post('/api/common/delPaste', { mark: this.mark }).then(res => {
+        if (res.status === 200) {
+          ElMessage({
+            message: '删除成功',
+            type: 'success',
+          });
+          this.paste = {};
+          this.all();
+        } else {
+          ElMessage({
+            message: '删除失败' + res.data.message,
+            type: 'error',
+            duration: 2000
+          });
+        }
+      });
+    }
+  },
   async mounted() {
     this.mark = this.$route.params.mark;
     this.gid = this.$store.state.gid;
-    await axios.post('/api/common/getPaste', { mark: this.mark }).then(res => {
-      if (res.status === 200) {
-        this.paste = res.data.data
-      }
-      else {
-        ElMessage({
-          message: '获取剪贴板失败' + res.data.message,
-          type: 'error',
-          duration: 2000,
-        });
-      }
-    });
-    document.title = "剪贴板 — " + this.paste.title;
+    this.all();
   }
 }
 </script>

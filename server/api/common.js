@@ -92,3 +92,23 @@ exports.updatePaste = (req, res) => {
     })
   })
 }
+
+exports.delPaste = (req, res) => {
+  const mark = req.body.mark;
+  db.query("SELECT uid FROM pastes WHERE mark=?", [mark], (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (req.session.gid < 3 && req.session.uid !== data[0].uid) return res.status(202).send({ message: '你只能删除自己的paste' });
+    db.query("DELETE FROM pastes WHERE mark=?", [mark], (err, data) => {
+      if (err) return res.status(202).send({ message: err });
+      if (data.affectedRows > 0) {
+        return res.status(200).send({
+          message: 'sueecss'
+        });
+      } else {
+        return res.status(202).send({
+          message: 'failed'
+        });
+      }
+    })
+  })
+}

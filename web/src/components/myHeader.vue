@@ -62,12 +62,16 @@
         </el-icon>
         用户管理
       </el-menu-item>
-      <el-menu-item @click="addPaste">
-        <el-icon>
-          <DocumentAdd />
-        </el-icon>
-        创建剪贴板
-      </el-menu-item>
+      <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认添加剪贴板?" @confirm="addPaste">
+        <template #reference>
+          <el-menu-item>
+            <el-icon>
+              <DocumentAdd />
+            </el-icon>
+            创建剪贴板
+          </el-menu-item>
+        </template>
+      </el-popconfirm>
       <span @click="logout">
         <el-menu-item>
           <el-icon>

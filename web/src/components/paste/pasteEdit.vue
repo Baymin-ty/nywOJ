@@ -37,6 +37,7 @@ export default {
   },
   methods: {
     updatePaste() {
+      if (!this.paste?.mark) return;
       axios.post('/api/common/updatePaste', {
         mark: this.paste.mark,
         paste: this.paste
