@@ -174,6 +174,9 @@ const common = require('./api/common');
 
 router.post('/api/common/getAnnouncementList', common.getAnnouncementList);
 router.post('/api/common/getAnnouncementInfo', common.getAnnouncementInfo);
+router.post('/api/common/addPaste', common.addPaste);
+router.post('/api/common/getPaste', common.getPaste);
+router.post('/api/common/updatePaste', common.updatePaste);
 
 const contest = require('./api/contest');
 router.post('/api/contest/createContest', contest.createContest);

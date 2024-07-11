@@ -5,6 +5,8 @@ import NotFound from '@/components/NotFoundPage.vue'
 
 import AnnouncementView from '@/components/announcement/announcementView.vue'
 import AnnouncementEdit from '@/components/announcement/announcementEdit.vue'
+import pasteView from "@/components/paste/pasteView.vue";
+import pasteEdit from "@/components/paste/pasteEdit.vue";
 
 import cuteRabbit from '@/components/rabbit/cuteRabbit.vue'
 import userLogin from "@/components/user/userLogin.vue"
@@ -155,6 +157,18 @@ const router = createRouter({
             activeTitle: '/user'
         },
         path: '/user/edit', component: userEdit,
+    }, {
+        meta: {
+            title: '查看剪贴板',
+            activeTitle: '/user'
+        },
+        path: '/paste/:mark', component: pasteView,
+    }, {
+        meta: {
+            title: '编辑剪贴板',
+            activeTitle: '/user'
+        },
+        path: '/paste/edit/:mark', component: pasteEdit,
     }],
     caseSensitive: true
 });
