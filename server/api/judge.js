@@ -507,7 +507,7 @@ const judgeCode = async (sid, isreJudge) => {
       updateProblemSubmitInfo(pid);
     }
 
-    axios.delete(`http://localhost:5050/file/${fileId}`);
+    // axios.delete(`http://localhost:5050/file/${fileId}`);
   } catch (err) {
     console.log(err);
     await setSubmission(sid, 12, 0, 0, 0, String(err), null, conf.JUDGE.NAME);
