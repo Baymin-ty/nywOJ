@@ -39,13 +39,13 @@
       </template>
     </el-table-column>
   </el-table>
-  <el-dialog v-if="dialogVisible" v-model="dialogVisible" title="提交记录" width="1000px" center
+  <el-dialog v-if="dialogVisible" v-model="dialogVisible" title="提交记录" width="1200px" center
     style="border-radius: 10px; padding-bottom: 10px;" class="pd">
     <el-divider />
     <el-table :data="subList" style="min-height: 200px; width: auto; margin-left: 10px;margin-right: 10px;"
       :header-cell-style="{ textAlign: 'center' }" :cell-style="submissionCellStyle"
       :row-class-name="submissionTableRowClassName">
-      <el-table-column prop="title" label="题目" min-width="25%">
+      <el-table-column prop="title" label="题目" min-width="20%">
         <template #default="scope">
           <span class="rlink" @click="this.$router.push('/contest/' + cid + '/problem/' + scope.row.idx)">
             {{ scope.row.title }}</span>
@@ -58,7 +58,7 @@
           </span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="评测状态" min-width="20%">
+      <el-table-column prop="judgeResult" label="评测状态" min-width="15%">
         <template #default="scope">
           <span style="cursor: pointer;"
             @click="this.$router.push({ path: '/submission/' + scope.row.sid, query: { isContest: true } })">
@@ -76,7 +76,8 @@
           <span> {{ scope.row.codeLength }} B </span>
         </template>
       </el-table-column>
-      <el-table-column prop="submitTime" label="提交时间" min-width="20%" />
+      <el-table-column prop="submitTime" label="提交时间" min-width="15%" />
+      <el-table-column prop="machine" label="评测机" min-width="18%" />
     </el-table>
   </el-dialog>
 </template>

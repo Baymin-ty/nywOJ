@@ -13,7 +13,7 @@
   <el-table :data="submissionList" height="560px" :header-cell-style="{ textAlign: 'center' }" :cell-style="cellStyle"
     :row-class-name="tableRowClassName" v-loading="!finished">
     <el-table-column prop="sid" label="#" min-width="5%" />
-    <el-table-column prop="title" label="题目" min-width="15%">
+    <el-table-column prop="title" label="题目" min-width="18%">
       <template #default="scope">
         <span class="rlink" @click="this.$router.push('/contest/' + cid + '/problem/' + scope.row.idx)"> {{
           scope.row.title
@@ -27,7 +27,7 @@
         </span>
       </template>
     </el-table-column>
-    <el-table-column prop="judgeResult" label="评测状态" min-width="13%">
+    <el-table-column prop="judgeResult" label="评测状态" min-width="12%">
       <template #default="scope">
         <span style="cursor: pointer;"
           @click="this.$router.push({ path: '/submission/' + scope.row.sid, query: { isContest: true } })">
@@ -40,22 +40,23 @@
         <span> {{ scope.row.score }}</span>
       </template>
     </el-table-column>
-    <el-table-column prop="judgeResult" label="总用时" min-width="10%">
+    <el-table-column prop="judgeResult" label="总用时" min-width="6%">
       <template #default="scope">
         <span> {{ scope.row.time }} ms</span>
       </template>
     </el-table-column>
-    <el-table-column prop="judgeResult" label="内存" min-width="10%">
+    <el-table-column prop="judgeResult" label="内存" min-width="6%">
       <template #default="scope">
         <span> {{ scope.row.memory }} </span>
       </template>
     </el-table-column>
-    <el-table-column prop="codeLength" label="代码长度" min-width="10%">
+    <el-table-column prop="codeLength" label="代码长度" min-width="6%">
       <template #default="scope">
         <span> {{ scope.row.codeLength }} B </span>
       </template>
     </el-table-column>
-    <el-table-column prop="submitTime" label="提交时间" min-width="19%" />
+    <el-table-column prop="submitTime" label="提交时间" min-width="12%" />
+    <el-table-column prop="machine" label="评测机" min-width="10%" />
   </el-table>
 </template>
 

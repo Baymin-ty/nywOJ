@@ -12,5 +12,9 @@
   },
   "SESSION": {
     "expire": "604800000"
+  },
+  "JUDGE": {
+    "ISSERVER": true,
+    "NAME": "ty's MBP"
   }
 }

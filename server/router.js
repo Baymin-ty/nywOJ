@@ -169,6 +169,7 @@ router.post('/api/judge/reJudge', judge.reJudge);
 router.post('/api/judge/reJudgeProblem', judge.reJudgeProblem);
 router.post('/api/judge/reJudgeContest', judge.reJudgeContest);
 router.post('/api/judge/cancelSubmission', judge.cancelSubmission);
+router.post('/api/judge/receiveTask', judge.receiveTask);
 
 const common = require('./api/common');
 

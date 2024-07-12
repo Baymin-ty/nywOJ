@@ -5,16 +5,45 @@ const SqlString = require('mysql/lib/protocol/SqlString');
 const exec = require('child_process').exec;
 const { Format, kbFormat } = require('../static');
 const async = require('async');
-
+const conf = require('../config.json');
 
 const judgeQueue = async.queue(async (submission, completed) => {
   await judgeCode(submission.sid, submission.isreJudge);
   completed();
 }, 2);
 
-exports.pushSidIntoQueue = (sid) => {
-  judgeQueue.push({ sid: sid, isreJudge: false });
+const machines = [
+  'localhost',
+  'http://49.235.101.43/api/judge/receiveTask'
+];
+
+
+exports.receiveTask = (req, res) => {
+  if (conf.JUDGE.ISSERVER)
+    return res.status(202).send({ message: 'This is SERVER' });
+  pushSidIntoQueue(req.body.sid, req.body.isreJudge);
+  return res.status(200).send({ message: 'ok' });
 }
+
+let taskId = 0;
+
+const pushSidIntoQueue = (sid, isreJudge) => {
+  if (conf.JUDGE.ISSERVER) {
+    const machine = machines[(++taskId) % machines.length];
+    if (machine === 'localhost') {
+      console.log('server: localJudge');
+      judgeQueue.push({ sid: sid, isreJudge: isreJudge });
+    }
+    else {
+      console.log('server: task assigned to', machine);
+      axios.post(machine, { sid: sid, isreJudge: isreJudge });
+    }
+  } else {
+    console.log('client: task received', sid, isreJudge);
+    judgeQueue.push({ sid: sid, isreJudge: isreJudge });
+  }
+}
+module.exports.pushSidIntoQueue = pushSidIntoQueue;
 
 const judgeRes = ['Waiting',
   'Pending',
@@ -84,10 +113,10 @@ const getCompareResult = (fileSuf) => {
   });
 }
 
-const setSubmission = (sid, judgeResult, time, memory, score, compileResult, caseResult) => {
+const setSubmission = (sid, judgeResult, time, memory, score, compileResult, caseResult, machine) => {
   return new Promise((resolve, reject) => {
-    db.query('UPDATE submission SET judgeResult=?,time=?,memory=?,score=?,compileResult=?,caseResult=? WHERE sid=?',
-      [judgeResult, time, memory, score, compileResult, caseResult, sid], (err, data) => {
+    db.query('UPDATE submission SET judgeResult=?,time=?,memory=?,score=?,compileResult=?,caseResult=?,machine=? WHERE sid=?',
+      [judgeResult, time, memory, score, compileResult, caseResult, machine, sid,], (err, data) => {
         if (err) {
           reject(err);
         }
@@ -125,6 +154,17 @@ const clearCase = (sid) => {
   });
 }
 
+
+const updateData = (pid) => {
+  return new Promise((resolve, reject) => {
+    exec(`./sync_data.sh ${pid}`, (err, stdout, stderr) => {
+      resolve(stdout);
+    });
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
 let jid = 1;
 
 const judgeCode = async (sid, isreJudge) => {
@@ -136,7 +176,7 @@ const judgeCode = async (sid, isreJudge) => {
     let pinfo = await ProblemInfo(pid);
     if (!pinfo) return;
 
-    await setSubmission(sid, 1, 0, 0, 0, null, null);
+    await setSubmission(sid, 1, 0, 0, 0, null, null, conf.JUDGE.NAME);
     const code = sinfo.code, timeLimit = pinfo.timeLimit, memoryLimit = pinfo.memoryLimit;
 
     await clearCase(sid);
@@ -179,6 +219,10 @@ const judgeCode = async (sid, isreJudge) => {
         updateProblemSubmitInfo(pid);
       }
       return;
+    }
+
+    if (!conf.JUDGE.ISSERVER) {
+      await updateData(pid);
     }
 
     const fileId = compileResult.fileIds['main'];
@@ -457,7 +501,7 @@ const judgeCode = async (sid, isreJudge) => {
       totalScore = 100;
       db.query('UPDATE problem SET acCnt=acCnt+1 WHERE pid=?', [pid]);
     }
-    await setSubmission(sid, finalRes, totalTime, maxMemory, totalScore, null, JSON.stringify(subtaskList));
+    await setSubmission(sid, finalRes, totalTime, maxMemory, totalScore, null, JSON.stringify(subtaskList), conf.JUDGE.NAME);
 
     if (isreJudge) {
       updateProblemSubmitInfo(pid);
@@ -466,7 +510,7 @@ const judgeCode = async (sid, isreJudge) => {
     axios.delete(`http://localhost:5050/file/${fileId}`);
   } catch (err) {
     console.log(err);
-    await setSubmission(sid, 12, 0, 0, 0, String(err), null);
+    await setSubmission(sid, 12, 0, 0, 0, String(err), null, conf.JUDGE.NAME);
   }
 }
 
@@ -494,7 +538,7 @@ exports.submit = (req, res) => {
     });
     if (data.affectedRows > 0) {
       db.query("UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?", [pid]);
-      judgeQueue.push({ sid: data.insertId, isreJudge: false });
+      pushSidIntoQueue(data.insertId, false);
       return res.status(200).send({
         sid: data.insertId
       })
@@ -510,7 +554,7 @@ exports.getSubmissionList = (req, res) => {
   let pageId = req.body.pageId,
     pageSize = 20;
   if (!pageId) pageId = 1;
-  let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.cid,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid "
+  let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.cid,s.machine,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid "
 
   pageId = SqlString.escape(pageId);
 
@@ -580,7 +624,7 @@ const getCaseDetail = (sid) => {
 
 exports.getSubmissionInfo = (req, res) => {
   const sid = SqlString.escape(req.body.sid);
-  let sql = 'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=' + sid;
+  let sql = 'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,s.machine,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=' + sid;
   if (req.session.gid < 2) {
     sql += ' and p.isPublic=1';
   }
@@ -636,7 +680,7 @@ exports.reJudge = async (req, res) => {
 
   await setSubmission(req.body.sid, 2, 0, 0, 0, null, null);
 
-  judgeQueue.push({ sid: req.body.sid, isreJudge: true });
+  pushSidIntoQueue(req.body.sid, true);
   await clearCase(req.body.sid);
   res.status(200).send({
     message: 'ok'
@@ -649,7 +693,7 @@ exports.reJudgeProblem = async (req, res) => {
   db.query('SELECT sid FROM submission WHERE pid=?', [req.body.pid], async (err, data) => {
     for (let i in data) {
       await setSubmission(data[i].sid, 2, 0, 0, 0, null, null);
-      judgeQueue.push({ sid: data[i].sid, isreJudge: true });
+      pushSidIntoQueue(data[i].sid, true)
     }
     return res.status(200).send({
       message: 'ok',
@@ -665,7 +709,7 @@ exports.reJudgeContest = async (req, res) => {
     if (err) return res.status(202).send({ message: err });
     for (let i in data) {
       await setSubmission(data[i].sid, 2, 0, 0, 0, null, null);
-      judgeQueue.push({ sid: data[i].sid, isreJudge: true });
+      pushSidIntoQueue(data[i].sid, true);
     }
     return res.status(200).send({
       message: 'ok',

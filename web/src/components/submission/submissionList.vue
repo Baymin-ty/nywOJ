@@ -69,34 +69,35 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="judgeResult" label="评测状态" width="180px">
+        <el-table-column prop="judgeResult" label="评测状态" width="160px">
           <template #default="scope">
             <span style="cursor: pointer;" @click="go2s(scope)">
               {{ scope.row.judgeResult }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="score" label="分数" width="100px">
+        <el-table-column prop="score" label="分数" width="80px">
           <template #default="scope">
             <span> {{ scope.row.score }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="judgeResult" label="总用时" width="120px">
+        <el-table-column prop="judgeResult" label="总用时" width="100px">
           <template #default="scope">
             <span> {{ scope.row.time }} ms</span>
           </template>
         </el-table-column>
-        <el-table-column prop="judgeResult" label="内存" width="120px">
+        <el-table-column prop="judgeResult" label="内存" width="100px">
           <template #default="scope">
             <span> {{ scope.row.memory }} </span>
           </template>
         </el-table-column>
-        <el-table-column prop="codeLength" label="代码长度" width="100px">
+        <el-table-column prop="codeLength" label="代码长度" width="80px">
           <template #default="scope">
             <span> {{ scope.row.codeLength }} B </span>
           </template>
         </el-table-column>
-        <el-table-column prop="submitTime" label="提交时间" fixed="right" width="180px" />
+        <el-table-column prop="submitTime" label="提交时间" fixed="right" width="160px" />
+        <el-table-column prop="machine" label="评测机" fixed="right" min-width="100px" />
       </el-table>
     </el-card>
   </div>

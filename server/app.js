@@ -72,7 +72,8 @@ app.use((req, res, next) => {
       req.url === '/api/contest/getContestList' ||
       req.url === '/api/judge/getSubmissionList' ||
       req.url === '/api/common/getAnnouncementInfo' ||
-      req.url === '/api/problem/getProblemTags'
+      req.url === '/api/problem/getProblemTags' ||
+      req.url === '/api/judge/receiveTask'
     )
       next();
     else res.status(404).end('404 Not Found');

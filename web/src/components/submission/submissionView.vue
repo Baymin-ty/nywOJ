@@ -1,5 +1,5 @@
 <template>
-  <el-row style="min-width: 600px;max-width: 1180px; margin: 0 auto;">
+  <el-row style="min-width: 600px;max-width: 1250px; margin: 0 auto;">
     <el-table :data="table" style="margin-bottom:10px;" :header-cell-style="{ textAlign: 'center' }"
       :cell-style="cellStyle2">
       <el-table-column prop="sid" label="#" min-width="5%" />
@@ -24,7 +24,7 @@
           </span>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="评测状态" min-width="16%">
+      <el-table-column prop="judgeResult" label="评测状态" min-width="14%">
         <template #default="scope">
           <span>
             {{ scope.row.judgeResult }}
@@ -51,10 +51,11 @@
           <span> {{ scope.row.codeLength }} B </span>
         </template>
       </el-table-column>
-      <el-table-column prop="submitTime" label="提交时间" min-width="15%" />
+      <el-table-column prop="submitTime" label="提交时间" min-width="13%" />
+      <el-table-column prop="machine" label="评测机" min-width="10%" />
     </el-table>
   </el-row>
-  <el-row style="text-align: center; margin: 0 auto; max-width: 1200px; min-width: 600px;">
+  <el-row style="text-align: center; margin: 0 auto; max-width: 1250px; min-width: 600px;">
     <el-col :span="24" style="min-width: 400px;margin: 0 auto;">
       <el-card class="box-card" shadow="hover">
         <template #header>
@@ -85,7 +86,7 @@
       </el-card>
     </el-col>
   </el-row>
-  <el-row style="text-align: center; margin: 0 auto; max-width: 1200px; min-width: 600px;">
+  <el-row style="text-align: center; margin: 0 auto; max-width: 1250px; min-width: 600px;">
     <el-col :span="24" style="min-width: 400px">
       <el-card class="box-card" shadow="hover">
         <template #header>
