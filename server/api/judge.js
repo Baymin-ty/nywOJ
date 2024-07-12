@@ -25,11 +25,12 @@ const judgeQueue = async.queue((submission, callback) => {
   });
 
   worker.send({ type: 'judge', sid: submission.sid, isreJudge: submission.isreJudge });
-}, 2);
+}, 4);
 
 const machines = [
   'localhost',
-  // 'http://49.235.101.43/api/judge/receiveTask'
+  'localhost',
+  'http://49.235.101.43/api/judge/receiveTask'
 ];
 
 
@@ -133,18 +134,40 @@ module.exports.setSubmission = setSubmission;
 
 
 const updateSubmissionDetail = (sid, caseId, input, output, time, memory, result, compareResult, subtaskId) => {
-  db.query('INSERT INTO submissionDetail(sid,caseId,input,output,time,memory,result,compareResult,subtaskId) values(?,?,?,?,?,?,?,?,?)',
-    [sid, caseId, input, output, time, memory, result, compareResult, subtaskId]);
+  return new Promise((resolve, reject) => {
+    db.query('INSERT INTO submissionDetail(sid,caseId,input,output,time,memory,result,compareResult,subtaskId) values(?,?,?,?,?,?,?,?,?)',
+      [sid, caseId, input, output, time, memory, result, compareResult, subtaskId], (err, data) => {
+        if (err) reject(err);
+        else resolve(data);
+      });
+  }).catch(err => {
+    console.log(err);
+  });
 }
 module.exports.updateSubmissionDetail = updateSubmissionDetail;
 
-const updateProblemSubmitInfo = (pid) => {
-  db.query('SELECT COUNT(*) as cnt FROM submission WHERE pid=?', [pid], (err, data) => {
-    db.query('UPDATE problem SET submitCnt=? WHERE pid=?', [data[0].cnt, pid]);
+const updateProblemSubmitInfo = async (pid) => {
+  await new Promise((resolve, reject) => {
+    db.query('SELECT COUNT(*) as cnt FROM submission WHERE pid=?', [pid], (err, data) => {
+      db.query('UPDATE problem SET submitCnt=? WHERE pid=?', [data[0].cnt, pid], (err, data) => {
+        if (err) reject(err);
+        else resolve(data);
+      });
+    });
+  }).catch(err => {
+    console.log(err);
   });
-  db.query('SELECT COUNT(*) as cnt FROM submission WHERE pid=? AND judgeResult=4', [pid], (err, data) => {
-    db.query('UPDATE problem SET acCnt=? WHERE pid=?', [data[0].cnt, pid]);
-  })
+  await new Promise((resolve, reject) => {
+    db.query('SELECT COUNT(*) as cnt FROM submission WHERE pid=? AND judgeResult=4', [pid], (err, data) => {
+      db.query('UPDATE problem SET acCnt=? WHERE pid=?', [data[0].cnt, pid], (err, data) => {
+        if (err) reject(err);
+        else resolve(data);
+      });
+    });
+  }).catch(err => {
+    console.log(err);
+  });
+  return;
 }
 module.exports.updateProblemSubmitInfo = updateProblemSubmitInfo;
 

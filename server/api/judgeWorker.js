@@ -84,7 +84,7 @@ const judgeCode = async (sid, isreJudge) => {
         });
       });
       if (isreJudge) {
-        updateProblemSubmitInfo(pid);
+        await updateProblemSubmitInfo(pid);
       }
       return;
     }
@@ -153,7 +153,7 @@ const judgeCode = async (sid, isreJudge) => {
           });
         });
         if (isreJudge) {
-          updateProblemSubmitInfo(pid);
+          await updateProblemSubmitInfo(pid);
         }
         return;
       }
@@ -172,7 +172,7 @@ const judgeCode = async (sid, isreJudge) => {
 
     for (let i in cases) {
       if (isSkip[cases[i].subtaskId] === 2) { //Skipped
-        updateSubmissionDetail(
+        await updateSubmissionDetail(
           /*sid*/sid,
           /*caseId*/cases[i].index,
           /*input*/'',
@@ -253,7 +253,6 @@ const judgeCode = async (sid, isreJudge) => {
         usrOutput = runResult.files.stdout;
         let compareRes = '';
         const fileSuf = `./comparer/tmp/${sid}-${++jid}_`;
-        console.log(jid);
         if (pinfo.type === 0) {
           await setFile(`${fileSuf}usr.out`, usrOutput);
           await setFile(`${fileSuf}data.out`, outputFile);
@@ -388,7 +387,7 @@ const judgeCode = async (sid, isreJudge) => {
     await setSubmission(sid, finalRes, totalTime, maxMemory, totalScore, null, JSON.stringify(subtaskList), conf.JUDGE.NAME);
 
     if (isreJudge) {
-      updateProblemSubmitInfo(pid);
+      await updateProblemSubmitInfo(pid);
     }
 
     // axios.delete(`http://localhost:5050/file/${fileId}`);
