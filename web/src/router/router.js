@@ -7,6 +7,7 @@ import AnnouncementView from '@/components/announcement/announcementView.vue'
 import AnnouncementEdit from '@/components/announcement/announcementEdit.vue'
 import pasteView from "@/components/paste/pasteView.vue";
 import pasteEdit from "@/components/paste/pasteEdit.vue";
+import pasteList from "@/components/paste/pasteList.vue"
 
 import cuteRabbit from '@/components/rabbit/cuteRabbit.vue'
 import userLogin from "@/components/user/userLogin.vue"
@@ -169,6 +170,12 @@ const router = createRouter({
             activeTitle: '/user'
         },
         path: '/paste/edit/:mark', component: pasteEdit,
+    }, {
+        meta: {
+            title: '剪贴板列表',
+            activeTitle: '/user'
+        },
+        path: '/paste', component: pasteList,
     }],
     caseSensitive: true
 });

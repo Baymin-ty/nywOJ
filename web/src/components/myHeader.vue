@@ -62,16 +62,12 @@
         </el-icon>
         用户管理
       </el-menu-item>
-      <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认添加剪贴板?" @confirm="addPaste">
-        <template #reference>
-          <el-menu-item>
-            <el-icon>
-              <DocumentAdd />
-            </el-icon>
-            创建剪贴板
-          </el-menu-item>
-        </template>
-      </el-popconfirm>
+      <el-menu-item index="/paste">
+        <el-icon>
+          <Edit />
+        </el-icon>
+        剪贴板板
+      </el-menu-item>
       <span @click="logout">
         <el-menu-item>
           <el-icon>
@@ -86,7 +82,6 @@
 
 <script>
 import axios from "axios";
-import { ElMessage } from 'element-plus'
 
 export default {
   name: "myHeader",
@@ -117,19 +112,6 @@ export default {
         this.$store.state.gid = 0;
       });
       location.reload();
-    },
-    addPaste() {
-      axios.post('/api/common/addPaste').then(res => {
-        if (res.status === 200) {
-          this.$router.push('/paste/edit/' + res.data.mark);
-        } else {
-          ElMessage({
-            message: '添加剪贴板失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
-        }
-      });
     }
   }
 }

@@ -179,6 +179,7 @@ router.post('/api/common/addPaste', common.addPaste);
 router.post('/api/common/getPaste', common.getPaste);
 router.post('/api/common/updatePaste', common.updatePaste);
 router.post('/api/common/delPaste', common.delPaste);
+router.post('/api/common/getPasteList', common.getPasteList);
 
 const contest = require('./api/contest');
 router.post('/api/contest/createContest', contest.createContest);

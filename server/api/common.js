@@ -1,5 +1,6 @@
 const db = require('../db/index');
 const { briefFormat, Format } = require('../static');
+const SqlString = require('mysql/lib/protocol/SqlString');
 
 const getMark = () => {
   const time = Date.now().toString(36);
@@ -111,4 +112,30 @@ exports.delPaste = (req, res) => {
       }
     })
   })
+}
+
+exports.getPasteList = (req, res) => {
+  let pageId = req.body.pageId,
+    pageSize = 20, uid = null;
+  if (req.body.uid) uid = req.body.uid;
+  if (!pageId) pageId = 1;
+  if (req.session.gid < 3) uid = req.session.uid;
+  let sql = "SELECT p.id,p.mark,p.title,p.uid,p.time,p.isPublic,u.name as publisher FROM pastes p INNER JOIN userInfo u ON u.uid = p.uid";
+  if (uid) sql += ` WHERE p.uid=${uid}`;
+  sql += " ORDER BY p.id DESC LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
+  db.query(sql, async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    let list = data;
+    for (let i = 0; i < list.length; i++)
+      list[i].time = Format(list[i].time);
+    sql = 'SELECT COUNT(*) as total FROM pastes';
+    if (uid) sql += ` WHERE uid=${uid}`;
+    db.query(sql, (err, data) => {
+      if (err) return res.status(202).send({ message: err });
+      return res.status(200).send({
+        total: data[0].total,
+        data: list
+      });
+    });
+  });
 }
