@@ -80,8 +80,7 @@ export default {
             message: '删除成功',
             type: 'success',
           });
-          this.paste = {};
-          this.all();
+          this.$router.push('/paste');
         } else {
           ElMessage({
             message: '删除失败' + res.data.message,

@@ -64,7 +64,7 @@
       </el-menu-item>
       <el-menu-item index="/paste">
         <el-icon>
-          <Edit />
+          <Document />
         </el-icon>
         剪贴板板
       </el-menu-item>
