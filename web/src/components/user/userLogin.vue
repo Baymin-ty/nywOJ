@@ -48,7 +48,8 @@ export default {
             type: 'success',
             duration: 2000,
           });
-          location.reload();
+          this.$router.push(this.$store.state.reDirectTo);
+          this.$store.state.reDirectTo = '/';
         } else {
           ElMessage({
             message: res.data.message,

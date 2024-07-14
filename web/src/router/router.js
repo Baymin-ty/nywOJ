@@ -203,20 +203,25 @@ router.beforeEach(async (to, from, next) => {
             }
         });
     }
-    if (to.path === '/' ||
-        to.path === '/user/reg' ||
-        to.path === '/user/login' ||
-        to.path === '/rabbit' ||
-        to.path === '/problem' ||
-        to.path === '/contest' ||
-        to.path === '/submission' ||
-        /^\/announcement\/\w+$/.test(to.path))
-        next();
-    else if (store.state.uid) {
+    if (store.state.uid) {
         if (!per[to.path] || store.state.gid >= per[to.path])
             next();
-    } else {
-        next({ path: '/user/login' });
+    }
+    else {
+        if (to.path !== '/user/login')
+            store.state.reDirectTo = { path: to.path, query: to.query };
+        if (to.path === '/' ||
+            to.path === '/user/reg' ||
+            to.path === '/user/login' ||
+            to.path === '/rabbit' ||
+            to.path === '/problem' ||
+            to.path === '/contest' ||
+            to.path === '/submission' ||
+            /^\/announcement\/\w+$/.test(to.path)) {
+            next();
+        } else {
+            next({ path: '/user/login' });
+        }
     }
 })
 

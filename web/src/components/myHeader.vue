@@ -110,8 +110,8 @@ export default {
         this.$store.state.uid = 0;
         this.$store.state.name = '/';
         this.$store.state.gid = 0;
+        this.$router.push('/');
       });
-      location.reload();
     }
   }
 }
