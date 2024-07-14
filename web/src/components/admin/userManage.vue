@@ -42,8 +42,9 @@
             </el-input>
           </template>
           <template #default="scope">
-            <span class="rlink" v-show="!scope.row.edit" @click="this.$router.push('/user/' + scope.row.uid)">
-              {{ scope.row.name }}</span>
+            <router-link :to="'/user/' + scope.row.uid" class="rlink" v-show="!scope.row.edit">
+              {{ scope.row.name }}
+            </router-link>
             <el-input v-show="scope.row.edit" size="small" style="width:110px" v-model="this.tempInfo.name" />
           </template>
         </el-table-column>

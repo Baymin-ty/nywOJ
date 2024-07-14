@@ -12,17 +12,17 @@
     </el-table-column>
     <el-table-column prop="title" label="标题" min-width="50%">
       <template #default="scope">
-        <span class="rlink" @click="this.$router.push('/contest/' + cid + '/problem/' + scope.row.idx)">
+        <router-link class="rlink" :to="'/contest/' + cid + '/problem/' + scope.row.idx">
           {{ scope.row.title }}
-        </span>
+        </router-link>
       </template>
     </el-table-column>
     <el-table-column prop="weight" label="满分" min-width="20%" />
     <el-table-column prop="publisher" label="出题人" min-width="20%">
       <template #default="scope">
-        <span class="rlink" @click="this.$router.push('/user/' + scope.row.publisherUid)">
+        <router-link class="rlink" :to="'/user/' + scope.row.publisherUid">
           {{ scope.row.publisher }}
-        </span>
+        </router-link>
       </template>
     </el-table-column>
   </el-table>

@@ -39,9 +39,9 @@
         <el-table-column prop="pid" label="pid" min-width="10%" />
         <el-table-column prop="title" label="标题" min-width="25%">
           <template #default="scope">
-            <span class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)">
+            <router-link class="rlink" :to="'/problem/' + scope.row.pid">
               {{ scope.row.title }}
-            </span>
+            </router-link>
             <el-icon id="hidden" v-if="!scope.row.isPublic">
               <Hide />
             </el-icon>
@@ -55,9 +55,9 @@
         <el-table-column prop="time" label="发布时间" min-width="17%" />
         <el-table-column prop="publisher" label="出题人" min-width="18%">
           <template #default="scope">
-            <span class="rlink" @click="this.$router.push('/user/' + scope.row.publisherUid)">
+            <router-link class="rlink" :to="'/user/' + scope.row.publisherUid">
               {{ scope.row.publisher }}
-            </span>
+            </router-link>
           </template>
         </el-table-column>
       </el-table>

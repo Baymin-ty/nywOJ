@@ -89,7 +89,8 @@
                 <el-radio-button :label="0">每个测试点等分</el-radio-button>
                 <el-radio-button :label="1">全部通过后得全分</el-radio-button>
               </el-radio-group>
-              <el-switch style="margin-top: 5px;" v-if="scope.row.option" v-model="scope.row.skip" active-text="遇TLE止测" inactive-text="测试全部" />
+              <el-switch style="margin-top: 5px;" v-if="scope.row.option" v-model="scope.row.skip" active-text="遇TLE止测"
+                inactive-text="测试全部" />
             </template>
           </el-table-column>
         </el-table>

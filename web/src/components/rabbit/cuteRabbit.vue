@@ -38,7 +38,8 @@
             <el-table-column prop="name" label="用户名" min-width="17%">
               <template #default="scope">
                 <span style="cursor: pointer;" @click="this.$router.push('/user/' + scope.row.uid)">
-                  {{ scope.row.name }}</span>
+                  {{ scope.row.name }}
+                </span>
               </template>
             </el-table-column>
             <el-table-column prop="ip" label="IP" min-width="20%" />

@@ -10,7 +10,7 @@
             </p>
             <div class="subtitle">
               <span>
-                发布者: <span class="rlink" @click="this.$router.push('/user/' + paste.uid)">{{ paste.paster }}</span>
+                发布者: <router-link class="rlink" :to="'/user/' + paste.uid">{{ paste.paster }}</router-link>
               </span>
               <span style="margin-left: 10px;">
                 时间: <span class="time"> {{ paste.time }}</span>

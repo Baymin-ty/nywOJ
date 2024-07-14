@@ -77,9 +77,9 @@
           <template #default="scope">
             <div class="title-container">
               <div class="title-left">
-                <span class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)">
+                <router-link target="_blank" class="rlink" :to="'/problem/' + scope.row.pid">
                   {{ scope.row.title }}
-                </span>
+                </router-link>
                 <el-icon id="hidden" v-if="!scope.row.isPublic">
                   <Hide />
                 </el-icon>
@@ -109,9 +109,9 @@
         <el-table-column prop="time" label="发布时间" width="120px" />
         <el-table-column prop="publisher" label="出题人" width="160px">
           <template #default="scope">
-            <span class="rlink" @click="this.$router.push('/user/' + scope.row.publisherUid)">
+            <router-link class="rlink" :to="'/user/' + scope.row.publisherUid">
               {{ scope.row.publisher }}
-            </span>
+            </router-link>
           </template>
         </el-table-column>
       </el-table>

@@ -15,16 +15,16 @@
     <el-table-column prop="sid" label="#" min-width="5%" />
     <el-table-column prop="title" label="题目" min-width="18%">
       <template #default="scope">
-        <span class="rlink" @click="this.$router.push('/contest/' + cid + '/problem/' + scope.row.idx)"> {{
-          scope.row.title
-        }}</span>
+        <router-link class="rlink" :to="'/contest/' + cid + '/problem/' + scope.row.idx">
+          {{ scope.row.title }}
+        </router-link>
       </template>
     </el-table-column>
     <el-table-column prop="name" label="提交者" min-width="12%">
       <template #default="scope">
-        <span class="rlink" @click="this.$router.push('/user/' + scope.row.uid)">
+        <router-link class="rlink" :to="'/user/' + scope.row.uid">
           {{ scope.row.name }}
-        </span>
+        </router-link>
       </template>
     </el-table-column>
     <el-table-column prop="judgeResult" label="评测状态" min-width="12%">

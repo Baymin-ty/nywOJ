@@ -54,9 +54,9 @@
         <el-table-column prop="sid" label="#" width="100px" />
         <el-table-column prop="title" label="题目" min-width="200px">
           <template #default="scope">
-            <span class="rlink" @click="this.$router.push('/problem/' + scope.row.pid)">
+            <router-link class="rlink" :to="'/problem/' + scope.row.pid">
               {{ scope.row.title }}
-            </span>
+            </router-link>
             <el-icon id="hidden" v-if="!scope.row.isPublic">
               <Hide />
             </el-icon>
@@ -64,9 +64,9 @@
         </el-table-column>
         <el-table-column prop="name" label="提交者" width="150px">
           <template #default="scope">
-            <span class="rlink" @click="this.$router.push('/user/' + scope.row.uid)">
+            <router-link class="rlink" :to="'/user/' + scope.row.uid">
               {{ scope.row.name }}
-            </span>
+            </router-link>
           </template>
         </el-table-column>
         <el-table-column prop="judgeResult" label="评测状态" width="160px">

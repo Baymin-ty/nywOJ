@@ -21,12 +21,12 @@
                 {{ contestInfo.status }}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="参赛人数">
-              <span class="rlink" @click="this.$router.push('/contest/player/' + contestInfo.cid)">
-                <el-icon size="13">
+              <router-link class="rlink" :to="'/contest/player/' + contestInfo.cid">
+                <el-icon id="picon" size="13">
                   <UserFilled />
                 </el-icon>
                 × {{ contestInfo.playerCnt }}
-              </span>
+              </router-link>
             </el-descriptions-item>
           </el-descriptions>
           <el-progress :text-inside="true" :stroke-width="16" :percentage="percentage" status="success"
@@ -332,5 +332,9 @@ export default {
 
 .demo-tabs {
   margin: 10px;
+}
+
+#picon {
+  vertical-align: -2px;
 }
 </style>

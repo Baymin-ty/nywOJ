@@ -74,9 +74,14 @@ body {
 }
 
 .rlink {
+  text-decoration: none;
   font-weight: 500;
   cursor: pointer;
   color: #558CDD;
+}
+
+.rlink:hover {
+  color: #2d71d7;
 }
 
 blockquote {

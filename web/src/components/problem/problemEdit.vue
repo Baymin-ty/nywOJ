@@ -50,8 +50,9 @@
             </el-select>
           </el-descriptions-item>
           <el-descriptions-item label=" 出题人">
-            <span class="rlink" @click="this.$router.push('/user/' + problemInfo.publisherUid)">
-              {{ problemInfo.publisher }}</span>
+            <router-link class="rlink" :to="'/user/' + problemInfo.publisherUid">
+              {{ problemInfo.publisher }}
+            </router-link>
           </el-descriptions-item>
           <el-descriptions-item label="发布时间"> {{ problemInfo.time }} </el-descriptions-item>
           <el-descriptions-item label="是否公开">

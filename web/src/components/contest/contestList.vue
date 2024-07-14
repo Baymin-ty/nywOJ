@@ -32,10 +32,12 @@
         <el-table-column prop="cid" label="#" min-width="5%" />
         <el-table-column prop="title" label="标题" min-width="25%">
           <template #default="scope">
-            <span class="rlink" @click="this.$router.push('/contest/' + scope.row.cid)"> {{ scope.row.title
-            }}</span>
-            <el-tag style="margin-left: 10px;" size="small" :type="tagType[scope.row.status]">{{ scope.row.status
-            }}</el-tag>
+            <router-link class="rlink" :to="'/contest/' + scope.row.cid">
+              {{ scope.row.title }}
+            </router-link>
+            <el-tag style="margin-left: 10px;" size="small" :type="tagType[scope.row.status]">
+              {{ scope.row.status }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="start" label="开始时间" min-width="20%">
@@ -60,19 +62,19 @@
         </el-table-column>
         <el-table-column prop="playerCnt" label="参赛人数" min-width="10%">
           <template #default="scope">
-            <span class="rlink" @click="this.$router.push('/contest/player/' + scope.row.cid)">
-              <el-icon size="13">
+            <router-link class="rlink" :to="'/contest/player/' + scope.row.cid">
+              <el-icon id="picon" size="13">
                 <UserFilled />
               </el-icon>
               × {{ scope.row.playerCnt }}
-            </span>
+            </router-link>
           </template>
         </el-table-column>
         <el-table-column prop="host" label="举办者" min-width="15%">
           <template #default="scope">
-            <span class="rlink" @click="this.$router.push('/user/' + scope.row.host)">
+            <router-link class="rlink" :to="'/user/' + scope.row.host">
               {{ scope.row.hostName }}
-            </span>
+            </router-link>
           </template>
         </el-table-column>
       </el-table>
@@ -160,5 +162,9 @@ export default {
   justify-content: space-between;
   align-items: center;
   height: 20px;
+}
+
+#picon {
+  vertical-align: -2px;
 }
 </style>

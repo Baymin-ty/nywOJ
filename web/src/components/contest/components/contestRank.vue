@@ -16,7 +16,7 @@
     </el-table-column>
     <el-table-column label="用户名" fixed="left" max-width="15%" min-width="150px">
       <template #default="scope">
-        <span class="rlink" @click="this.$router.push('/user/' + scope.row.user.uid)">{{ scope.row.user.name }}</span>
+        <router-link class="rlink" :to="'/user/' + scope.row.user.uid">{{ scope.row.user.name }}</router-link>
       </template>
     </el-table-column>
     <el-table-column label="总分" fixed="left" max-width="10%" min-width="100px">
@@ -28,7 +28,7 @@
     </el-table-column>
     <el-table-column v-for="(key, value) in rankList.problem" :key="key" max-width="10%" min-width="100px">
       <template #header>
-        <span class="rlink" @click="this.$router.push('/contest/' + cid + '/problem/' + value)"> {{ value }}</span>
+        <router-link class="rlink" :to="'/contest/' + cid + '/problem/' + value"> {{ value }}</router-link>
         <div class="attach"> ({{ key }})</div>
       </template>
       <template #default="scope">
@@ -47,15 +47,16 @@
       :row-class-name="submissionTableRowClassName">
       <el-table-column prop="title" label="题目" min-width="20%">
         <template #default="scope">
-          <span class="rlink" @click="this.$router.push('/contest/' + cid + '/problem/' + scope.row.idx)">
-            {{ scope.row.title }}</span>
+          <router-link class="rlink" :to="'/contest/' + cid + '/problem/' + scope.row.idx">
+            {{ scope.row.title }}
+          </router-link>
         </template>
       </el-table-column>
       <el-table-column prop="name" label="提交者" min-width="15%">
         <template #default="scope">
-          <span class="rlink" @click="this.$router.push('/user/' + scope.row.uid)">
+          <router-link class="rlink" :to="'/user/' + scope.row.uid">
             {{ scope.row.name }}
-          </span>
+          </router-link>
         </template>
       </el-table-column>
       <el-table-column prop="judgeResult" label="评测状态" min-width="15%">

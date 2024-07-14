@@ -31,9 +31,9 @@
         <el-table-column prop="id" label="#" width="120px" />
         <el-table-column prop="title" label="标题" width="auto">
           <template #default="scope">
-            <span class="rlink" @click="this.$router.push('/paste/' + scope.row.mark)">
+            <router-link class="rlink" :to="'/paste/' + scope.row.mark">
               {{ scope.row.title }}
-            </span>
+            </router-link>
             <el-icon id="hidden" v-if="!scope.row.isPublic">
               <Hide />
             </el-icon>
@@ -42,9 +42,9 @@
         <el-table-column prop="time" label="发布时间" width="200px" />
         <el-table-column prop="publisher" label="发布人" width="200px">
           <template #default="scope">
-            <span class="rlink" @click="this.$router.push('/user/' + scope.row.uid)">
+            <router-link class="rlink" :to="'/user/' + scope.row.uid">
               {{ scope.row.publisher }}
-            </span>
+            </router-link>
           </template>
         </el-table-column>
       </el-table>

@@ -30,9 +30,9 @@
         <el-table-column prop="uid" label="uid" min-width="20%" />
         <el-table-column prop="name" label="用户名" min-width="70%">
           <template #default="scope">
-            <span class="rlink" @click="this.$router.push('/user/' + scope.row.uid)">
+            <router-link class="rlink" :to="'/user/' + scope.row.uid">
               {{ scope.row.name }}
-            </span>
+            </router-link>
           </template>
         </el-table-column>
       </el-table>

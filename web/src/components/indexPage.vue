@@ -21,9 +21,9 @@
         <el-table :data="announcements" v-loading="!announcements.length">
           <el-table-column prop="title" label="标题" min-width="60%">
             <template #default="scope">
-              <span class="rlink" @click="this.$router.push('/announcement/' + scope.row.aid)"> {{
-                scope.row.title
-                }}</span>
+              <router-link :to="'/announcement/' + scope.row.aid" class="rlink">
+                {{ scope.row.title }}
+              </router-link>
             </template>
           </el-table-column>
           <el-table-column prop="time" label="发布时间" min-width="40%" />
