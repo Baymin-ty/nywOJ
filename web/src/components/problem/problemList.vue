@@ -69,15 +69,16 @@
             <div class="title-container">
               <div class="title-left">标题</div>
               <div class="tags-right">
-                <el-button size="small" round @click="tagVisible = !tagVisible">
-                  {{ tagVisible ? '隐藏标签' : '显示标签' }}</el-button>
+                <el-button plain size="small" round @click="switchTag">
+                  {{ tagVisible ? '隐藏标签' : '显示标签' }}
+                </el-button>
               </div>
             </div>
           </template>
           <template #default="scope">
             <div class="title-container">
               <div class="title-left">
-                <router-link target="_blank" class="rlink" :to="'/problem/' + scope.row.pid">
+                <router-link class="rlink" :to="'/problem/' + scope.row.pid">
                   {{ scope.row.title }}
                 </router-link>
                 <el-icon id="hidden" v-if="!scope.row.isPublic">
@@ -266,9 +267,15 @@ export default {
         list.push(tag);
       }
       this.all();
+    },
+    switchTag() {
+      this.tagVisible = !this.tagVisible;
+      localStorage.setItem('tagVisible', this.tagVisible);
     }
   },
   mounted() {
+    if (localStorage.getItem('tagVisible') !== null)
+      this.tagVisible = localStorage.getItem('tagVisible') === 'true';
     axios.post('/api/problem/getProblemTags').then(res => {
       if (res.status === 200) {
         this.tagList = res.data;

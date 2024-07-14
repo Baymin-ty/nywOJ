@@ -48,7 +48,7 @@
                 </el-icon>
                 题目列表
               </template>
-              <contestProblem />
+              <contestProblemList />
             </el-tab-pane>
             <el-tab-pane name="submission" lazy v-if="joinAuth || viewAuth">
               <template #label>
@@ -151,7 +151,7 @@ import axios from 'axios';
 import { ElMessage } from 'element-plus'
 import contestSubmission from './components/contestSubmission.vue'
 import contestRank from './components/contestRank.vue'
-import contestProblem from './components/contestProblem.vue'
+import contestProblemList from './components/contestProblemList.vue'
 import problemManage from './components/problemManage.vue'
 
 export default {
@@ -159,7 +159,7 @@ export default {
   components: {
     contestSubmission,
     contestRank,
-    contestProblem,
+    contestProblemList,
     problemManage
   },
   data() {

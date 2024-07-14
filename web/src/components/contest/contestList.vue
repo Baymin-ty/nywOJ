@@ -96,7 +96,7 @@ export default {
       finished: false,
       currentPage: 1,
       tagType: {
-        '未开始': '',
+        '未开始': 'primary',
         '正在进行': 'danger',
         '等待测评': 'success',
         '已结束': 'info',
