@@ -1,16 +1,16 @@
 <template>
   <div style="margin: auto;max-width: 1000px;min-width: 800px;">
     <el-tabs v-model="activeName" @tab-change="switchTab" tab-position="left">
-      <el-tab-pane lazy name="profile">
+      <el-tab-pane name="profile">
         <template #label>
           <el-icon>
             <User />
           </el-icon>
           个人信息
         </template>
-        <userProfile />
+        <userProfile ref="profile" />
       </el-tab-pane>
-      <el-tab-pane lazy name="security">
+      <el-tab-pane name="security">
         <template #label>
           <el-icon>
             <Lock />
@@ -19,23 +19,23 @@
         </template>
         <userSecurity />
       </el-tab-pane>
-      <el-tab-pane lazy name="session">
+      <el-tab-pane name="session">
         <template #label>
           <el-icon>
             <Guide />
           </el-icon>
           会话管理
         </template>
-        <userSession />
+        <userSession ref="session" />
       </el-tab-pane>
-      <el-tab-pane lazy name="audit">
+      <el-tab-pane name="audit">
         <template #label>
           <el-icon>
             <Setting />
           </el-icon>
           操作记录
         </template>
-        <userAudit />
+        <userAudit ref="audit" />
       </el-tab-pane>
     </el-tabs>
   </div>
@@ -57,7 +57,8 @@ export default {
   },
   data() {
     return {
-      activeName: ''
+      activeName: '',
+      needUpdate: ['profile', 'session', 'audit']
     }
   },
   methods: {
@@ -67,6 +68,9 @@ export default {
         url += ('?tab=' + tab);
       history.state.current = url;
       history.replaceState(history.state, null, url);
+      if (this.needUpdate.includes(tab)) {
+        this.$nextTick(() => { this.$refs[tab].all(); });
+      }
     },
   },
   mounted() {
