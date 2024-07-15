@@ -6,7 +6,7 @@ const bodyParser = require('body-parser')
 const router = require('./router')
 const config = require('./config.json')
 const MySQLStore = require('express-mysql-session')(session);
-const { IpFilter } = require('express-ipfilter');
+// const { IpFilter } = require('express-ipfilter');
 const options = {
   host: config.DB.host,
   port: config.DB.port,
@@ -28,11 +28,12 @@ app.use(session({
 const parser = require('ua-parser-js');
 const db = require('./db/index');
 
-const trustedProxies = ['127.0.0.1', '::1'];
-app.set('trust proxy', trustedProxies);
+// const trustedProxies = ['127.0.0.1', '::1'];
+// app.set('trust proxy', trustedProxies);
 
-const ipFilter = IpFilter(['0.0.0.0/0', '::/0'], { mode: 'allow', log: false });
-app.use(ipFilter);
+// const ipFilter = IpFilter(['0.0.0.0/0', '::/0'], { mode: 'allow', log: false });
+// app.use(ipFilter);
+
 app.use((req, res, next) => {
   const ip = req.headers['x-real-ip'] ||
     req.headers['x-forwarded-for'].split(',')[0] ||
