@@ -52,16 +52,16 @@
             <el-icon class="el-icon--left">
               <RefreshLeft />
             </el-icon>
-            返回题目
+            查看题目
           </el-button>
-          <el-button type="success" @click="this.$router.push({
+          <el-button type="danger" @click="this.$router.push({
             path: '/contest/' + this.cid,
             query: {
               tab: 'problem'
             }
           })">
             <el-icon class="el-icon--left">
-              <RefreshLeft />
+              <Back />
             </el-icon>
             返回比赛
           </el-button>

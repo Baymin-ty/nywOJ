@@ -41,7 +41,12 @@
                 </el-button>
               </template>
             </el-popconfirm>
-            <el-button type="primary" @click="this.$router.push('/problem/edit/' + pid)">编辑题面</el-button>
+            <el-button type="primary" @click="this.$router.push('/problem/edit/' + pid)">
+              <el-icon class="el-icon--left">
+                <Edit />
+              </el-icon>
+              编辑题面
+            </el-button>
           </el-button-group>
         </div>
       </template>
