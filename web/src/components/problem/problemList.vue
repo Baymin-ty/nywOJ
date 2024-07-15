@@ -30,6 +30,10 @@
       <div style="display: inline-flex;">
         <el-form :inline="true" :model="filter">
           <el-form-item>
+            <el-input v-model="pid" type="text" placeholder="pid跳转" style="width: 80px;"
+              @keyup.enter="this.$router.push('/problem/' + pid)" />
+          </el-form-item>
+          <el-form-item>
             <el-input v-model="filter.name" type="text" placeholder="题目标题" style="width: 150px;" @keyup.enter="all" />
           </el-form-item>
           <el-form-item>
@@ -42,7 +46,7 @@
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-select v-model="filter.tags" multiple filterable clearable placeholder="题目标签" style="width: 400px;"
+            <el-select v-model="filter.tags" multiple filterable clearable placeholder="题目标签" style="width: 350px;"
               @change="all">
               <el-option v-for="tag in tagList" :key="tag" :label="tag" :value="tag">
                 <el-tag type="info" :color="getTagColor(tag)">
@@ -132,6 +136,7 @@ export default {
       problemList: [],
       total: 0,
       gid: 1,
+      pid: '',
       currentPage: 1,
       finished: false,
       filter: {
