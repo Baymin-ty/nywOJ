@@ -57,7 +57,7 @@
           <el-button type="danger" @click="this.$router.push({
             path: '/contest/' + this.cid,
             query: {
-              tab: 'problem'
+              tab: 'problemList'
             }
           })">
             <el-icon class="el-icon--left">
@@ -117,7 +117,7 @@ export default {
           if (res.data.refresh) {
             this.$router.push({
               path: '/contest/' + this.cid,
-              query: { tab: 'problem' }
+              query: { tab: 'problemList' }
             });
           }
         }

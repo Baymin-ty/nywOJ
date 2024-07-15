@@ -17,7 +17,8 @@
         </router-link>
       </template>
     </el-table-column>
-    <el-table-column prop="weight" label="满分" min-width="20%" />
+    <el-table-column v-if="ctype === 'IOI'" prop="score" label="得分" min-width="15%" />
+    <el-table-column prop="weight" label="满分" min-width="15%" />
     <el-table-column prop="publisher" label="出题人" min-width="20%">
       <template #default="scope">
         <router-link class="rlink" :to="'/user/' + scope.row.publisherUid">
@@ -34,6 +35,11 @@ import { ElMessage } from 'element-plus'
 
 export default {
   name: 'contestProblemList',
+  props: {
+    ctype: {
+      type: String
+    }
+  },
   data() {
     return {
       problemList: [],
@@ -50,6 +56,17 @@ export default {
       }).then(res => {
         this.problemList = res.data.data;
         this.finished = true;
+        if (this.ctype === 'IOI') {
+          axios.post('/api/contest/getSingleUserLastSubmission', {
+            cid: this.cid,
+            uid: this.$store.state.uid
+          }).then(res => {
+            for (let s of res.data.data) {
+              this.problemList[s.idx - 1].score = Math.round(s.score * this.problemList[s.idx - 1].weight / 100);
+              this.problemList[s.idx - 1].result = s.judgeResult;
+            }
+          });
+        }
       }).catch(err => {
         ElMessage({
           message: '获取题目列表失败' + err.message,

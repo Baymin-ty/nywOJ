@@ -74,7 +74,8 @@ export default {
       currentPage: 1,
       total: 10,
       lastOnly: false,
-      finished: false
+      finished: false,
+      cid: 0
     }
   },
   methods: {

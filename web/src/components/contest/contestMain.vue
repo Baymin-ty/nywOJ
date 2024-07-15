@@ -41,34 +41,34 @@
               </template>
               <v-md-preview :text="contestInfo.description" style="min-height: 600px;" />
             </el-tab-pane>
-            <el-tab-pane name="problem" lazy v-if="joinAuth || viewAuth">
+            <el-tab-pane name="problemList" v-if="joinAuth || viewAuth">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <Document />
                 </el-icon>
                 题目列表
               </template>
-              <contestProblemList />
+              <contestProblemList :ctype="contestInfo.type" ref="problemList" />
             </el-tab-pane>
-            <el-tab-pane name="submission" lazy v-if="joinAuth || viewAuth">
+            <el-tab-pane name="submission" v-if="joinAuth || viewAuth">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <DataAnalysis />
                 </el-icon>
                 提交记录
               </template>
-              <contestSubmission />
+              <contestSubmission ref="submission" />
             </el-tab-pane>
-            <el-tab-pane name="rank" lazy v-if="viewAuth">
+            <el-tab-pane name="rank" v-if="viewAuth">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <DataLine />
                 </el-icon>
                 排行榜
               </template>
-              <contestRank />
+              <contestRank ref="rank" />
             </el-tab-pane>
-            <el-tab-pane name="manageC" lazy v-if="this.gid >= 2">
+            <el-tab-pane name="manageC" v-if="this.gid >= 2">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <SetUp />
@@ -130,14 +130,14 @@
                 </el-col>
               </el-row>
             </el-tab-pane>
-            <el-tab-pane name="manageP" lazy v-if="this.gid >= 2">
+            <el-tab-pane name="manageP" v-if="this.gid >= 2">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <SetUp />
                 </el-icon>
                 题目管理
               </template>
-              <problemManage />
+              <problemManage ref="manageP" />
             </el-tab-pane>
           </el-tabs>
         </el-card>
@@ -177,7 +177,8 @@ export default {
         '正在进行': 'danger',
         '等待测评': 'success',
         '已结束': 'info',
-      }
+      },
+      needUpdate: ['problemList', 'submission', 'rank', 'manageP']
     }
   },
   methods: {
@@ -239,6 +240,9 @@ export default {
         url += ('?tab=' + tab);
       history.state.current = url;
       history.replaceState(history.state, null, url);
+      if (this.needUpdate.includes(tab)) {
+        this.$nextTick(() => { this.$refs[tab].all(); });
+      }
     },
     closeContest() {
       axios.post('/api/contest/closeContest', {
