@@ -47,15 +47,15 @@ const pushSidIntoQueue = (sid, isreJudge) => {
   if (conf.JUDGE.ISSERVER) {
     const machine = machines[(++taskId) % machines.length];
     if (machine === 'localhost') {
-      console.log('server: localJudge');
+      console.log(Format(new Date()), 'server: localJudge');
       judgeQueue.push({ sid: sid, isreJudge: isreJudge });
     }
     else {
-      console.log('server: task assigned to', machine);
+      console.log(Format(new Date()), 'server: task assigned to', machine);
       axios.post(machine, { sid: sid, isreJudge: isreJudge });
     }
   } else {
-    console.log('client: task received', sid, isreJudge);
+    console.log(Format(new Date()), 'client: task received', sid, isreJudge);
     judgeQueue.push({ sid: sid, isreJudge: isreJudge });
   }
 }
