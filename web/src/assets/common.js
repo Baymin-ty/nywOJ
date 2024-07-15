@@ -26,7 +26,9 @@ export const resColor = {
   'Segmentation Fault': '#607D8B',
   'Output Limit Exceeded': '#880e4f',
   'Dangerous System Call': '#607D8B',
-  'System Error': '#607D8B'
+  'System Error': '#607D8B',
+  'Canceled': '#606266',
+  'Skipped': '#606266'
 };
 
 export const scoreColor = [

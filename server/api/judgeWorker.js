@@ -7,6 +7,7 @@ const {
   updateSubmissionDetail,
   updateData,
   clearCase } = require('./judge');
+const { updateProblemStat } = require('./problem');
 const axios = require('axios');
 const db = require('../db/index');
 const { getFile, setFile, delFile } = require('../file');
@@ -30,15 +31,14 @@ const resToIndex = {
   'Internal Error': 12
 };
 
-const judgeCode = async (sid, isreJudge) => {
+const judgeCode = async (sid) => {
+  let sinfo = await SubmissionInfo(sid);
+  if (!sinfo) return;
+
+  const pid = sinfo.pid;
+  let pinfo = await ProblemInfo(pid);
+  if (!pinfo) return;
   try {
-    let sinfo = await SubmissionInfo(sid);
-    if (!sinfo) return;
-
-    const pid = sinfo.pid;
-    let pinfo = await ProblemInfo(pid);
-    if (!pinfo) return;
-
     await setSubmission(sid, 1, 0, 0, 0, null, null, conf.JUDGE.NAME);
     const code = sinfo.code, timeLimit = pinfo.timeLimit, memoryLimit = pinfo.memoryLimit;
 
@@ -83,9 +83,8 @@ const judgeCode = async (sid, isreJudge) => {
           else resolve(data);
         });
       });
-      if (isreJudge) {
-        await updateProblemSubmitInfo(pid);
-      }
+      await updateProblemSubmitInfo(pid);
+      await updateProblemStat(pid);
       return;
     }
 
@@ -107,6 +106,8 @@ const judgeCode = async (sid, isreJudge) => {
             else resolve(data);
           });
         });
+        await updateProblemSubmitInfo(pid);
+        await updateProblemStat(pid);
         return;
       }
       const testlib = await getFile('./comparer/testlib.h');
@@ -152,9 +153,8 @@ const judgeCode = async (sid, isreJudge) => {
             else resolve(data);
           });
         });
-        if (isreJudge) {
-          await updateProblemSubmitInfo(pid);
-        }
+        await updateProblemSubmitInfo(pid);
+        await updateProblemStat(pid);
         return;
       }
       SPJfileId = SPJcompileResult.fileIds['spj'];
@@ -386,14 +386,15 @@ const judgeCode = async (sid, isreJudge) => {
     }
     await setSubmission(sid, finalRes, totalTime, maxMemory, totalScore, null, JSON.stringify(subtaskList), conf.JUDGE.NAME);
 
-    if (isreJudge) {
-      await updateProblemSubmitInfo(pid);
-    }
+    await updateProblemSubmitInfo(pid);
+    await updateProblemStat(pid);
 
     // axios.delete(`http://localhost:5050/file/${fileId}`);
   } catch (err) {
     console.log(err);
     await setSubmission(sid, 12, 0, 0, 0, String(err), null, conf.JUDGE.NAME);
+    await updateProblemSubmitInfo(pid);
+    await updateProblemStat(pid);
   }
 }
 

@@ -29,6 +29,7 @@
       <el-table :data="pasteList" height="600px" :header-cell-style="{ textAlign: 'center' }"
         :cell-style="{ textAlign: 'center' }" v-loading="!finished">
         <el-table-column prop="id" label="#" width="120px" />
+        <el-table-column prop="mark" label="mark" width="150px" />
         <el-table-column prop="title" label="标题" width="auto">
           <template #default="scope">
             <router-link class="rlink" :to="'/paste/' + scope.row.mark">

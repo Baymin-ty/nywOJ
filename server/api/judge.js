@@ -6,7 +6,7 @@ const { Format, kbFormat } = require('../static');
 const async = require('async');
 const conf = require('../config.json');
 const { fork } = require('child_process');
-
+const { updateProblemStat, problemAuth } = require('./problem');
 
 const judgeQueue = async.queue((submission, callback) => {
   const worker = fork('./api/judgeWorker.js');
@@ -196,11 +196,16 @@ const updateData = (pid) => {
 }
 module.exports.updateData = updateData;
 
-exports.submit = (req, res) => {
+exports.submit = async (req, res) => {
   const code = req.body.code, pid = req.body.pid;
   if (!pid) {
     return res.status(202).send({
       message: '请确认信息完善'
+    });
+  }
+  if (!(await problemAuth(req, pid))) {
+    return res.status(202).send({
+      message: '权限不足'
     });
   }
   if (code.length < 10) {
@@ -255,6 +260,10 @@ exports.getSubmissionList = (req, res) => {
     req.body.judgeRes = SqlString.escape(req.body.judgeRes);
     sql += ' AND s.judgeResult=' + req.body.judgeRes;
   }
+  if (req.body.score !== null) {
+    req.body.score = SqlString.escape(req.body.score);
+    sql += ' AND s.score=' + req.body.score;
+  }
   sql += " ORDER BY sid DESC LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
 
   db.query(sql, (err, data) => {
@@ -279,6 +288,9 @@ exports.getSubmissionList = (req, res) => {
     }
     if (req.body.judgeRes !== null) {
       cntsql += ' AND s.judgeResult=' + req.body.judgeRes;
+    }
+    if (req.body.score !== null) {
+      cntsql += ' AND s.score=' + req.body.score;
     }
     db.query(cntsql, (err, data) => {
       if (err) return res.status(202).send({ message: err });
@@ -371,11 +383,13 @@ exports.reJudge = async (req, res) => {
 exports.reJudgeProblem = async (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
 
-  db.query('SELECT sid FROM submission WHERE pid=?', [req.body.pid], async (err, data) => {
+  db.query('SELECT sid FROM submission WHERE pid=?', [req.body.pid], (err, data) => {
     for (let i in data) {
-      await setSubmission(data[i].sid, 2, 0, 0, 0, null, null);
+      setSubmission(data[i].sid, 2, 0, 0, 0, null, null);
       pushSidIntoQueue(data[i].sid, true)
     }
+    updateProblemStat(req.body.pid);
+    updateProblemSubmitInfo(req.session.pid);
     return res.status(200).send({
       message: 'ok',
       total: data.length
@@ -403,8 +417,18 @@ exports.cancelSubmission = (req, res) => {
   if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
   db.query('UPDATE submission SET judgeResult=13,score=0 WHERE sid=?', [req.body.sid], (err, data) => {
     if (err) return res.status(202).send({ message: err });
-    else res.status(200).send({
-      message: 'ok',
-    });
+    else {
+      db.query('SELECT pid FROM submission WHERE sid=?', [req.body.sid], (err, data) => {
+        if (err) return res.status(202).send({ message: err });
+        else {
+          const pid = data[0].pid;
+          updateProblemSubmitInfo(pid);
+          updateProblemStat(pid);
+          return res.status(200).send({
+            message: 'ok',
+          });
+        }
+      })
+    }
   })
 }

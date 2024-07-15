@@ -218,12 +218,7 @@ export default {
         pid: this.pid,
       }).then(res => {
         if (res.data.total > 0) {
-          this.$router.push({
-            path: '/submission',
-            query: {
-              pid: this.pid
-            }
-          })
+          this.$router.push({ path: '/problem/stat/' + this.pid });
         } else {
           ElMessage({
             message: '暂时无人提交',

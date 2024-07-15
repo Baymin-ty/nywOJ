@@ -31,6 +31,9 @@
             <el-input v-model="filter.name" type="text" placeholder="用户名" style="width: 150px;" @keyup.enter="all" />
           </el-form-item>
           <el-form-item>
+            <el-input v-model="filter.score" type="text" placeholder="分数" style="width: 100px;" @keyup.enter="all" />
+          </el-form-item>
+          <el-form-item>
             <el-select v-model="filter.res" placeholder="评测结果" style="width: 200px;">
               <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
@@ -120,7 +123,8 @@ export default {
       filter: {
         pid: null,
         name: null,
-        res: null
+        res: null,
+        score: null
       },
       queryAll: false,
       options: [{
@@ -177,8 +181,9 @@ export default {
       let param = {}, url = location.pathname;
       if (this.filter.name) param.name = this.filter.name;
       if (this.filter.pid) param.pid = this.filter.pid;
+      if (this.filter.score !== null) param.score = this.filter.score;
       if (this.filter.res !== null) param.res = this.filter.res;
-      if (this.queryAll) param.queryAll = true;
+      if (this.queryAll && this.$store.state.gid > 1) param.queryAll = true;
       if (this.currentPage > 1)
         param.pageId = this.currentPage;
       let nurl = qs.stringify(param);
@@ -189,6 +194,7 @@ export default {
         pageId: this.currentPage,
         pid: this.filter.pid,
         name: this.filter.name,
+        score: this.filter.score,
         judgeRes: (this.filter.res === -1 ? null : this.filter.res),
         queryAll: this.queryAll
       }).then(res => {
@@ -204,7 +210,7 @@ export default {
       });
     },
     clear() {
-      this.filter.name = this.filter.pid = this.filter.res = null;
+      this.filter.name = this.filter.pid = this.filter.res = this.filter.score = null;
       this.all();
     },
     mySub() {
@@ -241,9 +247,10 @@ export default {
   mounted() {
     let query = this.$route.query;
     if (query.res) this.filter.res = parseInt(query.res);
+    if (query.score) this.filter.score = parseInt(query.score);
     if (query.name) this.filter.name = query.name;
     if (query.pid) this.filter.pid = query.pid;
-    if (query.queryAll) this.queryAll = true;
+    if (query.queryAll && this.$store.state.gid > 1) this.queryAll = true;
     if (query.pageId) this.currentPage = parseInt(query.pageId);
     this.all();
   }

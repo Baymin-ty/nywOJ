@@ -106,3 +106,12 @@ exports.recordEvent = (req, reason, detail, uid) => {
       console.log(err);
   });
 }
+
+exports.queryPromise = (sql, values) => {
+  return new Promise((resolve, reject) => {
+    db.query(sql, values, (error, results) => {
+      if (error) reject(error);
+      else resolve(results);
+    });
+  });
+}

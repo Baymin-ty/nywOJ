@@ -4,7 +4,22 @@ const db = require('../db/index');
 const { getFile, setFile } = require('../file');
 const fs = require('fs');
 const path = require('path');
-const { briefFormat, Format, bFormat, recordEvent } = require('../static');
+const { briefFormat, Format, bFormat, recordEvent, queryPromise, kbFormat } = require('../static');
+const judgeRes = ['Waiting',
+  'Pending',
+  'Rejudging',
+  'Compilation Error',
+  'Accepted',
+  'Wrong Answer',
+  'Time Limit Exceeded',
+  'Memory Limit Exceeded',
+  'Runtime Error',
+  'Segmentation Fault',
+  'Output Limit Exceeded',
+  'Dangerous System Call',
+  'System Error',
+  'Canceled',
+  'Skipped'];
 
 exports.createProblem = (req, res) => {
   if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
@@ -143,6 +158,13 @@ exports.getProblemList = (req, res) => {
 }
 
 const ptype = ['传统文本比较', 'Special Judge'];
+
+const problemAuth = async (req, pid) => {
+  if (req.session.gid > 1) return true;
+  const data = await queryPromise('SELECT isPublic FROM problem WHERE pid=?', [pid]);
+  return !!data[0].isPublic;
+}
+module.exports.problemAuth = problemAuth;
 
 exports.getProblemInfo = (req, res) => {
   const pid = req.body.pid;
@@ -447,4 +469,121 @@ exports.getProblemTags = (req, res) => {
     const tags = data.map(data => data.tag);
     return res.status(200).send(tags);
   })
+}
+
+const updateProblemStat = async (pid) => {
+  let stat = await queryPromise('SELECT score,judgeResult,COUNT(*) as cnt FROM submission WHERE pid=? GROUP BY score,judgeResult ORDER BY score,judgeResult', [pid]);
+  for (let i of stat)
+    i.judgeResult = judgeRes[i.judgeResult];
+  await queryPromise('UPDATE problem SET stat=? WHERE pid=?', [JSON.stringify(stat), pid]);
+  return stat;
+}
+module.exports.updateProblemStat = updateProblemStat;
+
+exports.getProblemStat = async (req, res) => {
+  let pid = req.body.pid;
+  if (!pid) return res.status(202).send({ message: 'expect pid' });
+  if (!(await problemAuth(req, pid))) {
+    return res.status(202).send({
+      message: '权限不足'
+    });
+  }
+  try {
+    let data = await queryPromise('SELECT stat FROM problem WHERE pid=?', [pid]);
+    data = data[0];
+    if (!data.stat)
+      return res.status(200).send({ stat: await updateProblemStat(pid) });
+    else
+      return res.status(200).send({ stat: JSON.parse(data.stat) });
+  } catch (err) {
+    return res.status(202).send({ message: err });
+  }
+}
+
+exports.getProblemFastestSubmission = async (req, res) => {
+  let pid = req.body.pid;
+  if (!pid) return res.status(202).send({ message: 'expect pid' });
+  if (!(await problemAuth(req, pid))) {
+    return res.status(202).send({
+      message: '权限不足'
+    });
+  }
+  try {
+    let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.cid,s.machine,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE p.pid=? AND score=100 ORDER BY s.time LIMIT 10"
+    let data = await queryPromise(sql, [pid]);
+    for (let i of data) i.memory = kbFormat(i.memory);
+    return res.status(200).send({ data: data });
+  } catch (err) {
+    return res.status(202).send({ message: err });
+  }
+}
+
+exports.bindPaste2Problem = async (req, res) => {
+  let pid = req.body.pid, mark = req.body.mark;
+  if (!pid || !mark) return res.status(202).send({ message: 'expect pid && mark' });
+  if (req.session.gid < 2) {
+    return res.status(202).send({
+      message: '权限不足'
+    });
+  }
+  try {
+    let paste = await queryPromise('SELECT COUNT(*) as cnt FROM pastes WHERE mark=?', [mark]);
+    if (!paste[0].cnt)
+      return res.status(202).send({ message: `未找到mark为${mark}的剪贴板` });
+    await queryPromise('INSERT INTO problemSolution(pid,mark) VALUES (?,?)', [pid, mark]);
+    return res.status(200).send({ message: 'success' })
+  } catch (err) {
+    return res.status(202).send({ message: err });
+  }
+}
+
+exports.getProblemSol = async (req, res) => {
+  let pid = req.body.pid;
+  if (!pid) return res.status(202).send({ message: 'expect pid' });
+  if (!(await problemAuth(req, pid))) {
+    return res.status(202).send({
+      message: '权限不足'
+    });
+  }
+  try {
+    let sql = "SELECT s.id,s.mark,p.uid,p.title,u.name,p.time,p.isPublic FROM problemSolution s INNER JOIN pastes p ON s.mark=p.mark INNER JOIN userInfo u ON p.uid=u.uid WHERE s.pid=? ORDER BY p.time"
+    let data = await queryPromise(sql, [pid]);
+    for (let i of data) i.time = Format(i.time);
+    return res.status(200).send({ data: data });
+  } catch (err) {
+    return res.status(202).send({ message: err });
+  }
+}
+
+exports.getProblemSol = async (req, res) => {
+  let pid = req.body.pid;
+  if (!pid) return res.status(202).send({ message: 'expect pid' });
+  if (!(await problemAuth(req, pid))) {
+    return res.status(202).send({
+      message: '权限不足'
+    });
+  }
+  try {
+    let sql = "SELECT s.id,s.mark,p.uid,p.title,u.name,p.time,p.isPublic FROM problemSolution s INNER JOIN pastes p ON s.mark=p.mark INNER JOIN userInfo u ON p.uid=u.uid WHERE s.show=1 AND s.pid=? ORDER BY p.time"
+    let data = await queryPromise(sql, [pid]);
+    for (let i of data) i.time = briefFormat(i.time);
+    return res.status(200).send({ data: data });
+  } catch (err) {
+    return res.status(202).send({ message: err });
+  }
+}
+
+exports.unbindSol = async (req, res) => {
+  let id = req.body.id;
+  if (req.session.gid < 2) {
+    return res.status(202).send({
+      message: '权限不足'
+    });
+  }
+  try {
+    await queryPromise('UPDATE problemSolution SET `show`=0 WHERE id=?', [id]);
+    return res.status(200).send({ message: 'success' });
+  } catch (err) {
+    return res.status(202).send({ message: err });
+  }
 }

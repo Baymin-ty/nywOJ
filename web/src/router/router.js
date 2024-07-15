@@ -16,6 +16,7 @@ import userInfo from '@/components/user/userInfo.vue'
 import problemList from '@/components/problem/problemList.vue'
 import problemView from '@/components/problem/problemView.vue'
 import problemEdit from '@/components/problem/problemEdit.vue'
+import problemStat from "@/components/problem/problemStat.vue";
 import caseManage from '@/components/problem/caseManage.vue'
 import submissionList from '@/components/submission/submissionList.vue'
 import submissionView from '@/components/submission/submissionView.vue'
@@ -176,6 +177,12 @@ const router = createRouter({
             activeTitle: '/user'
         },
         path: '/paste', component: pasteList,
+    }, {
+        meta: {
+            title: '数据统计',
+            activeTitle: '/problem'
+        },
+        path: '/problem/stat/:pid', component: problemStat,
     }],
     caseSensitive: true
 });

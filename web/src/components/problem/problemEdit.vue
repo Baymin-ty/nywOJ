@@ -6,7 +6,7 @@
           <div class="card-header" style="height: 35px;">
             <p class="title">
               <span style="vertical-align: -3px;">#{{ problemInfo.pid }}、</span>
-              <el-input size="primary" v-model="problemInfo.title" style="width: 200px;" />
+              <el-input size="large" v-model="problemInfo.title" style="width: 200px;" />
               <el-switch v-model="problemInfo.isPublic" style="margin-left: 10px;" size="large" active-text="公开"
                 inactive-text="隐藏" />
             </p>
@@ -22,12 +22,13 @@
         <template #header>
           <div class="card-header">
             <div class="stat-item clickable"
-              @click="this.$router.push({ path: '/submission', query: { pid: pid, res: 4 } })">
+              @click="this.$router.push({ path: '/submission', query: { pid: pid, res: 4, queryAll: true } })">
               <div class="stat-number">{{ problemInfo.acCnt }}</div>
               <div class="stat-label">通过</div>
             </div>
             <div class="stat-divider"></div>
-            <div class="stat-item clickable" @click="this.$router.push({ path: '/submission', query: { pid: pid } })">
+            <div class="stat-item clickable"
+              @click="this.$router.push({ path: '/submission', query: { pid: pid, queryAll: true } })">
               <div class="stat-number">{{ problemInfo.submitCnt }}</div>
               <div class="stat-label">提交</div>
             </div>
