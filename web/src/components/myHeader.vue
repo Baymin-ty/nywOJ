@@ -1,7 +1,7 @@
 <template>
   <el-menu mode="horizontal" :default-active="this.$store.state.activeTitle" :router="true">
     <el-menu-item index="/rabbit" style="height: auto">
-      <img style="margin-top: 5px;" src="../assets/icon.png" class="icon">
+      <img style="margin-top: 3px;" src="../assets/icon.png" class="icon">
     </el-menu-item>
     <el-menu-item index="/">
       <el-icon>
