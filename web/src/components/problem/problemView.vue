@@ -3,8 +3,13 @@
     <el-col :xs="24" :sm="24" :md="17">
       <el-card class="box-card" shadow="hover">
         <template #header>
-          <div class="card-header">
-            <p class="title">#{{ problemInfo.pid }}、{{ problemInfo.title }}</p>
+          <div class="card-header" style="height: 35px;">
+            <p class="title">
+              #{{ problemInfo.pid }}、{{ problemInfo.title }}
+              <el-icon id="hidden" v-if="!problemInfo.isPublic">
+                <Hide />
+              </el-icon>
+            </p>
           </div>
         </template>
         <div v-if="isSubmit">
@@ -26,7 +31,16 @@
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            题目信息 (提交: {{ problemInfo.submitCnt }} AC: {{ problemInfo.acCnt }})
+            <div class="stat-item clickable"
+              @click="this.$router.push({ path: '/submission', query: { pid: pid, res: 4 } })">
+              <div class="stat-number">{{ problemInfo.acCnt }}</div>
+              <div class="stat-label">通过</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item clickable" @click="this.$router.push({ path: '/submission', query: { pid: pid } })">
+              <div class="stat-number">{{ problemInfo.submitCnt }}</div>
+              <div class="stat-label">提交</div>
+            </div>
           </div>
         </template>
         <el-descriptions direction="vertical" :column="1" border>
@@ -52,9 +66,6 @@
             </router-link>
           </el-descriptions-item>
           <el-descriptions-item label="发布时间"> {{ problemInfo.time }} </el-descriptions-item>
-          <el-descriptions-item label="是否公开">
-            <el-switch v-model="problemInfo.isPublic" disabled size="large" active-text="公开" inactive-text="隐藏" />
-          </el-descriptions-item>
         </el-descriptions>
         <el-divider style="margin-top: 20px; margin-bottom: 20px;" />
         <div style="text-align: center;">
@@ -68,7 +79,13 @@
             <el-icon class="el-icon--left">
               <RefreshLeft />
             </el-icon>
-            返回题目
+            查看题目
+          </el-button>
+          <el-button color="#626aef" @click="this.$router.push('/problem/stat/' + problemInfo.pid)">
+            <el-icon class="el-icon--left">
+              <Histogram />
+            </el-icon>
+            数据统计
           </el-button>
           <el-button v-if="this.gid > 1" type="danger" @click="this.$router.push('/problem/edit/' + problemInfo.pid)">
             <el-icon class="el-icon--left">
@@ -188,8 +205,47 @@ export default {
   text-align: left;
 }
 
-.title {
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.stat-item {
   text-align: center;
+  flex: 1;
+}
+
+.clickable {
+  cursor: pointer;
+  transition: background-color 0.3s;
+  border-radius: 5px;
+}
+
+.clickable:hover {
+  background-color: #f5f7fa;
+}
+
+.stat-number {
+  font-size: 28px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #909399;
+  margin-top: 3px;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 60px;
+  background-color: #e0e0e0;
+  margin: 0 20px;
+}
+
+.title {
   margin: 0;
   font-size: 25px;
 }
@@ -203,5 +259,10 @@ export default {
   color: white;
   font-weight: 600;
   font-size: 14px;
+}
+
+#hidden {
+  vertical-align: -4px;
+  color: #312b2b;
 }
 </style>

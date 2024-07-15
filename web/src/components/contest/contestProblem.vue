@@ -26,7 +26,7 @@
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            题目信息
+            <p class="title" style="font-size: 18px;">题目信息</p>
           </div>
         </template>
         <el-descriptions direction="vertical" :column="1" border>
@@ -147,8 +147,14 @@ export default {
   text-align: left;
 }
 
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 35px;
+}
+
 .title {
-  text-align: center;
   margin: 0;
   font-size: 25px;
 }

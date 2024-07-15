@@ -3,9 +3,13 @@
     <el-col :xs="24" :sm="24" :md="17">
       <el-card class="box-card" shadow="hover">
         <template #header>
-          <div class="card-header">
-            <p class="title">#{{ problemInfo.pid }}、<el-input size="large" v-model="problemInfo.title"
-                style="width: 200px;" /></p>
+          <div class="card-header" style="height: 35px;">
+            <p class="title">
+              <span style="vertical-align: -3px;">#{{ problemInfo.pid }}、</span>
+              <el-input size="primary" v-model="problemInfo.title" style="width: 200px;" />
+              <el-switch v-model="problemInfo.isPublic" style="margin-left: 10px;" size="large" active-text="公开"
+                inactive-text="隐藏" />
+            </p>
           </div>
         </template>
         <v-md-editor height="600px"
@@ -17,7 +21,16 @@
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            题目信息 (提交: {{ problemInfo.submitCnt }} AC: {{ problemInfo.acCnt }})
+            <div class="stat-item clickable"
+              @click="this.$router.push({ path: '/submission', query: { pid: pid, res: 4 } })">
+              <div class="stat-number">{{ problemInfo.acCnt }}</div>
+              <div class="stat-label">通过</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item clickable" @click="this.$router.push({ path: '/submission', query: { pid: pid } })">
+              <div class="stat-number">{{ problemInfo.submitCnt }}</div>
+              <div class="stat-label">提交</div>
+            </div>
           </div>
         </template>
         <el-descriptions direction="vertical" :column="1" border>
@@ -55,9 +68,6 @@
             </router-link>
           </el-descriptions-item>
           <el-descriptions-item label="发布时间"> {{ problemInfo.time }} </el-descriptions-item>
-          <el-descriptions-item label="是否公开">
-            <el-switch v-model="problemInfo.isPublic" size="large" active-text="公开" inactive-text="隐藏" />
-          </el-descriptions-item>
         </el-descriptions>
         <el-divider style="margin-top: 20px; margin-bottom: 20px;" />
         <div style="text-align: center;">
@@ -215,12 +225,48 @@ export default {
   text-align: left;
 }
 
-.box-card {
-  margin: 10px;
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.stat-item {
+  text-align: center;
+  flex: 1;
+}
+
+.clickable {
+  cursor: pointer;
+  transition: background-color 0.3s;
+  border-radius: 5px;
+}
+
+.clickable:hover {
+  background-color: #f5f7fa;
+}
+
+.stat-number {
+  font-size: 28px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #909399;
+  margin-top: 3px;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 60px;
+  background-color: #e0e0e0;
+  margin: 0 20px;
 }
 
 .title {
-  text-align: center;
   margin: 0;
   font-size: 25px;
 }
