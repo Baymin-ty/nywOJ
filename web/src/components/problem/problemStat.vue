@@ -27,7 +27,7 @@
             </el-button-group>
           </div>
         </template>
-        <el-table :data="solList" height="auto" :header-cell-style="{ textAlign: 'center' }"
+        <el-table :data="solList" max-height="200px" :header-cell-style="{ textAlign: 'center' }"
           :cell-style="{ textAlign: 'center' }">
           <el-table-column prop="title" label="标题" min-width="40%">
             <template #default="scope">
@@ -39,7 +39,7 @@
               </el-icon>
             </template>
           </el-table-column>
-          <el-table-column prop="name" label="用户名" min-width="25%">
+          <el-table-column prop="name" label="上传者" min-width="25%">
             <template #default="scope">
               <router-link class="rlink" :to="'/user/' + scope.row.uid">
                 {{ scope.row.name }}
@@ -65,10 +65,10 @@
             最快提交
           </div>
         </template>
-        <el-table :data="submissionList" max-height="400px" :header-cell-style="{ textAlign: 'center' }"
+        <el-table :data="submissionList" height="auto" :header-cell-style="{ textAlign: 'center' }"
           :cell-style="cellStyle" :row-class-name="tableRowClassName">
           <el-table-column prop="sid" label="#" width="100px" />
-          <el-table-column prop="name" label="提交者" width="150px">
+          <el-table-column prop="name" label="提交者" width="auto">
             <template #default="scope">
               <router-link class="rlink" :to="'/user/' + scope.row.uid">
                 {{ scope.row.name }}
@@ -92,7 +92,7 @@
               <span> {{ scope.row.memory }} </span>
             </template>
           </el-table-column>
-          <el-table-column prop="machine" label="评测机" fixed="right" min-width="100px" />
+          <el-table-column prop="machine" label="评测机" fixed="right" width="120px" />
         </el-table>
       </el-card>
     </el-col>

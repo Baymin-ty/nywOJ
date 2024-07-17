@@ -6,10 +6,11 @@
           <div class="card-header">
             <p class="title">
               标题：<el-input v-model="paste.title" style="width: 200px; margin-right: 20px;" />
-              <el-switch v-model="paste.isPublic" size="large" active-text="公开" inactive-text="私有" />
+              <el-switch :disabled="!($store.state.gid > 2 || $store.state.uid === paste.uid)" v-model="paste.isPublic" size="large" active-text="公开" inactive-text="私有" />
             </p>
             <el-button-group style="float: right;">
-              <el-button type="danger" @click="updatePaste">更新剪贴板</el-button>
+              <el-button v-if="$store.state.gid > 2 || $store.state.uid === paste.uid" type="danger"
+                @click="updatePaste">更新剪贴板</el-button>
               <el-button type="primary" @click="this.$router.push('/paste/' + paste.mark)">返回剪贴板</el-button>
             </el-button-group>
           </div>
@@ -31,7 +32,6 @@ export default {
   data() {
     return {
       mark: '',
-      gid: 1,
       paste: {},
     }
   },
