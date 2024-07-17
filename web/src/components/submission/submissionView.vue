@@ -67,7 +67,7 @@
                     <el-icon class="el-icon--left">
                       <CloseBold />
                     </el-icon>
-                    取消评测
+                    取消成绩
                   </el-button>
                 </template>
               </el-popconfirm>

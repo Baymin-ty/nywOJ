@@ -39,7 +39,7 @@
               </el-icon>
             </template>
           </el-table-column>
-          <el-table-column prop="name" label="上传者" min-width="25%">
+          <el-table-column prop="name" label="发布者" min-width="25%">
             <template #default="scope">
               <router-link class="rlink" :to="'/user/' + scope.row.uid">
                 {{ scope.row.name }}

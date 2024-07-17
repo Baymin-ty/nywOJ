@@ -171,7 +171,7 @@ export default {
         label: 'System Error',
       }, {
         value: 13,
-        label: 'Cancaled',
+        label: 'Canceled',
       }],
     }
   },
