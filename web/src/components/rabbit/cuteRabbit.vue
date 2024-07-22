@@ -176,7 +176,6 @@ export default {
 }
 
 .box-card {
-  height: 700px;
   margin: 10px;
 }
 
