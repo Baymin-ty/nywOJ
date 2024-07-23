@@ -247,7 +247,10 @@ exports.getSubmissionList = (req, res) => {
   sql += 'WHERE p.isPublic' + (req.session.gid < 2 ? '=1' : '<6');
   if (!req.body.queryAll || req.session.gid === 1)
     sql += ' AND s.cid=0';
-
+  else if (req.body.cid) {
+    req.body.cid = SqlString.escape(req.body.cid);
+    sql += ` AND s.cid=${req.body.cid}`;
+  }
   if (req.body.name) {
     req.body.name = SqlString.escape(req.body.name);
     sql += ' AND u.name=' + req.body.name;
@@ -279,7 +282,8 @@ exports.getSubmissionList = (req, res) => {
 
     if (!req.body.queryAll || req.session.gid === 1)
       cntsql += ' AND s.cid=0';
-
+    else if (req.body.cid)
+      cntsql += ' AND s.cid=' + req.body.cid;
     if (req.body.name) {
       cntsql += ' AND u.name=' + req.body.name;
     }

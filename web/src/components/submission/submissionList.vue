@@ -38,6 +38,9 @@
               <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
+          <el-form-item v-if="queryAll">
+            <el-input v-model="filter.cid" type="text" placeholder="比赛id" style="width: 80px;" @keyup.enter="all" />
+          </el-form-item>
         </el-form>
         <span v-if="this.$store.state.gid >= 2" style="font-size: 14px; font-weight: 600; margin:0 20px 0 10px;">
           比赛提交：
@@ -124,7 +127,8 @@ export default {
         pid: null,
         name: null,
         res: null,
-        score: null
+        score: null,
+        cid: null
       },
       queryAll: false,
       options: [{
@@ -181,6 +185,7 @@ export default {
       let param = {}, url = location.pathname;
       if (this.filter.name) param.name = this.filter.name;
       if (this.filter.pid) param.pid = this.filter.pid;
+      if (this.filter.cid) param.cid = this.filter.cid;
       if (this.filter.score !== null) param.score = this.filter.score;
       if (this.filter.res !== null) param.res = this.filter.res;
       if (this.queryAll && this.$store.state.gid > 1) param.queryAll = true;
@@ -193,6 +198,7 @@ export default {
       axios.post('/api/judge/getSubmissionList', {
         pageId: this.currentPage,
         pid: this.filter.pid,
+        cid: this.filter.cid,
         name: this.filter.name,
         score: this.filter.score,
         judgeRes: (this.filter.res === -1 ? null : this.filter.res),
@@ -210,7 +216,7 @@ export default {
       });
     },
     clear() {
-      this.filter.name = this.filter.pid = this.filter.res = this.filter.score = null;
+      this.filter.name = this.filter.pid = this.filter.res = this.filter.score = this.filter.cid = null;
       this.all();
     },
     mySub() {
@@ -250,6 +256,7 @@ export default {
     if (query.score) this.filter.score = parseInt(query.score);
     if (query.name) this.filter.name = query.name;
     if (query.pid) this.filter.pid = query.pid;
+    if (query.cid) this.filter.cid = query.cid;
     if (query.queryAll && this.$store.state.gid > 1) this.queryAll = true;
     if (query.pageId) this.currentPage = parseInt(query.pageId);
     this.all();

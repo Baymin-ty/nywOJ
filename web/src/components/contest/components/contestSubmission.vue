@@ -1,8 +1,11 @@
 <template>
   <div class="header">
-    <el-switch v-model="lastOnly" class="mb-2" active-text="最后一次提交" inactive-text="所有提交" @change="all" />
-    <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
-      layout="total, prev, pager, next" :total="total"></el-pagination>
+    <div class="left-controls">
+      <el-switch v-model="lastOnly" active-text="Last" inactive-text="All" @change="all" />
+      <el-checkbox v-model="selfOnly" label="只看自己" @change="all" />
+    </div>
+    <el-pagination v-if="!(lastOnly && selfOnly)" @current-change="handleCurrentChange" :current-page="currentPage"
+      :page-size="20" layout="total, prev, pager, next" :total="total"></el-pagination>
     <el-button type="primary" @click="all">
       <el-icon class="el-icon--left">
         <Refresh />
@@ -72,18 +75,25 @@ export default {
     return {
       submissionList: [],
       currentPage: 1,
-      total: 10,
+      total: 0,
       lastOnly: false,
       finished: false,
-      cid: 0
+      cid: 0,
+      selfOnly: false
     }
   },
   methods: {
     all() {
       this.finished = false;
-      axios.post(this.lastOnly ? '/api/contest/getLastSubmissionList' : '/api/contest/getSubmissionList', {
+      let url = '';
+      if (this.lastOnly) url =
+        this.selfOnly ? '/api/contest/getSingleUserLastSubmission' :
+          '/api/contest/getLastSubmissionList';
+      else url = '/api/contest/getSubmissionList'
+      axios.post(url, {
         cid: this.cid,
-        pageId: this.currentPage
+        pageId: this.currentPage,
+        uid: this.selfOnly ? this.uid : null
       }).then(res => {
         this.submissionList = res.data.data;
         this.total = res.data.total;
@@ -132,5 +142,11 @@ export default {
   justify-content: space-between;
   align-items: center;
   height: 40px;
+}
+
+.left-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 </style>
