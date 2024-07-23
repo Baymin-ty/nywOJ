@@ -37,11 +37,13 @@
             <el-input v-model="filter.name" type="text" placeholder="题目标题" style="width: 150px;" @keyup.enter="all" />
           </el-form-item>
           <el-form-item>
-            <el-input v-model="filter.publisherUid" type="text" placeholder="出题人uid" style="width: 100px;"
-              @keyup.enter="all" />
+            <el-select v-model="filter.publisherUid" filterable clearable placeholder="出题人" style="width: 160px;"
+              @change="all">
+              <el-option v-for="p in publisherList" :key="p.publisher" :label="p.name" :value="p.publisher" />
+            </el-select>
           </el-form-item>
           <el-form-item>
-            <el-select v-model="filter.level" placeholder="难度评级" style="width: 150px;" @change="all">
+            <el-select v-model="filter.level" placeholder="难度评级" style="width: 120px;" @change="all">
               <el-option v-for="it in levels" :key="it.index" :label="it.label" :value="it.index" />
             </el-select>
           </el-form-item>
@@ -194,6 +196,7 @@ export default {
       ],
       tagList: [],
       tagVisible: true,
+      publisherList: []
     }
   },
   methods: {
@@ -290,6 +293,17 @@ export default {
       } else {
         ElMessage({
           message: '获取题目标签失败' + res.data.message,
+          type: 'error',
+          duration: 2000,
+        });
+      }
+    });
+    axios.post('/api/problem/getProblemPublishers').then(res => {
+      if (res.status === 200) {
+        this.publisherList = res.data;
+      } else {
+        ElMessage({
+          message: '获取出题人失败' + res.data.message,
           type: 'error',
           duration: 2000,
         });

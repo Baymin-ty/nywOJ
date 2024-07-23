@@ -471,6 +471,15 @@ exports.getProblemTags = (req, res) => {
   })
 }
 
+exports.getProblemPublishers = async (req, res) => {
+  try {
+    const data = await queryPromise('SELECT DISTINCT(p.publisher),u.name FROM problem p INNER JOIN userInfo u WHERE p.publisher=u.uid');
+    return res.status(200).send(data);
+  } catch (err) {
+    return res.status(202).send({ message: err });
+  }
+}
+
 const updateProblemStat = async (pid) => {
   let stat = await queryPromise('SELECT score,judgeResult,COUNT(*) as cnt FROM submission WHERE pid=? GROUP BY score,judgeResult ORDER BY score,judgeResult', [pid]);
   for (let i of stat)

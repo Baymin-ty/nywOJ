@@ -52,6 +52,7 @@ router.post('/api/problem/getCase', problem.getCase);
 router.post('/api/problem/updateCase', problem.updateCase);
 router.get('/api/problem/downloadCase', problem.downloadCase);
 router.post('/api/problem/getProblemTags', problem.getProblemTags);
+router.post('/api/problem/getProblemPublishers', problem.getProblemPublishers);
 router.post('/api/problem/getProblemStat', problem.getProblemStat);
 router.post('/api/problem/getProblemFastestSubmission', problem.getProblemFastestSubmission);
 router.post('/api/problem/getProblemSol', problem.getProblemSol);
