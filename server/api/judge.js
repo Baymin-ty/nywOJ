@@ -29,7 +29,6 @@ const judgeQueue = async.queue((submission, callback) => {
 
 const machines = [
   'localhost',
-  'localhost',
   'http://49.235.101.43/api/judge/receiveTask'
 ];
 
@@ -47,12 +46,22 @@ const pushSidIntoQueue = (sid, isreJudge) => {
   if (conf.JUDGE.ISSERVER) {
     const machine = machines[(++taskId) % machines.length];
     if (machine === 'localhost') {
-      console.log(Format(new Date()), 'server: localJudge');
+      console.log(Format(new Date()), 'server: localJudge', sid);
       judgeQueue.push({ sid: sid, isreJudge: isreJudge });
     }
     else {
-      console.log(Format(new Date()), 'server: task assigned to', machine);
-      axios.post(machine, { sid: sid, isreJudge: isreJudge });
+      console.log(Format(new Date()), 'server: task assigned to', machine, sid);
+      axios.post(machine, { sid: sid, isreJudge: isreJudge }).then(res => {
+        if (res.status === 200)
+          console.log(Format(new Date()), 'server: ', machine, 'ok', sid);
+        else {
+          console.log(Format(new Date()), 'server: ', machine, 'error: return status not 200', res, sid);
+          pushSidIntoQueue(sid, isreJudge);
+        }
+      }).catch(err => {
+        console.log(Format(new Date()), 'server: ', machine, 'error: ', err, sid);
+        pushSidIntoQueue(sid, isreJudge);
+      });
     }
   } else {
     console.log(Format(new Date()), 'client: task received', sid, isreJudge);
