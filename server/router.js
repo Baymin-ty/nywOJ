@@ -103,6 +103,7 @@ router.post('/api/problem/uploadData', upload.single('file'), (req, res) => {
       if (req.session.gid < 3) {
         let totalSize = 0;
         for (let f of file) {
+          if (f === 'data.zip') continue;
           const filePath = path.join(req.file.destination, f);
           const stats = fs.statSync(filePath);
           totalSize += stats.size;
