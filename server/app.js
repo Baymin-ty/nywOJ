@@ -55,7 +55,7 @@ app.use((req, res, next) => {
   if (req.session.uid) {
     db.query('UPDATE userSession SET lastact=? WHERE token=? AND uid=?', [new Date(), req.sessionID, req.session.uid]);
     if (req.url.match('^\/api\/admin') && req.session.gid !== 3)
-      res.status(403).end('403 Forbidden');
+      return res.status(403).end('403 Forbidden');
     next();
   } else {
     req.session.gid = 1;
@@ -78,7 +78,7 @@ app.use((req, res, next) => {
       req.url === '/api/judge/receiveTask'
     )
       next();
-    else res.status(404).end('404 Not Found');
+    else return res.status(404).end('404 Not Found');
   }
 });
 
