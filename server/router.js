@@ -122,11 +122,13 @@ router.post('/api/problem/uploadData', upload.single('file'), (req, res) => {
           if (fs.existsSync(path.join(__dirname, `./data/${req.body.pid}/${name}.out`))) {
             let index = process(name);
             if (!index || typeof index !== 'number' || index === -1) {
+              fs.rmSync(req.file.destination, { recursive: true, force: true });
               return res.status(202).send({
                 err: `测试点${name}命名不符合规范(前缀)(数字).in/.out`
               });
             }
             if (indexVis[index] === true) {
+              fs.rmSync(req.file.destination, { recursive: true, force: true });
               return res.status(202).send({
                 err: `测试点${name}中数字id重复`
               });
