@@ -468,8 +468,8 @@ exports.submit = async (req, res) => {
       if (err2) return res.status(202).send({ message: err2 });
       if (data2.affectedRows > 0) {
         db.query('UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?', [pid]);
-        db.query('DELETE FROM contestLastSubmission WHERE cid=? AND uid=? AND idx=?', [cid, uid, idx], () => {
-          db.query('INSERT INTO contestLastSubmission (cid,uid,idx,sid) VALUES (?,?,?,?)', [cid, uid, idx, data2.insertId]);
+        db.query('DELETE FROM contestLastSubmission WHERE cid=? AND uid=? AND pid=?', [cid, uid, pid], () => {
+          db.query('INSERT INTO contestLastSubmission (cid,uid,pid,sid) VALUES (?,?,?,?)', [cid, uid, pid, data2.insertId]);
         });
         pushSidIntoQueue(data2.insertId, false);
         return res.status(200).send({
