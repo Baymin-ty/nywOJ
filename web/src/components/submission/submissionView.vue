@@ -71,12 +71,17 @@
                   </el-button>
                 </template>
               </el-popconfirm>
-              <el-button v-if="gid > 1" type="danger" @click="reJudge">
-                <el-icon class="el-icon--left">
-                  <Refresh />
-                </el-icon>
-                重新测评
-              </el-button>
+              <el-popconfirm v-if="gid > 1" confirm-button-text="确认" cancel-button-text="取消" title="确认重新测评?"
+                @confirm="reJudge">
+                <template #reference>
+                  <el-button type="danger">
+                    <el-icon class="el-icon--left">
+                      <Refresh />
+                    </el-icon>
+                    重新测评
+                  </el-button>
+                </template>
+              </el-popconfirm>
             </el-button-group>
           </div>
         </template>
