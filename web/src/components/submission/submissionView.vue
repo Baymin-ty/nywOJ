@@ -60,7 +60,7 @@
           <div class=" card-header">
             代码
             <el-button-group>
-              <el-popconfirm v-if="gid > 2" confirm-button-text="确认" cancel-button-text="取消" title="确认取消评测?"
+              <el-popconfirm v-if="gid > 2" confirm-button-text="确认" cancel-button-text="取消" title="确认取消成绩?"
                 @confirm="cancelSubmission">
                 <template #reference>
                   <el-button type="warning">
