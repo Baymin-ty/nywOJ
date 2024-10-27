@@ -123,7 +123,7 @@ exports.getProblemList = (req, res) => {
   }
   if (filter.name) {
     filter.name = SqlString.escape('%' + filter.name + '%');
-    sql += `AND title like ${filter.name} `;
+    sql += `AND title like ${filter.name} OR description like ${filter.name}`;
   }
   if (filter.tags?.length) {
     sql += `AND JSON_CONTAINS(tags, '${JSON.stringify(filter.tags)}') `;

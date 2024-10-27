@@ -34,7 +34,7 @@
               @keyup.enter="this.$router.push('/problem/' + pid)" />
           </el-form-item>
           <el-form-item>
-            <el-input v-model="filter.name" type="text" placeholder="题目标题" style="width: 140px;" @keyup.enter="all" />
+            <el-input v-model="filter.name" type="text" placeholder="题目标题或内容" style="width: 140px;" @keyup.enter="all" />
           </el-form-item>
           <el-form-item>
             <el-select v-model="filter.publisherUid" filterable clearable placeholder="出题人" style="width: 160px;"
