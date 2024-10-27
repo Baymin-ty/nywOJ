@@ -46,6 +46,20 @@ import 'codemirror/addon/scroll/simplescrollbars.css';
 // style
 import 'codemirror/lib/codemirror.css';
 
+// 解决根号渲染问题
+VMdEditor.xss.extend({
+  // 扩展白名单
+  whiteList: {
+    // preserveAspectRatio 注意要小写
+    svg: ['preserveaspectratio']
+  }
+});
+VMdPreview.xss.extend({
+  whiteList: {
+    svg: ['preserveaspectratio']
+  }
+});
+
 VMdEditor.Codemirror = Codemirror;
 VMdEditor.use(githubTheme, {
   Hljs: hljs,
