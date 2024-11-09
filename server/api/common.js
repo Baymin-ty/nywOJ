@@ -1,6 +1,7 @@
 const db = require('../db/index');
 const { briefFormat, Format } = require('../static');
 const SqlString = require('mysql/lib/protocol/SqlString');
+const { randomInt } = require('crypto');
 
 const getMark = () => {
   const time = Date.now().toString(36);
@@ -138,4 +139,10 @@ exports.getPasteList = (req, res) => {
       });
     });
   });
+}
+
+const hitokoto = require('../hitokoto/hitokoto.json'), len = hitokoto.length;
+
+exports.getHitokoto = (req, res) => {
+  return res.status(200).send(hitokoto[randomInt(len)]);
 }

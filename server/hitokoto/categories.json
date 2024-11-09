@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "name": "动画",
+    "desc": "Anime - 动画",
+    "key": "a"
+  },
+  {
+    "id": 2,
+    "name": "漫画",
+    "desc": "Comic - 漫画",
+    "key": "b"
+  },
+  {
+    "id": 3,
+    "name": "游戏",
+    "desc": "Game - 游戏",
+    "key": "c"
+  },
+  {
+    "id": 4,
+    "name": "文学",
+    "desc": "Literature - 文学。主要收录现代文学：小说、散文、戏剧。",
+    "key": "d"
+  },
+  {
+    "id": 5,
+    "name": "原创",
+    "desc": "Original - 原创",
+    "key": "e"
+  },
+  {
+    "id": 6,
+    "name": "网络",
+    "desc": "Internet - 来自网络",
+    "key": "f"
+  },
+  {
+    "id": 7,
+    "name": "其他",
+    "desc": "Other - 其他",
+    "key": "g"
+  },
+  {
+    "id": 8,
+    "name": "影视",
+    "desc": "Video - 影视",
+    "key": "h"
+  },
+  {
+    "id": 9,
+    "name": "诗词",
+    "desc": "Poem - 诗词。主要收录中国古代文学，如：诗、歌、词、赋、曲等。",
+    "key": "i"
+  },
+  {
+    "id": 10,
+    "name": "网易云",
+    "desc": "NCM - 网易云。主要收录网易云音乐热评。",
+    "key": "j"
+  },
+  {
+    "id": 11,
+    "name": "哲学",
+    "desc": "Philosophy - 哲学",
+    "key": "k"
+  },
+  {
+    "id": 12,
+    "name": "抖机灵",
+    "desc": "Funny - 抖机灵",
+    "key": "l"
+  }
+]

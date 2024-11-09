@@ -65,6 +65,7 @@ app.use((req, res, next) => {
       req.url === '/api/user/sendEmailVerifyCode' ||
       req.url === '/api/user/getUserInfo' ||
       req.url === '/api/common/getAnnouncementList' ||
+      req.url === '/api/common/getHitokoto' ||
       req.url === '/api/rabbit/getRankInfo' ||
       req.url === '/api/rabbit/getClickData' ||
       // grant new access

@@ -73,7 +73,7 @@ export default {
   },
   methods: {
     updateHitokoto() {
-      axios.post('https://v1.hitokoto.cn/?c=a').then(res => {
+      axios.post('/api/common/getHitokoto').then(res => {
         if (res.status === 200)
           this.motto = res.data
         else {
