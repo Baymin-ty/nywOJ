@@ -535,9 +535,9 @@ exports.getProblemSol = async (req, res) => {
     });
   }
   try {
-    let sql = "SELECT s.id,s.mark,p.uid,p.title,u.name,p.time,p.isPublic FROM problemSolution s INNER JOIN pastes p ON s.mark=p.mark INNER JOIN userInfo u ON p.uid=u.uid WHERE s.pid=? ORDER BY p.time"
+    let sql = "SELECT s.id,s.mark,p.uid,p.title,u.name,p.time,p.isPublic FROM problemSolution s INNER JOIN pastes p ON s.mark=p.mark INNER JOIN userInfo u ON p.uid=u.uid WHERE s.show=1 AND s.pid=? ORDER BY p.time"
     let data = await queryPromise(sql, [pid]);
-    for (let i of data) i.time = Format(i.time);
+    for (let i of data) i.time = briefFormat(i.time);
     return res.status(200).send({ data: data });
   } catch (err) {
     return res.status(202).send({ message: err });
