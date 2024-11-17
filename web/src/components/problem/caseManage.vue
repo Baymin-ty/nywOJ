@@ -6,12 +6,12 @@
           <div>
             测试点管理
             <el-button style="vertical-align: middle; margin-left: 8px;" plain size="small" v-text="'下载'"
-              @click="downloadCase(0)" />
+              @click="downloadCase(0)" :disabled="!auth.manage" />
           </div>
           <el-button-group>
             <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认清空数据?" @confirm="delAllCase">
               <template #reference>
-                <el-button type="danger">
+                <el-button type="danger" :disabled="!auth.manage">
                   <el-icon class="el-icon--left">
                     <Delete />
                   </el-icon>
@@ -19,13 +19,13 @@
                 </el-button>
               </template>
             </el-popconfirm>
-            <el-button type="success" plain @click="updateSubtaskId">
+            <el-button type="success" plain @click="updateSubtaskId" :disabled="!auth.manage">
               <el-icon class="el-icon--left">
                 <CircleCheck />
               </el-icon>
               保存子任务
             </el-button>
-            <el-button type="warning" @click="addSubtask">
+            <el-button type="warning" @click="addSubtask" :disabled="!auth.manage">
               <el-icon class="el-icon--left">
                 <CirclePlus />
               </el-icon>
@@ -33,7 +33,7 @@
             </el-button>
             <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="重测所有代码?" @confirm="reJudgeProblem">
               <template #reference>
-                <el-button color="#626aef" plain>
+                <el-button color="#626aef" plain :disabled="!auth.manage">
                   <el-icon class="el-icon--left">
                     <Refresh />
                   </el-icon>
@@ -51,7 +51,7 @@
         </div>
       </template>
       <el-upload v-if="!cases.length" drag action="/api/problem/uploadData" :data="{ pid: pid }" accept=".zip"
-        :on-success="reflushData" v-loading="!finished">
+        :on-success="reflushData" v-loading="!finished" :disabled="!auth.manage">
         <el-icon class="el-icon--upload">
           <UploadFilled />
         </el-icon>
@@ -91,8 +91,8 @@
           <el-table-column label="记分方式" min-width="40%">
             <template #default="scope">
               <el-radio-group v-model="scope.row.option">
-                <el-radio-button :label="0">每个测试点等分</el-radio-button>
-                <el-radio-button :label="1">全部通过后得全分</el-radio-button>
+                <el-radio-button :value="0">每个测试点等分</el-radio-button>
+                <el-radio-button :value="1">全部通过后得全分</el-radio-button>
               </el-radio-group>
               <el-switch style="margin-top: 5px;" v-if="scope.row.option" v-model="scope.row.skip" active-text="遇TLE止测"
                 inactive-text="测试全部" />
@@ -105,9 +105,10 @@
               Case #{{ i.index }}
             </span>
             <el-button :type="(i.edit > 1 ? 'danger' : 'primary')" style="vertical-align: middle; margin-left: 10px;"
-              plain size="small" @click="edit(i)" v-text="i.edit ? (i.edit === 1 ? '取消' : '保存') : '编辑'" />
+              plain size="small" @click="edit(i)" v-text="i.edit ? (i.edit === 1 ? '取消' : '保存') : '编辑'"
+              :disabled="!auth.manage" />
             <el-button style="vertical-align: middle; margin-left: 8px;" plain size="small" v-text="'下载'"
-              @click="downloadCase(i.index)" />
+              @click="downloadCase(i.index)" :disabled="!auth.manage" />
             <div class="subtask">
               <el-input v-model="i.subtaskId">
                 <template #prepend>子任务编号</template>
@@ -151,6 +152,7 @@ export default {
       finished: false,
       spj: '',
       subtask: [],
+      auth: {}
     };
   },
   methods: {
@@ -290,6 +292,11 @@ export default {
       return;
     }
     this.pid = this.$route.params.pid;
+    axios.post('/api/problem/getProblemAuth', {
+      pid: this.pid,
+    }).then(res => {
+      this.auth = res.data.data;
+    });
     this.all(1);
   }
 }

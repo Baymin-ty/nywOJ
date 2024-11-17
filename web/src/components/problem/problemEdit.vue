@@ -78,7 +78,7 @@
             </el-icon>
             返回题目
           </el-button>
-          <el-button type="danger" @click="updateProblem">
+          <el-button type="danger" @click="updateProblem" :disabled="!auth.manage">
             <el-icon class="el-icon--left">
               <CircleCheck />
             </el-icon>
@@ -111,6 +111,7 @@ export default {
         { value: 0, label: '传统文本比较' },
         { value: 1, label: 'Special Judge' }
       ],
+      auth: {},
       levels: [
         {
           value: 0,
@@ -206,6 +207,11 @@ export default {
       return;
     }
     this.pid = this.$route.params.pid;
+    axios.post('/api/problem/getProblemAuth', {
+      pid: this.pid,
+    }).then(res => {
+      this.auth = res.data.data;
+    });
     this.all();
   }
 }

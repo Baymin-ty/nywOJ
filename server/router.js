@@ -58,6 +58,7 @@ router.post('/api/problem/getProblemFastestSubmission', problem.getProblemFastes
 router.post('/api/problem/getProblemSol', problem.getProblemSol);
 router.post('/api/problem/bindPaste2Problem', problem.bindPaste2Problem);
 router.post('/api/problem/unbindSol', problem.unbindSol);
+router.post('/api/problem/getProblemAuth', problem.getProblemAuth);
 
 const MAX_TOTAL_SIZE = 200 * 1024 * 1024; // 200MB limit
 const upload = multer({
@@ -91,10 +92,11 @@ const process = (str) => {
   else
     return Number(res);
 }
+const { problemAuth } = require('./api/problem');
 
-router.post('/api/problem/uploadData', upload.single('file'), (req, res) => {
-  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
-
+router.post('/api/problem/uploadData', upload.single('file'), async (req, res) => {
+  if (req.session.gid < 2 || !((await problemAuth(req, req.body.pid)).manage))
+    return res.status(403).end('403 Forbidden');
   compressing.zip.uncompress(req.file.path, req.file.destination).then(() => {
     fs.readdir(req.file.destination, async (err, file) => {
       if (err) return res.status(202).send({
