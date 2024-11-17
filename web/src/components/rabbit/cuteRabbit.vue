@@ -13,7 +13,7 @@
           </el-button>
           <h1 class="rainbow" style="font-size: 35px;">
             <span @click="opt = (opt + 1) % tot">
-              你戳了兔兔 {{ cnt }} 下
+              你点了兔兔 {{ cnt }} 下
             </span>
           </h1>
         </el-card>
@@ -22,7 +22,7 @@
         <el-card class="box-card" shadow="hover">
           <template #header>
             <div class="card-header">
-              戳可爱兔兔，测可爱列表
+              点可爱兔兔，测可爱列表
               <el-button type="primary" :disabled="!finished" @click="all">
                 <el-icon class="el-icon--left">
                   <Refresh />
