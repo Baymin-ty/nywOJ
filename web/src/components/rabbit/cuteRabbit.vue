@@ -109,7 +109,7 @@ export default {
       }
       await axios.post('/api/rabbit/add').then(res => {
         if (res.status === 200) {
-          this.$message.success('添加点击信息成功');
+          this.$message.success({ message: '添加点击信息成功', duration: 800 });
           this.all();
           this.getCnt();
         } else {
