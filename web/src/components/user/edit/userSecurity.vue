@@ -42,7 +42,6 @@
 
 <script>
 import axios from "axios";
-import { ElMessage } from "element-plus";
 
 export default {
   name: "userSecurity",
@@ -64,17 +63,9 @@ export default {
     updatedPwd() {
       axios.post('/api/user/modifyPassword', { newPwd: this.updPwd }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '更新成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('更新成功');
         } else {
-          ElMessage({
-            message: '更新失败' + res.data.message,
-            type: 'error',
-            duration: 3000,
-          });
+          this.$message.error('更新失败' + res.data.message);
         }
         this.all();
       });
@@ -86,25 +77,14 @@ export default {
         update: true
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '验证码已发送，请注意查收',
-            type: 'success',
-            duration: 2000,
-          });
+          this.$message.success('验证码已发送，请注意查收');
         } else {
           if (this.recap)
             window.grecaptcha.reset();
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-          });
+          this.$message.error(res.data.message);
         }
       }).catch(err => {
-        ElMessage({
-          message: err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error(err.message);
       });
     },
     updateEmail() {
@@ -113,11 +93,7 @@ export default {
         update: true
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: res.data.message,
-            type: 'success',
-            duration: 2000,
-          });
+          this.$message.success(res.data.message);
           this.updEmail = {
             new: '',
             verifyCode: ''
@@ -125,17 +101,10 @@ export default {
           if (this.recap)
             window.grecaptcha.reset();
         } else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-          });
+          this.$message.error(res.data.message);
         }
       }).catch(err => {
-        ElMessage({
-          message: err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error(err.message);
       });
     },
     recaptcha() {

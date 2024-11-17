@@ -44,7 +44,6 @@
 </template>
 <script>
 import axios from "axios";
-import { ElMessage } from "element-plus";
 
 export default {
   name: "userReg",
@@ -70,25 +69,14 @@ export default {
         retoken: retoken,
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '验证码已发送，请注意查收',
-            type: 'success',
-            duration: 2000,
-          });
+          this.$message.success('验证码已发送，请注意查收');
         } else {
           if (this.recap)
             window.grecaptcha.reset();
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-          });
+          this.$message.error(JSON.stringify(res.data.message));
         }
       }).catch(err => {
-        ElMessage({
-          message: err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error(err.message);
       });
     },
     submit() {
@@ -96,24 +84,13 @@ export default {
         code: this.userInfo.verifyCode
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '验证成功',
-            type: 'success',
-            duration: 2000,
-          });
+          this.$message.success('验证成功');
           this.active++;
         } else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-          });
+          this.$message.error(res.data.message);
         }
       }).catch(err => {
-        ElMessage({
-          message: err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error(err.message);
       });
     },
     reg() {

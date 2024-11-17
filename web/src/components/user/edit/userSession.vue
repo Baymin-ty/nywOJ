@@ -54,7 +54,6 @@
 </template>
 <script>
 import axios from "axios";
-import { ElMessage } from "element-plus";
 
 export default {
   name: "userSession",

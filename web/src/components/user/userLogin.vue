@@ -24,7 +24,6 @@
 
 <script>
 import axios from "axios";
-import { ElMessage } from "element-plus";
 
 export default {
   name: "userLogin",
@@ -43,25 +42,14 @@ export default {
         pwd: this.userInfo.pwd,
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '登录成功',
-            type: 'success',
-            duration: 2000,
-          });
+          this.$message.success('登录成功');
           this.$router.push(this.$store.state.reDirectTo);
           this.$store.state.reDirectTo = '/';
         } else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-          });
+          this.$message.error(res.data.message);
         }
       }).catch(err => {
-        ElMessage({
-          message: err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error(err.message);
       });
     },
   },
