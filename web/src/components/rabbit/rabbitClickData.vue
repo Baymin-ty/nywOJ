@@ -14,7 +14,6 @@
 
 <script>
 import axios from "axios"
-import { ElMessage } from 'element-plus'
 import chart from '@/chart/myChart'
 
 export default {
@@ -34,17 +33,9 @@ export default {
           this.clickCnt[i] = res.data.data[i].clickCnt;
           this.userCnt[i] = res.data.data[i].userCnt;
         }
-      } else ElMessage({
-        message: res.data.message,
-        type: 'error',
-        duration: 2000,
-      });
+      } else this.$message.error(res.data.message);
     }).catch(err => {
-      ElMessage({
-        message: '获取统计信息失败' + err.message,
-        type: 'error',
-        duration: 2000,
-      });
+      this.$message.error('获取统计信息失败' + err.message);
     });
     let clickCnt = chart.init(document.getElementById("clickCnt"));
     clickCnt.setOption({

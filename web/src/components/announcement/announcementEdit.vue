@@ -26,7 +26,6 @@
 
 <script>
 import axios from 'axios';
-import { ElMessage } from 'element-plus'
 
 export default {
   name: "announcementView",
@@ -43,38 +42,25 @@ export default {
         aid: this.announcementInfo.aid,
         info: this.announcementInfo
       }).then(res => {
-        if (res.status === 200) {
-          ElMessage({
-            message: '更新公告成功',
-            type: 'success',
-            duration: 1000,
-          });
-        }
-        else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
-        }
+        if (res.status === 200)
+          this.$message.success('更新公告成功');
+        else
+          this.$message.error(res.data.message);
         this.all();
       })
     },
     all() {
       axios.post('/api/common/getAnnouncementInfo', { aid: this.aid }).then(res => {
-        if (res.status === 200) {
+        if (res.status === 200)
           this.announcementInfo = res.data.data
-        }
-        else {
-          this.$router.push({ path: '/' });
-        }
+        else
+          this.$message.error('获取公告失败');
       });
     }
   },
   mounted() {
     if (this.$store.state.gid < 3) {
-      this.$router.push('/');
-      return;
+      this.$router.push('/announcement/' + this.$route.params.aid);
     }
     this.aid = this.$route.params.aid;
     this.all();

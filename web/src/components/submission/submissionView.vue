@@ -135,7 +135,6 @@ import axios from 'axios';
 import { resColor, scoreColor } from '@/assets/common'
 import monacoEditor from '@/components/monacoEditor.vue'
 import caseDisplay from './caseDisplay.vue'
-import { ElMessage } from 'element-plus'
 
 export default {
   name: "problemView",
@@ -211,17 +210,10 @@ export default {
     cancelSubmission() {
       axios.post('/api/judge/cancelSubmission', { sid: this.sid }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '取消成功',
-            type: 'success',
-          });
+          this.$message.success('取消成功');
           this.all();
         } else {
-          ElMessage({
-            message: '取消失败',
-            type: 'error',
-            duration: 2000
-          });
+          this.$message.error('取消失败');
         }
       });
     }

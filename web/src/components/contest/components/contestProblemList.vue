@@ -31,7 +31,6 @@
 
 <script>
 import axios from "axios"
-import { ElMessage } from 'element-plus'
 
 export default {
   name: 'contestProblemList',
@@ -68,11 +67,7 @@ export default {
           });
         }
       }).catch(err => {
-        ElMessage({
-          message: '获取题目列表失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('获取题目列表失败' + err.message);
       });
     },
   },

@@ -46,7 +46,6 @@
 
 <script>
 import axios from 'axios';
-import { ElMessage } from 'element-plus'
 
 export default {
   name: "pasteView",
@@ -64,11 +63,7 @@ export default {
           this.paste = res.data.data
         }
         else {
-          ElMessage({
-            message: '获取剪贴板失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('获取剪贴板失败' + res.data.message);
         }
       });
       document.title = "剪贴板 — " + this.paste.title;
@@ -76,17 +71,10 @@ export default {
     delPaste() {
       axios.post('/api/common/delPaste', { mark: this.mark }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '删除成功',
-            type: 'success',
-          });
+          this.$message.success('删除成功');
           this.$router.push('/paste');
         } else {
-          ElMessage({
-            message: '删除失败' + res.data.message,
-            type: 'error',
-            duration: 2000
-          });
+          this.$message.error('删除失败' + res.data.message);
         }
       });
     }

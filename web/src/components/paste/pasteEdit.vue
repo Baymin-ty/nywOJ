@@ -25,7 +25,6 @@
 
 <script>
 import axios from 'axios';
-import { ElMessage } from 'element-plus'
 
 export default {
   name: "pasteEdit",
@@ -43,18 +42,10 @@ export default {
         paste: this.paste
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '更新剪贴板成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('更新剪贴板成功');
         }
         else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error(res.data.message);
         }
         this.all();
       })
@@ -66,11 +57,7 @@ export default {
           this.paste.isPublic = !!this.paste.isPublic
         }
         else {
-          ElMessage({
-            message: '无法编辑剪贴板' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('无法编辑剪贴板' + res.data.message);
         }
       });
     }

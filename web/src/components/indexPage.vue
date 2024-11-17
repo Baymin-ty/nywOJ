@@ -56,7 +56,6 @@
 import axios from "axios";
 import cuteRank from '@/components/rabbit/cuteRankList.vue'
 import rabbitData from '@/components/rabbit/rabbitClickData.vue'
-import { ElMessage } from 'element-plus'
 
 export default {
   name: "myHeader",
@@ -92,15 +91,10 @@ export default {
     },
     addAnnouncement() {
       axios.post('/api/admin/addAnnouncement').then(res => {
-        if (res.status === 200) {
+        if (res.status === 200)
           this.$router.push('/announcement/edit/' + res.data.aid);
-        } else {
-          ElMessage({
-            message: '添加公告失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
-        }
+        else
+          this.$message.error('添加公告失败' + res.data.message);
       });
     }
   },

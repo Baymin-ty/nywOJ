@@ -42,7 +42,6 @@
 
 <script>
 import axios from "axios"
-import { ElMessage } from 'element-plus'
 
 export default {
   name: 'problemPlayer',
@@ -69,11 +68,7 @@ export default {
         this.total = res.data.total;
         this.finished = true;
       }).catch(err => {
-        ElMessage({
-          message: '获取选手列表失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('获取选手列表失败' + err.message);
       });
     },
     removePlayer() {
@@ -81,17 +76,9 @@ export default {
         list: this.removeList
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '删除选手成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('删除选手成功');
         } else {
-          ElMessage({
-            message: '删除选手失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('删除选手失败' + res.data.message);
         }
       });
       this.all();
@@ -102,19 +89,11 @@ export default {
         name: this.addName
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '添加选手成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('添加选手成功');
           this.addName = '';
         }
         else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error(res.data.message);
         }
         this.all();
       });

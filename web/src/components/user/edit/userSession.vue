@@ -67,17 +67,9 @@ export default {
     revoke(token) {
       axios.post('/api/user/revokeSession', { token: token }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '操作成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('操作成功');
         } else {
-          ElMessage({
-            message: '操作失败' + res.data.message,
-            type: 'error',
-            duration: 3000,
-          });
+          this.$message.error('操作失败' + res.data.message);
         }
         this.all();
       });
@@ -85,17 +77,9 @@ export default {
     revokeAll() {
       axios.post('/api/user/revokeSession', { revokeAll: true }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '操作成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('操作成功');
         } else {
-          ElMessage({
-            message: '操作失败' + res.data.message,
-            type: 'error',
-            duration: 3000,
-          });
+          this.$message.error('操作失败' + res.data.message);
         }
         this.all();
       });

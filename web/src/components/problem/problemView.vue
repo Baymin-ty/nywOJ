@@ -102,7 +102,6 @@
 
 <script>
 import axios from 'axios';
-import { ElMessage } from 'element-plus'
 import monacoEditor from '@/components/monacoEditor.vue'
 
 export default {
@@ -165,11 +164,7 @@ export default {
         if (res.status === 200) {
           this.$router.push('/submission/' + res.data.sid);
         } else {
-          ElMessage({
-            message: '提交失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('提交失败' + res.data.message);
         }
       });
     },

@@ -67,7 +67,6 @@
 
 <script>
 import axios from "axios"
-import { ElMessage } from 'element-plus'
 import draggable from 'vuedraggable'
 
 export default {
@@ -92,22 +91,14 @@ export default {
       }).then(res => {
         this.problemList = res.data.data;
       }).catch(err => {
-        ElMessage({
-          message: '获取题目列表失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('获取题目列表失败' + err.message);
       });
     },
     addProblem() {
       this.addpid = parseInt(this.addpid);
       for (let i = 0; i < this.problemList.length; i++) {
         if (this.problemList[i].pid === this.addpid) {
-          ElMessage({
-            message: '题目已存在',
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('题目已存在');
           this.addpid = '';
           return;
         }
@@ -121,11 +112,7 @@ export default {
           this.addpid = '';
         }
         else {
-          ElMessage({
-            message: '获取题目信息错误',
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('获取题目信息错误');
         }
       });
     },
@@ -135,18 +122,10 @@ export default {
         list: this.problemList
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '修改成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('修改成功');
         }
         else {
-          ElMessage({
-            message: '修改失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('修改失败' + res.data.message);
         }
         this.all();
       });

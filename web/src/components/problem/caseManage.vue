@@ -141,7 +141,6 @@
 
 <script>
 import axios from 'axios';
-import { ElMessage } from 'element-plus'
 
 export default {
   name: "problemEdit",
@@ -160,17 +159,9 @@ export default {
         pid: this.pid,
       }).then(res => {
         if (res.status !== 200) {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error(res.data.message);
         } else {
-          ElMessage({
-            message: '数据已清空',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('数据已清空');
           this.spj = "";
           this.all();
         }
@@ -192,22 +183,14 @@ export default {
           this.spj += "```\n";
         }
         if (!this.cases.length && op) {
-          ElMessage({
-            message: (op === 1 ? '数据还未上传' : '数据未处理完成或数据格式错误，请手动刷新或重新上传数据'),
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error((op === 1 ? '数据还未上传' : '数据未处理完成或数据格式错误，请手动刷新或重新上传数据'));
         }
         this.finished = true;
       });
     },
     async reflushData(res) {
       if (res.err) {
-        ElMessage({
-          message: '上传错误' + res.err,
-          type: 'error',
-          duration: 3000,
-        });
+        this.$message.error('上传错误' + res.err);
       }
       else {
         this.all(2);
@@ -220,11 +203,7 @@ export default {
         if (res.data.total > 0) {
           this.$router.push({ path: '/problem/stat/' + this.pid });
         } else {
-          ElMessage({
-            message: '暂时无人提交',
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('暂时无人提交');
         }
       });
     },
@@ -240,18 +219,10 @@ export default {
         cases: this.cases
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '更新成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('更新成功');
           this.all();
         } else {
-          ElMessage({
-            message: '更新失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('更新失败' + res.data.message);
         }
       })
     },
@@ -284,11 +255,7 @@ export default {
             i.input.content = res.data.input;
             i.output.content = res.data.output;
           } else {
-            ElMessage({
-              message: res.data.message,
-              type: 'error',
-              duration: 2000,
-            });
+            this.$message.error(res.data.message);
           }
         });
       } else {
@@ -304,16 +271,9 @@ export default {
             i.edit = 0;
             i.input.modified = res.data.inputM;
             i.output.modified = res.data.outputM;
-            ElMessage({
-              message: '保存成功',
-              type: 'success',
-            });
+            this.$message.success('保存成功');
           } else {
-            ElMessage({
-              message: '保存失败' + res.data.message,
-              type: 'error',
-              duration: 2000,
-            });
+            this.$message.error('保存失败' + res.data.message);
           }
         });
       }
@@ -326,7 +286,7 @@ export default {
   },
   mounted() {
     if (this.$store.state.gid < 2) {
-      this.$router.push('/');
+      this.$router.push(`/problem/${this.$route.params.pid}`);
       return;
     }
     this.pid = this.$route.params.pid;

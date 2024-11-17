@@ -85,7 +85,6 @@
 
 <script>
 import axios from "axios"
-import { ElMessage } from 'element-plus'
 import { scoreColor, resColor } from '@/assets/common'
 import store from "@/sto/store";
 
@@ -111,11 +110,7 @@ export default {
         this.rankList = res.data;
         this.finished = true;
       }).catch(err => {
-        ElMessage({
-          message: "获取比赛排行失败" + err.message,
-          type: "error",
-          duration: 2000,
-        });
+        this.$message.error("获取比赛排行失败" + err.message);
       });
     },
     getScoreStyle(cur, total) {

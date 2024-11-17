@@ -128,7 +128,6 @@
 
 <script>
 import axios from "axios"
-import { ElMessage } from 'element-plus'
 import qs from 'qs'
 
 export default {
@@ -204,11 +203,7 @@ export default {
     },
     setBlock(uid, status) {
       if (!this.finished) {
-        ElMessage({
-          message: '请先保存上一次操作',
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('请先保存上一次操作');
         return;
       }
       axios.post('/api/admin/setBlock', {
@@ -217,18 +212,10 @@ export default {
       }).then((res) => {
         if (res.status === 200) {
           this.all();
-          ElMessage({
-            message: '操作成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('操作成功');
         }
       }).catch(err => {
-        ElMessage({
-          message: err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error(err.message);
       });
     },
     edit(row) {
@@ -238,34 +225,18 @@ export default {
         }).then((res) => {
           if (res.status === 200) {
             this.all();
-            ElMessage({
-              message: '操作成功',
-              type: 'success',
-              duration: 1000,
-            });
+            this.$message.success('操作成功');
           }
           else {
-            ElMessage({
-              message: res.data.message,
-              type: 'error',
-              duration: 2000,
-            });
+            this.$message.error(res.data.message);
           }
         }).catch(err => {
-          ElMessage({
-            message: err.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error(err.message);
         });
         this.finished = 1;
       } else {
         if (!this.finished) {
-          ElMessage({
-            message: '请先保存上一次操作',
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('请先保存上一次操作');
           return;
         }
         this.finished = 0;

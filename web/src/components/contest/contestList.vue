@@ -84,7 +84,6 @@
 
 <script>
 import axios from "axios"
-import { ElMessage } from 'element-plus'
 
 export default {
   name: 'contestList',
@@ -115,11 +114,7 @@ export default {
         this.total = res.data.total;
         this.finished = true;
       }).catch(err => {
-        ElMessage({
-          message: '获取比赛列表失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('获取比赛列表失败' + err.message);
       });
     },
     handleCurrentChange(val) {
@@ -134,11 +129,7 @@ export default {
             query: { tab: 'manageC' }
           });
         } else {
-          ElMessage({
-            message: '添加比赛失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('添加比赛失败' + res.data.message);
         }
       });
     },

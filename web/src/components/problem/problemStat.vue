@@ -101,7 +101,6 @@
 
 <script>
 import axios from 'axios';
-import { ElMessage } from 'element-plus'
 import chart from '@/chart/myChart'
 import { resColor } from '@/assets/common'
 
@@ -210,11 +209,7 @@ export default {
             }
           });
         } else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error(res.data.message);
         }
       });
     },
@@ -223,11 +218,7 @@ export default {
         if (res.status === 200) {
           this.submissionList = res.data.data;
         } else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error(res.data.message);
         }
       });
     },
@@ -237,19 +228,11 @@ export default {
         mark: this.bindMark
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '绑定剪贴板成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('绑定剪贴板成功');
           this.bindMark = '';
         }
         else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error(res.data.message);
         }
         this.getSol();
       });
@@ -259,11 +242,7 @@ export default {
         if (res.status === 200) {
           this.solList = res.data.data;
         } else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error(res.data.message);
         }
       });
     },
@@ -272,19 +251,11 @@ export default {
         id: id,
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '解除绑定成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('解除绑定成功');
           this.bindMark = '';
         }
         else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error(res.data.message);
         }
         this.getSol();
       });

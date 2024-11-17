@@ -65,7 +65,6 @@
 
 <script>
 import axios from "axios"
-import { ElMessage } from 'element-plus'
 import { resColor, scoreColor } from '@/assets/common'
 import store from '@/sto/store'
 
@@ -99,11 +98,7 @@ export default {
         this.total = res.data.total;
         this.finished = true;
       }).catch(err => {
-        ElMessage({
-          message: '获取提交记录失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('获取提交记录失败' + err.message);
       });
     },
     handleCurrentChange(val) {

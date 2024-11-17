@@ -36,7 +36,6 @@
 </template>
 <script>
 import axios from "axios";
-import { ElMessage } from "element-plus";
 
 export default {
   name: "userProfile",
@@ -54,17 +53,9 @@ export default {
     submit() {
       axios.post('/api/user/updateUserPublicInfo', { userInfo: this.userInfo }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '更新成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('更新成功');
         } else {
-          ElMessage({
-            message: '更新失败' + res.data.message,
-            type: 'error',
-            duration: 3000,
-          });
+          this.$message.error('更新失败' + res.data.message);
         }
         this.all();
       });

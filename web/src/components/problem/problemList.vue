@@ -128,7 +128,6 @@
 
 <script>
 import axios from "axios"
-import { ElMessage } from 'element-plus'
 import qs from 'qs'
 
 export default {
@@ -221,11 +220,7 @@ export default {
         this.total = res.data.total;
         this.finished = true;
       }).catch(err => {
-        ElMessage({
-          message: '获取题目列表失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('获取题目列表失败' + err.message);
       });
     },
     handleCurrentChange(val) {
@@ -237,11 +232,7 @@ export default {
         if (res.status === 200) {
           this.$router.push('/problem/edit/' + res.data.pid);
         } else {
-          ElMessage({
-            message: '添加题目失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('添加题目失败' + res.data.message);
         }
       });
     },
@@ -291,22 +282,14 @@ export default {
           return this.hash(a) % this.tagColorList.length - this.hash(b) % this.tagColorList.length;
         });
       } else {
-        ElMessage({
-          message: '获取题目标签失败' + res.data.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('获取题目标签失败' + res.data.message);
       }
     });
     axios.post('/api/problem/getProblemPublishers').then(res => {
       if (res.status === 200) {
         this.publisherList = res.data;
       } else {
-        ElMessage({
-          message: '获取出题人失败' + res.data.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('获取出题人失败' + res.data.message);
       }
     });
     this.gid = this.$store.state.gid;

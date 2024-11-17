@@ -148,7 +148,6 @@
 
 <script>
 import axios from 'axios';
-import { ElMessage } from 'element-plus'
 import contestSubmission from './components/contestSubmission.vue'
 import contestRank from './components/contestRank.vue'
 import contestProblemList from './components/contestProblemList.vue'
@@ -188,17 +187,9 @@ export default {
         info: this.tmpInfo
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '修改成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('修改成功');
         } else {
-          ElMessage({
-            message: '修改失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('修改失败' + res.data.message);
         }
         this.all();
       });
@@ -225,11 +216,7 @@ export default {
           document.title = "比赛 — " + this.contestInfo.title;
         }
         else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error(res.data.message);
           this.contestInfo.description = "# 您的权限不足";
         }
       });
@@ -249,17 +236,9 @@ export default {
         cid: this.cid,
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '操作成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('操作成功');
         } else {
-          ElMessage({
-            message: '操作失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('操作失败' + res.data.message);
         }
         this.all();
       });
@@ -269,17 +248,9 @@ export default {
         cid: this.cid,
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '报名成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('报名成功');
         } else {
-          ElMessage({
-            message: '报名失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('报名失败' + res.data.message);
         }
         this.all();
       });
@@ -289,11 +260,7 @@ export default {
         cid: this.cid,
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '重测成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('重测成功');
           this.$router.push({
             path: '/contest/' + this.cid,
             query: {
@@ -301,11 +268,7 @@ export default {
             }
           });
         } else {
-          ElMessage({
-            message: '重测失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('重测失败' + res.data.message);
         }
       });
     }

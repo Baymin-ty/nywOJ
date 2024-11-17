@@ -55,7 +55,6 @@
 
 <script>
 import axios from "axios"
-import { ElMessage } from 'element-plus'
 import qs from 'qs'
 
 export default {
@@ -88,11 +87,7 @@ export default {
         this.total = res.data.total;
         this.finished = true;
       }).catch(err => {
-        ElMessage({
-          message: '获取剪贴板列表失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('获取剪贴板列表失败' + err.message);
       });
     },
     handleCurrentChange(val) {
@@ -104,11 +99,7 @@ export default {
         if (res.status === 200) {
           this.$router.push('/paste/edit/' + res.data.mark);
         } else {
-          ElMessage({
-            message: '添加剪贴板失败' + res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error('添加剪贴板失败' + res.data.message);
         }
       });
     }

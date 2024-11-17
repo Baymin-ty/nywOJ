@@ -76,4 +76,8 @@ const app = createApp(App)
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
-app.use(ElementPlus).use(router).use(store).use(VMdEditor).use(VMdPreview).mount('#app');
+
+import { ElMessage } from 'element-plus'
+app.config.globalProperties.$message = ElMessage
+
+app.use(ElementPlus).use(ElMessage).use(router).use(store).use(VMdEditor).use(VMdPreview).mount('#app');

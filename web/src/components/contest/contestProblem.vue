@@ -73,7 +73,6 @@
 
 <script>
 import axios from 'axios';
-import { ElMessage } from 'element-plus'
 import monacoEditor from '@/components/monacoEditor.vue'
 
 export default {
@@ -100,20 +99,12 @@ export default {
         code: this.code
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: "提交成功",
-            type: "success",
-            duration: 1000,
-          });
+          this.$message.success('提交成功');
           this.isSubmit = false;
           this.code = '';
         }
         else {
-          ElMessage({
-            message: "提交失败" + res.data.message,
-            type: "error",
-            duration: 3000,
-          });
+          this.$message.error('提交失败' + res.data.message);
           if (res.data.refresh) {
             this.$router.push({
               path: '/contest/' + this.cid,

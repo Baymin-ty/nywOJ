@@ -53,7 +53,6 @@
 
 <script>
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
 import { getNameColor } from '@/assets/common'
 
 export default {
@@ -91,11 +90,7 @@ export default {
         this.info = res.data.data;
         this.finished = 1;
       }).catch(err => {
-        ElMessage({
-          message: '获取列表信息失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('获取列表信息失败' + err.message);
         this.finished = 1;
       });
     },
@@ -104,44 +99,24 @@ export default {
       axios.post('/api/rabbit/getClickCnt').then(res => {
         this.cnt = res.data.clickCnt;
       }).catch(err => {
-        ElMessage({
-          message: '获取个人点击数失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('获取个人点击数失败' + err.message);
       });
     },
     async add() {
       if (!this.uid) {
-        ElMessage({
-          message: '请先登录',
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('请先登录');
         return;
       }
       await axios.post('/api/rabbit/add').then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '添加点击信息成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('添加点击信息成功');
           this.all();
           this.getCnt();
         } else {
-          ElMessage({
-            message: '添加点击信息失败' + res.data.message,
-            type: 'error',
-            duration: 1000,
-          });
+          this.$message.error('添加点击信息失败' + res.data.message);
         }
       }).catch(err => {
-        ElMessage({
-          message: '添加点击信息失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('添加点击信息失败' + err.message);
       });
     },
     tableRowClassName(obj) {

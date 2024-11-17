@@ -123,25 +123,13 @@ export default {
         rePwd: this.userInfo.rePwd,
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '注册成功',
-            type: 'success',
-            duration: 2000,
-          });
+          this.$message.success('注册成功');
           this.$router.push('/user/login');
         } else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error(res.data.message);
         }
       }).catch(err => {
-        ElMessage({
-          message: err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error(err.message);
       });
     },
     recaptcha() {

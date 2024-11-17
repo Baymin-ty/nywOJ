@@ -34,7 +34,6 @@
 
 <script>
 import axios from "axios"
-import { ElMessage } from 'element-plus'
 import { getNameColor } from '@/assets/common'
 
 export default {
@@ -59,11 +58,7 @@ export default {
         this.finished = true;
       }).catch(err => {
         this.finished = true;
-        ElMessage({
-          message: '获取最新排名失败' + err.message,
-          type: 'error',
-          duration: 2000,
-        });
+        this.$message.error('获取最新排名失败' + err.message);
       });
     },
     tableRowClassName(obj) {

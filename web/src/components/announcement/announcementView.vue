@@ -37,12 +37,10 @@ export default {
     this.aid = this.$route.params.aid;
     this.gid = this.$store.state.gid;
     await axios.post('/api/common/getAnnouncementInfo', { aid: this.aid }).then(res => {
-      if (res.status === 200) {
+      if (res.status === 200)
         this.announcementInfo = res.data.data
-      }
-      else {
-        this.$router.push({ path: '/' });
-      }
+      else
+        this.$message.error('获取公告失败');
     });
     document.title = "公告 — " + this.announcementInfo.title;
   }

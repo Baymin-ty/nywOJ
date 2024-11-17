@@ -98,7 +98,6 @@
 
 <script>
 import axios from 'axios';
-import { ElMessage } from 'element-plus'
 
 export default {
   name: "problemEdit",
@@ -158,18 +157,10 @@ export default {
         info: this.problemInfo
       }).then(res => {
         if (res.status === 200) {
-          ElMessage({
-            message: '更新题目成功',
-            type: 'success',
-            duration: 1000,
-          });
+          this.$message.success('更新题目成功');
         }
         else {
-          ElMessage({
-            message: res.data.message,
-            type: 'error',
-            duration: 2000,
-          });
+          this.$message.error(res.data.message);
         }
         this.all();
       })
@@ -211,7 +202,7 @@ export default {
   },
   mounted() {
     if (this.$store.state.gid < 2) {
-      this.$router.push('/');
+      this.$router.push(`/problem/${this.$route.params.pid}`);
       return;
     }
     this.pid = this.$route.params.pid;
