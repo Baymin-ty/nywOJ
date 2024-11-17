@@ -71,7 +71,7 @@ export default {
           this.avatarAddress = this.getAvatarAddress(this.info.qq);
         }
         else {
-          this.$router.go(-1);
+          this.$message.error('获取用户信息失败');
         }
       });
     },

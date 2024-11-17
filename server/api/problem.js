@@ -173,7 +173,7 @@ exports.getProblemInfo = (req, res) => {
   db.query(sql, [pid], (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (!data.length) return res.status(202).send({
-      message: 'error'
+      message: '无权限查看或未找到此题目'
     });
     else {
       data[0].type = ptype[data[0].type];

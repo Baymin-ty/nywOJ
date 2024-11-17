@@ -187,7 +187,8 @@ export default {
         this.problemInfo.isPublic = res.data.data.isPublic ? true : false;
       }
       else {
-        this.$router.push({ path: '/' });
+        this.$router.push({ path: '/problem' });
+        this.$message.error(res.data.message)
       }
     });
     document.title = "题目 — " + this.problemInfo.title;

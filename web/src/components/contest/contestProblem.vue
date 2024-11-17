@@ -124,7 +124,10 @@ export default {
         this.problemInfo = res.data.data;
       }
       else {
-        this.$router.push({ path: '/' });
+        this.$router.push({
+          path: '/contest/' + this.cid,
+          query: { tab: 'problemList' }
+        });
       }
     });
     document.title = "比赛题目 — " + this.problemInfo.title;
