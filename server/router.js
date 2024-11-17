@@ -58,6 +58,7 @@ router.post('/api/problem/getProblemFastestSubmission', problem.getProblemFastes
 router.post('/api/problem/getProblemSol', problem.getProblemSol);
 router.post('/api/problem/bindPaste2Problem', problem.bindPaste2Problem);
 router.post('/api/problem/unbindSol', problem.unbindSol);
+router.post('/api/problem/getProblemAuth', problem.getProblemAuth);
 
 const MAX_TOTAL_SIZE = 200 * 1024 * 1024; // 200MB limit
 const upload = multer({
