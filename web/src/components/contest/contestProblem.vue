@@ -32,8 +32,8 @@
         <el-descriptions direction="vertical" :column="1" border>
           <el-descriptions-item label="时间限制"> {{ problemInfo.timeLimit }} ms</el-descriptions-item>
           <el-descriptions-item label="空间限制"> {{ problemInfo.memoryLimit }} MB</el-descriptions-item>
-          <el-descriptions-item label="题目类型"> {{ problemInfo.type }} </el-descriptions-item>
-          <el-descriptions-item label=" 出题人">
+          <el-descriptions-item label="比对方式"> {{ problemInfo.type }} </el-descriptions-item>
+          <el-descriptions-item label="出题人">
             <router-link class="rlink" :to="'/user/' + problemInfo.publisherUid">
               {{ problemInfo.publisher }}
             </router-link>

@@ -41,8 +41,8 @@
           <el-descriptions-item label="空间限制">
             <el-input v-model="problemInfo.memoryLimit" style="width: 80px;" /> MB
           </el-descriptions-item>
-          <el-descriptions-item label="题目类型">
-            <el-select v-model="problemInfo.type" placeholder="评测结果" style="width: 150px;">
+          <el-descriptions-item label="比对方式">
+            <el-select v-model="problemInfo.type" placeholder="比对方式" style="width: 150px;">
               <el-option v-for="item in ptype" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-descriptions-item>
