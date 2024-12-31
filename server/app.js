@@ -81,8 +81,29 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors())              //配置跨域
 app.use(router)              //配置路由
 
+const logFilePath = './app.log';
+const fs = require('fs');
+
+const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+
+const originalLog = console.log;
+const { Format } = require('./static')
+
+const logToFileAndConsole = (level, ...args) => {
+  const message = `[${Format(new Date())}] ${level}: ${args.join(' ')}\n`;
+  logStream.write(message);
+  originalLog(message);
+};
+
+console.log = (...args) => logToFileAndConsole('LOG', ...args);
+console.error = (...args) => logToFileAndConsole('ERROR', ...args);
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 process.on('uncaughtException', (err) => {
-  console.log(err)
+  console.error('Uncaught Exception:', `Error: ${err.message}\nStack: ${err.stack}`);
 });
 
 app.listen(1234, () => {

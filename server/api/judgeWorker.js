@@ -162,6 +162,9 @@ const judgeCode = async (sid) => {
 
     // run
     const config = JSON.parse((await getFile(`./data/${pid}/config.json`)));
+    if (!config || !config.cases) {
+      throw new Error(`CASE ERROR: config.cases is null or undefined`);
+    }
     const cases = config.cases, subtasks = config.subtask;
 
     let runResult = {}, judgeResult = [], isSkip = new Map();
