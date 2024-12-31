@@ -51,7 +51,7 @@
         </div>
       </template>
       <el-upload v-if="!cases.length" drag action="/api/problem/uploadData" :data="{ pid: pid }" accept=".zip"
-        :on-success="reflushData" v-loading="!finished" :disabled="!auth.manage">
+        :on-error="handleUploadError" :on-success="reflushData" v-loading="!finished" :disabled="!auth.manage">
         <el-icon class="el-icon--upload">
           <UploadFilled />
         </el-icon>
@@ -284,6 +284,9 @@ export default {
       let url = '/api/problem/downloadCase?pid=' + this.pid;
       if (index) url += ('&index=' + index);
       window.location.href = url;
+    },
+    handleUploadError(err) {
+      this.$message.error('上传失败' + err);
     }
   },
   mounted() {

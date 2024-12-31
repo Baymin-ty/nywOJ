@@ -1,11 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const multer = require("multer");
-const fs = require('fs');
-const { setFile } = require('./file');
-const path = require('path');
-const compressing = require('compressing');
-
 
 const rabbit = require('./api/rabbit');
 
@@ -60,116 +54,9 @@ router.post('/api/problem/bindPaste2Problem', problem.bindPaste2Problem);
 router.post('/api/problem/unbindSol', problem.unbindSol);
 router.post('/api/problem/getProblemAuth', problem.getProblemAuth);
 
-const MAX_TOTAL_SIZE = 200 * 1024 * 1024; // 200MB limit
-const upload = multer({
-  fileFilter: (req, file, cb) => {
-    cb(null, (req.session.gid >= 2));
-  },
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      const dir = "./data/" + req.body.pid;
-      if (fs.existsSync(dir))
-        fs.rmSync(dir, {
-          recursive: true
-        });
-      fs.mkdirSync(dir, {
-        recursive: true
-      });
-      cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-      cb(null, 'data.zip');
-    }
-  })
-});
 
-const process = (str) => {
-  let res = str;
-  while (res.length && !(res[0] >= '0' && res[0] <= '9'))
-    res = res.substring(1);
-  if (!res.length)
-    return -1;
-  else
-    return Number(res);
-}
-const { problemAuth } = require('./api/problem');
-
-router.post('/api/problem/uploadData', upload.single('file'), async (req, res) => {
-  if (req.session.gid < 2 || !((await problemAuth(req, req.body.pid)).manage))
-    return res.status(403).end('403 Forbidden');
-  compressing.zip.uncompress(req.file.path, req.file.destination).then(() => {
-    fs.readdir(req.file.destination, async (err, file) => {
-      if (err) return res.status(202).send({
-        err: err
-      });
-      if (req.session.gid < 3) {
-        let totalSize = 0;
-        for (let f of file) {
-          if (f === 'data.zip') continue;
-          const filePath = path.join(req.file.destination, f);
-          const stats = fs.statSync(filePath);
-          totalSize += stats.size;
-          if (totalSize > MAX_TOTAL_SIZE) {
-            fs.rmSync(req.file.destination, { recursive: true, force: true });
-            return res.status(202).send({
-              err: "Total uncompressed size exceeds 200MB limit"
-            });
-          }
-        }
-      }
-      let cases = [], indexVis = new Map();
-      for (i in file) {
-        if (file[i].substring(file[i].length - 3) === '.in') {
-          const name = file[i].substring(0, file[i].length - 3);
-          if (fs.existsSync(path.join(__dirname, `./data/${req.body.pid}/${name}.out`))) {
-            let index = process(name);
-            if (!index || typeof index !== 'number' || index === -1) {
-              fs.rmSync(req.file.destination, { recursive: true, force: true });
-              return res.status(202).send({
-                err: `测试点${name}命名不符合规范(前缀)(数字).in/.out`
-              });
-            }
-            if (indexVis[index] === true) {
-              fs.rmSync(req.file.destination, { recursive: true, force: true });
-              return res.status(202).send({
-                err: `测试点${name}中数字id重复`
-              });
-            }
-            indexVis[index] = true;
-            cases.push({
-              index: index,
-              input: name + '.in',
-              output: name + '.out',
-            });
-          }
-        }
-      }
-      cases.sort((a, b) => {
-        return a.index - b.index;
-      });
-      let uniqueCases = [];
-      for (let i = 0; i < cases.length; i++) {
-        uniqueCases.push({
-          index: i + 1,
-          input: cases[i].input,
-          output: cases[i].output,
-          subtaskId: 1
-        })
-      }
-      let subtask = [{
-        index: 1,
-        score: 100,
-        option: 0,
-        skip: false
-      }];
-      await setFile(`${req.file.destination}/config.json`, JSON.stringify({ cases: uniqueCases, subtask: subtask }));
-      res.json({
-        file: req.file
-      })
-    });
-  });
-})
-
+const fileUpload = require('./api/fileUpload');
+router.post('/api/problem/uploadData', fileUpload.caseUpload.single('file'), fileUpload.handleCaseUpload);
 
 const judge = require('./api/judge');
 
