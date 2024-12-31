@@ -76,26 +76,38 @@
               </el-button>
             </template>
           </el-table-column>
-          <el-table-column label="子任务编号" min-width="20%">
+          <el-table-column label="编号" min-width="10%">
             <template #default="scope">
               <span> {{ scope.row.index }} </span>
             </template>
           </el-table-column>
-          <el-table-column label="子任务分数" min-width="30%">
+          <el-table-column label="分数" min-width="25%">
             <template #default="scope">
               <el-input style="max-width: 120px;" v-model="scope.row.score">
                 <template #append>分</template>
               </el-input>
             </template>
           </el-table-column>
-          <el-table-column label="记分方式" min-width="40%">
+          <el-table-column label="记分方式" min-width="25%">
             <template #default="scope">
-              <el-radio-group v-model="scope.row.option">
-                <el-radio-button :value="0">每个测试点等分</el-radio-button>
-                <el-radio-button :value="1">全部通过后得全分</el-radio-button>
-              </el-radio-group>
-              <el-switch style="margin-top: 5px;" v-if="scope.row.option" v-model="scope.row.skip" active-text="遇TLE止测"
-                inactive-text="测试全部" />
+              <div>
+                <el-radio-group v-model="scope.row.option">
+                  <el-radio-button :value="0"
+                    @click="scope.row.dependencies = [], scope.row.skip = 0">等分</el-radio-button>
+                  <el-radio-button :value="1">全过得分</el-radio-button>
+                </el-radio-group>
+                <br>
+                <el-switch style="margin-top: 5px;" v-if="scope.row.option" v-model="scope.row.skip"
+                  active-text="遇TLE止测" inactive-text="全测" />
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="依赖子任务" min-width="30%">
+            <template #default="scope">
+              <el-select :disabled="!scope.row.option" v-model="scope.row.dependencies" multiple filterable clearable
+                placeholder="依赖子任务" style="width: 200px;">
+                <el-option v-for="i in scope.row.index - 1" :key="i" :label="i" :value="i" />
+              </el-select>
             </template>
           </el-table-column>
         </el-table>
@@ -111,7 +123,20 @@
               @click="downloadCase(i.index)" :disabled="!auth.manage" />
             <div class="subtask">
               <el-input v-model="i.subtaskId">
-                <template #prepend>子任务编号</template>
+                <template #prepend>
+                  <el-popover placement="left" :width="320" trigger="hover">
+                    <template #reference>
+                      <span>子任务编号</span>
+                    </template>
+                    <span>将 </span>
+                    <el-input v-model="tool.left" style="width: 50px" placeholder="[" />
+                    <span> 到 </span>
+                    <el-input v-model="tool.right" style="width: 50px" placeholder="]" />
+                    <span> 设为 </span>
+                    <el-input v-model="tool.id" style="width: 50px" placeholder="id" />
+                    <el-button @click="setIds" style="margin-left: 5px;">确定</el-button>
+                  </el-popover>
+                </template>
               </el-input>
             </div>
           </div>
@@ -152,7 +177,12 @@ export default {
       finished: false,
       spj: '',
       subtask: [],
-      auth: {}
+      auth: {},
+      tool: {
+        left: null,
+        right: null,
+        id: null
+      }
     };
   },
   methods: {
@@ -174,6 +204,8 @@ export default {
       axios.post('/api/problem/getProblemCasePreview', {
         pid: this.pid,
       }).then(res => {
+        for (let i of res.data.subtask)
+          if (!i.dependencies) i.dependencies = [];
         this.cases = res.data.data;
         this.subtask = res.data.subtask;
         if (res.data.spj) {
@@ -287,6 +319,17 @@ export default {
     },
     handleUploadError(err) {
       this.$message.error('上传失败' + err);
+    },
+    setIds() {
+      if (this.tool.left > this.tool.right ||
+        this.tool.left < 1 || this.tool.right > this.cases.length ||
+        this.tool.id < 1 || this.tool.id > this.subtask.length) {
+        this.$message.error('out of range');
+        return;
+      }
+      for (let i = this.tool.left - 1; i < this.tool.right; i++)
+        this.cases[i].subtaskId = this.tool.id;
+      this.$message.success('设置成功');
     }
   },
   mounted() {

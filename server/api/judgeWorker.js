@@ -331,6 +331,8 @@ const judgeCode = async (sid) => {
       subtaskInfo[subtasks[i].index]['score'] = 0;
       subtaskInfo[subtasks[i].index]['fullScore'] = subtasks[i].score;
       subtaskInfo[subtasks[i].index]['option'] = subtasks[i].option;
+      if (subtasks[i]?.dependencies)
+        subtaskInfo[subtasks[i].index]['dependencies'] = subtasks[i]?.dependencies;
     }
     for (i in judgeResult)
       subtaskInfo[judgeResult[i].subtaskId]['subtaskStatus'].push(judgeResult[i]);
@@ -354,6 +356,15 @@ const judgeCode = async (sid) => {
         subtaskInfo[i]['res'] = 4;
         subtaskInfo[i]['score'] = subtaskInfo[i]['fullScore'];
       }
+      if (subtaskInfo[i]['dependencies']) {
+        outer: for (let id of subtaskInfo[i]['dependencies']) {
+          if (subtaskInfo[id]['res'] !== 4) {
+            subtaskInfo[i]['res'] = subtaskInfo[id]['res'];
+            subtaskInfo[i]['score'] = 0;
+            break outer;
+          }
+        }
+      }
     }
 
     let finalRes = 12, totalTime = 0, maxMemory = 0, totalScore = 0, acSub = 0, totalSub = 0, subtaskList = [];
@@ -369,7 +380,8 @@ const judgeCode = async (sid) => {
         res: subtaskInfo[i]['res'],
         score: subtaskInfo[i]['score'],
         fullScore: subtaskInfo[i]['fullScore'],
-        option: subtaskInfo[i]['option']
+        option: subtaskInfo[i]['option'],
+        dependencies: subtaskInfo[i]['dependencies'] ? subtaskInfo[i]['dependencies'] : []
       });
       if (subtaskInfo[i]['res'] === 4) {
         acSub++;

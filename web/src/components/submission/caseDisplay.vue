@@ -12,7 +12,7 @@
             <span v-if="!subtask.info.option" class="tag">
               score: {{ subtask.info.score }} / {{ subtask.info.fullScore }}
             </span>
-            <el-tooltip v-if="subtask.info.option" content="此Subtask需要通过所有测试点才能得分" placement="top" effect="light">
+            <el-tooltip v-if="subtask.info.option" placement="top" effect="light" :content=getExplanation(subtask.info)>
               <span class="tag">
                 <el-icon>
                   <InfoFilled />
@@ -39,6 +39,30 @@
         </template>
         <div class="sub" :style="{ 'color': resColor[subtask.info.res] }">
           <el-collapse accordion>
+            <el-collapse-item :disabled="true" v-for="id in subtask['info']?.dependencies" :key="id">
+              <template #title>
+                <el-col :span="6">
+                  <span class="tag">
+                    Subtask #{{ id }}
+                  </span>
+                </el-col>
+                <el-col :span="6">
+                  <span class="tag" :style="{ 'color': resColor[subtaskInfo[id]['info']['res']] }">
+                    {{ subtaskInfo[id]['info']['res'] }}
+                  </span>
+                </el-col>
+                <el-col :span="5">
+                  <span class="tag">
+                    time: {{ subtaskInfo[id]['info']['time'] }} ms
+                  </span>
+                </el-col>
+                <el-col :span="5">
+                  <span class="tag">
+                    memory: {{ subtaskInfo[id]['info']['memory'] }}
+                  </span>
+                </el-col>
+              </template>
+            </el-collapse-item>
             <el-collapse-item v-for="data in subtask['cases']" :key="data.id">
               <template #title>
                 <el-col :span="6">
@@ -101,6 +125,13 @@ export default {
       active: 1
     }
   },
+  methods: {
+    getExplanation(info) {
+      if (!info?.dependencies?.length)
+        return '此Subtask需通过所有测试点才能得分'
+      else return `此Subtask需通过所有测试点及 Subtask: ${JSON.stringify(info.dependencies)} 才能得分`
+    }
+  }
 }
 </script>
 

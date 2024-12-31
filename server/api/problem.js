@@ -265,10 +265,10 @@ exports.updateSubtaskId = async (req, res) => {
   if (req.session.gid < 2 || !((await problemAuth(req, pid)).manage)) return res.status(403).end('403 Forbidden');
   try {
     let subtaskMap = new Map(), totalScore = 0;
-    for (let i in subtask) {
-      if (typeof subtask[i].index !== "number")
+    for (let i = 0; i < subtask.length; i++) {
+      if (typeof subtask[i].index !== "number" || subtask[i].index !== i + 1)
         return res.status(202).send({
-          message: `子任务 #${subtask[i].index} 编号非法`
+          message: `子任务 #${subtask[i].index} 编号非法或不连续`
         });
       if (!Number.isInteger(subtask[i].score) || subtask[i].score < 1 || subtask[i].score > 100)
         return res.status(202).send({
@@ -288,8 +288,19 @@ exports.updateSubtaskId = async (req, res) => {
         });
       if (!subtask[i].option && subtask[i].skip)
         return res.status(202).send({
-          message: `测试点等分的subtask无法设置遇TLE止测`
+          message: `测试点等分的子任务 #${subtask[i].index} 无法设置遇TLE止测`
         });
+      if (!subtask[i].option && subtask[i]?.dependencies?.length)
+        return res.status(202).send({
+          message: `测试点等分的子任务 #${subtask[i].index} 无法设置子任务依赖`
+        });
+      for (let id of subtask[i].dependencies) {
+        if (id >= subtask[i].index) {
+          return res.status(202).send({
+            message: `子任务 #${subtask[i].index} 依赖了 id>=${subtask[i].index} 的子任务`
+          });
+        }
+      }
       subtaskMap.set(subtask[i].index, subtask[i].score);
       totalScore += subtask[i].score;
     }
