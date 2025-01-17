@@ -321,6 +321,9 @@ export default {
       this.$message.error('上传失败' + err);
     },
     setIds() {
+      this.tool.left = Number(this.tool.left);
+      this.tool.right = Number(this.tool.right);
+      this.tool.id = Number(this.tool.id)
       if (this.tool.left > this.tool.right ||
         this.tool.left < 1 || this.tool.right > this.cases.length ||
         this.tool.id < 1 || this.tool.id > this.subtask.length) {
