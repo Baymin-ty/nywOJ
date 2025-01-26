@@ -56,11 +56,13 @@ export default {
       this.all();
     },
     all() {
-      let url = location.pathname + '?tab=audit';
-      if (this.currentPage !== 1)
-        url += ('&pageId=' + this.currentPage);
-      history.state.current = url;
-      history.replaceState(history.state, null, url);
+      if (this.$route.query.tab === 'audit') {
+        let url = location.pathname + '?tab=audit';
+        if (this.currentPage !== 1)
+          url += ('&pageId=' + this.currentPage);
+        history.state.current = url;
+        history.replaceState(history.state, null, url);
+      }
       axios.post('/api/user/listAudits', {
         pageId: this.currentPage
       }).then(res => {
