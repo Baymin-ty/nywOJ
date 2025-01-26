@@ -66,7 +66,7 @@ export default {
       name: "请登录",
       ok: true,
       opt: 0,
-      tot: 3,
+      tot: 4,
       pic: [
         {
           name: '兔兔',
@@ -79,6 +79,10 @@ export default {
         {
           name: '龙龙',
           loc: require('@/assets/longlong.jpg')
+        },
+        {
+          name: '蛇蛇',
+          loc: require('@/assets/serpent.jpg')
         }
       ]
     }
