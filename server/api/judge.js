@@ -2,26 +2,25 @@ const axios = require('axios');
 const db = require('../db/index');
 const SqlString = require('mysql/lib/protocol/SqlString');
 const exec = require('child_process').exec;
-const { Format, kbFormat } = require('../static');
+const { Format, kbFormat, queryPromise } = require('../static');
 const async = require('async');
 const conf = require('../config.json');
 const { fork } = require('child_process');
 const { updateProblemStat, problemAuth } = require('./problem');
 
-const judgeQueue = async.queue((submission, callback) => {
-  const worker = fork('./api/judgeWorker.js');
+const judgeQueue = async.queue((submission) => {
+
+  const worker = fork(`./api/judgeWorker(${submission.lang}).js`);
 
   worker.on('message', (msg) => {
     if (msg.type === 'done' || msg.type === 'error') {
       worker.kill();
-      callback();
     }
   });
 
   worker.on('error', (error) => {
     console.error(`Worker error for submission ${submission.sid}:`, error);
     worker.kill();
-    callback(error);
   });
 
   worker.send({ type: 'judge', sid: submission.sid, isreJudge: submission.isreJudge });
@@ -42,12 +41,13 @@ exports.receiveTask = (req, res) => {
 
 let taskId = 0;
 
-const pushSidIntoQueue = (sid, isreJudge) => {
+const pushSidIntoQueue = async (sid, isreJudge) => {
+  const lang = await queryPromise('SELECT l.name FROM languages l INNER JOIN submission s ON l.id = s.lang WHERE s.sid=?', [sid]);
   if (conf.JUDGE.ISSERVER) {
     const machine = machines[(++taskId) % machines.length];
     if (machine === 'localhost') {
       console.log(Format(new Date()), 'server: localJudge', sid);
-      judgeQueue.push({ sid: sid, isreJudge: isreJudge });
+      judgeQueue.push({ sid: sid, isreJudge: isreJudge, lang: lang[0].name });
     }
     else {
       console.log(Format(new Date()), 'server: task assigned to', machine, sid);
@@ -65,7 +65,7 @@ const pushSidIntoQueue = (sid, isreJudge) => {
     }
   } else {
     console.log(Format(new Date()), 'client: task received', sid, isreJudge);
-    judgeQueue.push({ sid: sid, isreJudge: isreJudge });
+    judgeQueue.push({ sid: sid, isreJudge: isreJudge, lang: lang[0].name });
   }
 }
 module.exports.pushSidIntoQueue = pushSidIntoQueue;
@@ -206,7 +206,7 @@ const updateData = (pid) => {
 module.exports.updateData = updateData;
 
 exports.submit = async (req, res) => {
-  const code = req.body.code, pid = req.body.pid;
+  const code = req.body.code, pid = req.body.pid, lang = req.body.lang;
   if (!pid) {
     return res.status(202).send({
       message: '请确认信息完善'
@@ -227,7 +227,12 @@ exports.submit = async (req, res) => {
       message: '选手提交的程序源文件必须不大于 100KB。'
     });
   }
-  db.query('INSERT INTO submission(pid,uid,code,codelength,submitTime) VALUES (?,?,?,?,?)', [pid, req.session.uid, code, code.length, new Date()], (err, data) => {
+  if (lang < 1 || lang > 2) {
+    return res.status(202).send({
+      message: '语言暂未支持, 尽情期待'
+    });
+  }
+  db.query('INSERT INTO submission(pid,uid,code,codelength,submitTime,lang) VALUES (?,?,?,?,?,?)', [pid, req.session.uid, code, code.length, new Date(), lang], (err, data) => {
     if (err) return res.status(202).send({
       message: err
     });
@@ -249,7 +254,7 @@ exports.getSubmissionList = (req, res) => {
   let pageId = req.body.pageId,
     pageSize = 20;
   if (!pageId) pageId = 1;
-  let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.cid,s.machine,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid "
+  let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.cid,s.machine,s.lang,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid "
 
   pageId = SqlString.escape(pageId);
 
@@ -275,6 +280,10 @@ exports.getSubmissionList = (req, res) => {
   if (req.body.score !== null) {
     req.body.score = SqlString.escape(req.body.score);
     sql += ' AND s.score=' + req.body.score;
+  }
+  if (req.body.lang !== null) {
+    req.body.lang = SqlString.escape(req.body.lang);
+    sql += ' AND s.lang=' + req.body.lang;
   }
   sql += " ORDER BY sid DESC LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
 
@@ -305,6 +314,9 @@ exports.getSubmissionList = (req, res) => {
     if (req.body.score !== null) {
       cntsql += ' AND s.score=' + req.body.score;
     }
+    if (req.body.lang !== null) {
+      cntsql += ' AND s.lang=' + req.body.lang;
+    }
     db.query(cntsql, (err, data) => {
       if (err) return res.status(202).send({ message: err });
       return res.status(200).send({
@@ -330,7 +342,7 @@ const getCaseDetail = (sid) => {
 
 exports.getSubmissionInfo = (req, res) => {
   const sid = SqlString.escape(req.body.sid);
-  let sql = 'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,s.machine,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=' + sid;
+  let sql = 'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,s.machine,s.lang,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=' + sid;
   if (req.session.gid < 2) {
     sql += ' and p.isPublic=1';
   }
@@ -444,4 +456,15 @@ exports.cancelSubmission = (req, res) => {
       })
     }
   })
+}
+
+exports.getLangs = async (req, res) => {
+  const data = await queryPromise("SELECT id, des FROM languages");
+  const langList = data.reduce((L, i) => {
+    L[i.id] = i;
+    return L;
+  }, {});
+  return res.status(200).send({
+    data: langList
+  });
 }

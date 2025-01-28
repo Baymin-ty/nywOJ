@@ -75,9 +75,9 @@
               </router-link>
             </template>
           </el-table-column>
-          <el-table-column prop="codeLength" label="代码长度" width="80px">
+          <el-table-column prop="codeLength" label="语言 / 代码长度" width="150px">
             <template #default="scope">
-              <span> {{ scope.row.codeLength }} B </span>
+              <span>{{ $store.state.langList[scope.row.lang].des }} / {{ scope.row.codeLength }} B </span>
             </template>
           </el-table-column>
           <el-table-column prop="judgeResult" label="总用时" fixed="right" width="100px">

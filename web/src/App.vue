@@ -22,11 +22,20 @@
 
 <script>
 import myHeader from './components/myHeader.vue'
+import axios from "axios";
 
 export default {
   name: 'App',
   components: {
     myHeader,
+  },
+  mounted() {
+    axios.post('/api/judge/getLangs').then(res => {
+      if (res.status === 200) {
+        this.$store.state.langList = res.data.data
+      }
+    });
+
   },
 }
 </script>

@@ -38,6 +38,11 @@
               <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
+          <el-form-item>
+            <el-select v-model="filter.lang" placeholder="提交语言" style="width: 160px;">
+              <el-option v-for="l in $store.state.langList" :key="l.id" :label="l.des" :value="l.id" />
+            </el-select>
+          </el-form-item>
           <el-form-item v-if="queryAll">
             <el-input v-model="filter.cid" type="text" placeholder="比赛id" style="width: 80px;" @keyup.enter="all" />
           </el-form-item>
@@ -97,9 +102,9 @@
             <span> {{ scope.row.memory }} </span>
           </template>
         </el-table-column>
-        <el-table-column prop="codeLength" label="代码长度" width="80px">
+        <el-table-column prop="codeLength" label="语言 / 代码长度" width="150px">
           <template #default="scope">
-            <span> {{ scope.row.codeLength }} B </span>
+            <span>{{ $store.state.langList[scope.row.lang].des }} / {{ scope.row.codeLength }} B </span>
           </template>
         </el-table-column>
         <el-table-column prop="submitTime" label="提交时间" fixed="right" width="160px" />
@@ -127,7 +132,8 @@ export default {
         name: null,
         res: null,
         score: null,
-        cid: null
+        cid: null,
+        lang: null
       },
       queryAll: false,
       options: [{
@@ -187,6 +193,7 @@ export default {
       if (this.filter.cid) param.cid = this.filter.cid;
       if (this.filter.score !== null) param.score = this.filter.score;
       if (this.filter.res !== null) param.res = this.filter.res;
+      if (this.filter.lang !== null) param.lang = this.filter.lang;
       if (this.queryAll && this.$store.state.gid > 1) param.queryAll = true;
       if (this.currentPage > 1)
         param.pageId = this.currentPage;
@@ -201,6 +208,7 @@ export default {
         name: this.filter.name,
         score: this.filter.score,
         judgeRes: (this.filter.res === -1 ? null : this.filter.res),
+        lang: this.filter.lang,
         queryAll: this.queryAll
       }).then(res => {
         this.submissionList = res.data.data;
@@ -211,7 +219,7 @@ export default {
       });
     },
     clear() {
-      this.filter.name = this.filter.pid = this.filter.res = this.filter.score = this.filter.cid = null;
+      this.filter.name = this.filter.pid = this.filter.res = this.filter.score = this.filter.cid = this.filter.lang = null;
       this.all();
     },
     mySub() {
@@ -252,6 +260,7 @@ export default {
     if (query.name) this.filter.name = query.name;
     if (query.pid) this.filter.pid = query.pid;
     if (query.cid) this.filter.cid = query.cid;
+    if (query.lang) this.filter.lang = parseInt(query.lang);
     if (query.queryAll && this.$store.state.gid > 1) this.queryAll = true;
     if (query.pageId) this.currentPage = parseInt(query.pageId);
     this.all();

@@ -39,7 +39,7 @@
       </template>
     </el-table-column>
   </el-table>
-  <el-dialog v-if="dialogVisible" v-model="dialogVisible" title="提交记录" width="1200px" center
+  <el-dialog v-if="dialogVisible" v-model="dialogVisible" title="提交记录" width="1300px" center
     style="border-radius: 10px; padding-bottom: 10px;" class="pd">
     <el-divider />
     <el-table :data="subList" style="min-height: 200px; width: auto; margin-left: 10px;margin-right: 10px;"
@@ -72,9 +72,9 @@
           <span> {{ scope.row.score }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="codeLength" label="代码长度" min-width="10%">
+      <el-table-column prop="codeLength" label="语言 / 代码长度" min-width="15%">
         <template #default="scope">
-          <span> {{ scope.row.codeLength }} B </span>
+          <span>{{ $store.state.langList[scope.row.lang].des }} / {{ scope.row.codeLength }} B </span>
         </template>
       </el-table-column>
       <el-table-column prop="submitTime" label="提交时间" min-width="15%" />

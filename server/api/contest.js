@@ -510,7 +510,7 @@ exports.getSubmissionList = (req, res) => {
     if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
       || (isReged && data[0].status > 0) // 用户已报名
       || req.session.gid >= 2)) {
-      let sql = 'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE cid=? ';
+      let sql = 'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE cid=? ';
       if (req.body.uid) {
         sql += `AND u.uid=${req.body.uid}`;
       }
@@ -554,7 +554,7 @@ exports.getLastSubmissionList = (req, res) => {
       if (!lastSubmissions.length) {
         return res.status(200).send({ data: [], total: 0 });
       }
-      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
+      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
         [lastSubmissions], async (err2, data2) => {
           if (err2) return res.status(202).send({ message: err2 });
           for (let i = 0; i < data2.length; i++) {
@@ -588,7 +588,7 @@ const getCaseDetail = (sid) => {
 
 exports.getSubmissionInfo = (req, res) => {
   const sid = req.body.sid;
-  db.query('SELECT s.sid,s.uid,s.cid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,s.machine,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=?',
+  db.query('SELECT s.sid,s.uid,s.cid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,s.machine,s.lang,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=?',
     [sid], (err, data) => {
       if (err) return res.status(202).send({ message: err });
       if (!data.length) return res.status(202).send({
@@ -813,7 +813,7 @@ exports.getSingleUserLastSubmission = async (req, res) => {
       if (!lastSubmissions.length) {
         return res.status(200).send({ data: [], total: 0 });
       }
-      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
+      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
         [lastSubmissions], async (err2, data2) => {
           if (err2) return res.status(202).send({ message: err2 });
           for (let i = 0; i < data2.length; i++) {
@@ -842,7 +842,7 @@ exports.getSingleUserProblemSubmission = (req, res) => {
       || (isReged && data[0].status > 0) // 用户已报名
       || req.session.gid >= 2)) {
       const pinfo = await getPinfo(cid, idx);
-      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.cid=? AND s.uid=? AND s.pid=? ORDER BY s.sid DESC',
+      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.cid=? AND s.uid=? AND s.pid=? ORDER BY s.sid DESC',
         [cid, uid, pinfo.pid], async (err2, data2) => {
           if (err2) return res.status(202).send({ message: err2 });
           for (let i = 0; i < data2.length; i++) {

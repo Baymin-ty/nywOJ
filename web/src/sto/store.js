@@ -9,6 +9,7 @@ export default createStore({
         path: '',
         avatar: '',
         reDirectTo: '/',
+        langList: []
     },
     mutations: {},
     actions: {},

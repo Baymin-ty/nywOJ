@@ -509,7 +509,7 @@ exports.getProblemFastestSubmission = async (req, res) => {
     });
   }
   try {
-    let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.cid,s.machine,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE p.pid=? AND score=100 ORDER BY s.time LIMIT 10"
+    let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.cid,s.machine,s.lang,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE p.pid=? AND score=100 ORDER BY s.time LIMIT 10"
     let data = await queryPromise(sql, [pid]);
     for (let i of data) i.memory = kbFormat(i.memory);
     return res.status(200).send({ data: data });

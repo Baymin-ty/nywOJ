@@ -53,9 +53,9 @@
         <span> {{ scope.row.memory }} </span>
       </template>
     </el-table-column>
-    <el-table-column prop="codeLength" label="代码长度" min-width="6%">
+    <el-table-column prop="codeLength" label="语言 / 代码长度" min-width="12%">
       <template #default="scope">
-        <span> {{ scope.row.codeLength }} B </span>
+        <span>{{ $store.state.langList[scope.row.lang].des }} / {{ scope.row.codeLength }} B </span>
       </template>
     </el-table-column>
     <el-table-column prop="submitTime" label="提交时间" min-width="12%" />

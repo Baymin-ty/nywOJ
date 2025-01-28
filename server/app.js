@@ -69,6 +69,7 @@ app.use((req, res, next) => {
       req.url === '/api/common/getAnnouncementInfo' ||
       req.url === '/api/problem/getProblemTags' ||
       req.url === '/api/problem/getProblemPublishers' ||
+      req.url === '/api/judge/getLangs' ||
       req.url === '/api/judge/receiveTask'
     )
       next();
