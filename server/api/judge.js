@@ -8,19 +8,21 @@ const conf = require('../config.json');
 const { fork } = require('child_process');
 const { updateProblemStat, problemAuth } = require('./problem');
 
-const judgeQueue = async.queue((submission) => {
+const judgeQueue = async.queue((submission, callback) => {
 
   const worker = fork(`./api/judgeWorker(${submission.lang}).js`);
 
   worker.on('message', (msg) => {
     if (msg.type === 'done' || msg.type === 'error') {
       worker.kill();
+      callback();
     }
   });
 
   worker.on('error', (error) => {
     console.error(`Worker error for submission ${submission.sid}:`, error);
     worker.kill();
+    callback(error);
   });
 
   worker.send({ type: 'judge', sid: submission.sid, isreJudge: submission.isreJudge });
@@ -28,7 +30,7 @@ const judgeQueue = async.queue((submission) => {
 
 const machines = [
   'localhost',
-  'http://49.235.101.43/api/judge/receiveTask'
+  // 'http://49.235.101.43/api/judge/receiveTask'
 ];
 
 
