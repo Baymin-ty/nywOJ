@@ -63,12 +63,11 @@
               <el-option v-for="item in levels" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-descriptions-item>
-          <el-descriptions-item label=" 出题人">
-            <router-link class="rlink" :to="'/user/' + problemInfo.publisherUid">
-              {{ problemInfo.publisher }}
-            </router-link>
+          <el-descriptions-item label="支持语言">
+            <el-select v-model="avalangList" multiple collapse-tags :max-collapse-tags="3" placeholder="支持语言">
+              <el-option v-for="l in this.$store.state.langList" :key="l.id" :label="l.des" :value="l.id" />
+            </el-select>
           </el-descriptions-item>
-          <el-descriptions-item label="发布时间"> {{ problemInfo.time }} </el-descriptions-item>
         </el-descriptions>
         <el-divider style="margin-top: 20px; margin-bottom: 20px;" />
         <div style="text-align: center;">
@@ -106,6 +105,7 @@ export default {
       gid: 1,
       problemInfo: [],
       newTag: '',
+      avalangList: [],
       inputVisible: false,
       ptype: [
         { value: 0, label: '传统文本比较' },
@@ -153,6 +153,13 @@ export default {
   },
   methods: {
     updateProblem() {
+      if (!this.avalangList.length) {
+        this.$message.error('请选择至少一个支持语言');
+        return;
+      }
+      this.problemInfo.lang = 0;
+      for (let i of this.avalangList)
+        this.problemInfo.lang |= (1 << i);
       axios.post('/api/problem/updateProblem', {
         pid: this.problemInfo.pid,
         info: this.problemInfo
@@ -186,6 +193,12 @@ export default {
     all() {
       axios.post('/api/problem/getProblemInfo', { pid: this.pid }).then(res => {
         this.problemInfo = res.data.data
+        this.avalangList = [];
+        for (let l in this.$store.state.langList) {
+          let lid = this.$store.state.langList[l].id;
+          if ((1 << lid) & this.problemInfo.lang)
+            this.avalangList.push(lid);
+        }
         if (!this.problemInfo.description) this.problemInfo.description = "请输入题目描述";
         if (!this.problemInfo.title) this.problemInfo.title = "请输入题目标题";
         this.problemInfo.isPublic = res.data.data.isPublic ? true : false;

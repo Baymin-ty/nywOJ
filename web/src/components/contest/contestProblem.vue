@@ -8,6 +8,13 @@
           </div>
         </template>
         <div v-if="isSubmit">
+          <div style="margin: 10px;">
+            选择语言：
+            <el-select v-model="submitLang" placeholder="选择语言" style="width: 160px;">
+              <el-option v-for="l in this.langList" :key="l.id" :label="l.des" :value="l.id" />
+            </el-select>
+          </div>
+          <el-divider />
           <monacoEditor :value="code" @update:value="code = $event" />
           <el-divider />
           <div style="text-align: center;">
@@ -82,6 +89,8 @@ export default {
       cid: 0,
       pid: 0,
       gid: 1,
+      submitLang: null,
+      langList: [],
       problemInfo: {},
       code: "",
       isSubmit: false
@@ -96,7 +105,8 @@ export default {
         cid: this.cid,
         idx: this.idx,
         id: this.problemInfo.id,
-        code: this.code
+        code: this.code,
+        lang: this.submitLang
       }).then(res => {
         if (res.status === 200) {
           this.$message.success('提交成功');
@@ -122,6 +132,14 @@ export default {
     await axios.post("/api/contest/getProblemInfo", { cid: this.cid, idx: this.idx }).then(res => {
       if (res.status === 200) {
         this.problemInfo = res.data.data;
+        for (let l in this.$store.state.langList) {
+          let lid = this.$store.state.langList[l].id;
+          if ((1 << lid) & this.problemInfo.lang) {
+            this.langList.push(this.$store.state.langList[l]);
+            if (!this.submitLang)
+              this.submitLang = lid;
+          }
+        }
       }
       else {
         this.$router.push({

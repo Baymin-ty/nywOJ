@@ -16,7 +16,7 @@
           <div style="margin: 10px;">
             选择语言：
             <el-select v-model="submitLang" placeholder="选择语言" style="width: 160px;">
-              <el-option v-for="l in $store.state.langList" :key="l.id" :label="l.des" :value="l.id" />
+              <el-option v-for="l in this.langList" :key="l.id" :label="l.des" :value="l.id" />
             </el-select>
           </div>
           <el-divider />
@@ -117,7 +117,8 @@ export default {
     return {
       pid: 0,
       gid: 1,
-      submitLang: 1,
+      submitLang: null,
+      langList: [],
       problemInfo: {},
       code: '',
       isSubmit: false,
@@ -194,6 +195,14 @@ export default {
       if (res.status === 200) {
         this.problemInfo = res.data.data
         this.problemInfo.isPublic = res.data.data.isPublic ? true : false;
+        for (let l in this.$store.state.langList) {
+          let lid = this.$store.state.langList[l].id;
+          if ((1 << lid) & this.problemInfo.lang) {
+            this.langList.push(this.$store.state.langList[l]);
+            if (!this.submitLang)
+              this.submitLang = lid;
+          }
+        }
       }
       else {
         this.$router.push({ path: '/problem' });

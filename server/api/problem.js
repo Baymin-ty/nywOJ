@@ -83,7 +83,7 @@ exports.updateProblem = async (req, res) => {
   info.isPublic = info.isPublic ? 1 : 0;
   if (info.type === '传统文本比较') info.type = 0;
   else if (info.type === 'Special Judge') info.type = 1;
-  db.query('UPDATE problem SET title=?,description=?,timeLimit=?,memoryLimit=?,isPublic=?,type=?,tags=?,level=? WHERE pid=?', [info.title, info.description, info.timeLimit, info.memoryLimit, info.isPublic, info.type, JSON.stringify(info.tags), info.level, pid], (err, data) => {
+  db.query('UPDATE problem SET title=?,description=?,timeLimit=?,memoryLimit=?,isPublic=?,type=?,tags=?,level=?,lang=? WHERE pid=?', [info.title, info.description, info.timeLimit, info.memoryLimit, info.isPublic, info.type, JSON.stringify(info.tags), info.level, info.lang, pid], (err, data) => {
     if (err) return res.status(202).send({
       message: err
     });
@@ -168,9 +168,23 @@ const problemAuth = async (req, pid) => {
 }
 module.exports.problemAuth = problemAuth;
 
+const getProblemLang = (pid) => {
+  return new Promise((resolve, reject) => {
+    db.query('SELECT lang FROM problem WHERE pid=?', [pid], (err, data) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(data[0].lang);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+module.exports.getProblemLang = getProblemLang;
+
 exports.getProblemInfo = (req, res) => {
   const pid = req.body.pid;
-  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.description,p.time,p.timeLimit,p.memoryLimit,p.isPublic,p.type,p.tags,p.level,p.publisher as publisherUid,u.`name` as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=? "
+  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.description,p.time,p.timeLimit,p.memoryLimit,p.isPublic,p.type,p.tags,p.level,p.lang,p.publisher as publisherUid,u.`name` as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=? "
     + (req.session.gid > 1 ? "" : "AND isPublic=1");
   db.query(sql, [pid], (err, data) => {
     if (err) return res.status(202).send({ message: err });

@@ -105,6 +105,12 @@
                       <el-switch v-model="tmpInfo.isPublic" size="large" active-text="公开" inactive-text="私有"
                         :disabled="tmpInfo.done" />
                     </el-form-item>
+                    <el-form-item label="支持语言">
+                      <el-select v-model="avalangList" multiple collapse-tags :max-collapse-tags="3" placeholder="支持语言"
+                        :disabled="tmpInfo.done">
+                        <el-option v-for="l in this.$store.state.langList" :key="l.id" :label="l.des" :value="l.id" />
+                      </el-select>
+                    </el-form-item>
                     <el-form-item>
                       <el-button type="danger" @click="updateContest" :disabled="tmpInfo.done">更新比赛</el-button>
                       <el-button type="primary" :disabled="tmpInfo.done"
@@ -177,11 +183,19 @@ export default {
         '等待测评': 'success',
         '已结束': 'info',
       },
-      needUpdate: ['problemList', 'submission', 'rank', 'manageP']
+      needUpdate: ['problemList', 'submission', 'rank', 'manageP'],
+      avalangList: [],
     }
   },
   methods: {
     updateContest() {
+      if (!this.avalangList.length) {
+        this.$message.error('请选择至少一个支持语言');
+        return;
+      }
+      this.tmpInfo.lang = 0;
+      for (let i of this.avalangList)
+        this.tmpInfo.lang |= (1 << i);
       axios.post('/api/contest/updateContestInfo', {
         cid: this.cid,
         info: this.tmpInfo
@@ -204,6 +218,12 @@ export default {
       axios.post('/api/contest/getContestInfo', { cid: this.cid }).then(res => {
         if (res.status === 200) {
           this.contestInfo = res.data.data;
+          this.avalangList = [];
+          for (let l in this.$store.state.langList) {
+            let lid = this.$store.state.langList[l].id;
+            if ((1 << lid) & this.contestInfo.lang)
+              this.avalangList.push(lid);
+          }
           this.contestInfo.isPublic = !!res.data.data.isPublic;
           this.contestInfo.done = !!res.data.data.done;
           this.joinAuth = res.data.data.auth.join;

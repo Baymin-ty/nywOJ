@@ -6,7 +6,7 @@ const { Format, kbFormat, queryPromise } = require('../static');
 const async = require('async');
 const conf = require('../config.json');
 const { fork } = require('child_process');
-const { updateProblemStat, problemAuth } = require('./problem');
+const { updateProblemStat, problemAuth, getProblemLang } = require('./problem');
 
 const judgeQueue = async.queue((submission, callback) => {
 
@@ -229,9 +229,10 @@ exports.submit = async (req, res) => {
       message: '选手提交的程序源文件必须不大于 100KB。'
     });
   }
-  if (lang < 1 || lang > 3) {
+  let alang = await getProblemLang(pid);
+  if (!((1 << lang) & alang)) {
     return res.status(202).send({
-      message: '语言暂未支持, 尽情期待'
+      message: '非法语言'
     });
   }
   db.query('INSERT INTO submission(pid,uid,code,codelength,submitTime,lang) VALUES (?,?,?,?,?,?)', [pid, req.session.uid, code, code.length, new Date(), lang], (err, data) => {

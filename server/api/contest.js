@@ -2,6 +2,7 @@ const db = require('../db/index');
 const { briefFormat, Format, kbFormat } = require('../static');
 const SqlString = require('mysql/lib/protocol/SqlString');
 const { pushSidIntoQueue } = require('./judge');
+const { getProblemLang } = require('./problem');
 const ctype = ['OI', 'IOI'];
 const cstatus = ['未开始', '正在进行', '等待测评', '已结束'];
 const ctypeToIndex = {
@@ -108,8 +109,8 @@ exports.updateContestInfo = (req, res) => {
         message: '非法isPublic参数'
       });
     }
-    db.query('UPDATE contest SET title=?,description=?,start=?,length=?,type=?,isPublic=? WHERE cid=?',
-      [info.title, info.description, new Date(info.start), info.length, info.type, info.isPublic, cid], (err, data) => {
+    db.query('UPDATE contest SET title=?,description=?,start=?,length=?,type=?,isPublic=?,lang=? WHERE cid=?',
+      [info.title, info.description, new Date(info.start), info.length, info.type, info.isPublic, info.lang, cid], (err, data) => {
         if (err) return res.status(202).send({
           message: err
         });
@@ -167,7 +168,7 @@ exports.getContestList = (req, res) => {
 
 exports.getContestInfo = (req, res) => {
   const cid = req.body.cid;
-  let sql = "SELECT c.cid,c.title,c.start,c.length,c.isPublic,c.type,c.host,c.description,c.done,u.name as hostName FROM contest c INNER JOIN userInfo u ON u.uid = c.host WHERE cid=?";
+  let sql = "SELECT c.cid,c.title,c.start,c.length,c.isPublic,c.type,c.host,c.description,c.lang,c.done,u.name as hostName FROM contest c INNER JOIN userInfo u ON u.uid = c.host WHERE cid=?";
   db.query(sql, [cid], async (err, data) => {
     if (err) return res.status(202).send({ message: err });
     if (!data.length) return res.status(202).send({
@@ -341,13 +342,14 @@ exports.getProblemInfo = (req, res) => {
       if (!pid) return res.status(202).send({
         message: '无此题目'
       });
-      let sql = "SELECT p.title,p.description,p.time,p.timeLimit,p.memoryLimit,p.type,p.publisher as publisherUid,u.name as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=?"
-      db.query(sql, [pid], (err2, data2) => {
+      let sql = "SELECT p.title,p.description,p.time,p.timeLimit,p.memoryLimit,p.type,p.lang,p.publisher as publisherUid,u.name as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=?"
+      db.query(sql, [pid], async (err2, data2) => {
         if (err2) return res.status(202).send({ message: err2 });
         if (!data2.length) return res.status(202).send({
           message: '无此题目'
         });
         else {
+          data2[0].lang = (await getProblemLang(pid)) & data[0].lang;
           data2[0].type = ptype[data2[0].type];
           data2[0].time = briefFormat(data2[0].time);
           data2[0].idx = idx;
@@ -433,7 +435,7 @@ exports.updateProblemList = (req, res) => {
 }
 
 exports.submit = async (req, res) => {
-  const code = req.body.code, cid = req.body.cid, idx = req.body.idx, uid = req.session.uid;
+  const code = req.body.code, cid = req.body.cid, idx = req.body.idx, uid = req.session.uid, lang = req.body.lang;
   if (!cid || !idx) {
     return res.status(202).send({
       message: '请确认信息完善'
@@ -459,12 +461,19 @@ exports.submit = async (req, res) => {
       return res.status(202).send({ message: '非比赛时间' });
     }
     const pinfo = await getPinfo(cid, idx), pid = pinfo.pid;
+    let alang = await getProblemLang(pid); // 题目lang
+    alang &= data[0].lang; // 比赛lang
+    if (!((1 << lang) & alang)) {
+      return res.status(202).send({
+        message: '非法语言'
+      });
+    }
     if (req.body.id !== pinfo.id)
       return res.status(202).send({
         refresh: true,
         message: '题目列表已更新，请重新查看题目列表提交'
       });
-    db.query('INSERT INTO submission(pid,uid,code,codelength,submitTime,cid) VALUES (?,?,?,?,?,?)', [pid, req.session.uid, code, code.length, new Date(), cid], (err2, data2) => {
+    db.query('INSERT INTO submission(pid,uid,code,codelength,submitTime,cid,lang) VALUES (?,?,?,?,?,?,?)', [pid, req.session.uid, code, code.length, new Date(), cid, lang], (err2, data2) => {
       if (err2) return res.status(202).send({ message: err2 });
       if (data2.affectedRows > 0) {
         db.query('UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?', [pid]);
