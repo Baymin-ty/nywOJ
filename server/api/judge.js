@@ -229,7 +229,7 @@ exports.submit = async (req, res) => {
       message: '选手提交的程序源文件必须不大于 100KB。'
     });
   }
-  if (lang < 1 || lang > 2) {
+  if (lang < 1 || lang > 3) {
     return res.status(202).send({
       message: '语言暂未支持, 尽情期待'
     });
