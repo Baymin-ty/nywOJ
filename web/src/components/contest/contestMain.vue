@@ -324,4 +324,8 @@ export default {
 #picon {
   vertical-align: -2px;
 }
+
+.el-form-item {
+  height: 35px;
+}
 </style>
