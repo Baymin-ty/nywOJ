@@ -349,6 +349,8 @@ exports.getProblemInfo = (req, res) => {
           message: '无此题目'
         });
         else {
+          if (req.session.gid >= 2)
+            data2[0].pid = pid;
           data2[0].lang = (await getProblemLang(pid)) & data[0].lang;
           data2[0].type = ptype[data2[0].type];
           data2[0].time = briefFormat(data2[0].time);

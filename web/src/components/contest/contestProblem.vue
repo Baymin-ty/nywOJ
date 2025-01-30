@@ -72,6 +72,12 @@
             </el-icon>
             返回比赛
           </el-button>
+          <el-button v-if="this.gid >= 2" type="warning" @click="this.$router.push('/problem/' + problemInfo.pid)">
+            <el-icon class="el-icon--left">
+              <Files />
+            </el-icon>
+            题库查看
+          </el-button>
         </div>
       </el-card>
     </el-col>
