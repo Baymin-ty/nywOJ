@@ -91,9 +91,10 @@
                         <el-date-picker v-model="tmpInfo.start" type="datetime" :disabled="tmpInfo.done" />
                       </div>
                     </el-form-item>
-                    <el-form-item label="比赛时长">
-                      <el-slider v-model="tmpInfo.length" show-input :min="10" :max="600" :step="10"
-                        :disabled="tmpInfo.done" />
+                    <el-form-item label="结束时间">
+                      <div class="block">
+                        <el-date-picker v-model="tmpInfo.end" type="datetime" :disabled="tmpInfo.done" />
+                      </div>
                     </el-form-item>
                     <el-form-item label="比赛类型">
                       <el-select v-model="tmpInfo.type" class="m-2" :disabled="tmpInfo.done">
@@ -196,6 +197,11 @@ export default {
       this.tmpInfo.lang = 0;
       for (let i of this.avalangList)
         this.tmpInfo.lang |= (1 << i);
+      this.tmpInfo.length = (new Date(this.tmpInfo.end).getTime() - new Date(this.tmpInfo.start).getTime()) / 1000 / 60;
+      if (this.tmpInfo.length < 0) {
+        this.$message.error('比赛时长错误');
+        return;
+      }
       axios.post('/api/contest/updateContestInfo', {
         cid: this.cid,
         info: this.tmpInfo
