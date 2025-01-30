@@ -15,6 +15,11 @@
             <el-input v-model="userInfo.email" type="text" :disabled="true" />
             <span class="attach">请在「账号安全」中修改邮箱</span>
           </el-form-item>
+          <el-form-item label="偏好语言">
+            <el-select v-model="userInfo.preferenceLang" placeholder="选择语言">
+              <el-option v-for="l in this.$store.state.langList" :key="l.id" :label="l.des" :value="l.id" />
+            </el-select>
+          </el-form-item>
           <el-form-item label="qq号">
             <el-input v-model="userInfo.qq" type="text" />
             <span class="attach">OJ头像将使用qq头像</span>
@@ -36,6 +41,7 @@
 </template>
 <script>
 import axios from "axios";
+import { refreshUserInfo } from '@/assets/common'
 
 export default {
   name: "userProfile",
@@ -57,6 +63,7 @@ export default {
         } else {
           this.$message.error('更新失败' + res.data.message);
         }
+        refreshUserInfo();
         this.all();
       });
     },
@@ -64,7 +71,7 @@ export default {
       axios.post('/api/user/getUserPublicInfo', { uid: this.$store.state.uid }).then(res => {
         this.userInfo = res.data.info;
         this.avatarAddress = this.getAvatarAddress(this.userInfo.qq);
-      })
+      });
     }
   },
   mounted() {

@@ -201,8 +201,14 @@ export default {
             this.langList.push(this.$store.state.langList[l]);
             if (!this.submitLang)
               this.submitLang = lid;
+            if (lid === this.$store.state.preferenceLang)
+              this.submitLang = lid;
           }
         }
+        if (!this.$store.state.preferenceLang)
+          this.$message.info('可在编辑资料--个人信息中设置您的偏好语言');
+        else if (this.submitLang !== this.$store.state.preferenceLang)
+          this.$message.warning('本题无法用您的偏好语言提交');
       }
       else {
         this.$router.push({ path: '/problem' });

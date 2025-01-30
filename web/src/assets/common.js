@@ -44,3 +44,19 @@ export const scoreColor = [
   '#93b127',
   '#25ad40',
 ]
+
+import axios from "axios";
+import store from '@/sto/store';
+
+export const refreshUserInfo = async () => {
+  await axios.post('/api/user/getUserInfo').then(res => {
+    if (res.status === 200) {
+      store.state.uid = res.data.uid;
+      store.state.name = res.data.name;
+      store.state.gid = res.data.gid;
+      store.state.ip = res.data.ip;
+      store.state.avatar = res.data.avatar;
+      store.state.preferenceLang = res.data.preferenceLang;
+    }
+  });
+}

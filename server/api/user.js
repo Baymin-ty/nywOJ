@@ -146,13 +146,15 @@ exports.getUserInfo = (req, res) => {
       if (data[0].qq)
         req.session.avatar = `https://q1.qlogo.cn/g?b=qq&nk=${data[0].qq}&s=3`
       else req.session.avatar = 'https://cdn.ty.szsyzx.cn/default-avatar.svg'
+      req.session.preferenceLang = data[0].preferenceLang;
       return res.status(200).send({
         uid: req.session.uid,
         name: req.session.name,
         email: req.session.email,
         ip: req.session.ip,
         gid: req.session.gid,
-        avatar: req.session.avatar
+        avatar: req.session.avatar,
+        preferenceLang: req.session.preferenceLang
       });
     });
   }
@@ -304,7 +306,7 @@ exports.setUserEmail = async (req, res) => {
 
 exports.getUserPublicInfo = (req, res) => {
   const uid = req.body.uid;
-  db.query("SELECT uid,name,email,reg_time,login_time,clickCnt,inUse,gid,motto,qq FROM userInfo WHERE uid=?", [uid], (err, data) => {
+  db.query("SELECT uid,name,email,reg_time,login_time,clickCnt,inUse,gid,motto,qq,preferenceLang FROM userInfo WHERE uid=?", [uid], (err, data) => {
     if (err) {
       return res.status(202).send({ message: err });
     }
@@ -405,7 +407,7 @@ exports.updateUserPublicInfo = (req, res) => {
     if (err) {
       return res.status(202).send({ message: err });
     }
-    db.query("UPDATE userInfo SET qq=?,motto=? WHERE uid=?", [info.qq, info.motto, req.session.uid], (err2, data2) => {
+    db.query("UPDATE userInfo SET qq=?,motto=?,preferenceLang=? WHERE uid=?", [info.qq, info.motto, info.preferenceLang, req.session.uid], (err2, data2) => {
       if (err2) {
         return res.status(202).send({ message: err2 });
       }

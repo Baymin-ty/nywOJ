@@ -28,7 +28,7 @@ import userEdit from '@/components/user/edit/userEdit.vue'
 
 import userManage from "@/components/admin/userManage"
 
-import axios from "axios";
+import { refreshUserInfo } from '@/assets/common'
 import store from '@/sto/store';
 
 const per = [];
@@ -200,15 +200,7 @@ router.beforeEach(async (to, from, next) => {
         window.location.href = 'https://ty.szsyzx.cn';
     }
     if (!store.state.uid) {
-        await axios.post('/api/user/getUserInfo').then(res => {
-            if (res.status === 200) {
-                store.state.uid = res.data.uid;
-                store.state.name = res.data.name;
-                store.state.gid = res.data.gid;
-                store.state.ip = res.data.ip;
-                store.state.avatar = res.data.avatar;
-            }
-        });
+        await refreshUserInfo();
     }
     if (store.state.uid) {
         if (!per[to.path] || store.state.gid >= per[to.path])
