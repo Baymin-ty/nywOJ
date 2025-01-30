@@ -85,7 +85,7 @@ exports.getRankInfo = (req, res) => {
       data[i].rk = (pageId - 1) * pageSize + i + 1;
       data[i].avatar =
         data[i].qq ? `https://q1.qlogo.cn/g?b=qq&nk=${data[i].qq}&s=3`
-          : 'https://cdn.ty.szsyzx.cn/default-avatar.svg';
+          : '/default-avatar.svg';
 
     }
     db.query("SELECT COUNT(*) as total FROM userInfo", (err2, data2) => {

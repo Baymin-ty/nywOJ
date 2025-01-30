@@ -145,7 +145,7 @@ exports.getUserInfo = (req, res) => {
       }
       if (data[0].qq)
         req.session.avatar = `https://q1.qlogo.cn/g?b=qq&nk=${data[0].qq}&s=3`
-      else req.session.avatar = 'https://cdn.ty.szsyzx.cn/default-avatar.svg'
+      else req.session.avatar = '/default-avatar.svg'
       req.session.preferenceLang = data[0].preferenceLang;
       return res.status(200).send({
         uid: req.session.uid,

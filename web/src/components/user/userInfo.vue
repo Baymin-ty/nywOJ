@@ -76,7 +76,7 @@ export default {
       });
     },
     getAvatarAddress(qq) {
-      if (!qq || !qq.length) return 'https://cdn.ty.szsyzx.cn/default-avatar.svg';
+      if (!qq || !qq.length) return '/default-avatar.svg';
       return `https://q1.qlogo.cn/g?b=qq&nk=${qq}&s=5`;
     },
     async getUserClickData() {
