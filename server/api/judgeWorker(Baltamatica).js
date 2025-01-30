@@ -202,7 +202,7 @@ const judgeCode = async (sid) => {
       await axios.post('http://114.55.147.117:5050/run-hello', {
         sid: sinfo.sid,
         code: code,
-        timeLimit: timeLimit * 1000 * 1000 * 1000,
+        timeLimit: timeLimit * 1000 * 1000,
         memoryLimit: memoryLimit * 1024 * 1024,
         input: inputFile
       }).then(res => {
