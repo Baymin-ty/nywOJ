@@ -422,6 +422,11 @@ exports.updateUserPublicInfo = (req, res) => {
           'old': data[0].motto,
           'new': info.motto,
         }
+      if (data[0].preferenceLang !== info.preferenceLang)
+        detail.preferenceLang = {
+          'old': data[0].preferenceLang,
+          'new': info.preferenceLang,
+        }
       recordEvent(req, 'user.updateProfile', detail)
       return res.status(200).send({ message: "ok" });
     });
