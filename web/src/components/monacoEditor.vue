@@ -40,10 +40,10 @@ export default defineComponent({
 
   setup(props, { emit }) {
     const editorContainer = ref(null);
-    let editor;
+    let monacoEditor, editor;
 
     onMounted(async () => {
-      const monacoEditor = await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor');
+      monacoEditor = await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor');
       editor = monacoEditor.editor.create(editorContainer.value, {
         value: props.value,
         language: props.language,
@@ -62,25 +62,25 @@ export default defineComponent({
 
     watch(() => props.value, (newValue) => {
       if (editor && newValue !== editor.getValue()) {
-        editor.setValue(newValue);
+        monacoEditor.editor.setValue(newValue);
       }
     });
 
     watch(() => props.language, (newLanguage) => {
       if (editor) {
-        editor.setModelLanguage(editor.getModel(), newLanguage);
+        monacoEditor.editor.setModelLanguage(editor.getModel(), newLanguage);
       }
     });
 
     watch(() => props.readOnly, (newReadOnly) => {
       if (editor) {
-        editor.updateOptions({ readOnly: newReadOnly });
+        monacoEditor.editor.updateOptions({ readOnly: newReadOnly });
       }
     });
 
     watch(() => props.fontSize, (newSize) => {
       if (editor) {
-        editor.updateOptions({ fontSize: newSize });
+        monacoEditor.editor.updateOptions({ fontSize: newSize });
       }
     });
 

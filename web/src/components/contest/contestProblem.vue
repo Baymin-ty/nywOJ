@@ -15,7 +15,8 @@
             </el-select>
           </div>
           <el-divider />
-          <monacoEditor :value="code" @update:value="code = $event" />
+          <monacoEditor :value="code" :language="$store.state.langList[submitLang].lang"
+            @update:value="code = $event" />
           <el-divider />
           <div style="text-align: center;">
             <el-button type="primary" @click="submit">

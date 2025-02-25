@@ -462,7 +462,7 @@ exports.cancelSubmission = (req, res) => {
 }
 
 exports.getLangs = async (req, res) => {
-  const data = await queryPromise("SELECT id, des FROM languages");
+  const data = await queryPromise("SELECT id,des,lang FROM languages");
   const langList = data.reduce((L, i) => {
     L[i.id] = i;
     return L;

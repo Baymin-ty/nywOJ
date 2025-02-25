@@ -85,7 +85,7 @@
             </el-button-group>
           </div>
         </template>
-        <monacoEditor v-if="hasTaken" :value="code" @update:value="code = $event" :readOnly="true" />
+        <monacoEditor v-if="hasTaken" :value="code"  :language="$store.state.langList[submissionInfo.lang].lang" @update:value="code = $event" :readOnly="true" />
       </el-card>
     </el-col>
   </el-row>
