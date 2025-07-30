@@ -1,7 +1,7 @@
 # nywOJ
 > An Online Judge System
 
-### [demo: https://ty.szsyzx.cn](![]https://ty.szsyzx.cn)
+### [demo: https://niyiwei.com](![]https://niyiwei.com)
 
 ### author
 + name: ty

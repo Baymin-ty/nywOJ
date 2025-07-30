@@ -197,7 +197,7 @@ router.beforeEach(async (to, from, next) => {
         window.location.hostname !== 'localhost' &&
         window.location.hostname !== 'niyiwei.com' &&
         window.location.hostname !== 'www.niyiwei.com') {
-        window.location.href = 'https://ty.szsyzx.cn';
+        window.location.href = 'https://niyiwei.com';
     }
     if (!store.state.uid) {
         await refreshUserInfo();

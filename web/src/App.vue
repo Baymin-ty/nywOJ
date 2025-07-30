@@ -14,7 +14,7 @@
         <span style="color: black;">ty</span>
       </div>
       <div>
-        <a href="https://beian.miit.gov.cn/" target="_blank" class="rainbow">黑ICP备2022006586号-1</a>
+        <a href="https://beian.miit.gov.cn/" target="_blank" class="rainbow">苏ICP备2025197653号-1</a>
       </div>
     </el-footer>
   </el-container>
