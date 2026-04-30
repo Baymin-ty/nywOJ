@@ -46,7 +46,7 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   req.useragent = parser(req.headers['user-agent']);
   if (req.session.uid) {
-    db.query('UPDATE userSession SET lastact=? WHERE token=? AND uid=?', [new Date(), req.sessionID, req.session.uid]);
+    db.query('UPDATE userSession SET lastact=? WHERE token=? AND uid=?', [new Date(), req.sessionID, req.session.uid]).catch((err) => console.log(err));
     if (req.url.match('^\/api\/admin') && req.session.gid !== 3)
       return res.status(403).end('403 Forbidden');
     next();
