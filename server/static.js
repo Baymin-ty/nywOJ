@@ -72,6 +72,12 @@ exports.eventList = [
   'problem.updateCase',
   'problem.downloadCase',
   'problem.updateConfig',
+  'auth.setUserRoles',
+  'auth.grantUserPermission',
+  'auth.revokeUserPermission',
+  'auth.createRole',
+  'auth.updateRole',
+  'auth.deleteRole',
 ];
 
 exports.eventExp = [
@@ -89,6 +95,12 @@ exports.eventExp = [
   '修改测试数据',
   '下载测试数据',
   '修改题目配置',
+  '设置用户角色',
+  '授予用户权限',
+  '撤销用户权限',
+  '创建角色',
+  '更新角色',
+  '删除角色',
 ]
 
 

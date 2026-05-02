@@ -11,8 +11,13 @@ export default createStore({
         reDirectTo: '/',
         langList: [],
         preferenceLang: null,
+        permissions: [],
     },
-    mutations: {},
+    mutations: {
+        setPermissions(state, list) {
+            state.permissions = Array.isArray(list) ? list : [];
+        },
+    },
     actions: {},
     modules: {}
 })

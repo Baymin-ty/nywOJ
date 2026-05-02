@@ -80,4 +80,7 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 import { ElMessage } from 'element-plus'
 app.config.globalProperties.$message = ElMessage
 
+import canPlugin from '@/utils/can'
+app.use(canPlugin)
+
 app.use(ElementPlus).use(ElMessage).use(router).use(store).use(VMdEditor).use(VMdPreview).mount('#app');
