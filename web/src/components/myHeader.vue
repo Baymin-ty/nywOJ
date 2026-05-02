@@ -62,6 +62,12 @@
         </el-icon>
         用户管理
       </el-menu-item>
+      <el-menu-item v-if="$canAny('user.role.assign','user.permission.grant')" index="/admin/permissions">
+        <el-icon>
+          <Lock />
+        </el-icon>
+        权限管理
+      </el-menu-item>
       <el-menu-item index="/paste">
         <el-icon>
           <Document />

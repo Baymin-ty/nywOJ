@@ -57,6 +57,7 @@ export const refreshUserInfo = async () => {
       store.state.ip = res.data.ip;
       store.state.avatar = res.data.avatar;
       store.state.preferenceLang = res.data.preferenceLang;
+      store.commit('setPermissions', res.data.permissions || []);
     }
   });
 }

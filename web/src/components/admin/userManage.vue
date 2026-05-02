@@ -98,7 +98,7 @@
             <span> {{ scope.row.inUse ? "正常" : "封禁" }}</span>
           </template>
         </el-table-column>
-        <el-table-column fixed="right" width="250px">
+        <el-table-column fixed="right" width="360px">
           <template #header>
             <div class="table-header">
               操作
@@ -117,6 +117,10 @@
               <el-button size="small" :type="scope.row.inUse ? 'danger' : 'success'" plain
                 @click="setBlock(scope.row.uid, !scope.row.inUse)">
                 {{ scope.row.inUse ? "封禁账号" : "解除封禁" }}
+              </el-button>
+              <el-button size="small" type="info" plain v-if="$canAny('user.role.assign','user.permission.grant')"
+                @click="openPermission(scope.row.uid)">
+                角色权限
               </el-button>
             </span>
           </template>
@@ -248,7 +252,10 @@ export default {
         };
       }
       row.edit ^= 1;
-    }
+    },
+    openPermission(uid) {
+      this.$router.push({ path: '/admin/permissions', query: { tab: 'userGrants', uid } });
+    },
   },
   mounted() {
     let query = this.$route.query;
