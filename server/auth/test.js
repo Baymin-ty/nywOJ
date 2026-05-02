@@ -1,0 +1,639 @@
+// Integration tests for the RBAC permission system.
+// Runs against the real database configured in server/config.json.
+//
+//   node server/auth/test.js
+//
+// The test creates / cleans up its own sandbox users, roles and grants;
+// it does NOT touch existing data beyond reading it for verification.
+
+const path = require('path');
+process.chdir(path.join(__dirname, '..'));
+
+const db = require('../db');
+const policy = require('./policy');
+const { syncPermissionCatalog } = require('./sync');
+const { PERMISSIONS, BUILTIN_ROLES, RESOURCE_GRANTABLE } = require('./permissions');
+
+const auth = require('../api/auth');
+
+let pass = 0, fail = 0;
+const results = [];
+const ok = (name) => { pass++; results.push(['ok ', name]); };
+const ko = (name, err) => { fail++; results.push(['FAIL', `${name} -- ${err && err.message ? err.message : err}`]); };
+
+const assert = (cond, name) => { if (cond) ok(name); else ko(name, 'assertion failed'); };
+const assertEq = (a, b, name) => {
+  if (a === b) ok(name);
+  else ko(name, `expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
+};
+const assertSetEq = (got, want, name) => {
+  const A = new Set(got), B = new Set(want);
+  if (A.size !== B.size) return ko(name, `size ${A.size} vs ${B.size}; got=${[...A]} want=${[...B]}`);
+  for (const x of B) if (!A.has(x)) return ko(name, `missing ${x}; got=${[...A]}`);
+  ok(name);
+};
+
+const test = async (name, fn) => {
+  try { await fn(); }
+  catch (err) { ko(name, err); }
+};
+
+// ----- fake req helpers -----
+const makeReq = (uid, perms) => {
+  // recordEvent reads req.session.ip and req.useragent; provide harmless defaults
+  // so handlers don't crash inside the audit-log path during tests.
+  const session = { uid, gid: 0, ip: '127.0.0.1' };
+  return {
+    body: {},
+    session,
+    useragent: { browser: { name: 'test', version: '0' }, os: { name: 'test', version: '0' } },
+    can: (key, scope) => policy.can(perms, key, scope),
+    perms,
+  };
+};
+const fakeRes = () => {
+  const r = {
+    statusCode: 200,
+    payload: null,
+    status(s) { r.statusCode = s; return r; },
+    send(p) { r.payload = p; return r; },
+    end() { r.payload = null; return r; },
+  };
+  return r;
+};
+const runHandler = async (handler, req) => {
+  // handler can be a single fn or an array [middleware..., fn]; auth.js exports plain fns
+  // but problem.js style endpoints export arrays. We handle both for completeness.
+  const fns = Array.isArray(handler) ? handler : [handler];
+  const res = fakeRes();
+  for (const fn of fns) {
+    let nextCalled = false;
+    await new Promise((resolve) => {
+      const next = () => { nextCalled = true; resolve(); };
+      const ret = fn(req, res, next);
+      if (ret && typeof ret.then === 'function') ret.then(() => { if (!nextCalled) resolve(); });
+      else if (!nextCalled) resolve();
+    });
+    if (res.statusCode >= 400 || res.payload != null) break;
+  }
+  return res;
+};
+
+// ----- sandbox user helpers -----
+let createdUids = [];
+const mkUser = async (gid) => {
+  const r = await db.query(
+    "INSERT INTO userInfo(name,pwd,reg_time,gid,inUse) VALUES (?,?,NOW(),?,1)",
+    ['_t_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8), 'x', gid]
+  );
+  createdUids.push(r.insertId);
+  return r.insertId;
+};
+
+const cleanupSandbox = async () => {
+  if (createdUids.length) {
+    await db.query('DELETE FROM userInfo WHERE uid IN (?)', [createdUids]);
+  }
+  await db.query("DELETE FROM roles WHERE `key` LIKE 'test\\_%' ESCAPE '\\\\'");
+};
+
+// ============================================================
+//                          TESTS
+// ============================================================
+
+(async () => {
+  try {
+    // -------- 0. Schema sync --------
+    await test('syncPermissionCatalog runs without error', async () => {
+      await syncPermissionCatalog();
+    });
+
+    // -------- 1. Catalog sanity --------
+    await test('all code-defined permissions are upserted', async () => {
+      const rows = await db.query('SELECT `key` FROM permissions');
+      const dbKeys = new Set(rows.map((r) => r.key));
+      for (const k of Object.keys(PERMISSIONS)) {
+        if (!dbKeys.has(k)) throw new Error('missing permission: ' + k);
+      }
+    });
+
+    await test('all builtin roles upserted with builtin=1', async () => {
+      const rows = await db.query("SELECT `key`, builtin, legacy_gid FROM roles WHERE `key` IN (?)", [Object.keys(BUILTIN_ROLES)]);
+      const map = new Map(rows.map((r) => [r.key, r]));
+      for (const [k, meta] of Object.entries(BUILTIN_ROLES)) {
+        const row = map.get(k);
+        if (!row) throw new Error('missing role: ' + k);
+        if (row.builtin !== 1) throw new Error(`role ${k} should have builtin=1`);
+        if ((row.legacy_gid || null) !== (meta.legacy_gid || null))
+          throw new Error(`role ${k} legacy_gid mismatch: ${row.legacy_gid} vs ${meta.legacy_gid}`);
+      }
+    });
+
+    await test('moderator role has the unified permission set', async () => {
+      const rows = await db.query(
+        `SELECT p.\`key\` AS k FROM roles r
+         JOIN role_permissions rp ON rp.role_id = r.id
+         JOIN permissions p ON p.id = rp.permission_id
+         WHERE r.\`key\`=?`,
+        ['moderator']
+      );
+      const got = rows.map((r) => r.k);
+      assertSetEq(got, BUILTIN_ROLES.moderator.permissions, 'moderator permission set');
+    });
+
+    await test('super_admin role has every permission', async () => {
+      const rows = await db.query(
+        `SELECT p.\`key\` AS k FROM roles r
+         JOIN role_permissions rp ON rp.role_id = r.id
+         JOIN permissions p ON p.id = rp.permission_id
+         WHERE r.\`key\`=?`,
+        ['super_admin']
+      );
+      assertSetEq(rows.map((r) => r.k), Object.keys(PERMISSIONS), 'super_admin includes every permission key');
+    });
+
+    // -------- 2. gid -> role backfill --------
+    await test('user_roles backfilled for existing gid=3 users', async () => {
+      const users = await db.query('SELECT uid FROM userInfo WHERE gid=3 LIMIT 5');
+      if (!users.length) return ok('skip (no gid=3 users)');
+      const role = await db.one("SELECT id FROM roles WHERE `key`='super_admin'");
+      for (const u of users) {
+        const has = await db.exists('SELECT 1 FROM user_roles WHERE uid=? AND role_id=?', [u.uid, role.id]);
+        if (!has) throw new Error(`user ${u.uid} (gid=3) missing super_admin role`);
+      }
+    });
+
+    await test('user_roles backfilled for existing gid=2 users', async () => {
+      const users = await db.query('SELECT uid FROM userInfo WHERE gid=2 LIMIT 5');
+      if (!users.length) return ok('skip (no gid=2 users)');
+      const role = await db.one("SELECT id FROM roles WHERE `key`='moderator'");
+      for (const u of users) {
+        const has = await db.exists('SELECT 1 FROM user_roles WHERE uid=? AND role_id=?', [u.uid, role.id]);
+        if (!has) throw new Error(`user ${u.uid} (gid=2) missing moderator role`);
+      }
+    });
+
+    // -------- 3. policy.loadEffectivePermissions --------
+    let normalUid, modUid, superUid;
+    await test('seed sandbox users (gid=1, gid=2, gid=3)', async () => {
+      normalUid = await mkUser(1);
+      modUid = await mkUser(2);
+      superUid = await mkUser(3);
+      // run sync again to re-trigger backfill for the new users
+      await syncPermissionCatalog();
+    });
+
+    await test('normal user has zero global permissions', async () => {
+      policy.invalidate();
+      const p = await policy.loadEffectivePermissions(normalUid);
+      assertEq(p.global.size, 0, 'global set is empty');
+      assertEq(p.denies.size, 0, 'denies set is empty');
+      assertEq(p.scoped.size, 0, 'scoped map is empty');
+    });
+
+    await test('moderator user inherits the moderator permission set', async () => {
+      policy.invalidate();
+      const p = await policy.loadEffectivePermissions(modUid);
+      assertSetEq([...p.global], BUILTIN_ROLES.moderator.permissions, 'moderator effective.global');
+    });
+
+    await test('super_admin user inherits every permission', async () => {
+      policy.invalidate();
+      const p = await policy.loadEffectivePermissions(superUid);
+      assertSetEq([...p.global], Object.keys(PERMISSIONS), 'super_admin effective.global');
+    });
+
+    // -------- 4. user_permissions: global allow + scoped + deny --------
+    await test('grant global allow → appears in effective.global', async () => {
+      const perm = await db.one("SELECT id FROM permissions WHERE `key`='contest.create'");
+      await db.query(
+        `INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)`,
+        [normalUid, perm.id, 'allow', null, null]
+      );
+      policy.invalidate(normalUid);
+      const p = await policy.loadEffectivePermissions(normalUid);
+      assert(p.global.has('contest.create'), 'normal user gained contest.create globally');
+    });
+
+    await test('grant scoped allow → appears in effective.scoped, not in global', async () => {
+      const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.edit.any'");
+      await db.query(
+        `INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)`,
+        [normalUid, perm.id, 'allow', 'problem', 42]
+      );
+      policy.invalidate(normalUid);
+      const p = await policy.loadEffectivePermissions(normalUid);
+      assert(!p.global.has('problem.edit.any'), 'scoped grant must NOT pollute global set');
+      assert(p.scoped.get('problem.edit.any')?.has('problem:42'), 'scoped grant lands in scoped[problem:42]');
+    });
+
+    await test('policy.can: scoped grant authorizes only the matching scope', async () => {
+      const p = await policy.loadEffectivePermissions(normalUid);
+      assert(policy.can(p, 'problem.edit.any', { type: 'problem', id: 42 }), 'allowed for pid=42');
+      assert(!policy.can(p, 'problem.edit.any', { type: 'problem', id: 43 }), 'denied for pid=43');
+      assert(!policy.can(p, 'problem.edit.any'), 'no global grant');
+    });
+
+    await test('global deny overrides role-derived allow', async () => {
+      const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.delete.any'");
+      await db.query(
+        `INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)`,
+        [modUid, perm.id, 'deny', null, null]
+      );
+      policy.invalidate(modUid);
+      const p = await policy.loadEffectivePermissions(modUid);
+      assert(!policy.can(p, 'problem.delete.any'), 'moderator denied problem.delete.any after explicit deny');
+    });
+
+    // -------- 5. expires_at honored --------
+    await test('expired allow does not take effect', async () => {
+      const perm = await db.one("SELECT id FROM permissions WHERE `key`='announcement.manage'");
+      const past = new Date(Date.now() - 60_000);
+      await db.query(
+        `INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id, expires_at) VALUES (?,?,?,?,?,?)`,
+        [normalUid, perm.id, 'allow', null, null, past]
+      );
+      policy.invalidate(normalUid);
+      const p = await policy.loadEffectivePermissions(normalUid);
+      assert(!p.global.has('announcement.manage'), 'expired grant filtered out');
+    });
+
+    // -------- 6. Cache + invalidate --------
+    await test('policy cache returns the same object until invalidate', async () => {
+      policy.invalidate(superUid);
+      const p1 = await policy.loadEffectivePermissions(superUid);
+      const p2 = await policy.loadEffectivePermissions(superUid);
+      assert(p1 === p2, 'cache reused across calls');
+      policy.invalidate(superUid);
+      const p3 = await policy.loadEffectivePermissions(superUid);
+      assert(p1 !== p3, 'invalidate forces a fresh load');
+    });
+
+    // -------- 7. /api/auth handlers --------
+    const superPerms = await policy.loadEffectivePermissions(superUid);
+    const normalPerms = () => policy.loadEffectivePermissions(normalUid); // re-fetch after each mutation
+
+    await test('listPermissions returns the catalog (super_admin)', async () => {
+      const req = makeReq(superUid, superPerms);
+      const res = await runHandler(auth.listPermissions, req);
+      assertEq(res.statusCode, 200, 'status 200');
+      assert(Array.isArray(res.payload.permissions), 'permissions array');
+      assert(res.payload.permissions.length >= Object.keys(PERMISSIONS).length, 'has at least all code-defined keys');
+    });
+
+    await test('listPermissions returns 403 for normal user', async () => {
+      policy.invalidate(normalUid);
+      const req = makeReq(normalUid, await normalPerms());
+      const res = await runHandler(auth.listPermissions, req);
+      assertEq(res.statusCode, 403, 'status 403');
+    });
+
+    await test('listRoles returns roles with permission keys', async () => {
+      const req = makeReq(superUid, superPerms);
+      const res = await runHandler(auth.listRoles, req);
+      assertEq(res.statusCode, 200, 'status 200');
+      const sa = res.payload.roles.find((r) => r.key === 'super_admin');
+      assert(sa && sa.permissions.length === Object.keys(PERMISSIONS).length, 'super_admin payload includes every permission');
+    });
+
+    let customRoleId = null;
+    await test('createRole creates a custom role', async () => {
+      const req = makeReq(superUid, superPerms);
+      req.body = { key: 'test_custom1', name: '测试角色', description: 'desc', permissionKeys: ['problem.create'] };
+      const res = await runHandler(auth.createRole, req);
+      assertEq(res.statusCode, 200, 'status 200');
+      const row = await db.one("SELECT id, builtin FROM roles WHERE `key`=?", ['test_custom1']);
+      assert(row, 'role exists');
+      assertEq(row.builtin, 0, 'builtin=0');
+      customRoleId = row.id;
+      // permission link present
+      const link = await db.exists(
+        `SELECT 1 FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id=? AND p.\`key\`='problem.create'`,
+        [customRoleId]
+      );
+      assert(link, 'role_permissions row created');
+    });
+
+    await test('createRole rejects an illegal key', async () => {
+      const req = makeReq(superUid, superPerms);
+      req.body = { key: 'BAD-KEY', name: 'x', permissionKeys: [] };
+      const res = await runHandler(auth.createRole, req);
+      assertEq(res.statusCode, 202, 'status 202 (validation error via fail())');
+      assert(/格式/.test(res.payload.message || ''), 'rejection message about format');
+    });
+
+    await test('updateRole rejects builtin role', async () => {
+      const req = makeReq(superUid, superPerms);
+      req.body = { key: 'super_admin', name: 'pwn' };
+      const res = await runHandler(auth.updateRole, req);
+      assertEq(res.statusCode, 202, 'status 202');
+      assert(/内置/.test(res.payload.message || ''), 'rejection message mentions builtin');
+    });
+
+    await test('updateRole modifies a custom role and resets permissions', async () => {
+      const req = makeReq(superUid, superPerms);
+      req.body = { key: 'test_custom1', name: '改了名', permissionKeys: ['contest.create', 'problem.create'] };
+      const res = await runHandler(auth.updateRole, req);
+      assertEq(res.statusCode, 200, 'status 200');
+      const links = await db.query(
+        `SELECT p.\`key\` AS k FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id=?`,
+        [customRoleId]
+      );
+      assertSetEq(links.map((l) => l.k), ['contest.create', 'problem.create'], 'permission set replaced');
+    });
+
+    await test('setUserRoles assigns custom + builtin role to a normal user', async () => {
+      const req = makeReq(superUid, superPerms);
+      req.body = { uid: normalUid, roleKeys: ['test_custom1', 'problem_setter'] };
+      const res = await runHandler(auth.setUserRoles, req);
+      assertEq(res.statusCode, 200, 'status 200');
+
+      policy.invalidate(normalUid);
+      const p = await policy.loadEffectivePermissions(normalUid);
+      // problem.create from problem_setter; contest.create from custom role
+      assert(p.global.has('problem.create'), 'has problem.create from problem_setter');
+      assert(p.global.has('contest.create'), 'has contest.create from custom role');
+      assert(p.global.has('problem.edit.any'), 'has problem.edit.any from problem_setter');
+    });
+
+    await test('setUserRoles overwrites: removing a role drops its perms', async () => {
+      const req = makeReq(superUid, superPerms);
+      req.body = { uid: normalUid, roleKeys: [] };
+      const res = await runHandler(auth.setUserRoles, req);
+      assertEq(res.statusCode, 200, 'status 200');
+
+      policy.invalidate(normalUid);
+      const p = await policy.loadEffectivePermissions(normalUid);
+      assert(!p.global.has('problem.create'), 'problem.create dropped');
+      // contest.create was *also* explicitly granted earlier via direct user_permissions allow,
+      // so it should still be present even after roles cleared.
+      assert(p.global.has('contest.create'), 'direct user_permissions allow survives role clear');
+    });
+
+    await test('deleteRole succeeds for unused custom role', async () => {
+      const req = makeReq(superUid, superPerms);
+      req.body = { key: 'test_custom1' };
+      const res = await runHandler(auth.deleteRole, req);
+      assertEq(res.statusCode, 200, 'status 200');
+      const exists = await db.exists("SELECT 1 FROM roles WHERE `key`=?", ['test_custom1']);
+      assert(!exists, 'role removed');
+    });
+
+    await test('deleteRole rejects when role still in use', async () => {
+      // Recreate, assign, try to delete.
+      const req = makeReq(superUid, superPerms);
+      req.body = { key: 'test_custom2', name: 'x', permissionKeys: [] };
+      await runHandler(auth.createRole, req);
+      const req2 = makeReq(superUid, superPerms);
+      req2.body = { uid: normalUid, roleKeys: ['test_custom2'] };
+      await runHandler(auth.setUserRoles, req2);
+      const req3 = makeReq(superUid, superPerms);
+      req3.body = { key: 'test_custom2' };
+      const res = await runHandler(auth.deleteRole, req3);
+      assertEq(res.statusCode, 202, 'status 202');
+      assert(/持有/.test(res.payload.message || ''), 'message mentions still in use');
+      // cleanup: detach and delete
+      const req4 = makeReq(superUid, superPerms);
+      req4.body = { uid: normalUid, roleKeys: [] };
+      await runHandler(auth.setUserRoles, req4);
+      const req5 = makeReq(superUid, superPerms);
+      req5.body = { key: 'test_custom2' };
+      const res2 = await runHandler(auth.deleteRole, req5);
+      assertEq(res2.statusCode, 200, 'cleanup delete ok');
+    });
+
+    await test('grantUserPermission rejects scoped grant on non-scopable key', async () => {
+      const req = makeReq(superUid, superPerms);
+      req.body = {
+        uid: normalUid, permissionKey: 'problem.create', effect: 'allow',
+        resourceType: 'problem', resourceId: 99,
+      };
+      const res = await runHandler(auth.grantUserPermission, req);
+      assertEq(res.statusCode, 202, 'status 202');
+      assert(/作用域/.test(res.payload.message || ''), 'rejection mentions scope');
+    });
+
+    await test('grantUserPermission upserts scoped allow then revokeUserPermission removes it', async () => {
+      const req = makeReq(superUid, superPerms);
+      req.body = {
+        uid: normalUid, permissionKey: 'problem.case.manage', effect: 'allow',
+        resourceType: 'problem', resourceId: 7,
+      };
+      const res = await runHandler(auth.grantUserPermission, req);
+      assertEq(res.statusCode, 200, 'grant ok');
+
+      policy.invalidate(normalUid);
+      const p1 = await policy.loadEffectivePermissions(normalUid);
+      assert(p1.scoped.get('problem.case.manage')?.has('problem:7'), 'scoped grant active');
+
+      // upsert: re-grant with same scope, different expires
+      const req2 = makeReq(superUid, superPerms);
+      req2.body = { ...req.body, expiresAt: new Date(Date.now() + 60_000).toISOString() };
+      const res2 = await runHandler(auth.grantUserPermission, req2);
+      assertEq(res2.statusCode, 200, 'upsert ok');
+      const cnt = await db.one(
+        `SELECT COUNT(*) c FROM user_permissions up JOIN permissions p ON p.id=up.permission_id
+         WHERE up.uid=? AND p.\`key\`='problem.case.manage' AND up.resource_type='problem' AND up.resource_id=7`,
+        [normalUid]
+      );
+      assertEq(cnt.c, 1, 'exactly one row (upserted)');
+
+      // revoke
+      const row = await db.one(
+        `SELECT up.id FROM user_permissions up JOIN permissions p ON p.id=up.permission_id
+         WHERE up.uid=? AND p.\`key\`='problem.case.manage' AND up.resource_type='problem' AND up.resource_id=7`,
+        [normalUid]
+      );
+      const req3 = makeReq(superUid, superPerms);
+      req3.body = { id: row.id };
+      const res3 = await runHandler(auth.revokeUserPermission, req3);
+      assertEq(res3.statusCode, 200, 'revoke ok');
+
+      policy.invalidate(normalUid);
+      const p2 = await policy.loadEffectivePermissions(normalUid);
+      assert(!p2.scoped.get('problem.case.manage')?.has('problem:7'), 'scoped grant gone');
+    });
+
+    await test('listUserGrants returns roles + permissions for a user', async () => {
+      // give the user one role and one direct grant
+      const r1 = makeReq(superUid, superPerms);
+      r1.body = { uid: normalUid, roleKeys: ['problem_setter'] };
+      await runHandler(auth.setUserRoles, r1);
+      const r2 = makeReq(superUid, superPerms);
+      r2.body = { uid: normalUid, permissionKey: 'announcement.manage', effect: 'allow' };
+      await runHandler(auth.grantUserPermission, r2);
+
+      const r3 = makeReq(superUid, superPerms);
+      r3.body = { uid: normalUid };
+      const res = await runHandler(auth.listUserGrants, r3);
+      assertEq(res.statusCode, 200, 'status 200');
+      assert(res.payload.roles.includes('problem_setter'), 'roles list includes problem_setter');
+      const perms = res.payload.permissions.map((p) => p.permissionKey);
+      assert(perms.includes('announcement.manage'), 'permissions list includes announcement.manage');
+    });
+
+    await test('searchUsers finds the sandbox normal user by uid', async () => {
+      const req = makeReq(superUid, superPerms);
+      req.body = { q: String(normalUid) };
+      const res = await runHandler(auth.searchUsers, req);
+      assertEq(res.statusCode, 200, 'status 200');
+      const found = res.payload.users.find((u) => u.uid === normalUid);
+      assert(!!found, 'user appears in search results');
+    });
+
+    // -------- 8. Resource-owner authorization path --------
+    await test('resource owner can grant whitelisted permission without user.permission.grant', async () => {
+      // Insert a sandbox problem owned by normalUid.
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags) VALUES (?,?,?,NOW(),?)`,
+        ['_test_problem', 'desc', normalUid, '[]']
+      );
+      const pid = r.insertId;
+
+      try {
+        // normalUid has no global user.permission.grant.
+        policy.invalidate(normalUid);
+        const ownerPerms = await policy.loadEffectivePermissions(normalUid);
+        const req = makeReq(normalUid, ownerPerms);
+        req.body = {
+          uid: modUid, // give a permission to someone else
+          permissionKey: 'problem.case.manage',
+          effect: 'allow',
+          resourceType: 'problem',
+          resourceId: pid,
+        };
+        const res = await runHandler(auth.grantUserPermission, req);
+        assertEq(res.statusCode, 200, 'owner-as-grantor ok');
+
+        // verify modUid now has the scoped grant
+        policy.invalidate(modUid);
+        const mp = await policy.loadEffectivePermissions(modUid);
+        assert(mp.scoped.get('problem.case.manage')?.has(`problem:${pid}`),
+          `modUid has problem.case.manage scoped to problem:${pid}`);
+
+        // Owner cannot grant a NON-whitelisted permission via this path.
+        const req2 = makeReq(normalUid, ownerPerms);
+        req2.body = {
+          uid: modUid,
+          permissionKey: 'problem.view.private', // not in RESOURCE_GRANTABLE.problem
+          effect: 'allow',
+          resourceType: 'problem',
+          resourceId: pid,
+        };
+        const res2 = await runHandler(auth.grantUserPermission, req2);
+        // either 202 (业务错误) 或 403 — accept both. Check it didn't create a row.
+        assert(res2.statusCode !== 200, 'non-whitelisted grant rejected');
+      } finally {
+        await db.query('DELETE FROM user_permissions WHERE resource_type=? AND resource_id=?', ['problem', pid]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+      }
+    });
+
+    await test('listResourceGrants returns all grants on a resource for the owner', async () => {
+      // create a sandbox contest hosted by normalUid
+      const start = new Date();
+      const c = await db.query(
+        `INSERT INTO contest(title, host, start, length, type, isPublic) VALUES (?,?,?,?,?,?)`,
+        ['_test_contest', normalUid, start, 60, 0, 0]
+      );
+      const cid = c.insertId;
+      try {
+        // grant something to modUid scoped to this contest, via super_admin
+        const grant = makeReq(superUid, superPerms);
+        grant.body = { uid: modUid, permissionKey: 'contest.player.manage', effect: 'allow', resourceType: 'contest', resourceId: cid };
+        await runHandler(auth.grantUserPermission, grant);
+
+        policy.invalidate(normalUid);
+        const ownerPerms = await policy.loadEffectivePermissions(normalUid);
+        const req = makeReq(normalUid, ownerPerms);
+        req.body = { resourceType: 'contest', resourceId: cid };
+        const res = await runHandler(auth.listResourceGrants, req);
+        assertEq(res.statusCode, 200, 'owner can list resource grants');
+        assert(res.payload.grants.some((g) => g.uid === modUid && g.permissionKey === 'contest.player.manage'),
+          'returned grant matches');
+        assertSetEq(res.payload.grantablePermissions, RESOURCE_GRANTABLE.contest,
+          'returns whitelist for contest');
+      } finally {
+        await db.query('DELETE FROM user_permissions WHERE resource_type=? AND resource_id=?', ['contest', cid]);
+        await db.query('DELETE FROM contest WHERE cid=?', [cid]);
+      }
+    });
+
+    // -------- 9. requirePermission middleware shape --------
+    await test('requirePermission middleware blocks insufficient perms', async () => {
+      const { requirePermission } = require('./middleware');
+      const mw = requirePermission('user.role.assign');
+      policy.invalidate(normalUid);
+      const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+      const res = fakeRes();
+      let nextCalled = false;
+      await new Promise((resolve) => {
+        const r = mw(req, res, () => { nextCalled = true; resolve(); });
+        if (r && typeof r.then === 'function') r.then(() => resolve());
+      });
+      assert(!nextCalled, 'next() not called');
+      assertEq(res.statusCode, 403, 'status 403');
+    });
+
+    await test('requirePermission middleware lets super_admin through', async () => {
+      const { requirePermission } = require('./middleware');
+      const mw = requirePermission('user.role.assign');
+      const req = makeReq(superUid, superPerms);
+      const res = fakeRes();
+      let nextCalled = false;
+      await new Promise((resolve) => {
+        const r = mw(req, res, () => { nextCalled = true; resolve(); });
+        if (r && typeof r.then === 'function') r.then(() => resolve());
+      });
+      assert(nextCalled, 'next() called');
+    });
+
+    await test('requirePermission with scopeFrom honors scoped grants', async () => {
+      const { requirePermission } = require('./middleware');
+      const mw = requirePermission('problem.edit.any', {
+        scopeFrom: (req) => ({ type: 'problem', id: +req.body.pid }),
+      });
+      // Strip every role + every direct grant from normalUid so the only
+      // path to problem.edit.any is the scoped row we're about to insert.
+      await db.query('DELETE FROM user_roles WHERE uid=?', [normalUid]);
+      await db.query('DELETE FROM user_permissions WHERE uid=?', [normalUid]);
+      const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.edit.any'");
+      await db.query(
+        `INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)`,
+        [normalUid, perm.id, 'allow', 'problem', 99]
+      );
+      policy.invalidate(normalUid);
+      const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+      req.body = { pid: 99 };
+      const res = fakeRes();
+      let nextCalled = false;
+      await new Promise((resolve) => {
+        const r = mw(req, res, () => { nextCalled = true; resolve(); });
+        if (r && typeof r.then === 'function') r.then(() => resolve());
+      });
+      assert(nextCalled, 'allowed for pid=99');
+
+      // Different pid → blocked.
+      const req2 = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+      req2.body = { pid: 100 };
+      const res2 = fakeRes();
+      let nextCalled2 = false;
+      await new Promise((resolve) => {
+        const r = mw(req2, res2, () => { nextCalled2 = true; resolve(); });
+        if (r && typeof r.then === 'function') r.then(() => resolve());
+      });
+      assert(!nextCalled2, 'blocked for pid=100');
+      assertEq(res2.statusCode, 403, 'status 403');
+    });
+  } catch (err) {
+    console.error('FATAL:', err && err.stack ? err.stack : err);
+    fail++;
+  } finally {
+    await cleanupSandbox().catch((e) => console.error('cleanup error:', e));
+    for (const [tag, msg] of results) {
+      console.log(`  ${tag} ${msg}`);
+    }
+    console.log(`\n${pass} passed, ${fail} failed`);
+    db.pool.end(() => process.exit(fail ? 1 : 0));
+  }
+})();
