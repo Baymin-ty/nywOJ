@@ -17,7 +17,7 @@
               </span>
             </div>
             <div style="float: right;">
-              <el-button-group v-if="$can('paste.edit.any') || this.$store.state.uid === paste.uid" style="">
+              <el-button-group v-if="this.gid === 3 || this.$store.state.uid === paste.uid" style="">
                 <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认删除剪贴板?" @confirm="delPaste">
                   <template #reference>
                     <el-button type="warning">

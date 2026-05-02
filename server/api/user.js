@@ -204,7 +204,7 @@ exports.getUserPublicInfo = handler(async (req, res) => {
   if (!info) return fail(res, '无此用户');
   if (info.reg_time) info.reg_time = briefFormat(info.reg_time);
   if (info.login_time) info.login_time = briefFormat(info.login_time);
-  if (!req.can('user.list') && req.session.uid !== info.uid) {
+  if (req.session.gid !== 3 && req.session.uid !== info.uid) {
     delete info.login_time;
     delete info.email;
   }

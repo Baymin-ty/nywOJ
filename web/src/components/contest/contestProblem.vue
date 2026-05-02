@@ -73,7 +73,7 @@
             </el-icon>
             返回比赛
           </el-button>
-          <el-button v-if="$can('contest.edit.any')" type="warning" @click="this.$router.push('/problem/' + problemInfo.pid)">
+          <el-button v-if="this.gid >= 2" type="warning" @click="this.$router.push('/problem/' + problemInfo.pid)">
             <el-icon class="el-icon--left">
               <Files />
             </el-icon>

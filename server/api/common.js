@@ -28,7 +28,7 @@ exports.getPaste = handler(async (req, res) => {
     [req.body.mark]
   );
   if (!row) return fail(res, '未找到');
-  if (!req.can('paste.edit.any') && !row.isPublic && row.uid !== req.session.uid) {
+  if (req.session.gid < 3 && !row.isPublic && row.uid !== req.session.uid) {
     return fail(res, '无权限查看');
   }
   row.time = Format(row.time);
@@ -55,7 +55,7 @@ exports.updatePaste = handler(async (req, res) => {
 
   const owner = await db.one('SELECT uid FROM pastes WHERE mark=?', [paste.mark]);
   if (!owner) return fail(res, '未找到');
-  if (!req.can('paste.edit.any') && req.session.uid !== owner.uid) {
+  if (req.session.gid < 3 && req.session.uid !== owner.uid) {
     return fail(res, '你只能修改自己的paste');
   }
 
@@ -71,7 +71,7 @@ exports.delPaste = handler(async (req, res) => {
   const { mark } = req.body;
   const owner = await db.one('SELECT uid FROM pastes WHERE mark=?', [mark]);
   if (!owner) return fail(res, '未找到');
-  if (!req.can('paste.edit.any') && req.session.uid !== owner.uid) {
+  if (req.session.gid < 3 && req.session.uid !== owner.uid) {
     return fail(res, '你只能删除自己的paste');
   }
   const result = await db.query('DELETE FROM pastes WHERE mark=?', [mark]);
@@ -82,7 +82,7 @@ exports.delPaste = handler(async (req, res) => {
 exports.getPasteList = handler(async (req, res) => {
   const { offset, limit } = paginate(req);
   let uid = req.body.uid || null;
-  if (!req.can('paste.edit.any')) uid = req.session.uid;
+  if (req.session.gid < 3) uid = req.session.uid;
 
   const cond = [['p.uid=?', uid]];
   const { where, params } = buildWhere(cond);

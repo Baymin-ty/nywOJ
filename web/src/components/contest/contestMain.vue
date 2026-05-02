@@ -68,7 +68,7 @@
               </template>
               <contestRank ref="rank" />
             </el-tab-pane>
-            <el-tab-pane name="manageC" v-if="canManageCollab">
+            <el-tab-pane name="manageC" v-if="this.gid >= 2">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <SetUp />
@@ -137,7 +137,7 @@
                 </el-col>
               </el-row>
             </el-tab-pane>
-            <el-tab-pane name="manageP" v-if="canManageCollab">
+            <el-tab-pane name="manageP" v-if="this.gid >= 2">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <SetUp />
@@ -145,15 +145,6 @@
                 题目管理
               </template>
               <problemManage ref="manageP" />
-            </el-tab-pane>
-            <el-tab-pane name="collaborators" v-if="canManageCollab">
-              <template #label>
-                <el-icon style="margin: 4px;">
-                  <Lock />
-                </el-icon>
-                协作者
-              </template>
-              <CollaboratorPanel resource-type="contest" :resource-id="parseInt(cid)" :visible="canManageCollab" />
             </el-tab-pane>
           </el-tabs>
         </el-card>
@@ -168,7 +159,6 @@ import contestSubmission from './components/contestSubmission.vue'
 import contestRank from './components/contestRank.vue'
 import contestProblemList from './components/contestProblemList.vue'
 import problemManage from './components/problemManage.vue'
-import CollaboratorPanel from '@/components/permission/CollaboratorPanel.vue'
 
 export default {
   name: "contestMain",
@@ -176,14 +166,7 @@ export default {
     contestSubmission,
     contestRank,
     contestProblemList,
-    problemManage,
-    CollaboratorPanel,
-  },
-  computed: {
-    canManageCollab() {
-      if (this.contestInfo && this.contestInfo.host === this.$store.state.uid) return true;
-      return this.$can('contest.edit.any');
-    },
+    problemManage
   },
   data() {
     return {

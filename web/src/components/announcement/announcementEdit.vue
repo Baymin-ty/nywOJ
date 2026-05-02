@@ -59,7 +59,7 @@ export default {
     }
   },
   mounted() {
-    if (!this.$can('announcement.manage')) {
+    if (this.$store.state.gid < 3) {
       this.$router.push('/announcement/' + this.$route.params.aid);
     }
     this.aid = this.$route.params.aid;
