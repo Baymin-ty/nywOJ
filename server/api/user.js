@@ -4,6 +4,7 @@ const db = require('../db');
 const { handler, fail, ok, paginate } = require('../db/util');
 const { Format, ip2loc, msFormat, recordEvent, eventList, eventExp, briefFormat } = require('../static');
 const config = require('../config.json');
+const { listGlobalKeys } = require('../auth/policy');
 
 const NAME_REGEX = /^[A-Za-z0-9]+$/;
 const EMAIL_REGEX = /^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/;
@@ -98,6 +99,7 @@ exports.getUserInfo = handler(async (req, res) => {
     ? `https://q1.qlogo.cn/g?b=qq&nk=${user.qq}&s=3`
     : '/default-avatar.svg';
   req.session.preferenceLang = user.preferenceLang;
+  const permissions = req.perms ? listGlobalKeys(req.perms) : [];
   return ok(res, {
     uid: req.session.uid,
     name: req.session.name,
@@ -106,6 +108,7 @@ exports.getUserInfo = handler(async (req, res) => {
     gid: req.session.gid,
     avatar: req.session.avatar,
     preferenceLang: req.session.preferenceLang,
+    permissions,
   });
 });
 
