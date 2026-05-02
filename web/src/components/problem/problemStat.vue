@@ -15,7 +15,7 @@
         <template #header>
           <div class="card-header">
             题解
-            <el-button-group v-if="this.$store.state.gid > 1">
+            <el-button-group v-if="$can('problem.edit.any')">
               <el-button type="success" :disabled="!bindMark.length" @click="bindPaste2Problem">
                 <el-icon class="el-icon--left">
                   <Plus />
@@ -47,7 +47,7 @@
             </template>
           </el-table-column>
           <el-table-column prop="time" label="更新时间" min-width="20%" />
-          <el-table-column v-if="this.$store.state.gid > 1" label="操作" min-width="15%">
+          <el-table-column v-if="$can('problem.edit.any')" label="操作" min-width="15%">
             <template #default="scope">
               <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认解绑?"
                 @confirm="unbindSol(scope.row.id)">

@@ -3,7 +3,8 @@ const async = require('async');
 const { exec } = require('child_process');
 const { fork } = require('child_process');
 const db = require('../db');
-const { handler, fail, ok, requireRole, paginate, buildWhere } = require('../db/util');
+const { handler, fail, ok, paginate, buildWhere } = require('../db/util');
+const { requirePermission } = require('../auth/middleware');
 const { Format, kbFormat } = require('../static');
 const conf = require('../config.json');
 const { updateProblemStat, problemAuth, getProblemLang } = require('./problem');
@@ -136,10 +137,10 @@ exports.submit = handler(async (req, res) => {
 
 exports.getSubmissionList = handler(async (req, res) => {
   const { offset, limit } = paginate(req);
-  const visibility = req.session.gid < 2 ? 'p.isPublic=1' : 'p.isPublic<6';
+  const visibility = req.can('submission.view.any') ? 'p.isPublic<6' : 'p.isPublic=1';
 
-  // 只有 queryAll && gid!=1 才能跨比赛查询；否则强制 cid=0
-  const restrictToNoContest = !req.body.queryAll || req.session.gid === 1;
+  // Only callers with cross-contest visibility can pass cid via queryAll; others are forced to cid=0.
+  const restrictToNoContest = !req.body.queryAll || !req.can('contest.submission.view.cross');
   const cond = [
     restrictToNoContest ? ['s.cid=0'] : ['s.cid=?', req.body.cid],
     ['u.name=?', req.body.name],
@@ -168,7 +169,7 @@ exports.getSubmissionList = handler(async (req, res) => {
 
 exports.getSubmissionInfo = handler(async (req, res) => {
   const { sid } = req.body;
-  const visibility = req.session.gid < 2 ? ' AND p.isPublic=1' : '';
+  const visibility = req.can('submission.view.any') ? '' : ' AND p.isPublic=1';
   const row = await db.one(
     'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,s.machine,s.lang,u.name,p.title,p.isPublic ' +
       'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ' +
@@ -206,7 +207,7 @@ exports.getSubmissionInfo = handler(async (req, res) => {
 });
 
 exports.reJudge = [
-  requireRole(2),
+  requirePermission('submission.rejudge'),
   handler(async (req, res) => {
     await exports.setSubmission(req.body.sid, 2, 0, 0, 0, null, null);
     pushSidIntoQueue(req.body.sid, true);
@@ -216,9 +217,11 @@ exports.reJudge = [
 ];
 
 exports.reJudgeProblem = [
-  requireRole(2),
   handler(async (req, res) => {
     const { pid } = req.body;
+    const scope = { type: 'problem', id: Number(pid) };
+    if (!req.can('submission.rejudge', scope) && !(await problemAuth(req, pid)).manage)
+      return res.status(403).end('403 Forbidden');
     const list = await db.query('SELECT sid FROM submission WHERE pid=?', [pid]);
     for (const s of list) {
       exports.setSubmission(s.sid, 2, 0, 0, 0, null, null);
@@ -231,9 +234,15 @@ exports.reJudgeProblem = [
 ];
 
 exports.reJudgeContest = [
-  requireRole(2),
   handler(async (req, res) => {
-    const list = await db.query('SELECT sid FROM submission WHERE cid=?', [req.body.cid]);
+    const cid = req.body.cid;
+    const scope = { type: 'contest', id: Number(cid) };
+    if (!req.can('submission.rejudge', scope)) {
+      const c = await db.one('SELECT host FROM contest WHERE cid=?', [cid]);
+      if (!c || (c.host !== req.session.uid && !req.can('contest.edit.any', scope)))
+        return res.status(403).end('403 Forbidden');
+    }
+    const list = await db.query('SELECT sid FROM submission WHERE cid=?', [cid]);
     for (const s of list) {
       await exports.setSubmission(s.sid, 2, 0, 0, 0, null, null);
       pushSidIntoQueue(s.sid, true);
@@ -243,7 +252,7 @@ exports.reJudgeContest = [
 ];
 
 exports.cancelSubmission = [
-  requireRole(3),
+  requirePermission('submission.rejudge'),
   handler(async (req, res) => {
     const { sid } = req.body;
     await db.query('UPDATE submission SET judgeResult=13,score=0 WHERE sid=?', [sid]);

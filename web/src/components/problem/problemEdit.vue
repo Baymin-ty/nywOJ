@@ -92,14 +92,19 @@
         </div>
       </el-card>
     </el-col>
+    <el-col :span="24" v-if="auth.manage && problemInfo.pid">
+      <CollaboratorPanel resource-type="problem" :resource-id="problemInfo.pid" :visible="auth.manage" />
+    </el-col>
   </el-row>
 </template>
 
 <script>
 import axios from 'axios';
+import CollaboratorPanel from '@/components/permission/CollaboratorPanel.vue';
 
 export default {
   name: "problemEdit",
+  components: { CollaboratorPanel },
   data() {
     return {
       gid: 1,
@@ -215,15 +220,16 @@ export default {
     },
   },
   mounted() {
-    if (this.$store.state.gid < 2) {
-      this.$router.push(`/problem/${this.$route.params.pid}`);
-      return;
-    }
+    // Server-side problemAuth.manage is the final word; let the page render and rely on
+    // auth.manage to disable the save button for users who can only view.
     this.pid = this.$route.params.pid;
     axios.post('/api/problem/getProblemAuth', {
       pid: this.pid,
     }).then(res => {
       this.auth = res.data.data;
+      if (!this.auth.manage && !this.auth.view) {
+        this.$router.push(`/problem/${this.pid}`);
+      }
     });
     this.all();
   }
