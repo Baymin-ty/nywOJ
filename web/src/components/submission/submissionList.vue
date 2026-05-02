@@ -47,7 +47,7 @@
             <el-input v-model="filter.cid" type="text" placeholder="比赛id" style="width: 80px;" @keyup.enter="all" />
           </el-form-item>
         </el-form>
-        <span v-if="this.$store.state.gid >= 2" style="font-size: 14px; font-weight: 600; margin:0 20px 0 10px;">
+        <span v-if="$can('contest.submission.view.cross')" style="font-size: 14px; font-weight: 600; margin:0 20px 0 10px;">
           比赛提交：
           <el-switch v-model="queryAll" class="mb-2" active-text="显示" inactive-text="隐藏" @change="all" />
         </span>
@@ -194,7 +194,7 @@ export default {
       if (this.filter.score !== null) param.score = this.filter.score;
       if (this.filter.res !== null) param.res = this.filter.res;
       if (this.filter.lang !== null) param.lang = this.filter.lang;
-      if (this.queryAll && this.$store.state.gid > 1) param.queryAll = true;
+      if (this.queryAll && this.$can('contest.submission.view.cross')) param.queryAll = true;
       if (this.currentPage > 1)
         param.pageId = this.currentPage;
       let nurl = qs.stringify(param);
@@ -261,7 +261,7 @@ export default {
     if (query.pid) this.filter.pid = query.pid;
     if (query.cid) this.filter.cid = query.cid;
     if (query.lang) this.filter.lang = parseInt(query.lang);
-    if (query.queryAll && this.$store.state.gid > 1) this.queryAll = true;
+    if (query.queryAll && this.$can('contest.submission.view.cross')) this.queryAll = true;
     if (query.pageId) this.currentPage = parseInt(query.pageId);
     this.all();
   }

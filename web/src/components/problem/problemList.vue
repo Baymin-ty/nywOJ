@@ -7,7 +7,7 @@
           <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
             layout="total, prev, pager, next" :total="total"></el-pagination>
           <el-button-group>
-            <el-popconfirm v-if="this.gid >= 2" confirm-button-text="确认" cancel-button-text="取消" title="确认添加题目?"
+            <el-popconfirm v-if="$can('problem.create')" confirm-button-text="确认" cancel-button-text="取消" title="确认添加题目?"
               @confirm="addProblem">
               <template #reference>
                 <el-button type="success">

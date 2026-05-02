@@ -1,5 +1,6 @@
 const db = require('../db');
-const { handler, fail, ok, requireRole, paginate } = require('../db/util');
+const { handler, fail, ok, paginate } = require('../db/util');
+const { requirePermission } = require('../auth/middleware');
 const { Format, briefFormat, kbFormat } = require('../static');
 const { judgeRes, formatSubmissionRow, formatCaseRow, ctype, cstatus } = require('../db/format');
 const { pushSidIntoQueue } = require('./judge');
@@ -9,6 +10,13 @@ const ctypeToIndex = { OI: 0, IOI: 1 };
 const ptype = ['传统文本比较', 'Special Judge'];
 
 // ---- shared helpers ----
+// Owner of a contest, OR holder of contest.edit.any (global or scoped to this cid).
+const canManageContest = (req, contest) => {
+  if (!contest) return false;
+  if (contest.host === req.session.uid) return true;
+  return req.can('contest.edit.any', { type: 'contest', id: Number(contest.cid) });
+};
+
 const contestStatus = (info) => {
   if (info.done) return 3;
   if (Date.now() > info.start.getTime() + info.length * 1000 * 60) return 2;
@@ -42,15 +50,17 @@ const loadContestForView = async (req, cid) => {
   const canView =
     (contest.status === 3 && (contest.isPublic || isReged)) ||
     (isReged && contest.status > 0) ||
-    req.session.gid >= 2;
+    canManageContest(req, contest);
   return { contest, status: contest.status, isReged, canView };
 };
 
+// During an OI contest in progress, regular contestants see scrubbed scores/results.
+// `manager` here means the user can manage the contest (owner / contest.edit.any).
 const formatContestSubmissionRow = async (r, ctx) => {
   r.idx = await getIdxByPid(ctx.cid, r.pid);
   r.pid = null;
   r.submitTime = Format(r.submitTime);
-  if (!ctx.contest.type && !ctx.contest.done && ctx.gid === 1) {
+  if (!ctx.contest.type && !ctx.contest.done && !ctx.manager) {
     r.score = r.judgeResult = r.time = r.memory = 0;
   }
   r.judgeResult = judgeRes[r.judgeResult];
@@ -60,7 +70,7 @@ const formatContestSubmissionRow = async (r, ctx) => {
 
 // ---- handlers ----
 exports.createContest = [
-  requireRole(2),
+  requirePermission('contest.create'),
   handler(async (req, res) => {
     const r = await db.query(
       'INSERT INTO contest(title,host,start,length,type,isPublic) VALUES (?,?,?,?,?,?)',
@@ -72,12 +82,11 @@ exports.createContest = [
 ];
 
 exports.updateContestInfo = [
-  requireRole(2),
   handler(async (req, res) => {
     const { cid, info } = req.body;
     const contest = await getContest(cid);
     if (!contest) return fail(res, '无此比赛');
-    if (req.session.uid !== 1 && contest.host !== req.session.uid)
+    if (!canManageContest(req, contest))
       return fail(res, '你只能修改自己的比赛');
     if (contest.done) return fail(res, '比赛已经结束');
     if (!info.title || !info.start || !info.length || !info.type) return fail(res, '请确认信息完善');
@@ -122,7 +131,8 @@ exports.getContestInfo = handler(async (req, res) => {
   if (!contest) return fail(res, '无此比赛');
 
   contest.isReg = await isReg(req.session.uid, contest.cid);
-  if (!contest.isPublic && !contest.isReg && req.session.gid === 1)
+  const isManager = canManageContest(req, contest);
+  if (!contest.isPublic && !contest.isReg && !isManager)
     return fail(res, '比赛私有，请联系管理员报名');
 
   contest.playerCnt = await playerCnt(contest.cid);
@@ -131,11 +141,11 @@ exports.getContestInfo = handler(async (req, res) => {
   contest.end = Format(new Date(new Date(contest.start).getTime() + contest.length * 1000 * 60));
   contest.regAble = status < 2 && contest.isPublic && !contest.isReg;
   contest.auth = {
-    join: (contest.isReg && status > 0) || req.session.gid >= 2,
+    join: (contest.isReg && status > 0) || isManager,
     view:
       status === 3 ||
       (contest.isReg && contest.type === 1 && status > 0) ||
-      req.session.gid >= 2,
+      isManager,
   };
   contest.type = ctype[contest.type];
   contest.start = Format(contest.start);
@@ -143,34 +153,47 @@ exports.getContestInfo = handler(async (req, res) => {
   return ok(res, { data: contest });
 });
 
-exports.addPlayer = [
-  requireRole(2),
-  handler(async (req, res) => {
-    const { cid, name } = req.body;
-    const user = await db.one('SELECT uid FROM userInfo WHERE name=? LIMIT 1', [name]);
-    if (!user) return fail(res, '无此用户');
+// Owner / contest.player.manage / contest.edit.any (scoped or global) can manage players.
+const canManagePlayers = async (req, cid) => {
+  const contest = await getContest(cid);
+  if (!contest) return null;
+  const scope = { type: 'contest', id: Number(cid) };
+  if (canManageContest(req, contest)) return contest;
+  if (req.can('contest.player.manage', scope)) return contest;
+  return false;
+};
 
-    const already = await db.exists(
-      'SELECT 1 FROM contestPlayer WHERE cid=? AND uid=?',
-      [cid, user.uid]
-    );
-    if (already) return fail(res, '此用户已被添加入比赛');
+exports.addPlayer = handler(async (req, res) => {
+  const { cid, name } = req.body;
+  const allowed = await canManagePlayers(req, cid);
+  if (allowed === null) return fail(res, '无此比赛');
+  if (!allowed) return res.status(403).end('403 Forbidden');
 
-    await db.query('INSERT INTO contestPlayer(cid,uid) VALUES (?,?)', [cid, user.uid]);
-    return ok(res);
-  }),
-];
+  const user = await db.one('SELECT uid FROM userInfo WHERE name=? LIMIT 1', [name]);
+  if (!user) return fail(res, '无此用户');
 
-exports.removePlayer = [
-  requireRole(2),
-  handler(async (req, res) => {
-    const ids = (req.body.list || []).map((x) => x.id);
-    if (!ids.length) return ok(res);
-    const r = await db.query('DELETE FROM contestPlayer WHERE id in(?)', [ids]);
-    if (!r.affectedRows) return fail(res, 'error');
-    return ok(res);
-  }),
-];
+  const already = await db.exists(
+    'SELECT 1 FROM contestPlayer WHERE cid=? AND uid=?',
+    [cid, user.uid]
+  );
+  if (already) return fail(res, '此用户已被添加入比赛');
+
+  await db.query('INSERT INTO contestPlayer(cid,uid) VALUES (?,?)', [cid, user.uid]);
+  return ok(res);
+});
+
+exports.removePlayer = handler(async (req, res) => {
+  const { cid } = req.body;
+  const allowed = await canManagePlayers(req, cid);
+  if (allowed === null) return fail(res, '无此比赛');
+  if (!allowed) return res.status(403).end('403 Forbidden');
+
+  const ids = (req.body.list || []).map((x) => x.id);
+  if (!ids.length) return ok(res);
+  const r = await db.query('DELETE FROM contestPlayer WHERE id in(?) AND cid=?', [ids, cid]);
+  if (!r.affectedRows) return fail(res, 'error');
+  return ok(res);
+});
 
 exports.getPlayerList = handler(async (req, res) => {
   const { offset, limit } = paginate(req);
@@ -184,12 +207,11 @@ exports.getPlayerList = handler(async (req, res) => {
 });
 
 exports.closeContest = [
-  requireRole(2),
   handler(async (req, res) => {
     const { cid } = req.body;
     const contest = await getContest(cid);
     if (!contest) return fail(res, '无此比赛');
-    if (req.session.uid !== 1 && contest.host !== req.session.uid)
+    if (!canManageContest(req, contest))
       return fail(res, '你只能修改自己的比赛');
     const status = contestStatus(contest);
     if (status < 2) return fail(res, '还未至比赛截止时间');
@@ -220,7 +242,7 @@ exports.getPlayerProblemList = handler(async (req, res) => {
   const reged = await isReg(req.session.uid, contest.cid);
   const status = contestStatus(contest);
   const allowed =
-    (reged && status > 0) || req.session.gid >= 2 || ((contest.isPublic || reged) && contest.done);
+    (reged && status > 0) || canManageContest(req, contest) || ((contest.isPublic || reged) && contest.done);
   if (!allowed) return res.status(403).end('403 Forbidden');
 
   const data = await db.query(
@@ -237,9 +259,10 @@ exports.getProblemInfo = handler(async (req, res) => {
   const v = await loadContestForView(req, cid);
   if (!v) return fail(res, '无此比赛');
   // 这里使用比赛进入条件，不是 view-only
+  const isManager = canManageContest(req, v.contest);
   const allowed =
     (v.isReged && v.status > 0) ||
-    req.session.gid >= 2 ||
+    isManager ||
     ((v.contest.isPublic || v.isReged) && v.contest.done);
   if (!allowed) return res.status(403).end('403 Forbidden');
 
@@ -253,7 +276,7 @@ exports.getProblemInfo = handler(async (req, res) => {
   );
   if (!problem) return fail(res, '无此题目');
 
-  if (req.session.gid >= 2) problem.pid = pinfo.pid;
+  if (isManager) problem.pid = pinfo.pid;
   problem.lang = (await getProblemLang(pinfo.pid)) & v.contest.lang;
   problem.type = ptype[problem.type];
   problem.time = briefFormat(problem.time);
@@ -263,11 +286,11 @@ exports.getProblemInfo = handler(async (req, res) => {
 });
 
 exports.getProblemList = [
-  requireRole(2),
   handler(async (req, res) => {
     const { cid } = req.body;
     const contest = await getContest(cid);
     if (!contest) return fail(res, '无此比赛');
+    if (!canManageContest(req, contest)) return res.status(403).end('403 Forbidden');
 
     const data = await db.query(
       'SELECT cp.idx,cp.pid,p.title,p.time,cp.weight,p.isPublic,p.publisher as publisherUid,u.name as publisher ' +
@@ -281,7 +304,6 @@ exports.getProblemList = [
 ];
 
 exports.updateProblemList = [
-  requireRole(2),
   handler(async (req, res) => {
     const { cid, list } = req.body;
     const seen = {};
@@ -298,7 +320,7 @@ exports.updateProblemList = [
     }
     const contest = await getContest(cid);
     if (!contest) return fail(res, '无此比赛');
-    if (req.session.uid !== 1 && contest.host !== req.session.uid)
+    if (!canManageContest(req, contest))
       return fail(res, '你只能修改自己的比赛');
     if (contestStatus(contest) === 3) return fail(res, '比赛已结束');
 
@@ -377,7 +399,7 @@ exports.getSubmissionList = handler(async (req, res) => {
       `WHERE cid=?${extra} ORDER BY s.sid DESC LIMIT ?,?`,
     [...params, offset, limit]
   );
-  const ctx = { cid, contest: v.contest, gid: req.session.gid };
+  const ctx = { cid, contest: v.contest, manager: canManageContest(req, v.contest) };
   for (const r of list) await formatContestSubmissionRow(r, ctx);
 
   const cnt = await db.one(
@@ -403,7 +425,7 @@ exports.getLastSubmissionList = handler(async (req, res) => {
       'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
     [sids]
   );
-  const ctx = { cid, contest: v.contest, gid: req.session.gid };
+  const ctx = { cid, contest: v.contest, manager: canManageContest(req, v.contest) };
   for (const r of list) await formatContestSubmissionRow(r, ctx);
   return ok(res, { data: list, total: allLast.length });
 });
@@ -421,10 +443,12 @@ exports.getSubmissionInfo = handler(async (req, res) => {
   if (!contest) return fail(res, '无此比赛');
   contest.status = contestStatus(contest);
   const reged = await isReg(req.session.uid, row.cid);
+  const isManager = canManageContest(req, contest);
   const allowed =
     (contest.status === 3 && (contest.isPublic || reged)) ||
     req.session.uid === row.uid ||
-    req.session.gid > 1;
+    isManager ||
+    req.can('submission.view.any');
   if (!allowed) return res.status(403).end('403 Forbidden');
 
   row.caseResult = JSON.parse(row.caseResult);
@@ -432,7 +456,7 @@ exports.getSubmissionInfo = handler(async (req, res) => {
   row.singleCaseResult.sort((a, b) => a.caseId - b.caseId);
   row.done = false;
 
-  const fullView = req.session.gid > 1 || contest.status === 3;
+  const fullView = isManager || req.can('submission.view.any') || contest.status === 3;
 
   if (row.caseResult) {
     const subtaskInfo = {};
@@ -463,8 +487,8 @@ exports.getSubmissionInfo = handler(async (req, res) => {
       formatCaseRow(c);
     }
   }
-  // OI 赛制比赛中：选手只能看到提交时间，不能看到结果
-  if (!contest.type && !contest.done && req.session.gid === 1) {
+  // OI 赛制比赛中：非管理员选手只能看到提交时间，不能看到结果
+  if (!contest.type && !contest.done && !isManager) {
     row.caseResult = row.singleCaseResult = row.subtaskInfo = null;
     row.score = row.judgeResult = row.time = row.memory = 0;
     row.unShown = true;
@@ -490,7 +514,7 @@ exports.getRank = handler(async (req, res) => {
   const allowed =
     (status === 3 && (contest.isPublic || reged)) ||
     (reged && contest.type === 1 && status > 0) ||
-    req.session.gid >= 2;
+    canManageContest(req, contest);
   if (!allowed) return res.status(403).end('403 Forbidden');
 
   const pidToIdx = [];
@@ -564,7 +588,7 @@ exports.getSingleUserLastSubmission = handler(async (req, res) => {
       'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
     [sids]
   );
-  const ctx = { cid, contest: v.contest, gid: req.session.gid };
+  const ctx = { cid, contest: v.contest, manager: canManageContest(req, v.contest) };
   for (const r of list) await formatContestSubmissionRow(r, ctx);
   return ok(res, { data: list });
 });
@@ -584,11 +608,12 @@ exports.getSingleUserProblemSubmission = handler(async (req, res) => {
       'WHERE s.cid=? AND s.uid=? AND s.pid=? ORDER BY s.sid DESC',
     [cid, uid, pinfo.pid]
   );
+  const isManager = canManageContest(req, v.contest);
   for (const r of list) {
     r.idx = idx;
     r.pid = null;
     r.submitTime = Format(r.submitTime);
-    if (!v.contest.type && !v.contest.done && req.session.gid === 1) {
+    if (!v.contest.type && !v.contest.done && !isManager) {
       r.score = r.judgeResult = r.time = r.memory = 0;
     }
     r.judgeResult = judgeRes[r.judgeResult];

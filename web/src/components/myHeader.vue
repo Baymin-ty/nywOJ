@@ -56,7 +56,7 @@
         </el-icon>
         编辑资料
       </el-menu-item>
-      <el-menu-item v-if="this.$store.state.gid === 3" index="/admin/usermanage">
+      <el-menu-item v-if="$can('user.list')" index="/admin/usermanage">
         <el-icon>
           <Operation />
         </el-icon>

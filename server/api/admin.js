@@ -1,8 +1,9 @@
 const db = require('../db');
-const { handler, fail, ok, requireRole, paginate, buildWhere } = require('../db/util');
+const { handler, fail, ok, paginate, buildWhere } = require('../db/util');
+const { requirePermission } = require('../auth/middleware');
 
 exports.getUserInfoList = [
-  requireRole(3),
+  requirePermission('user.list'),
   handler(async (req, res) => {
     const { offset, limit } = paginate(req);
     const filter = req.body.filter || {};
@@ -27,7 +28,7 @@ exports.getUserInfoList = [
 ];
 
 exports.setBlock = [
-  requireRole(3),
+  requirePermission('user.ban'),
   handler(async (req, res) => {
     const { uid, status } = req.body;
     if (uid == null || status == null) return fail(res, '请确认信息完善');
@@ -38,7 +39,7 @@ exports.setBlock = [
 ];
 
 exports.updateUserInfo = [
-  requireRole(3),
+  requirePermission('user.edit'),
   handler(async (req, res) => {
     const info = req.body.info || {};
     const { uid, name, email, gid } = info;
@@ -53,7 +54,7 @@ exports.updateUserInfo = [
 ];
 
 exports.addAnnouncement = [
-  requireRole(3),
+  requirePermission('announcement.manage'),
   handler(async (req, res) => {
     const r = await db.query(
       'INSERT INTO announcement(title,description,weight,time) VALUES (?,?,?,?)',
@@ -65,7 +66,7 @@ exports.addAnnouncement = [
 ];
 
 exports.updateAnnouncement = [
-  requireRole(3),
+  requirePermission('announcement.manage'),
   handler(async (req, res) => {
     const info = req.body.info || {};
     const { aid, title, description, weight } = info;
