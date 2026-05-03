@@ -260,6 +260,37 @@ const cleanupSandbox = async () => {
       assertEq(res.statusCode, 200, 'status 200');
       assert(Array.isArray(res.payload.permissions), 'permissions array');
       assert(res.payload.permissions.length >= Object.keys(PERMISSIONS).length, 'has all code-defined keys');
+      // Every payload row carries an endpoints[] array (may be empty for
+      // permissions only consulted via inline req.can in handlers).
+      for (const p of res.payload.permissions) {
+        if (!Array.isArray(p.endpoints)) throw new Error(`permission ${p.key} missing endpoints`);
+      }
+      // problem.create is enforced via requirePermission middleware on
+      // /api/problem/createProblem, so the registry must surface it.
+      const create = res.payload.permissions.find((p) => p.key === 'problem.create');
+      assert(create && create.endpoints.some((e) => e.includes('/api/problem/createProblem')),
+        'problem.create endpoint registry includes createProblem');
+    });
+
+    await test('searchProblems / searchContests reject non-grantor', async () => {
+      // a normal user (no roles) cannot use the resource pickers
+      policy.invalidate(normalUid);
+      const r1 = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+      r1.body = { q: '1' };
+      const res1 = await runHandler(auth.searchProblems, r1);
+      assertEq(res1.statusCode, 403, 'searchProblems 403 for normal user');
+      const r2 = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+      r2.body = { q: '1' };
+      const res2 = await runHandler(auth.searchContests, r2);
+      assertEq(res2.statusCode, 403, 'searchContests 403 for normal user');
+    });
+
+    await test('searchProblems works for super_admin', async () => {
+      const req = makeReq(superUid, superPerms);
+      req.body = { q: '1' }; // numeric — searches by pid OR title
+      const res = await runHandler(auth.searchProblems, req);
+      assertEq(res.statusCode, 200, 'status 200');
+      assert(Array.isArray(res.payload.problems), 'problems array');
     });
 
     await test('listPermissions returns 403 for normal user', async () => {
@@ -302,12 +333,40 @@ const cleanupSandbox = async () => {
       assert(/格式/.test(res.payload.message || ''), 'rejection message about format');
     });
 
-    await test('updateRole rejects builtin role', async () => {
+    await test('updateRole rejects builtin role for non-root', async () => {
+      // sandbox superUid has user.role.assign but is not uid=1
       const req = makeReq(superUid, superPerms);
       req.body = { key: 'super_admin', name: 'pwn' };
       const res = await runHandler(auth.updateRole, req);
       assertEq(res.statusCode, 202, 'status 202');
-      assert(/内置/.test(res.payload.message || ''), 'rejection message mentions builtin');
+      assert(/root/.test(res.payload.message || ''), 'rejection message mentions root');
+    });
+
+    await test('updateRole accepts builtin role for root (uid=1)', async () => {
+      // Only run if uid=1 actually exists and has user.role.assign
+      const root = await db.exists('SELECT 1 FROM userInfo WHERE uid=1');
+      if (!root) return ok('skip (uid=1 absent)');
+      const rootPerms = await policy.loadEffectivePermissions(1);
+      if (!rootPerms.global.has('user.role.assign'))
+        return ok('skip (uid=1 has no user.role.assign)');
+      // Read current super_admin metadata so we can restore identical values.
+      const before = await db.one("SELECT name, description FROM roles WHERE `key`='super_admin'");
+      const linkRows = await db.query(
+        `SELECT p.\`key\` AS k FROM role_permissions rp
+         JOIN permissions p ON p.id = rp.permission_id
+         JOIN roles r ON r.id = rp.role_id WHERE r.\`key\`='super_admin'`
+      );
+      const beforePerms = linkRows.map((r) => r.k);
+
+      const req = makeReq(1, rootPerms);
+      req.body = {
+        key: 'super_admin',
+        name: before.name,                  // identical
+        description: before.description,    // identical
+        permissionKeys: beforePerms,        // identical
+      };
+      const res = await runHandler(auth.updateRole, req);
+      assertEq(res.statusCode, 200, 'status 200 (root bypass)');
     });
 
     await test('updateRole modifies a custom role and resets permissions', async () => {

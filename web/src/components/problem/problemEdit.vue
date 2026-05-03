@@ -219,14 +219,16 @@ export default {
     },
   },
   mounted() {
-    // Server-side problemAuth.manage is the final word; render the page and
-    // disable the save button via auth.manage when the user can only view.
+    // Authorization: manage permission is required to be on this page at all.
+    // The server-side problemAuth.manage is the final word; redirect away
+    // immediately if the user can only view.
     this.pid = this.$route.params.pid;
     axios.post('/api/problem/getProblemAuth', {
       pid: this.pid,
     }).then(res => {
       this.auth = res.data.data;
-      if (!this.auth.manage && !this.auth.view) {
+      if (!this.auth.manage) {
+        this.$message.warning('你没有该题目的管理权限');
         this.$router.push(`/problem/${this.pid}`);
       }
     });

@@ -78,8 +78,16 @@
             </el-table-column>
             <el-table-column label="操作" width="200">
               <template #default="scope">
-                <el-button size="small" plain @click="openEditRole(scope.row)" :disabled="scope.row.builtin || !canAssignRoles">编辑</el-button>
-                <el-button size="small" plain type="danger" :disabled="scope.row.builtin || !canAssignRoles" @click="deleteRole(scope.row)">删除</el-button>
+                <el-button size="small" plain
+                  :disabled="(scope.row.builtin && !isRoot) || !canAssignRoles"
+                  @click="openEditRole(scope.row)">
+                  编辑
+                </el-button>
+                <el-button size="small" plain type="danger"
+                  :disabled="scope.row.builtin || !canAssignRoles"
+                  @click="deleteRole(scope.row)">
+                  删除
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -94,15 +102,42 @@
 
         <!-- A3: 权限目录 -->
         <el-tab-pane label="权限目录" name="catalog">
-          <el-table :data="permissions" :cell-style="{ textAlign: 'center' }" :header-cell-style="{ textAlign: 'center' }">
+          <el-table :data="permissions"
+            :cell-style="{ textAlign: 'left', verticalAlign: 'top' }"
+            :header-cell-style="{ textAlign: 'center' }">
+            <el-table-column type="expand">
+              <template #default="scope">
+                <div style="padding: 0 24px;">
+                  <div v-if="(scope.row.endpoints || []).length === 0" style="color:#909399">
+                    （没有 API 端点直接挂载此权限——可能仅在 handler 内部用 req.can 检查）
+                  </div>
+                  <ul v-else style="margin: 0;">
+                    <li v-for="ep in scope.row.endpoints" :key="ep">
+                      <code>{{ ep }}</code>
+                    </li>
+                  </ul>
+                </div>
+              </template>
+            </el-table-column>
             <el-table-column label="分组" prop="group" width="100" />
-            <el-table-column label="key" prop="key" width="260" />
+            <el-table-column label="key" prop="key" width="260">
+              <template #default="scope">
+                <code style="font-size: 13px;">{{ scope.row.key }}</code>
+              </template>
+            </el-table-column>
             <el-table-column label="名称" prop="name" width="180" />
             <el-table-column label="说明" prop="description" />
-            <el-table-column label="可作用域" width="100">
+            <el-table-column label="作用域" width="80">
               <template #default="scope">
                 <el-tag size="small" v-if="scope.row.scopable" type="success">可</el-tag>
                 <el-tag size="small" v-else type="info">否</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="端点数" width="80">
+              <template #default="scope">
+                <el-tag size="small" :type="(scope.row.endpoints || []).length ? '' : 'info'">
+                  {{ (scope.row.endpoints || []).length }}
+                </el-tag>
               </template>
             </el-table-column>
           </el-table>
@@ -142,6 +177,7 @@ export default {
   computed: {
     canAssignRoles() { return can('user.role.assign'); },
     canGrantPerm() { return can('user.permission.grant'); },
+    isRoot() { return this.$store.state.isRoot; },
     rolesDirty() {
       const a = [...this.userRoleKeys].sort();
       const b = [...this.originalRoleKeys].sort();

@@ -43,9 +43,9 @@
           v-model="form.permissionKey"
           :permissions="permissions"
           :whitelist="whitelist"
-          :scopable-only="scopedOnly"
-          placeholder="选择权限"
-          style="width: 240px;"
+          :scopable-only="scopedOnly || !!form.resourceType"
+          :placeholder="form.resourceType ? '只显示可作用域的权限' : '选择权限'"
+          style="width: 260px;"
         />
       </el-form-item>
       <el-form-item label="效果" v-if="!scopedOnly || allowDeny">
@@ -56,13 +56,14 @@
       </el-form-item>
       <template v-if="!fixedScope">
         <el-form-item label="资源类型">
-          <el-select v-model="form.resourceType" clearable placeholder="（全局）" style="width: 130px;">
+          <el-select v-model="form.resourceType" clearable placeholder="（全局）" style="width: 130px;"
+            @change="form.resourceId = null">
             <el-option label="题目" value="problem" />
             <el-option label="比赛" value="contest" />
           </el-select>
         </el-form-item>
-        <el-form-item label="资源 ID" v-if="form.resourceType">
-          <el-input-number v-model="form.resourceId" :min="1" style="width: 130px;" />
+        <el-form-item :label="form.resourceType === 'contest' ? '比赛' : '题目'" v-if="form.resourceType">
+          <ResourcePicker v-model="form.resourceId" :resource-type="form.resourceType" style="width: 260px;" />
         </el-form-item>
       </template>
       <el-form-item label="过期">
@@ -79,6 +80,7 @@
 import axios from 'axios';
 import { ElMessageBox } from 'element-plus';
 import PermissionPicker from './PermissionPicker.vue';
+import ResourcePicker from './ResourcePicker.vue';
 
 const formDefaults = (fixedScope) => ({
   permissionKey: null,
@@ -90,7 +92,7 @@ const formDefaults = (fixedScope) => ({
 
 export default {
   name: 'GrantTable',
-  components: { PermissionPicker },
+  components: { PermissionPicker, ResourcePicker },
   props: {
     uid: { type: Number, required: true },
     grants: { type: Array, required: true },
