@@ -1,160 +1,126 @@
 <template>
-  <div style="text-align: center; margin: 0 auto; max-width: 1200px">
-    <el-card class="box-card" shadow="hover">
+  <div class="page-wrap page-wrap--sm">
+    <el-card shadow="hover">
       <template #header>
-        <div class="card-header">
-          比赛列表
-          <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
-            layout="total, prev, pager, next" :total="total"></el-pagination>
-          <el-button-group>
-            <el-popconfirm v-if="this.gid >= 2" confirm-button-text="确认" cancel-button-text="取消" title="确认添加比赛?"
-              @confirm="addContest">
-              <template #reference>
-                <el-button type="success">
-                  <el-icon class="el-icon--left">
-                    <Plus />
-                  </el-icon>
-                  添加比赛
-                </el-button>
-              </template>
-            </el-popconfirm>
-            <el-button type="primary" @click="all">
-              <el-icon class="el-icon--left">
-                <Refresh />
-              </el-icon>
-              刷新
-            </el-button>
-          </el-button-group>
+        <div class="card-header card-header--wrap">
+          <span class="card-title">比赛列表</span>
+          <div class="card-header-right">
+            <el-pagination small @current-change="handleCurrentChange"
+              :current-page="currentPage" :page-size="20"
+              layout="total, prev, pager, next" :total="total" hide-on-single-page />
+            <el-button-group>
+              <el-popconfirm v-if="gid >= 2" confirm-button-text="确认" cancel-button-text="取消"
+                title="确认添加比赛?" @confirm="addContest">
+                <template #reference>
+                  <el-button type="success" size="small">
+                    <el-icon class="el-icon--left"><Plus /></el-icon>添加比赛
+                  </el-button>
+                </template>
+              </el-popconfirm>
+              <el-button type="primary" size="small" @click="all">
+                <el-icon class="el-icon--left"><Refresh /></el-icon>刷新
+              </el-button>
+            </el-button-group>
+          </div>
         </div>
       </template>
-      <el-table :data="contestList" height="600px" :header-cell-style="{ textAlign: 'center' }"
-        :cell-style="{ textAlign: 'center' }" v-loading="!finished">
-        <el-table-column prop="cid" label="#" min-width="5%" />
-        <el-table-column prop="title" label="标题" min-width="25%">
-          <template #default="scope">
-            <router-link class="rlink" :to="'/contest/' + scope.row.cid">
-              {{ scope.row.title }}
-            </router-link>
-            <el-tag style="margin-left: 10px;" size="small" :type="tagType[scope.row.status]">
-              {{ scope.row.status }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="start" label="开始时间" min-width="20%">
-          <template #default="scope">
-            <span> {{ scope.row.start }} </span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="length" label="时长" min-width="12%">
-          <template #default="scope">
-            <span> {{ scope.row.length }} min </span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="type" label="类型" min-width="7%">
-          <template #default="scope">
-            <span> {{ scope.row.type }} </span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="isPublic" label="是否公开" min-width="15%">
-          <template #default="scope">
-            <el-switch v-model="scope.row.isPublic" size="small" disabled active-text="公开" inactive-text="私有" />
-          </template>
-        </el-table-column>
-        <el-table-column prop="playerCnt" label="参赛人数" min-width="10%">
-          <template #default="scope">
-            <router-link class="rlink" :to="'/contest/player/' + scope.row.cid">
-              <el-icon id="picon" size="13">
-                <UserFilled />
-              </el-icon>
-              × {{ scope.row.playerCnt }}
-            </router-link>
-          </template>
-        </el-table-column>
-        <el-table-column prop="host" label="举办者" min-width="15%">
-          <template #default="scope">
-            <router-link class="rlink" :to="'/user/' + scope.row.host">
-              {{ scope.row.hostName }}
-            </router-link>
-          </template>
-        </el-table-column>
-      </el-table>
+
+      <div class="table-scroll">
+        <el-table
+          :data="contestList"
+          height="600px"
+          :header-cell-style="{ textAlign:'center', background:'#f5f7fa' }"
+          :cell-style="{ textAlign:'center' }"
+          v-loading="!finished"
+          style="width:100%; min-width:600px"
+        >
+          <el-table-column prop="cid" label="#" width="60" />
+          <el-table-column label="标题" min-width="220" align="left">
+            <template #default="scope">
+              <router-link class="rlink" :to="'/contest/'+scope.row.cid">{{ scope.row.title }}</router-link>
+              <el-tag style="margin-left:8px" size="small" :type="tagType[scope.row.status]">
+                {{ scope.row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="开始时间" min-width="160" class-name="hide-on-mobile">
+            <template #default="scope">{{ scope.row.start }}</template>
+          </el-table-column>
+          <el-table-column label="时长" width="90">
+            <template #default="scope">{{ scope.row.length }} min</template>
+          </el-table-column>
+          <el-table-column prop="type" label="类型" width="70" />
+          <el-table-column label="公开" width="80" class-name="hide-on-mobile">
+            <template #default="scope">
+              <el-switch :model-value="scope.row.isPublic" size="small" disabled />
+            </template>
+          </el-table-column>
+          <el-table-column label="参赛人数" width="90">
+            <template #default="scope">
+              <router-link class="rlink" :to="'/contest/player/'+scope.row.cid">
+                × {{ scope.row.playerCnt }}
+              </router-link>
+            </template>
+          </el-table-column>
+          <el-table-column label="举办者" width="110" class-name="hide-on-mobile">
+            <template #default="scope">
+              <router-link class="rlink" :to="'/user/'+scope.row.host">{{ scope.row.hostName }}</router-link>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
     </el-card>
   </div>
 </template>
 
 <script>
-import axios from "axios"
+import axios from "axios";
 
 export default {
   name: 'contestList',
   data() {
     return {
-      contestList: [],
-      total: 0,
-      gid: 1,
-      finished: false,
-      currentPage: 1,
-      tagType: {
-        '未开始': 'primary',
-        '正在进行': 'danger',
-        '等待测评': 'success',
-        '已结束': 'info',
-      }
-    }
+      contestList: [], total: 0, gid: 1, finished: false, currentPage: 1,
+      tagType: { '未开始': '', '正在进行': 'danger', '等待测评': 'success', '已结束': 'info' },
+    };
   },
   methods: {
     all() {
       this.finished = false;
-      axios.post('/api/contest/getContestList', {
-        pageId: this.currentPage
-      }).then(res => {
-        this.contestList = res.data.data;
-        for (let i = 0; i < this.contestList.length; i++)
-          this.contestList[i].isPublic = !!this.contestList[i].isPublic;
-        this.total = res.data.total;
-        this.finished = true;
-      }).catch(err => {
-        this.$message.error('获取比赛列表失败' + err.message);
-      });
+      axios.post('/api/contest/getContestList', { pageId: this.currentPage })
+        .then(res => {
+          this.contestList = res.data.data.map(c => ({ ...c, isPublic: !!c.isPublic }));
+          this.total = res.data.total;
+          this.finished = true;
+        }).catch(err => { this.$message.error('获取比赛列表失败 ' + err.message); });
     },
-    handleCurrentChange(val) {
-      this.currentPage = val;
-      this.all();
-    },
+    handleCurrentChange(val) { this.currentPage = val; this.all(); },
     addContest() {
       axios.post('/api/contest/createContest').then(res => {
-        if (res.status === 200) {
-          this.$router.push({
-            path: '/contest/' + res.data.cid,
-            query: { tab: 'manageC' }
-          });
-        } else {
-          this.$message.error('添加比赛失败' + res.data.message);
-        }
+        if (res.status === 200)
+          this.$router.push({ path: '/contest/' + res.data.cid, query: { tab: 'manageC' } });
+        else this.$message.error('添加比赛失败 ' + res.data.message);
       });
     },
   },
-  async mounted() {
+  mounted() {
     this.gid = this.$store.state.gid;
     this.all();
-  }
-}
+  },
+};
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-.box-card {
-  margin: 10px;
-}
-
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 20px;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-weight: bolder;
+  color: #3f3f3f;
 }
-
-#picon {
-  vertical-align: -2px;
-}
+.card-title { font-size: 15px; }
+.card-header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.table-scroll { overflow-x: auto; }
 </style>
