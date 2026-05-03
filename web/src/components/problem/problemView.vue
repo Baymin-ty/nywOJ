@@ -96,7 +96,7 @@
             </el-icon>
             数据统计
           </el-button>
-          <el-button v-if="canManage" type="danger" @click="this.$router.push('/problem/edit/' + problemInfo.pid)">
+          <el-button v-if="this.gid > 1" type="danger" @click="this.$router.push('/problem/edit/' + problemInfo.pid)">
             <el-icon class="el-icon--left">
               <Operation />
             </el-icon>
@@ -114,17 +114,10 @@ import monacoEditor from '@/components/monacoEditor.vue'
 
 export default {
   name: "problemView",
-  computed: {
-    canManage() {
-      return this.problemInfo && (
-        this.problemInfo.publisherUid === this.$store.state.uid
-        || this.$can('problem.edit.any')
-      );
-    },
-  },
   data() {
     return {
       pid: 0,
+      gid: 1,
       submitLang: null,
       langList: [],
       problemInfo: {},
@@ -198,6 +191,7 @@ export default {
   },
   async mounted() {
     this.pid = this.$route.params.pid;
+    this.gid = this.$store.state.gid;
     await axios.post('/api/problem/getProblemInfo', { pid: this.pid }).then(res => {
       if (res.status === 200) {
         this.problemInfo = res.data.data

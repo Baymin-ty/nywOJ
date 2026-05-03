@@ -6,7 +6,7 @@
           <div class="card-header">
             <p class="title">{{ announcementInfo.title }}</p>
             <p class="time">{{ announcementInfo.time }}</p>
-            <el-button v-if="$can('announcement.manage')" type="danger" style="float: right;"
+            <el-button v-if="this.gid === 3" type="danger" style="float: right;"
               @click="this.$router.push('/announcement/edit/' + announcementInfo.aid)">
               <el-icon class="el-icon--left">
                 <Edit />
@@ -29,11 +29,13 @@ export default {
   data() {
     return {
       aid: 0,
+      gid: 1,
       announcementInfo: {},
     }
   },
   async mounted() {
     this.aid = this.$route.params.aid;
+    this.gid = this.$store.state.gid;
     await axios.post('/api/common/getAnnouncementInfo', { aid: this.aid }).then(res => {
       if (res.status === 200)
         this.announcementInfo = res.data.data

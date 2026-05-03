@@ -7,26 +7,26 @@
           <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
             layout="total, prev, pager, next" :total="total"></el-pagination>
           <el-button-group>
-            <el-button v-if="$canAny('contest.edit.any','contest.player.manage')" type="danger" @click="removePlayer" :disabled="!removeList.length">
+            <el-button v-if="this.gid >= 2" type="danger" @click="removePlayer" :disabled="!removeList.length">
               <el-icon class="el-icon--left">
                 <Remove />
               </el-icon>
               踢出
             </el-button>
-            <el-button v-if="$canAny('contest.edit.any','contest.player.manage')" type="success" :disabled="!addName.length" @click="addPlayer">
+            <el-button v-if="this.gid >= 2" type="success" :disabled="!addName.length" @click="addPlayer">
               <el-icon class="el-icon--left">
                 <Plus />
               </el-icon>
               添加
             </el-button>
-            <el-input v-if="$canAny('contest.edit.any','contest.player.manage')" v-model="addName" style="width: 150px;" placeholder="添加用户名"
+            <el-input v-if="this.gid >= 2" v-model="addName" style="width: 150px;" placeholder="添加用户名"
               @keyup.enter="addPlayer" />
           </el-button-group>
         </div>
       </template>
       <el-table :data="playerList" height="600px" @selection-change="select" :header-cell-style="{ textAlign: 'center' }"
         :cell-style="{ textAlign: 'center' }" v-loading="!finished">
-        <el-table-column v-if="$canAny('contest.edit.any','contest.player.manage')" type="selection" min-width="10%" />
+        <el-table-column v-if="this.gid >= 2" type="selection" min-width="10%" />
         <el-table-column prop="uid" label="uid" min-width="20%" />
         <el-table-column prop="name" label="用户名" min-width="70%">
           <template #default="scope">
@@ -51,6 +51,7 @@ export default {
       removeList: [],
       total: 0,
       finished: false,
+      gid: 1,
       cid: 0,
       currentPage: 1,
       addName: '',
@@ -107,6 +108,7 @@ export default {
   },
   mounted() {
     this.cid = this.$route.params.cid;
+    this.gid = this.$store.state.gid;
     this.all();
   }
 }

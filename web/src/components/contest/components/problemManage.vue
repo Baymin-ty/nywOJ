@@ -78,6 +78,7 @@ export default {
     return {
       problemList: [],
       total: 0,
+      gid: 1,
       cid: 0,
       currentPage: 1,
       addpid: '',

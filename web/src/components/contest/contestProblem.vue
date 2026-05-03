@@ -73,7 +73,7 @@
             </el-icon>
             返回比赛
           </el-button>
-          <el-button v-if="$can('contest.edit.any')" type="warning" @click="this.$router.push('/problem/' + problemInfo.pid)">
+          <el-button v-if="this.gid >= 2" type="warning" @click="this.$router.push('/problem/' + problemInfo.pid)">
             <el-icon class="el-icon--left">
               <Files />
             </el-icon>
@@ -95,6 +95,7 @@ export default {
     return {
       cid: 0,
       pid: 0,
+      gid: 1,
       submitLang: null,
       langList: [],
       problemInfo: {},
@@ -134,6 +135,7 @@ export default {
   async mounted() {
     this.cid = this.$route.params.cid;
     this.idx = this.$route.params.idx;
+    this.gid = this.$store.state.gid;
     await axios.post("/api/contest/getProblemInfo", { cid: this.cid, idx: this.idx }).then(res => {
       if (res.status === 200) {
         this.problemInfo = res.data.data;

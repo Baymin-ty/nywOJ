@@ -1,624 +1,872 @@
-const db = require('../db');
-const { handler, fail, ok, paginate } = require('../db/util');
-const { requirePermission } = require('../auth/middleware');
-const { Format, briefFormat, kbFormat } = require('../static');
-const { judgeRes, formatSubmissionRow, formatCaseRow, ctype, cstatus } = require('../db/format');
+const db = require('../db/index');
+const { briefFormat, Format, kbFormat } = require('../static');
+const SqlString = require('mysql/lib/protocol/SqlString');
 const { pushSidIntoQueue } = require('./judge');
 const { getProblemLang } = require('./problem');
-
-const ctypeToIndex = { OI: 0, IOI: 1 };
-const ptype = ['传统文本比较', 'Special Judge'];
-
-// ---- shared helpers ----
-// Owner of a contest, OR holder of contest.edit.any (global or scoped to this cid).
-const canManageContest = (req, contest) => {
-  if (!contest) return false;
-  if (contest.host === req.session.uid) return true;
-  return req.can('contest.edit.any', { type: 'contest', id: Number(contest.cid) });
-};
-
+const ctype = ['OI', 'IOI'];
+const cstatus = ['未开始', '正在进行', '等待测评', '已结束'];
+const ctypeToIndex = {
+  'OI': 0,
+  'IOI': 1
+}
 const contestStatus = (info) => {
   if (info.done) return 3;
-  if (Date.now() > info.start.getTime() + info.length * 1000 * 60) return 2;
-  return Date.now() >= info.start.getTime() ? 1 : 0;
-};
+  if (new Date().getTime() > info.start.getTime() + info.length * 1000 * 60)
+    return 2;
+  return (new Date().getTime() >= info.start.getTime() ? 1 : 0);
+}
 
-const isReg = (uid, cid) =>
-  db.exists('SELECT 1 FROM contestPlayer WHERE uid=? AND cid=? LIMIT 1', [uid, cid]);
+const isReg = (uid, cid) => {
+  return new Promise((resolve, reject) => {
+    return db.query('SELECT * FROM contestPlayer WHERE uid=? AND cid=? LIMIT 1', [uid, cid], (err, data) => {
+      if (err) reject(err);
+      resolve(data.length);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
 
-const playerCnt = async (cid) => {
-  const r = await db.one('SELECT COUNT(*) as cnt FROM contestPlayer WHERE cid=?', [cid]);
-  return r.cnt;
-};
+const getPinfo = (cid, idx) => {
+  return new Promise((resolve, reject) => {
+    return db.query('SELECT * FROM contestProblem WHERE cid=? AND idx=? LIMIT 1', [cid, idx], (err, data) => {
+      if (err) reject(err);
+      if (!data.length) resolve(false);
+      else resolve({
+        pid: data[0].pid,
+        id: data[0].id
+      });
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
 
-const getProblemByIdx = (cid, idx) =>
-  db.one('SELECT pid,id FROM contestProblem WHERE cid=? AND idx=? LIMIT 1', [cid, idx]);
+const getIdx = (cid, pid) => {
+  return new Promise((resolve, reject) => {
+    return db.query('SELECT * FROM contestProblem WHERE cid=? AND pid=? LIMIT 1', [cid, pid], (err, data) => {
+      if (err) reject(err);
+      if (!data.length) resolve(false);
+      else resolve(data[0].idx);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
 
-const getIdxByPid = async (cid, pid) => {
-  const r = await db.one('SELECT idx FROM contestProblem WHERE cid=? AND pid=? LIMIT 1', [cid, pid]);
-  return r ? r.idx : null;
-};
-
-const getContest = (cid) => db.one('SELECT * FROM contest WHERE cid=?', [cid]);
-
-// 主审核流程：可不可以查看比赛中的题目/提交。返回 { contest, status, isReged, canView } 或 null（无此比赛）
-const loadContestForView = async (req, cid) => {
-  const contest = await getContest(cid);
-  if (!contest) return null;
-  contest.status = contestStatus(contest);
-  const isReged = await isReg(req.session.uid, cid);
-  const canView =
-    (contest.status === 3 && (contest.isPublic || isReged)) ||
-    (isReged && contest.status > 0) ||
-    canManageContest(req, contest);
-  return { contest, status: contest.status, isReged, canView };
-};
-
-// During an OI contest in progress, regular contestants see scrubbed scores/results.
-// `manager` here means the user can manage the contest (owner / contest.edit.any).
-const formatContestSubmissionRow = async (r, ctx) => {
-  r.idx = await getIdxByPid(ctx.cid, r.pid);
-  r.pid = null;
-  r.submitTime = Format(r.submitTime);
-  if (!ctx.contest.type && !ctx.contest.done && !ctx.manager) {
-    r.score = r.judgeResult = r.time = r.memory = 0;
-  }
-  r.judgeResult = judgeRes[r.judgeResult];
-  r.memory = kbFormat(r.memory);
-  return r;
-};
-
-// ---- handlers ----
-exports.createContest = [
-  requirePermission('contest.create'),
-  handler(async (req, res) => {
-    const r = await db.query(
-      'INSERT INTO contest(title,host,start,length,type,isPublic) VALUES (?,?,?,?,?,?)',
-      ['请输入比赛标题', req.session.uid, new Date(2121, 10, 22), 180, 0, 0]
-    );
-    if (!r.affectedRows) return fail(res, 'error');
-    return ok(res, { cid: r.insertId });
-  }),
-];
-
-exports.updateContestInfo = [
-  handler(async (req, res) => {
-    const { cid, info } = req.body;
-    const contest = await getContest(cid);
-    if (!contest) return fail(res, '无此比赛');
-    if (!canManageContest(req, contest))
-      return fail(res, '你只能修改自己的比赛');
-    if (contest.done) return fail(res, '比赛已经结束');
-    if (!info.title || !info.start || !info.length || !info.type) return fail(res, '请确认信息完善');
-    if (info.title.length > 30) return fail(res, '比赛名称最长30个字符');
-    if (info.type > 1) return fail(res, '非法比赛类型');
-    info.type = ctypeToIndex[info.type];
-    if (info.isPublic !== true && info.isPublic !== false) return fail(res, '非法isPublic参数');
-
-    const r = await db.query(
-      'UPDATE contest SET title=?,description=?,start=?,length=?,type=?,isPublic=?,lang=? WHERE cid=?',
-      [info.title, info.description, new Date(info.start), info.length, info.type, info.isPublic, info.lang, cid]
-    );
-    if (!r.affectedRows) return fail(res, 'error');
-    return ok(res);
-  }),
-];
-
-exports.getContestList = handler(async (req, res) => {
-  const { offset, limit } = paginate(req);
-  const list = await db.query(
-    'SELECT c.cid,c.title,c.start,c.length,c.isPublic,c.type,c.host,c.done,u.name as hostName ' +
-      'FROM contest c INNER JOIN userInfo u ON u.uid = c.host ORDER BY c.start DESC LIMIT ?,?',
-    [offset, limit]
-  );
-  for (const c of list) {
-    c.type = ctype[c.type];
-    c.status = cstatus[contestStatus(c)];
-    c.start = Format(c.start);
-    c.playerCnt = await playerCnt(c.cid);
-  }
-  const cnt = await db.one('SELECT COUNT(*) as total FROM contest');
-  return ok(res, { total: cnt.total, data: list });
-});
-
-exports.getContestInfo = handler(async (req, res) => {
-  const { cid } = req.body;
-  const contest = await db.one(
-    'SELECT c.cid,c.title,c.start,c.length,c.isPublic,c.type,c.host,c.description,c.lang,c.done,u.name as hostName ' +
-      'FROM contest c INNER JOIN userInfo u ON u.uid = c.host WHERE cid=?',
-    [cid]
-  );
-  if (!contest) return fail(res, '无此比赛');
-
-  contest.isReg = await isReg(req.session.uid, contest.cid);
-  const isManager = canManageContest(req, contest);
-  if (!contest.isPublic && !contest.isReg && !isManager)
-    return fail(res, '比赛私有，请联系管理员报名');
-
-  contest.playerCnt = await playerCnt(contest.cid);
-  const status = contestStatus(contest);
-  contest.status = status;
-  contest.end = Format(new Date(new Date(contest.start).getTime() + contest.length * 1000 * 60));
-  contest.regAble = status < 2 && contest.isPublic && !contest.isReg;
-  contest.auth = {
-    join: (contest.isReg && status > 0) || isManager,
-    view:
-      status === 3 ||
-      (contest.isReg && contest.type === 1 && status > 0) ||
-      isManager,
-    manage: isManager,
-  };
-  contest.type = ctype[contest.type];
-  contest.start = Format(contest.start);
-  contest.status = cstatus[status];
-  return ok(res, { data: contest });
-});
-
-// Owner / contest.player.manage / contest.edit.any (scoped or global) can manage players.
-const canManagePlayers = async (req, cid) => {
-  const contest = await getContest(cid);
-  if (!contest) return null;
-  const scope = { type: 'contest', id: Number(cid) };
-  if (canManageContest(req, contest)) return contest;
-  if (req.can('contest.player.manage', scope)) return contest;
-  return false;
-};
-
-exports.addPlayer = handler(async (req, res) => {
-  const { cid, name } = req.body;
-  const allowed = await canManagePlayers(req, cid);
-  if (allowed === null) return fail(res, '无此比赛');
-  if (!allowed) return res.status(403).end('403 Forbidden');
-
-  const user = await db.one('SELECT uid FROM userInfo WHERE name=? LIMIT 1', [name]);
-  if (!user) return fail(res, '无此用户');
-
-  const already = await db.exists(
-    'SELECT 1 FROM contestPlayer WHERE cid=? AND uid=?',
-    [cid, user.uid]
-  );
-  if (already) return fail(res, '此用户已被添加入比赛');
-
-  await db.query('INSERT INTO contestPlayer(cid,uid) VALUES (?,?)', [cid, user.uid]);
-  return ok(res);
-});
-
-exports.removePlayer = handler(async (req, res) => {
-  const { cid } = req.body;
-  const allowed = await canManagePlayers(req, cid);
-  if (allowed === null) return fail(res, '无此比赛');
-  if (!allowed) return res.status(403).end('403 Forbidden');
-
-  const ids = (req.body.list || []).map((x) => x.id);
-  if (!ids.length) return ok(res);
-  const r = await db.query('DELETE FROM contestPlayer WHERE id in(?) AND cid=?', [ids, cid]);
-  if (!r.affectedRows) return fail(res, 'error');
-  return ok(res);
-});
-
-exports.getPlayerList = handler(async (req, res) => {
-  const { offset, limit } = paginate(req);
-  const { cid } = req.body;
-  const list = await db.query(
-    'SELECT pl.id,pl.uid,u.name FROM contestPlayer pl INNER JOIN userInfo u ON u.uid = pl.uid WHERE pl.cid=? LIMIT ?,?',
-    [cid, offset, limit]
-  );
-  const cnt = await db.one('SELECT COUNT(*) as total FROM contestPlayer WHERE cid=?', [cid]);
-  return ok(res, { total: cnt.total, data: list });
-});
-
-exports.closeContest = [
-  handler(async (req, res) => {
-    const { cid } = req.body;
-    const contest = await getContest(cid);
-    if (!contest) return fail(res, '无此比赛');
-    if (!canManageContest(req, contest))
-      return fail(res, '你只能修改自己的比赛');
-    const status = contestStatus(contest);
-    if (status < 2) return fail(res, '还未至比赛截止时间');
-    if (status === 3) return fail(res, '比赛已结束');
-
-    const r = await db.query('UPDATE contest SET done=1 WHERE cid=?', [cid]);
-    if (!r.affectedRows) return fail(res, 'error');
-    return ok(res);
-  }),
-];
-
-exports.contestReg = handler(async (req, res) => {
-  const { cid } = req.body;
-  const contest = await getContest(cid);
-  if (!contest) return fail(res, '无此比赛');
-  const reged = await isReg(req.session.uid, contest.cid);
-  if (!contest.isPublic || contestStatus(contest) >= 2 || reged)
-    return fail(res, '比赛已结束或私有，请联系管理员');
-
-  await db.query('INSERT INTO contestPlayer(cid,uid) VALUES (?,?)', [cid, req.session.uid]);
-  return ok(res);
-});
-
-exports.getPlayerProblemList = handler(async (req, res) => {
-  const { cid } = req.body;
-  const contest = await getContest(cid);
-  if (!contest) return fail(res, '无此比赛');
-  const reged = await isReg(req.session.uid, contest.cid);
-  const status = contestStatus(contest);
-  const allowed =
-    (reged && status > 0) || canManageContest(req, contest) || ((contest.isPublic || reged) && contest.done);
-  if (!allowed) return res.status(403).end('403 Forbidden');
-
-  const data = await db.query(
-    'SELECT cp.idx,p.title,cp.weight,p.publisher as publisherUid,u.name as publisher ' +
-      'FROM contestProblem cp INNER JOIN problem p ON cp.pid = p.pid INNER JOIN userInfo u ON p.publisher = u.uid ' +
-      'WHERE cp.cid=?',
-    [cid]
-  );
-  return ok(res, { data });
-});
-
-exports.getProblemInfo = handler(async (req, res) => {
-  const { cid, idx } = req.body;
-  const v = await loadContestForView(req, cid);
-  if (!v) return fail(res, '无此比赛');
-  // 这里使用比赛进入条件，不是 view-only
-  const isManager = canManageContest(req, v.contest);
-  const allowed =
-    (v.isReged && v.status > 0) ||
-    isManager ||
-    ((v.contest.isPublic || v.isReged) && v.contest.done);
-  if (!allowed) return res.status(403).end('403 Forbidden');
-
-  const pinfo = await getProblemByIdx(cid, idx);
-  if (!pinfo) return fail(res, '无此题目');
-
-  const problem = await db.one(
-    'SELECT p.title,p.description,p.time,p.timeLimit,p.memoryLimit,p.type,p.lang,p.publisher as publisherUid,u.name as publisher ' +
-      'FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=?',
-    [pinfo.pid]
-  );
-  if (!problem) return fail(res, '无此题目');
-
-  if (isManager) problem.pid = pinfo.pid;
-  problem.lang = (await getProblemLang(pinfo.pid)) & v.contest.lang;
-  problem.type = ptype[problem.type];
-  problem.time = briefFormat(problem.time);
-  problem.idx = idx;
-  problem.id = pinfo.id;
-  return ok(res, { data: problem });
-});
-
-exports.getProblemList = [
-  handler(async (req, res) => {
-    const { cid } = req.body;
-    const contest = await getContest(cid);
-    if (!contest) return fail(res, '无此比赛');
-    if (!canManageContest(req, contest)) return res.status(403).end('403 Forbidden');
-
-    const data = await db.query(
-      'SELECT cp.idx,cp.pid,p.title,p.time,cp.weight,p.isPublic,p.publisher as publisherUid,u.name as publisher ' +
-        'FROM contestProblem cp INNER JOIN problem p ON cp.pid = p.pid INNER JOIN userInfo u ON p.publisher = u.uid ' +
-        'WHERE cp.cid=?',
-      [cid]
-    );
-    for (const r of data) r.time = briefFormat(r.time);
-    return ok(res, { data });
-  }),
-];
-
-exports.updateProblemList = [
-  handler(async (req, res) => {
-    const { cid, list } = req.body;
-    const seen = {};
-    const unilist = [];
-    for (let i = 0; i < list.length; i++) {
-      const item = list[i];
-      if (!item.pid || !item.weight) return fail(res, '请确认信息完善');
-      if (seen[item.pid]) continue;
-      seen[item.pid] = true;
-      const weight = parseInt(item.weight, 10);
-      if (weight < 10 || weight > 10000)
-        return fail(res, `题目#${item.pid}的满分应为[10,10000]之间的整数`);
-      unilist.push({ pid: item.pid, weight, idx: i + 1 });
-    }
-    const contest = await getContest(cid);
-    if (!contest) return fail(res, '无此比赛');
-    if (!canManageContest(req, contest))
-      return fail(res, '你只能修改自己的比赛');
-    if (contestStatus(contest) === 3) return fail(res, '比赛已结束');
-
-    await db.tx(async (tx) => {
-      await tx.query('DELETE FROM contestProblem WHERE cid=?', [cid]);
-      for (const p of unilist) {
-        await tx.query(
-          'INSERT INTO contestProblem(cid,pid,idx,weight) VALUES (?,?,?,?)',
-          [cid, p.pid, p.idx, p.weight]
-        );
+exports.createContest = (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+  db.query('INSERT INTO contest(title,host,start,length,type,isPublic) VALUES (?,?,?,?,?,?)', [
+    '请输入比赛标题', req.session.uid, new Date(2121, 10, 22), 180, 0, 0], (err, data) => {
+      if (err) return res.status(202).send({
+        message: err
+      });
+      if (data.affectedRows > 0) {
+        return res.status(200).send({
+          cid: data.insertId
+        })
+      } else {
+        return res.status(202).send({
+          message: 'error',
+        })
       }
     });
-    return ok(res);
-  }),
-];
+}
 
-exports.submit = handler(async (req, res) => {
-  const { code, cid, idx, lang } = req.body;
-  const uid = req.session.uid;
-  if (!cid || !idx) return fail(res, '请确认信息完善');
-  if (code.length < 10) return fail(res, '代码太短');
-  if (code.length > 1024 * 100) return fail(res, '选手提交的程序源文件必须不大于 100KB。');
-  if (!(await isReg(uid, cid))) return fail(res, '请先报名比赛');
+exports.updateContestInfo = (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+  const cid = req.body.cid, info = req.body.info;
 
-  const contest = await getContest(cid);
-  if (!contest) return fail(res, '无此比赛');
-  if (contestStatus(contest) !== 1) return fail(res, '非比赛时间');
-
-  const pinfo = await getProblemByIdx(cid, idx);
-  if (!pinfo) return fail(res, '无此题目');
-  let alang = await getProblemLang(pinfo.pid);
-  alang &= contest.lang;
-  if (!((1 << lang) & alang)) return fail(res, '非法语言');
-  if (req.body.id !== pinfo.id) {
-    return res.status(202).send({ refresh: true, message: '题目列表已更新，请重新查看题目列表提交' });
-  }
-
-  const insertId = await db.tx(async (tx) => {
-    const r = await tx.query(
-      'INSERT INTO submission(pid,uid,code,codelength,submitTime,cid,lang) VALUES (?,?,?,?,?,?,?)',
-      [pinfo.pid, uid, code, code.length, new Date(), cid, lang]
-    );
-    if (!r.affectedRows) throw new Error('insert failed');
-    await tx.query('UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?', [pinfo.pid]);
-    await tx.query(
-      'DELETE FROM contestLastSubmission WHERE cid=? AND uid=? AND pid=?',
-      [cid, uid, pinfo.pid]
-    );
-    await tx.query(
-      'INSERT INTO contestLastSubmission (cid,uid,pid,sid) VALUES (?,?,?,?)',
-      [cid, uid, pinfo.pid, r.insertId]
-    );
-    return r.insertId;
-  });
-
-  pushSidIntoQueue(insertId, false);
-  return ok(res);
-});
-
-exports.getSubmissionList = handler(async (req, res) => {
-  const { cid } = req.body;
-  const { offset, limit } = paginate(req);
-  const v = await loadContestForView(req, cid);
-  if (!v) return fail(res, '无此比赛');
-  if (!v.canView) return res.status(403).end('403 Forbidden');
-
-  const params = [cid];
-  let extra = '';
-  if (req.body.uid) {
-    extra = ' AND u.uid=?';
-    params.push(req.body.uid);
-  }
-  const list = await db.query(
-    'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
-      'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ' +
-      `WHERE cid=?${extra} ORDER BY s.sid DESC LIMIT ?,?`,
-    [...params, offset, limit]
-  );
-  const ctx = { cid, contest: v.contest, manager: canManageContest(req, v.contest) };
-  for (const r of list) await formatContestSubmissionRow(r, ctx);
-
-  const cnt = await db.one(
-    `SELECT COUNT(*) as cnt FROM submission WHERE cid=?${req.body.uid ? ' AND uid=?' : ''}`,
-    req.body.uid ? [cid, req.body.uid] : [cid]
-  );
-  return ok(res, { data: list, total: cnt.cnt });
-});
-
-exports.getLastSubmissionList = handler(async (req, res) => {
-  const { cid } = req.body;
-  const { offset, limit } = paginate(req);
-  const v = await loadContestForView(req, cid);
-  if (!v) return fail(res, '无此比赛');
-  if (!v.canView) return res.status(403).end('403 Forbidden');
-
-  const allLast = await db.query('SELECT sid FROM contestLastSubmission WHERE cid=?', [cid]);
-  const sids = allLast.slice(offset, offset + limit).map((r) => r.sid);
-  if (!sids.length) return ok(res, { data: [], total: 0 });
-
-  const list = await db.query(
-    'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
-      'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
-    [sids]
-  );
-  const ctx = { cid, contest: v.contest, manager: canManageContest(req, v.contest) };
-  for (const r of list) await formatContestSubmissionRow(r, ctx);
-  return ok(res, { data: list, total: allLast.length });
-});
-
-exports.getSubmissionInfo = handler(async (req, res) => {
-  const { sid } = req.body;
-  const row = await db.one(
-    'SELECT s.sid,s.uid,s.cid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,s.machine,s.lang,u.name,p.title ' +
-      'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=?',
-    [sid]
-  );
-  if (!row) return fail(res, 'error');
-
-  const contest = await getContest(row.cid);
-  if (!contest) return fail(res, '无此比赛');
-  contest.status = contestStatus(contest);
-  const reged = await isReg(req.session.uid, row.cid);
-  const isManager = canManageContest(req, contest);
-  const allowed =
-    (contest.status === 3 && (contest.isPublic || reged)) ||
-    req.session.uid === row.uid ||
-    isManager ||
-    req.can('submission.view.any');
-  if (!allowed) return res.status(403).end('403 Forbidden');
-
-  row.caseResult = JSON.parse(row.caseResult);
-  row.singleCaseResult = await db.query('SELECT * FROM submissionDetail WHERE sid=?', [sid]);
-  row.singleCaseResult.sort((a, b) => a.caseId - b.caseId);
-  row.done = false;
-
-  const fullView = isManager || req.can('submission.view.any') || contest.status === 3;
-
-  if (row.caseResult) {
-    const subtaskInfo = {};
-    for (const c of row.caseResult) {
-      c.index = parseInt(c.index, 10);
-      c.res = judgeRes[c.res];
-      c.memory = kbFormat(c.memory);
-      subtaskInfo[c.index] = { info: c, cases: [] };
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], (err, contestInfo) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!contestInfo.length) {
+      return res.status(202).send({ message: '无此比赛' });
     }
-    for (const c of row.singleCaseResult) {
-      formatCaseRow(c);
-      if (!fullView) {
-        c.input = '正在比赛中...';
-        c.output = '正在比赛中...';
-        c.compareResult = '正在比赛中...';
+    if (req.session.uid !== 1 && contestInfo[0].host !== req.session.uid) {
+      return res.status(202).send({ message: '你只能修改自己的比赛' });
+    }
+    if (contestInfo[0].done) {
+      return res.status(202).send({ message: '比赛已经结束' });
+    }
+    if (!info.title || !info.start || !info.length || !info.type) {
+      return res.status(202).send({
+        message: '请确认信息完善'
+      });
+    }
+    if (info.title.length > 30) {
+      return res.status(202).send({
+        message: '比赛名称最长30个字符'
+      });
+    }
+    if (info.type > 1) {
+      return res.status(202).send({
+        message: '非法比赛类型'
+      });
+    }
+    info.type = ctypeToIndex[info.type];
+    if (info.isPublic !== true && info.isPublic !== false) {
+      return res.status(202).send({
+        message: '非法isPublic参数'
+      });
+    }
+    db.query('UPDATE contest SET title=?,description=?,start=?,length=?,type=?,isPublic=?,lang=? WHERE cid=?',
+      [info.title, info.description, new Date(info.start), info.length, info.type, info.isPublic, info.lang, cid], (err, data) => {
+        if (err) return res.status(202).send({
+          message: err
+        });
+        if (data.affectedRows > 0) {
+          return res.status(200).send({
+            message: 'success',
+          })
+        } else {
+          return res.status(202).send({
+            message: 'error',
+          })
+        }
+      });
+  });
+}
+
+const getContestPlayerCnt = (cid) => {
+  return new Promise((resolve, reject) => {
+    db.query('SELECT COUNT(*) as cnt FROM contestPlayer WHERE cid=?', [cid], (err, data) => {
+      if (err) {
+        reject(err);
       }
-      subtaskInfo[c.subtaskId]['cases'].push(c);
-    }
-    row.subtaskInfo = subtaskInfo;
-    row.done = true;
-    delete row.caseResult;
-    delete row.singleCaseResult;
-  } else {
-    for (const c of row.singleCaseResult) {
-      delete c.input;
-      delete c.output;
-      delete c.compareResult;
-      formatCaseRow(c);
-    }
-  }
-  // OI 赛制比赛中：非管理员选手只能看到提交时间，不能看到结果
-  if (!contest.type && !contest.done && !isManager) {
-    row.caseResult = row.singleCaseResult = row.subtaskInfo = null;
-    row.score = row.judgeResult = row.time = row.memory = 0;
-    row.unShown = true;
-  }
-  row.idx = await getIdxByPid(row.cid, row.pid);
-  delete row.pid;
-  formatSubmissionRow(row);
-  return ok(res, { data: row });
-});
-
-exports.getRank = handler(async (req, res) => {
-  const { cid } = req.body;
-  const submissions = await db.query('SELECT sid FROM contestLastSubmission WHERE cid=?', [cid]);
-  const problems = await db.query('SELECT pid,idx,weight FROM contestProblem WHERE cid=?', [cid]);
-  const playerUids = await db.column('SELECT uid FROM contestPlayer WHERE cid=?', [cid], 'uid');
-  const players = playerUids.length
-    ? await db.query('SELECT uid,name FROM userInfo WHERE uid in (?)', [playerUids])
-    : [];
-  const contest = await getContest(cid);
-  const reged = await isReg(req.session.uid, cid);
-  const status = contestStatus(contest);
-
-  const allowed =
-    (status === 3 && (contest.isPublic || reged)) ||
-    (reged && contest.type === 1 && status > 0) ||
-    canManageContest(req, contest);
-  if (!allowed) return res.status(403).end('403 Forbidden');
-
-  const pidToIdx = [];
-  const pweight = [];
-  const pinfo = new Map();
-  for (const p of problems) {
-    pidToIdx[p.pid] = p.idx;
-    pweight[p.pid] = p.weight;
-    pinfo[p.idx] = p.weight;
-  }
-
-  const uVis = [];
-  const table = new Map();
-  for (const u of players) {
-    uVis[u.uid] = true;
-    table[u.uid] = {
-      user: u,
-      totalScore: 0,
-      usedTime: 0,
-      detail: new Map(),
-      submitted: false,
-    };
-  }
-
-  const acVis = [];
-  for (const s of submissions) {
-    const detail = await db.one(
-      'SELECT uid,pid,time,score FROM submission WHERE sid=?',
-      [s.sid]
-    );
-    if (!detail) continue;
-    const idx = pidToIdx[detail.pid];
-    if (!idx || !uVis[detail.uid]) continue;
-    const score = Math.round((detail.score * pweight[detail.pid]) / 100);
-    table[detail.uid].detail[idx] = { score, time: detail.time };
-    table[detail.uid].totalScore += score;
-    if (detail.score) table[detail.uid].usedTime += detail.time;
-    if (detail.score === 100) {
-      if (!acVis[idx]) table[detail.uid].detail[idx].firstBlood = true;
-      acVis[idx] = true;
-    }
-    table[detail.uid].submitted = true;
-  }
-
-  const rank = [];
-  for (const uid in table) rank.push(table[uid]);
-  rank.sort((a, b) => {
-    if (a.totalScore !== b.totalScore) return b.totalScore - a.totalScore;
-    if (a.usedTime !== b.usedTime) return a.usedTime - b.usedTime;
-    if (a.submitted !== b.submitted) return b.submitted - a.submitted;
-    return a.user.uid - b.user.uid;
+      resolve(data[0].cnt);
+    })
+  }).catch(err => {
+    console.log(err);
   });
-  return ok(res, { data: rank, problem: pinfo });
-});
+}
 
-exports.getSingleUserLastSubmission = handler(async (req, res) => {
-  const { cid, uid } = req.body;
-  const v = await loadContestForView(req, cid);
-  if (!v) return fail(res, '无此比赛');
-  if (!v.canView) return res.status(403).end('403 Forbidden');
-
-  const sids = await db.column(
-    'SELECT sid FROM contestLastSubmission WHERE cid=? AND uid=?',
-    [cid, uid],
-    'sid'
-  );
-  if (!sids.length) return ok(res, { data: [], total: 0 });
-
-  const list = await db.query(
-    'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
-      'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
-    [sids]
-  );
-  const ctx = { cid, contest: v.contest, manager: canManageContest(req, v.contest) };
-  for (const r of list) await formatContestSubmissionRow(r, ctx);
-  return ok(res, { data: list });
-});
-
-exports.getSingleUserProblemSubmission = handler(async (req, res) => {
-  const { cid, uid, idx } = req.body;
-  const v = await loadContestForView(req, cid);
-  if (!v) return fail(res, '无此比赛');
-  if (!v.canView) return res.status(403).end('403 Forbidden');
-
-  const pinfo = await getProblemByIdx(cid, idx);
-  if (!pinfo) return fail(res, '无此题目');
-
-  const list = await db.query(
-    'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
-      'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ' +
-      'WHERE s.cid=? AND s.uid=? AND s.pid=? ORDER BY s.sid DESC',
-    [cid, uid, pinfo.pid]
-  );
-  const isManager = canManageContest(req, v.contest);
-  for (const r of list) {
-    r.idx = idx;
-    r.pid = null;
-    r.submitTime = Format(r.submitTime);
-    if (!v.contest.type && !v.contest.done && !isManager) {
-      r.score = r.judgeResult = r.time = r.memory = 0;
+exports.getContestList = (req, res) => {
+  let pageId = req.body.pageId,
+    pageSize = 20;
+  if (!pageId) pageId = 1;
+  pageId = SqlString.escape(pageId);
+  let sql = "SELECT c.cid,c.title,c.start,c.length,c.isPublic,c.type,c.host,c.done,u.name as hostName FROM contest c INNER JOIN userInfo u ON u.uid = c.host" +
+    " ORDER BY c.start DESC LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
+  db.query(sql, async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    let list = data;
+    for (let i = 0; i < list.length; i++) {
+      list[i].type = ctype[list[i].type];
+      list[i].status = cstatus[contestStatus(list[i])];
+      list[i].start = Format(list[i].start);
+      list[i].playerCnt = await getContestPlayerCnt(list[i].cid);
     }
-    r.judgeResult = judgeRes[r.judgeResult];
-    r.memory = kbFormat(r.memory);
+    db.query("SELECT COUNT(*) as total FROM contest", (err, data) => {
+      if (err) return res.status(202).send({ message: err });
+      return res.status(200).send({
+        total: data[0].total,
+        data: list
+      });
+    });
+  });
+}
+
+exports.getContestInfo = (req, res) => {
+  const cid = req.body.cid;
+  let sql = "SELECT c.cid,c.title,c.start,c.length,c.isPublic,c.type,c.host,c.description,c.lang,c.done,u.name as hostName FROM contest c INNER JOIN userInfo u ON u.uid = c.host WHERE cid=?";
+  db.query(sql, [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({
+      message: '无此比赛'
+    });
+    else {
+      data[0].isReg = await isReg(req.session.uid, data[0].cid);
+      if (!data[0].isPublic && !data[0].isReg && req.session.gid === 1)
+        return res.status(202).send({ message: '比赛私有，请联系管理员报名' });
+      data[0].playerCnt = await getContestPlayerCnt(data[0].cid);
+      data[0].status = contestStatus(data[0]);
+      data[0].end = Format(new Date(
+        new Date(data[0].start).getTime() + data[0].length * 1000 * 60
+      ));
+      data[0].regAble = (data[0].status < 2 && data[0].isPublic && !data[0].isReg);
+      data[0].auth = {
+        join: ((data[0].isReg && data[0].status > 0) || req.session.gid >= 2),
+        view: (data[0].status === 3 // 确认结束
+          || (data[0].isReg && data[0].type === 1 && data[0].status > 0) // IOI赛制 且 用户已报名
+          || req.session.gid >= 2)
+      }
+      // 一定要放在下面，因为在其之前会用到原始值
+      data[0].type = ctype[data[0].type];
+      data[0].start = Format(data[0].start);
+      data[0].status = cstatus[data[0].status];
+
+      return res.status(200).send({
+        data: data[0]
+      });
+    }
+  });
+}
+
+exports.addPlayer = (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+  const cid = req.body.cid, name = req.body.name;
+  db.query('SELECT uid FROM userInfo WHERE name=? LIMIT 1', [name], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({
+      message: '无此用户'
+    });
+    else {
+      db.query('SELECT * FROM contestPlayer WHERE cid=? AND uid=?', [cid, data[0].uid], (error, redata) => {
+        if (redata.length) return res.status(202).send({ message: '此用户已被添加入比赛' });
+        db.query('INSERT INTO contestPlayer(cid,uid) VALUES (?,?)', [cid, data[0].uid], (erro) => {
+          if (erro) return res.status(202).send({ message: erro });
+          return res.status(200).send({ message: 'success' });
+        });
+      })
+    }
+  });
+}
+
+exports.removePlayer = (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+  let rmIds = [];
+  for (let i = 0; i < req.body.list.length; i++) {
+    rmIds.push(req.body.list[i].id);
   }
-  return ok(res, { data: list });
-});
+  if (!rmIds.length)
+    return;
+  db.query('DELETE FROM contestPlayer WHERE id in(?)', [rmIds], (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (data.affectedRows > 0)
+      res.status(200).send({ message: 'success' });
+    else res.status(202).send({ message: 'error' });
+  });
+}
+
+exports.getPlayerList = (req, res) => {
+  let pageId = req.body.pageId,
+    pageSize = 20;
+  if (!pageId) pageId = 1;
+  pageId = SqlString.escape(pageId);
+  const cid = req.body.cid;
+  let sql = "SELECT pl.id,pl.uid,u.name FROM contestPlayer pl INNER JOIN userInfo u ON u.uid = pl.uid WHERE pl.cid=?" +
+    " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
+  db.query(sql, [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    let list = data;
+    db.query("SELECT COUNT(*) as total FROM contestPlayer WHERE cid=?", [cid], (err, data) => {
+      if (err) return res.status(202).send({ message: err });
+      return res.status(200).send({
+        total: data[0].total,
+        data: list
+      });
+    });
+  });
+}
+
+exports.closeContest = (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+  const cid = req.body.cid;
+
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], (err, contestInfo) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!contestInfo.length) {
+      return res.status(202).send({ message: '无此比赛' });
+    }
+    if (req.session.uid !== 1 && contestInfo[0].host !== req.session.uid) {
+      return res.status(202).send({ message: '你只能修改自己的比赛' });
+    }
+    if (contestStatus(contestInfo[0]) < 2) {
+      return res.status(202).send({ message: '还未至比赛截止时间' });
+    }
+    if (contestStatus(contestInfo[0]) === 3) {
+      return res.status(202).send({ message: '比赛已结束' });
+    }
+    db.query('UPDATE contest SET done=1 WHERE cid=?', [cid], (err, data) => {
+      if (err) return res.status(202).send({
+        message: err
+      });
+      if (data.affectedRows > 0) {
+        return res.status(200).send({
+          message: 'success',
+        })
+      } else {
+        return res.status(202).send({
+          message: 'error',
+        })
+      }
+    });
+  });
+}
+
+exports.contestReg = (req, res) => {
+  const cid = req.body.cid;
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    if (!data[0].isPublic // 非公开
+      || contestStatus(data[0]) >= 2 // 正式结束
+      || (await isReg(req.session.uid, data[0].cid))) { // 已经报名
+      return res.status(202).send({ message: '比赛已结束或私有，请联系管理员' });
+    }
+    db.query('INSERT INTO contestPlayer(cid,uid) VALUES (?,?)', [cid, req.session.uid], (err2, data2) => {
+      if (err2) return res.status(202).send({ message: err2 });
+      return res.status(200).send({ message: 'success' });
+    });
+  });
+}
+
+exports.getPlayerProblemList = (req, res) => {
+  const cid = req.body.cid;
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    const isReged = await isReg(req.session.uid, data[0].cid);
+    if ((isReged && contestStatus(data[0]) > 0) || req.session.gid >= 2 || ((data[0].isPublic || isReged) && data[0].done)) {
+      db.query('SELECT cp.idx,p.title,cp.weight,p.publisher as publisherUid,u.name as publisher FROM contestProblem cp INNER JOIN problem p ON cp.pid = p.pid INNER JOIN userInfo u ON p.publisher = u.uid WHERE cp.cid=?', [cid], (err2, data2) => {
+        if (err2) return res.status(202).send({ message: err2 });
+        return res.status(200).send({
+          data: data2
+        });
+      })
+    }
+    else return res.status(403).end('403 Forbidden');
+  });
+}
+
+const ptype = ['传统文本比较', 'Special Judge'];
+
+exports.getProblemInfo = (req, res) => {
+  const cid = req.body.cid, idx = req.body.idx;
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    const isReged = await isReg(req.session.uid, data[0].cid);
+    if ((isReged && contestStatus(data[0]) > 0) || req.session.gid >= 2 || ((data[0].isPublic || isReged) && data[0].done)) {
+      const pinfo = await getPinfo(cid, idx), pid = pinfo.pid;
+      if (!pid) return res.status(202).send({
+        message: '无此题目'
+      });
+      let sql = "SELECT p.title,p.description,p.time,p.timeLimit,p.memoryLimit,p.type,p.lang,p.publisher as publisherUid,u.name as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=?"
+      db.query(sql, [pid], async (err2, data2) => {
+        if (err2) return res.status(202).send({ message: err2 });
+        if (!data2.length) return res.status(202).send({
+          message: '无此题目'
+        });
+        else {
+          if (req.session.gid >= 2)
+            data2[0].pid = pid;
+          data2[0].lang = (await getProblemLang(pid)) & data[0].lang;
+          data2[0].type = ptype[data2[0].type];
+          data2[0].time = briefFormat(data2[0].time);
+          data2[0].idx = idx;
+          data2[0].id = pinfo.id;
+          return res.status(200).send({
+            data: data2[0]
+          });
+        }
+      });
+    }
+    else return res.status(403).end('403 Forbidden');
+  });
+}
+
+exports.getProblemList = (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+  const cid = req.body.cid;
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    db.query('SELECT cp.idx,cp.pid,p.title,p.time,cp.weight,p.isPublic,p.publisher as publisherUid,u.name as publisher FROM contestProblem cp INNER JOIN problem p ON cp.pid = p.pid INNER JOIN userInfo u ON p.publisher = u.uid WHERE cp.cid=?', [cid], (err2, data2) => {
+      if (err2) return res.status(202).send({ message: err2 });
+      for (let i = 0; i < data2.length; i++) {
+        data2[i].time = briefFormat(data2[i].time);
+      }
+      return res.status(200).send({
+        data: data2
+      });
+    });
+  });
+}
+
+
+const addProblem = (problem, cid) => {
+  return new Promise((resolve, reject) => {
+    return db.query('INSERT INTO contestProblem(cid,pid,idx,weight) VALUES (?,?,?,?)', [cid, problem.pid, problem.idx, problem.weight], (err, data) => {
+      if (err) reject(err);
+      resolve(true);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
+
+exports.updateProblemList = (req, res) => {
+  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
+  const cid = req.body.cid, list = req.body.list;
+  let unilist = [], vis = [];
+  for (let i = 0; i < list.length; i++) {
+    if (!list[i].pid || !list[i].weight) {
+      return res.status(202).send({ message: '请确认信息完善' });
+    }
+    if (!vis[list[i].pid]) {
+      vis[list[i].pid] = true;
+      list[i].weight = parseInt(list[i].weight);
+      if (list[i].weight < 10 || list[i].weight > 10000) {
+        return res.status(202).send({ message: `题目#${list[i].pid}的满分应为[10,10000]之间的整数` });
+      }
+      unilist.push({
+        pid: list[i].pid,
+        weight: list[i].weight,
+        idx: i + 1
+      });
+    }
+  }
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    if (req.session.uid !== 1 && data[0].host !== req.session.uid) {
+      return res.status(202).send({ message: '你只能修改自己的比赛' });
+    }
+    if (contestStatus(data[0]) === 3) {
+      return res.status(202).send({ message: '比赛已结束' });
+    }
+    db.query('DELETE FROM contestProblem WHERE cid=?', [cid], async () => {
+      for (let i = 0; i < unilist.length; i++) {
+        await addProblem(unilist[i], cid);
+      }
+      res.status(200).send({ message: 'success' });
+    });
+  })
+}
+
+exports.submit = async (req, res) => {
+  const code = req.body.code, cid = req.body.cid, idx = req.body.idx, uid = req.session.uid, lang = req.body.lang;
+  if (!cid || !idx) {
+    return res.status(202).send({
+      message: '请确认信息完善'
+    });
+  }
+  if (code.length < 10) {
+    return res.status(202).send({
+      message: '代码太短'
+    });
+  }
+  if (code.length > 1024 * 100) {
+    return res.status(202).send({
+      message: '选手提交的程序源文件必须不大于 100KB。'
+    });
+  }
+  if (!(await isReg(uid, cid))) return res.status(202).send({
+    message: '请先报名比赛'
+  });
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    if (contestStatus(data[0]) !== 1) {
+      return res.status(202).send({ message: '非比赛时间' });
+    }
+    const pinfo = await getPinfo(cid, idx), pid = pinfo.pid;
+    let alang = await getProblemLang(pid); // 题目lang
+    alang &= data[0].lang; // 比赛lang
+    if (!((1 << lang) & alang)) {
+      return res.status(202).send({
+        message: '非法语言'
+      });
+    }
+    if (req.body.id !== pinfo.id)
+      return res.status(202).send({
+        refresh: true,
+        message: '题目列表已更新，请重新查看题目列表提交'
+      });
+    db.query('INSERT INTO submission(pid,uid,code,codelength,submitTime,cid,lang) VALUES (?,?,?,?,?,?,?)', [pid, req.session.uid, code, code.length, new Date(), cid, lang], (err2, data2) => {
+      if (err2) return res.status(202).send({ message: err2 });
+      if (data2.affectedRows > 0) {
+        db.query('UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?', [pid]);
+        db.query('DELETE FROM contestLastSubmission WHERE cid=? AND uid=? AND pid=?', [cid, uid, pid], () => {
+          db.query('INSERT INTO contestLastSubmission (cid,uid,pid,sid) VALUES (?,?,?,?)', [cid, uid, pid, data2.insertId]);
+        });
+        pushSidIntoQueue(data2.insertId, false);
+        return res.status(200).send({
+          message: 'success'
+        })
+      } else {
+        return res.status(202).send({
+          message: 'error',
+        })
+      }
+    });
+  });
+}
+
+const judgeRes = ['Waiting',
+  'Pending',
+  'Rejudging',
+  'Compilation Error',
+  'Accepted',
+  'Wrong Answer',
+  'Time Limit Exceeded',
+  'Memory Limit Exceeded',
+  'Runtime Error',
+  'Segmentation Fault',
+  'Output Limit Exceeded',
+  'Dangerous System Call',
+  'System Error',
+  'Canceled',
+  'Skipped'];
+
+exports.getSubmissionList = (req, res) => {
+  const cid = req.body.cid, pageId = req.body.pageId, pageSize = 20;
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    data[0].status = contestStatus(data[0]);
+    const isReged = await isReg(req.session.uid, cid);
+    if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
+      || (isReged && data[0].status > 0) // 用户已报名
+      || req.session.gid >= 2)) {
+      let sql = 'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE cid=? ';
+      if (req.body.uid) {
+        sql += `AND u.uid=${req.body.uid}`;
+      }
+      sql += ' ORDER BY s.sid DESC LIMIT ?,?';
+      db.query(sql,
+        [cid, (pageId - 1) * pageSize, pageSize], async (err2, data2) => {
+          if (err2) return res.status(202).send({ message: err2 });
+          for (let i = 0; i < data2.length; i++) {
+            data2[i].idx = await getIdx(cid, data2[i].pid);
+            data2[i].pid = null;
+            data2[i].submitTime = Format(data2[i].submitTime);
+            if (!data[0].type && !data[0].done && req.session.gid === 1)
+              data2[i].score = data2[i].judgeResult = data2[i].time = data2[i].memory = 0;
+            data2[i].judgeResult = judgeRes[data2[i].judgeResult];
+            data2[i].memory = kbFormat(data2[i].memory);
+          }
+          db.query('SELECT COUNT(*) as cnt FROM submission WHERE cid=? ' + (req.body.uid ? `AND uid=${req.body.uid}` : ''),
+            [cid], async (err3, data3) => {
+              if (err3) return res.status(202).send({ message: err3.message });
+              return res.status(200).send({ data: data2, total: data3[0].cnt });
+            })
+        })
+    } else return res.status(403).end('403 Forbidden');
+  });
+}
+
+exports.getLastSubmissionList = (req, res) => {
+  const cid = req.body.cid, pageId = req.body.pageId, pageSize = 20;
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    data[0].status = contestStatus(data[0]);
+    const isReged = await isReg(req.session.uid, cid);
+    if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
+      || (isReged && data[0].status > 0) // IOI赛制 且 用户已报名
+      || req.session.gid >= 2)) {
+      let allLastSubmissions = await getAllSubmissions(cid), lastSubmissions = [];
+      for (let i = (pageId - 1) * pageSize; i < pageId * pageSize && i < allLastSubmissions.length; i++) {
+        lastSubmissions.push(allLastSubmissions[i].sid);
+      }
+      if (!lastSubmissions.length) {
+        return res.status(200).send({ data: [], total: 0 });
+      }
+      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
+        [lastSubmissions], async (err2, data2) => {
+          if (err2) return res.status(202).send({ message: err2 });
+          for (let i = 0; i < data2.length; i++) {
+            data2[i].idx = await getIdx(cid, data2[i].pid);
+            data2[i].pid = null;
+            data2[i].submitTime = Format(data2[i].submitTime);
+            if (!data[0].type && !data[0].done && req.session.gid === 1)
+              data2[i].score = data2[i].judgeResult = data2[i].time = data2[i].memory = 0;
+            data2[i].judgeResult = judgeRes[data2[i].judgeResult];
+            data2[i].memory = kbFormat(data2[i].memory);
+          }
+          return res.status(200).send({ data: data2, total: allLastSubmissions.length });
+        });
+    } else return res.status(403).end('403 Forbidden');
+  });
+}
+
+const getCaseDetail = (sid) => {
+  return new Promise((resolve, reject) => {
+    db.query('SELECT * FROM submissionDetail WHERE sid=?', [sid], (err, data) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(data);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
+
+exports.getSubmissionInfo = (req, res) => {
+  const sid = req.body.sid;
+  db.query('SELECT s.sid,s.uid,s.cid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,s.machine,s.lang,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=?',
+    [sid], (err, data) => {
+      if (err) return res.status(202).send({ message: err });
+      if (!data.length) return res.status(202).send({
+        message: 'error'
+      });
+      else {
+        db.query('SELECT * FROM contest WHERE cid=?', [data[0].cid], async (err2, data2) => {
+          if (err2) return res.status(202).send({ message: err2 });
+          if (!data2.length) return res.status(202).send({ message: '无此比赛' });
+          data2[0].status = contestStatus(data2[0]);
+          if ((data2[0].status === 3 && (data2[0].isPublic || (await isReg(req.session.uid, data[0].cid)))) || req.session.uid === data[0].uid || req.session.gid > 1) {
+            data[0].caseResult = JSON.parse(data[0].caseResult);
+            data[0].singleCaseResult = await getCaseDetail(sid);
+            data[0].singleCaseResult.sort((a, b) => a.caseId - b.caseId);
+            data[0].done = false;
+            if (data[0].caseResult) {
+              let subtaskInfo = {};
+              for (let i in data[0].caseResult) {
+                data[0].caseResult[i].index = parseInt(data[0].caseResult[i].index);
+                data[0].caseResult[i].res = judgeRes[data[0].caseResult[i].res];
+                data[0].caseResult[i].memory = kbFormat(data[0].caseResult[i].memory);
+                subtaskInfo[data[0].caseResult[i].index] = new Map();
+                subtaskInfo[data[0].caseResult[i].index]['info'] = data[0].caseResult[i];
+                subtaskInfo[data[0].caseResult[i].index]['cases'] = [];
+              }
+              for (let i in data[0].singleCaseResult) {
+                data[0].singleCaseResult[i].result = judgeRes[data[0].singleCaseResult[i].result];
+                data[0].singleCaseResult[i].memory = kbFormat(data[0].singleCaseResult[i].memory);
+                if (!(req.session.gid > 1 || data2[0].status === 3)) {
+                  data[0].singleCaseResult[i].input = '正在比赛中...';
+                  data[0].singleCaseResult[i].output = '正在比赛中...';
+                  data[0].singleCaseResult[i].compareResult = '正在比赛中...';
+                }
+                subtaskInfo[data[0].singleCaseResult[i].subtaskId]['cases'].push(data[0].singleCaseResult[i]);
+              }
+              data[0].subtaskInfo = subtaskInfo;
+              data[0].done = true;
+              delete data[0].caseResult;
+              delete data[0].singleCaseResult;
+            } else {
+              for (let i in data[0].singleCaseResult) {
+                delete data[0].singleCaseResult[i].input;
+                delete data[0].singleCaseResult[i].output;
+                delete data[0].singleCaseResult[i].compareResult;
+                data[0].singleCaseResult[i].result = judgeRes[data[0].singleCaseResult[i].result];
+                data[0].singleCaseResult[i].memory = kbFormat(data[0].singleCaseResult[i].memory);
+              }
+            }
+            if (!data2[0].type && !data2[0].done && req.session.gid === 1) {
+              data[0].caseResult = data[0].singleCaseResult = data[0].subtaskInfo = null;
+              data[0].score = data[0].judgeResult = data[0].time = data[0].memory = 0;
+              data[0].unShown = true;
+            }
+            data[0].idx = await getIdx(data[0].cid, data[0].pid);
+            delete data[0].pid;
+            data[0].memory = kbFormat(data[0].memory);
+            data[0].submitTime = Format(data[0].submitTime);
+            data[0].judgeResult = judgeRes[data[0].judgeResult];
+            return res.status(200).send({
+              data: data[0]
+            });
+          } else return res.status(403).end('403 Forbidden');
+        })
+      }
+    });
+}
+
+const getAllSubmissions = (cid) => {
+  return new Promise((resolve, reject) => {
+    return db.query('SELECT sid FROM contestLastSubmission WHERE cid=?', [cid], (err, data) => {
+      if (err) reject(err);
+      resolve(data);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
+const getUserAllSubmissions = (cid, uid) => {
+  return new Promise((resolve, reject) => {
+    return db.query('SELECT sid FROM contestLastSubmission WHERE cid=? AND uid=?', [cid, uid], (err, data) => {
+      if (err) reject(err);
+      resolve(data);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
+const getAllProblems = (cid) => {
+  return new Promise((resolve, reject) => {
+    return db.query('SELECT pid,idx,weight FROM contestProblem WHERE cid=?', [cid], (err, data) => {
+      if (err) reject(err);
+      resolve(data);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
+const getAllPlayers = (cid) => {
+  return new Promise((resolve, reject) => {
+    return db.query('SELECT uid FROM contestPlayer WHERE cid=?', [cid], async (err, data) => {
+      if (err) reject(err);
+      let users = [];
+      for (let i = 0; i < data.length; i++) {
+        users.push(data[i].uid);
+      }
+      resolve(await getAllPlayersInfo(users));
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
+const getAllPlayersInfo = (list) => {
+  return new Promise((resolve, reject) => {
+    if (!list.length) resolve([]);
+    else {
+      return db.query('SELECT uid,name FROM userInfo WHERE uid in (?)', [list], (err, data) => {
+        if (err) reject(err);
+        resolve(data);
+      });
+    }
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
+const getSubmissionDetail = (sid) => {
+  return new Promise((resolve, reject) => {
+    return db.query('SELECT uid,pid,time,score FROM submission WHERE sid=?', [sid], (err, data) => {
+      if (err) reject(err);
+      resolve(data[0]);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
+const getContestInfo = (cid) => {
+  return new Promise((resolve, reject) => {
+    return db.query('SELECT * FROM contest WHERE cid=?', [cid], (err, data) => {
+      if (err) reject(err);
+      resolve(data[0]);
+    })
+  }).catch(err => {
+    console.log(err);
+  });
+}
+
+exports.getRank = async (req, res) => {
+  const cid = req.body.cid,
+    submissions = await getAllSubmissions(cid),
+    problems = await getAllProblems(cid),
+    players = await getAllPlayers(cid),
+    contestInfo = await getContestInfo(cid),
+    isReged = await isReg(req.session.uid, cid),
+    status = contestStatus(contestInfo);
+
+  if (!(((status === 3 && (contestInfo.isPublic || isReged)) // 确认结束
+    || (isReged && contestInfo.type === 1 && status > 0) // IOI赛制 且 用户已报名
+    || req.session.gid >= 2))) {
+    return res.status(403).end('403 Forbidden');
+  }
+
+  let uVis = [], pidToIdx = [], pweight = [], rank = [], acVis = [], table = new Map(), pinfo = new Map();
+  for (let i = 0; i < problems.length; i++)
+    pidToIdx[problems[i].pid] = problems[i].idx, pweight[problems[i].pid] = problems[i].weight, pinfo[problems[i].idx] = problems[i].weight;
+  for (let i = 0; i < players.length; i++) {
+    uVis[players[i].uid] = true, table[players[i].uid] = new Map(), table[players[i].uid]['user'] = players[i],
+      table[players[i].uid]['totalScore'] = table[players[i].uid]['usedTime'] = 0,
+      table[players[i].uid]['detail'] = new Map(), table[players[i].uid]['submitted'] = false;
+  }
+  for (let i = 0; i < submissions.length; i++) {
+    submissions[i].detail = await getSubmissionDetail(submissions[i].sid);
+    if (pidToIdx[submissions[i].detail.pid] && uVis[submissions[i].detail.uid]) {
+      table[submissions[i].detail.uid]['detail'][pidToIdx[submissions[i].detail.pid]] = {
+        score: Math.round(submissions[i].detail.score * pweight[submissions[i].detail.pid] / 100),
+        time: submissions[i].detail.time
+      };
+      table[submissions[i].detail.uid]['totalScore'] += Math.round(submissions[i].detail.score * pweight[submissions[i].detail.pid] / 100);
+      if (submissions[i].detail.score)
+        table[submissions[i].detail.uid]['usedTime'] += submissions[i].detail.time;
+      if (submissions[i].detail.score === 100) {
+        if (!acVis[pidToIdx[submissions[i].detail.pid]])
+          table[submissions[i].detail.uid]['detail'][pidToIdx[submissions[i].detail.pid]].firstBlood = true;
+        acVis[pidToIdx[submissions[i].detail.pid]] = true;
+      }
+      table[submissions[i].detail.uid]['submitted'] = true;
+    }
+  }
+  for (let i in table) {
+    rank.push(table[i]);
+  }
+  rank.sort((a, b) => {
+    if (a.totalScore === b.totalScore) {
+      if (a.usedTime === b.usedTime) {
+        if (a.submitted === b.submitted) {
+          return a.uid - b.uid;
+        } else return b.submitted - a.submitted;
+      } else return a.usedTime - b.usedTime; //升序
+    } else return b.totalScore - a.totalScore; //降序
+  });
+  return res.status(200).send({ data: rank, problem: pinfo });
+}
+
+exports.getSingleUserLastSubmission = async (req, res) => {
+  const cid = req.body.cid, uid = req.body.uid;
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    data[0].status = contestStatus(data[0]);
+    const isReged = await isReg(req.session.uid, cid);
+    if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
+      || (isReged && data[0].status > 0) // 用户已报名
+      || req.session.gid >= 2)) {
+      let lastSubmission = await getUserAllSubmissions(cid, uid), lastSubmissions = [];
+      for (let i in lastSubmission) {
+        lastSubmissions.push(lastSubmission[i].sid);
+      }
+      if (!lastSubmissions.length) {
+        return res.status(200).send({ data: [], total: 0 });
+      }
+      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
+        [lastSubmissions], async (err2, data2) => {
+          if (err2) return res.status(202).send({ message: err2 });
+          for (let i = 0; i < data2.length; i++) {
+            data2[i].idx = await getIdx(cid, data2[i].pid);
+            data2[i].pid = null;
+            data2[i].submitTime = Format(data2[i].submitTime);
+            if (!data[0].type && !data[0].done && req.session.gid === 1)
+              data2[i].score = data2[i].judgeResult = data2[i].time = data2[i].memory = 0;
+            data2[i].judgeResult = judgeRes[data2[i].judgeResult];
+            data2[i].memory = kbFormat(data2[i].memory);
+          }
+          return res.status(200).send({ data: data2 });
+        });
+    } else return res.status(403).end('403 Forbidden');
+  });
+}
+
+exports.getSingleUserProblemSubmission = (req, res) => {
+  const cid = req.body.cid, uid = req.body.uid, idx = req.body.idx;
+  db.query('SELECT * FROM contest WHERE cid=?', [cid], async (err, data) => {
+    if (err) return res.status(202).send({ message: err });
+    if (!data.length) return res.status(202).send({ message: '无此比赛' });
+    data[0].status = contestStatus(data[0]);
+    const isReged = await isReg(req.session.uid, cid);
+    if (((data[0].status === 3 && (data[0].isPublic || isReged)) // 确认结束
+      || (isReged && data[0].status > 0) // 用户已报名
+      || req.session.gid >= 2)) {
+      const pinfo = await getPinfo(cid, idx);
+      db.query('SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.cid=? AND s.uid=? AND s.pid=? ORDER BY s.sid DESC',
+        [cid, uid, pinfo.pid], async (err2, data2) => {
+          if (err2) return res.status(202).send({ message: err2 });
+          for (let i = 0; i < data2.length; i++) {
+            data2[i].idx = idx;
+            data2[i].pid = null;
+            data2[i].submitTime = Format(data2[i].submitTime);
+            if (!data[0].type && !data[0].done && req.session.gid === 1)
+              data2[i].score = data2[i].judgeResult = data2[i].time = data2[i].memory = 0;
+            data2[i].judgeResult = judgeRes[data2[i].judgeResult];
+            data2[i].memory = kbFormat(data2[i].memory);
+          }
+          return res.status(200).send({ data: data2 });
+        })
+    } else return res.status(403).end('403 Forbidden');
+  });
+}

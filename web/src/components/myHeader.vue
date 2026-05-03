@@ -56,17 +56,11 @@
         </el-icon>
         编辑资料
       </el-menu-item>
-      <el-menu-item v-if="$canAny('user.list','user.edit','user.ban')" index="/admin/usermanage">
+      <el-menu-item v-if="this.$store.state.gid === 3" index="/admin/usermanage">
         <el-icon>
           <Operation />
         </el-icon>
         用户管理
-      </el-menu-item>
-      <el-menu-item v-if="$canAny('user.role.assign','user.permission.grant')" index="/admin/permissions">
-        <el-icon>
-          <Lock />
-        </el-icon>
-        权限管理
       </el-menu-item>
       <el-menu-item index="/paste">
         <el-icon>
@@ -95,6 +89,7 @@ export default {
     return {
       uid: 0,
       name: "/",
+      gid: 1,
       money: 50,
       curPath: '',
       options: [{
@@ -114,7 +109,7 @@ export default {
       axios.post('/api/user/logout').then(() => {
         this.$store.state.uid = 0;
         this.$store.state.name = '/';
-        this.$store.commit('setPermissions', []);
+        this.$store.state.gid = 0;
         this.$router.push('/');
       });
     }
