@@ -2,7 +2,8 @@ require('express-zip');
 const fs = require('fs');
 const path = require('path');
 const db = require('../db');
-const { handler, fail, ok, requireRole, paginate, buildWhere } = require('../db/util');
+const { handler, fail, ok, paginate, buildWhere } = require('../db/util');
+const { requirePermission } = require('../auth/middleware');
 const { getFile, setFile } = require('../file');
 const { briefFormat, Format, bFormat, recordEvent, kbFormat } = require('../static');
 const { judgeRes, ptype } = require('../db/format');
@@ -11,9 +12,11 @@ const { judgeRes, ptype } = require('../db/format');
 const problemAuth = async (req, pid) => {
   const row = await db.one('SELECT isPublic,publisher FROM problem WHERE pid=?', [pid]);
   if (!row) return { view: false, manage: false };
+  const scope = { type: 'problem', id: Number(pid) };
+  const isOwner = row.publisher === req.session.uid;
   return {
-    view: !!row.isPublic || req.session.gid > 1,
-    manage: row.publisher === req.session.uid || req.session.uid === 1,
+    view: !!row.isPublic || isOwner || req.can('problem.view.private'),
+    manage: isOwner || req.can('problem.edit.any', scope) || req.can('problem.case.manage', scope),
   };
 };
 exports.problemAuth = problemAuth;
@@ -37,7 +40,7 @@ exports.updateProblemStat = updateProblemStat;
 
 // ---- handlers ----
 exports.createProblem = [
-  requireRole(2),
+  requirePermission('problem.create'),
   handler(async (req, res) => {
     const r = await db.query(
       'INSERT INTO problem(title,description,publisher,time,tags) VALUES (?,?,?,?,?)',
@@ -49,7 +52,6 @@ exports.createProblem = [
 ];
 
 exports.updateProblem = [
-  requireRole(2),
   handler(async (req, res) => {
     const { pid } = req.body;
     const info = req.body.info || {};
@@ -57,7 +59,8 @@ exports.updateProblem = [
     if (!info.title || !info.description || !info.timeLimit || !info.memoryLimit || !pid)
       return fail(res, '请确认信息完善');
 
-    if (req.session.gid < 3) {
+    // Holders of global problem.edit.any (e.g. moderator+) bypass per-problem limits.
+    if (!req.can('problem.edit.any')) {
       if (info.timeLimit > 10000 || info.timeLimit < 0) return fail(res, '时间限制最大为10000ms');
       if (info.memoryLimit > 512 || info.memoryLimit < 0) return fail(res, '空间限制最大为512MB');
       if (info.tags?.length > 5) return fail(res, '题目标签最多设置5个');
@@ -86,7 +89,7 @@ exports.getProblemList = handler(async (req, res) => {
   const filter = req.body.filter || {};
   if (filter.level === 6) filter.level = null;
 
-  const visibility = req.session.gid > 1 ? '1=1' : 'isPublic=1';
+  const visibility = req.can('problem.view.private') ? '1=1' : 'isPublic=1';
   const tagsParam = filter.tags?.length ? JSON.stringify(filter.tags) : null;
 
   // 注意：原实现里 list 用 (title LIKE ? OR description LIKE ?)，而 count 只看 title — 这里统一用同一份条件以避免漂移
@@ -115,7 +118,7 @@ exports.getProblemList = handler(async (req, res) => {
 
 exports.getProblemInfo = handler(async (req, res) => {
   const { pid } = req.body;
-  const visibility = req.session.gid > 1 ? '' : ' AND isPublic=1';
+  const visibility = req.can('problem.view.private') ? '' : ' AND isPublic=1';
   const row = await db.one(
     'SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.description,p.time,p.timeLimit,p.memoryLimit,p.isPublic,p.type,p.tags,p.level,p.lang,p.publisher as publisherUid,u.`name` as publisher ' +
       'FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=?' + visibility,
@@ -129,9 +132,9 @@ exports.getProblemInfo = handler(async (req, res) => {
 });
 
 exports.getProblemCasePreview = [
-  requireRole(2),
   handler(async (req, res) => {
     const { pid } = req.body;
+    if (!(await problemAuth(req, pid)).manage) return res.status(403).end('403 Forbidden');
     const cfgRaw = await getFile(`./data/${pid}/config.json`);
     const data = cfgRaw ? JSON.parse(cfgRaw) : null;
 
@@ -178,7 +181,6 @@ exports.getProblemCasePreview = [
 ];
 
 exports.clearCase = [
-  requireRole(2),
   handler(async (req, res) => {
     const { pid } = req.body;
     if (!(await problemAuth(req, pid)).manage) return res.status(403).end('403 Forbidden');
@@ -190,7 +192,6 @@ exports.clearCase = [
 ];
 
 exports.updateSubtaskId = [
-  requireRole(2),
   handler(async (req, res) => {
     const { pid, cases, subtask } = req.body;
     if (!(await problemAuth(req, pid)).manage) return res.status(403).end('403 Forbidden');
@@ -248,7 +249,6 @@ exports.updateSubtaskId = [
 ];
 
 exports.getCase = [
-  requireRole(2),
   handler(async (req, res) => {
     const { pid, caseInfo } = req.body;
     if (!(await problemAuth(req, pid)).manage) return res.status(403).end('403 Forbidden');
@@ -265,7 +265,6 @@ exports.getCase = [
 ];
 
 exports.updateCase = [
-  requireRole(2),
   handler(async (req, res) => {
     const { pid, caseInfo } = req.body;
     if (!(await problemAuth(req, pid)).manage) return res.status(403).end('403 Forbidden');
@@ -287,13 +286,15 @@ exports.updateCase = [
 ];
 
 exports.downloadCase = [
-  requireRole(2),
   handler(async (req, res) => {
     const { pid, index } = req.query;
     const problem = await db.one('SELECT publisher FROM problem WHERE pid=?', [pid]);
     if (!problem || !fs.existsSync(`./data/${pid}/config.json`)) return fail(res, 'Not Found Error');
-    if (req.session.uid !== 1 && problem.publisher !== req.session.uid)
-      return fail(res, '你只能下载自己题目的测试点');
+    const scope = { type: 'problem', id: Number(pid) };
+    const allowed = problem.publisher === req.session.uid
+      || req.can('problem.case.manage', scope)
+      || req.can('problem.edit.any', scope);
+    if (!allowed) return fail(res, '你只能下载自己题目的测试点');
 
     const { cases } = JSON.parse(await getFile(`./data/${pid}/config.json`));
     const files = [];
@@ -361,7 +362,7 @@ exports.getProblemFastestSubmission = handler(async (req, res) => {
 exports.bindPaste2Problem = handler(async (req, res) => {
   const { pid, mark } = req.body;
   if (!pid || !mark) return fail(res, 'expect pid && mark');
-  if (req.session.gid < 2) return fail(res, '权限不足');
+  if (!(await problemAuth(req, pid)).manage) return fail(res, '权限不足');
 
   const exists = await db.exists('SELECT 1 FROM pastes WHERE mark=?', [mark]);
   if (!exists) return fail(res, `未找到mark为${mark}的剪贴板`);
@@ -386,7 +387,9 @@ exports.getProblemSol = handler(async (req, res) => {
 
 exports.unbindSol = handler(async (req, res) => {
   const { id } = req.body;
-  if (req.session.gid < 2) return fail(res, '权限不足');
+  const sol = await db.one('SELECT pid FROM problemSolution WHERE id=?', [id]);
+  if (!sol) return fail(res, '记录不存在');
+  if (!(await problemAuth(req, sol.pid)).manage) return fail(res, '权限不足');
   await db.query('UPDATE problemSolution SET `show`=0 WHERE id=?', [id]);
   return ok(res);
 });

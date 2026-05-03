@@ -131,7 +131,7 @@ export default {
       style['textAlign'] = 'center';
       if (columnIndex === 2) {
         style['font-weight'] = 500;
-        style['color'] = getNameColor(row.gid, row.clickCnt);
+        style['color'] = getNameColor(row.isStaff, row.clickCnt);
         if (style['color'] === '#8e44ad')
           style['font-weight'] = 900;
       }

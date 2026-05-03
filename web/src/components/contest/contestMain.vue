@@ -68,7 +68,7 @@
               </template>
               <contestRank ref="rank" />
             </el-tab-pane>
-            <el-tab-pane name="manageC" v-if="this.gid >= 2">
+            <el-tab-pane name="manageC" v-if="canManage">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <SetUp />
@@ -137,7 +137,7 @@
                 </el-col>
               </el-row>
             </el-tab-pane>
-            <el-tab-pane name="manageP" v-if="this.gid >= 2">
+            <el-tab-pane name="manageP" v-if="canManage">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <SetUp />
@@ -145,6 +145,15 @@
                 题目管理
               </template>
               <problemManage ref="manageP" />
+            </el-tab-pane>
+            <el-tab-pane name="collaborators" v-if="canManage">
+              <template #label>
+                <el-icon style="margin: 4px;">
+                  <Lock />
+                </el-icon>
+                协作者
+              </template>
+              <CollaboratorPanel resource-type="contest" :resource-id="parseInt(cid)" :visible="canManage" />
             </el-tab-pane>
           </el-tabs>
         </el-card>
@@ -159,6 +168,7 @@ import contestSubmission from './components/contestSubmission.vue'
 import contestRank from './components/contestRank.vue'
 import contestProblemList from './components/contestProblemList.vue'
 import problemManage from './components/problemManage.vue'
+import CollaboratorPanel from '@/components/permission/CollaboratorPanel.vue'
 
 export default {
   name: "contestMain",
@@ -166,12 +176,23 @@ export default {
     contestSubmission,
     contestRank,
     contestProblemList,
-    problemManage
+    problemManage,
+    CollaboratorPanel,
+  },
+  computed: {
+    // Visible to the host or anyone with global contest.edit.any.
+    // The server's contestInfo.auth.manage is authoritative; mirror it here
+    // when present, falling back to a client-side guess for first paint.
+    canManage() {
+      if (this.contestInfo && this.contestInfo.auth && this.contestInfo.auth.manage !== undefined)
+        return this.contestInfo.auth.manage;
+      if (this.contestInfo && this.contestInfo.host === this.$store.state.uid) return true;
+      return this.$can('contest.edit.any');
+    },
   },
   data() {
     return {
       cid: 0,
-      gid: 1,
       contestInfo: {},
       tmpInfo: {},
       activeName: '',
@@ -302,7 +323,6 @@ export default {
   mounted() {
     this.cid = this.$route.params.cid;
     this.activeName = this.$route.query.tab || 'main';
-    this.gid = this.$store.state.gid;
     this.all();
   },
   beforeUnmount() {

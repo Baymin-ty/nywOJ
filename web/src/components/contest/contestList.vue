@@ -7,7 +7,7 @@
           <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
             layout="total, prev, pager, next" :total="total"></el-pagination>
           <el-button-group>
-            <el-popconfirm v-if="this.gid >= 2" confirm-button-text="确认" cancel-button-text="取消" title="确认添加比赛?"
+            <el-popconfirm v-if="$can('contest.create')" confirm-button-text="确认" cancel-button-text="取消" title="确认添加比赛?"
               @confirm="addContest">
               <template #reference>
                 <el-button type="success">
@@ -91,7 +91,6 @@ export default {
     return {
       contestList: [],
       total: 0,
-      gid: 1,
       finished: false,
       currentPage: 1,
       tagType: {
@@ -135,7 +134,6 @@ export default {
     },
   },
   async mounted() {
-    this.gid = this.$store.state.gid;
     this.all();
   }
 }

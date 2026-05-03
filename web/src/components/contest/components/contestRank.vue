@@ -96,7 +96,6 @@ export default {
       subList: [],
       isProblem: false,
       dialogVisible: false,
-      gid: 1,
       cid: 0,
       finished: false
     };
@@ -186,7 +185,6 @@ export default {
     }
   },
   mounted() {
-    this.gid = this.$store.state.gid;
     this.cid = this.$route.params.cid;
     this.all();
   },
