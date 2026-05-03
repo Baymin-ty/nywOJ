@@ -175,7 +175,7 @@ exports.sendEmailVerifyCode = async (req, res) => {
   // const retoken = req.body.retoken;
   // let recapt = await axios.get("https://www.recaptcha.net/recaptcha/api/siteverify", {
   //   params: {
-  //     secret: "6LcEKJIkAAAAACAlGysXJJowd7Vrcbc08Ghtd58C",
+  //     secret: "xxxxx",
   //     response: retoken
   //   }
   // });
