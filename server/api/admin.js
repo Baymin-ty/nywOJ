@@ -1,137 +1,104 @@
-const SqlString = require('mysql/lib/protocol/SqlString');
-const db = require('../db/index');
+const db = require('../db');
+const { handler, fail, ok, paginate, buildWhere } = require('../db/util');
+const { requirePermission } = require('../auth/middleware');
 
-exports.getUserInfoList = (req, res) => {
-  if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
-  let pageId = req.body.pageId, filter = req.body.filter, pageSize = 20;
-  if (!pageId) pageId = 1;
-  let sql = "SELECT uid,name,email,gid,inUse FROM userInfo WHERE uid > 0 ";
+exports.getUserInfoList = [
+  requirePermission('user.list'),
+  handler(async (req, res) => {
+    const { offset, limit } = paginate(req);
+    const filter = req.body.filter || {};
 
-  pageId = SqlString.escape(pageId);
+    const cond = [
+      ['uid=?', filter.uid],
+      ['name LIKE ?', filter.name ? `%${filter.name}%` : null],
+      ['email LIKE ?', filter.email ? `%${filter.email}%` : null],
+      // 前端 inUse=1 表示封禁(=0)，inUse=2 表示正常(=1)
+      ['inUse=?', filter.inUse ? 2 - filter.inUse : null],
+    ];
 
-  if (filter.uid) {
-    filter.uid = SqlString.escape(filter.uid);
-    sql += `AND uid=${filter.uid} `;
-  }
-  if (filter.name) {
-    filter.name = SqlString.escape('%' + filter.name + '%');
-    sql += `AND name like ${filter.name} `;
-  }
-  if (filter.email) {
-    filter.email = SqlString.escape('%' + filter.email + '%');
-    sql += `AND email like ${filter.email} `;
-  }
-  if (filter.gid) {
-    filter.gid = SqlString.escape(filter.gid);
-    sql += `AND gid=${filter.gid} `;
-  }
-  if (filter.inUse) {
-    filter.inUse = SqlString.escape(filter.inUse);
-    sql += `AND inUse=${2 - filter.inUse} `; // fit for front-end
-  }
-  sql += " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
-
-  db.query(sql, (err, data) => {
-    if (err) return res.status(202).send({ message: err });
-    let list = data, csql = "SELECT COUNT(*) as total FROM userInfo WHERE uid > 0 ";
-    if (filter.uid)
-      csql += `AND uid=${filter.uid} `;
-    if (filter.name)
-      csql += `AND name like ${filter.name} `;
-    if (filter.email)
-      csql += `AND email like ${filter.email} `;
-    if (filter.gid)
-      csql += `AND gid=${filter.gid} `;
-    if (filter.inUse)
-      csql += `AND inUse=${2 - filter.inUse} `; // fit for front-end
-    db.query(csql, (err, data) => {
-      if (err) return res.status(202).send({ message: err });
-      return res.status(200).send({
-        total: data[0].total,
-        userList: list
-      });
-    });
-  });
-}
-
-exports.setBlock = (req, res) => {
-  if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
-  const uid = req.body.uid, status = req.body.status;
-  if (uid === null || status === null) {
-    return res.status(202).send({
-      message: '请确认信息完善'
-    });
-  }
-  let sql = "UPDATE userInfo SET inUse=? WHERE uid=?";
-  db.query(sql, [status, uid], (err, data) => {
-    if (err) return res.status(202).send({ message: err });
-    if (data.affectedRows > 0) {
-      return res.status(200).send({
-        message: 'sueecss'
-      });
-    } else {
-      return res.status(202).send({
-        message: 'failed'
-      });
+    // Filter by role: filter.roleKey is the role's `key` (e.g. 'moderator').
+    let join = '';
+    let extraParams = [];
+    if (filter.roleKey) {
+      join = ' INNER JOIN user_roles ur ON ur.uid = u.uid INNER JOIN roles r ON r.id = ur.role_id AND r.`key`=?';
+      extraParams.push(filter.roleKey);
     }
-  })
-}
+    const { where, params } = buildWhere(cond, 'u.uid > 0');
 
-exports.updateUserInfo = (req, res) => {
-  if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
-  const newInfo = req.body.info;
-  const uid = newInfo.uid, name = newInfo.name, email = newInfo.email, gid = newInfo.gid;
-  if (!uid || !name || !gid) {
-    return res.status(202).send({
-      message: '请确认信息完善'
-    });
-  }
-  db.query("UPDATE userInfo SET name=?,email=?,gid=? WHERE uid=?", [name, email, gid, uid], (err, data) => {
-    if (err) return res.status(202).send({ message: err });
-    if (data.affectedRows > 0) {
-      return res.status(200).send({
-        message: 'sueecss'
-      });
-    } else {
-      return res.status(202).send({
-        message: 'failed'
-      });
+    const list = await db.query(
+      `SELECT u.uid,u.name,u.email,u.inUse FROM userInfo u${join}${where} LIMIT ?,?`,
+      [...extraParams, ...params, offset, limit]
+    );
+    const cnt = await db.one(
+      `SELECT COUNT(*) as total FROM userInfo u${join}${where}`,
+      [...extraParams, ...params]
+    );
+    // Attach roles to each row so the admin table can render badges.
+    if (list.length) {
+      const uids = list.map((r) => r.uid);
+      const links = await db.query(
+        'SELECT ur.uid, r.`key` AS roleKey FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.uid IN (?)',
+        [uids]
+      );
+      const byUid = new Map();
+      for (const l of links) {
+        if (!byUid.has(l.uid)) byUid.set(l.uid, []);
+        byUid.get(l.uid).push(l.roleKey);
+      }
+      for (const r of list) r.roles = byUid.get(r.uid) || [];
     }
-  })
-}
+    return ok(res, { total: cnt.total, userList: list });
+  }),
+];
 
-exports.addAnnouncement = (req, res) => {
-  if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
-  db.query('INSERT INTO announcement(title,description,weight,time) VALUES (?,?,?,?)', ["请输入公告标题", "请输入公告描述", 10, new Date()], (err, data) => {
-    if (err) return res.status(202).send({
-      message: err
-    });
-    if (data.affectedRows > 0) {
-      return res.status(200).send({
-        aid: data.insertId
-      })
-    } else {
-      return res.status(202).send({
-        message: 'error',
-      })
-    }
-  });
-}
+exports.setBlock = [
+  requirePermission('user.ban'),
+  handler(async (req, res) => {
+    const { uid, status } = req.body;
+    if (uid == null || status == null) return fail(res, '请确认信息完善');
+    const r = await db.query('UPDATE userInfo SET inUse=? WHERE uid=?', [status, uid]);
+    if (!r.affectedRows) return fail(res, 'failed');
+    return ok(res);
+  }),
+];
 
-exports.updateAnnouncement = (req, res) => {
-  if (req.session.gid < 3) return res.status(403).end('403 Forbidden');
-  const info = req.body.info;
-  const aid = info.aid, title = info.title, description = info.description, weight = info.weight;
-  db.query("UPDATE announcement SET title=?,description=?,weight=? WHERE aid=?", [title, description, weight, aid], (err, data) => {
-    if (err) return res.status(202).send({ message: err });
-    if (data.affectedRows > 0) {
-      return res.status(200).send({
-        message: 'sueecss'
-      });
-    } else {
-      return res.status(202).send({
-        message: 'failed'
-      });
-    }
-  })
-}
+exports.updateUserInfo = [
+  requirePermission('user.edit'),
+  handler(async (req, res) => {
+    const info = req.body.info || {};
+    const { uid, name, email } = info;
+    if (!uid || !name) return fail(res, '请确认信息完善');
+    const r = await db.query(
+      'UPDATE userInfo SET name=?,email=? WHERE uid=?',
+      [name, email, uid]
+    );
+    if (!r.affectedRows) return fail(res, 'failed');
+    return ok(res);
+  }),
+];
+
+exports.addAnnouncement = [
+  requirePermission('announcement.manage'),
+  handler(async (req, res) => {
+    const r = await db.query(
+      'INSERT INTO announcement(title,description,weight,time) VALUES (?,?,?,?)',
+      ['请输入公告标题', '请输入公告描述', 10, new Date()]
+    );
+    if (!r.affectedRows) return fail(res, 'error');
+    return ok(res, { aid: r.insertId });
+  }),
+];
+
+exports.updateAnnouncement = [
+  requirePermission('announcement.manage'),
+  handler(async (req, res) => {
+    const info = req.body.info || {};
+    const { aid, title, description, weight } = info;
+    const r = await db.query(
+      'UPDATE announcement SET title=?,description=?,weight=? WHERE aid=?',
+      [title, description, weight, aid]
+    );
+    if (!r.affectedRows) return fail(res, 'failed');
+    return ok(res);
+  }),
+];

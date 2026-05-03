@@ -33,6 +33,22 @@ router.post('/api/admin/updateUserInfo', admin.updateUserInfo);
 router.post('/api/admin/addAnnouncement', admin.addAnnouncement);
 router.post('/api/admin/updateAnnouncement', admin.updateAnnouncement);
 
+const auth = require('./api/auth');
+
+router.post('/api/auth/listPermissions', auth.listPermissions);
+router.post('/api/auth/listRoles', auth.listRoles);
+router.post('/api/auth/createRole', auth.createRole);
+router.post('/api/auth/updateRole', auth.updateRole);
+router.post('/api/auth/deleteRole', auth.deleteRole);
+router.post('/api/auth/listUserGrants', auth.listUserGrants);
+router.post('/api/auth/setUserRoles', auth.setUserRoles);
+router.post('/api/auth/grantUserPermission', auth.grantUserPermission);
+router.post('/api/auth/revokeUserPermission', auth.revokeUserPermission);
+router.post('/api/auth/listResourceGrants', auth.listResourceGrants);
+router.post('/api/auth/searchUsers', auth.searchUsers);
+router.post('/api/auth/searchProblems', auth.searchProblems);
+router.post('/api/auth/searchContests', auth.searchContests);
+
 const problem = require('./api/problem');
 
 router.post('/api/problem/createProblem', problem.createProblem);

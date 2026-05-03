@@ -1,589 +1,399 @@
 require('express-zip');
-const SqlString = require('mysql/lib/protocol/SqlString');
-const db = require('../db/index');
-const { getFile, setFile } = require('../file');
 const fs = require('fs');
 const path = require('path');
-const { briefFormat, Format, bFormat, recordEvent, queryPromise, kbFormat } = require('../static');
-const judgeRes = ['Waiting',
-  'Pending',
-  'Rejudging',
-  'Compilation Error',
-  'Accepted',
-  'Wrong Answer',
-  'Time Limit Exceeded',
-  'Memory Limit Exceeded',
-  'Runtime Error',
-  'Segmentation Fault',
-  'Output Limit Exceeded',
-  'Dangerous System Call',
-  'System Error',
-  'Canceled',
-  'Skipped'];
+const db = require('../db');
+const { handler, fail, ok, paginate, buildWhere } = require('../db/util');
+const { requirePermission } = require('../auth/middleware');
+const { getFile, setFile } = require('../file');
+const { briefFormat, Format, bFormat, recordEvent, kbFormat } = require('../static');
+const { judgeRes, ptype } = require('../db/format');
 
-exports.createProblem = (req, res) => {
-  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
-  db.query('INSERT INTO problem(title,description,publisher,time,tags) VALUES (?,?,?,?,?)', ["请输入题目标题", "请输入题目描述", req.session.uid, new Date(), JSON.stringify(['请修改题目标签'])], (err, data) => {
-    if (err) return res.status(202).send({
-      message: err
-    });
-    if (data.affectedRows > 0) {
-      return res.status(200).send({
-        pid: data.insertId
-      })
-    } else {
-      return res.status(202).send({
-        message: 'error',
-      })
-    }
-  });
-}
+// ---- shared helpers ----
+const problemAuth = async (req, pid) => {
+  const row = await db.one('SELECT isPublic,publisher FROM problem WHERE pid=?', [pid]);
+  if (!row) return { view: false, manage: false };
+  const scope = { type: 'problem', id: Number(pid) };
+  const isOwner = row.publisher === req.session.uid;
+  return {
+    view: !!row.isPublic || isOwner || req.can('problem.view.private'),
+    manage: isOwner || req.can('problem.edit.any', scope) || req.can('problem.case.manage', scope),
+  };
+};
+exports.problemAuth = problemAuth;
 
-exports.updateProblem = async (req, res) => {
-  const pid = req.body.pid, info = req.body.info;
-  if (req.session.gid < 2 || !((await problemAuth(req, pid)).manage))
-    return res.status(403).end('403 Forbidden');
-  if (!info.title || !info.description || !info.timeLimit || !info.memoryLimit || !pid) {
-    return res.status(202).send({
-      message: '请确认信息完善'
-    });
-  }
-  if (req.session.gid < 3) {
-    if (info.timeLimit > 10000 || info.timeLimit < 0) {
-      return res.status(202).send({
-        message: '时间限制最大为10000ms'
-      });
-    }
-    if (info.memoryLimit > 512 || info.memoryLimit < 0) {
-      return res.status(202).send({
-        message: '空间限制最大为512MB'
-      });
-    }
-    if (info.tags?.length > 5) {
-      return res.status(202).send({
-        message: '题目标签最多设置5个'
-      });
-    }
-    for (t of info.tags)
-      if (t.length > 10)
-        return res.status(202).send({
-          message: '单个标签长度不能大于10'
-        });
-  }
-  if (info.isPublic !== false && info.isPublic !== true) {
-    return res.status(202).send({
-      message: 'isPublic格式错误'
-    });
-  }
-  if (info.level < 0 || info.level > 5) {
-    return res.status(202).send({
-      message: '难度评级格式错误'
-    });
-  }
-  info.isPublic = info.isPublic ? 1 : 0;
-  if (info.type === '传统文本比较') info.type = 0;
-  else if (info.type === 'Special Judge') info.type = 1;
-  db.query('UPDATE problem SET title=?,description=?,timeLimit=?,memoryLimit=?,isPublic=?,type=?,tags=?,level=?,lang=? WHERE pid=?', [info.title, info.description, info.timeLimit, info.memoryLimit, info.isPublic, info.type, JSON.stringify(info.tags), info.level, info.lang, pid], (err, data) => {
-    if (err) return res.status(202).send({
-      message: err
-    });
-    if (data.affectedRows > 0) {
-      return res.status(200).send({
-        message: 'success',
-      })
-    } else {
-      return res.status(202).send({
-        message: 'error',
-      })
-    }
-  });
-}
+const getProblemLang = async (pid) => {
+  const row = await db.one('SELECT lang FROM problem WHERE pid=?', [pid]);
+  return row ? row.lang : null;
+};
+exports.getProblemLang = getProblemLang;
 
-exports.getProblemList = (req, res) => {
-  let pageId = req.body.pageId,
-    pageSize = 20, filter = req.body.filter;
-  if (!pageId) pageId = 1;
-  pageId = SqlString.escape(pageId);
+const updateProblemStat = async (pid) => {
+  const stat = await db.query(
+    'SELECT score,judgeResult,COUNT(*) as cnt FROM submission WHERE pid=? GROUP BY score,judgeResult ORDER BY score,judgeResult',
+    [pid]
+  );
+  for (const i of stat) i.judgeResult = judgeRes[i.judgeResult];
+  await db.query('UPDATE problem SET stat=? WHERE pid=?', [JSON.stringify(stat), pid]);
+  return stat;
+};
+exports.updateProblemStat = updateProblemStat;
+
+// ---- handlers ----
+exports.createProblem = [
+  requirePermission('problem.create'),
+  handler(async (req, res) => {
+    const r = await db.query(
+      'INSERT INTO problem(title,description,publisher,time,tags) VALUES (?,?,?,?,?)',
+      ['请输入题目标题', '请输入题目描述', req.session.uid, new Date(), JSON.stringify(['请修改题目标签'])]
+    );
+    if (!r.affectedRows) return fail(res, 'error');
+    return ok(res, { pid: r.insertId });
+  }),
+];
+
+exports.updateProblem = [
+  handler(async (req, res) => {
+    const { pid } = req.body;
+    const info = req.body.info || {};
+    if (!(await problemAuth(req, pid)).manage) return res.status(403).end('403 Forbidden');
+    if (!info.title || !info.description || !info.timeLimit || !info.memoryLimit || !pid)
+      return fail(res, '请确认信息完善');
+
+    // Holders of global problem.edit.any (e.g. moderator+) bypass per-problem limits.
+    if (!req.can('problem.edit.any')) {
+      if (info.timeLimit > 10000 || info.timeLimit < 0) return fail(res, '时间限制最大为10000ms');
+      if (info.memoryLimit > 512 || info.memoryLimit < 0) return fail(res, '空间限制最大为512MB');
+      if (info.tags?.length > 5) return fail(res, '题目标签最多设置5个');
+      for (const t of info.tags) {
+        if (t.length > 10) return fail(res, '单个标签长度不能大于10');
+      }
+    }
+    if (info.isPublic !== false && info.isPublic !== true) return fail(res, 'isPublic格式错误');
+    if (info.level < 0 || info.level > 5) return fail(res, '难度评级格式错误');
+
+    info.isPublic = info.isPublic ? 1 : 0;
+    if (info.type === '传统文本比较') info.type = 0;
+    else if (info.type === 'Special Judge') info.type = 1;
+
+    const r = await db.query(
+      'UPDATE problem SET title=?,description=?,timeLimit=?,memoryLimit=?,isPublic=?,type=?,tags=?,level=?,lang=? WHERE pid=?',
+      [info.title, info.description, info.timeLimit, info.memoryLimit, info.isPublic, info.type, JSON.stringify(info.tags), info.level, info.lang, pid]
+    );
+    if (!r.affectedRows) return fail(res, 'error');
+    return ok(res);
+  }),
+];
+
+exports.getProblemList = handler(async (req, res) => {
+  const { offset, limit } = paginate(req);
+  const filter = req.body.filter || {};
   if (filter.level === 6) filter.level = null;
 
-  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.level,p.tags,p.publisher as publisherUid,u.`name` as publisher,p.isPublic FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher " +
-    (req.session.gid > 1 ? "WHERE 1=1 " : "WHERE isPublic=1 ");
-  if (filter.publisherUid) {
-    filter.publisherUid = SqlString.escape(filter.publisherUid);
-    sql += `AND publisher=${filter.publisherUid} `;
-  }
-  if (filter.level !== null) {
-    filter.level = SqlString.escape(filter.level);
-    sql += `AND level=${filter.level} `;
-  }
-  if (filter.name) {
-    filter.name = SqlString.escape('%' + filter.name + '%');
-    sql += `AND title like ${filter.name} OR description like ${filter.name}`;
-  }
-  if (filter.tags?.length) {
-    sql += `AND JSON_CONTAINS(tags, '${JSON.stringify(filter.tags)}') `;
-  }
-  sql += " LIMIT " + (pageId - 1) * pageSize + "," + pageSize;
+  const visibility = req.can('problem.view.private') ? '1=1' : 'isPublic=1';
+  const tagsParam = filter.tags?.length ? JSON.stringify(filter.tags) : null;
 
-  db.query(sql, (err, data) => {
-    if (err) return res.status(202).send({ message: err });
-    let list = data;
-    for (let i = 0; i < list.length; i++) {
-      list[i].time = briefFormat(list[i].time);
-      list[i].tags = JSON.parse(list[i].tags);
+  // 注意：原实现里 list 用 (title LIKE ? OR description LIKE ?)，而 count 只看 title — 这里统一用同一份条件以避免漂移
+  const cond = [
+    ['publisher=?', filter.publisherUid],
+    ['level=?', filter.level],
+    filter.name ? ['(title LIKE ? OR description LIKE ?)', `%${filter.name}%`, `%${filter.name}%`] : null,
+    ['JSON_CONTAINS(tags, ?)', tagsParam],
+  ];
+  const { where, params } = buildWhere(cond, visibility);
+
+  const list = await db.query(
+    'SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.level,p.tags,p.publisher as publisherUid,u.name as publisher,p.isPublic ' +
+      'FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher' +
+      `${where} LIMIT ?,?`,
+    [...params, offset, limit]
+  );
+  for (const r of list) {
+    r.time = briefFormat(r.time);
+    r.tags = JSON.parse(r.tags);
+  }
+
+  const cnt = await db.one(`SELECT COUNT(*) as total FROM problem${where}`, params);
+  return ok(res, { total: cnt.total, data: list });
+});
+
+exports.getProblemInfo = handler(async (req, res) => {
+  const { pid } = req.body;
+  const visibility = req.can('problem.view.private') ? '' : ' AND isPublic=1';
+  const row = await db.one(
+    'SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.description,p.time,p.timeLimit,p.memoryLimit,p.isPublic,p.type,p.tags,p.level,p.lang,p.publisher as publisherUid,u.`name` as publisher ' +
+      'FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=?' + visibility,
+    [pid]
+  );
+  if (!row) return fail(res, '无权限查看或未找到此题目');
+  row.type = ptype[row.type];
+  row.tags = JSON.parse(row.tags);
+  row.time = briefFormat(row.time);
+  return ok(res, { data: row });
+});
+
+exports.getProblemCasePreview = [
+  handler(async (req, res) => {
+    const { pid } = req.body;
+    if (!(await problemAuth(req, pid)).manage) return res.status(403).end('403 Forbidden');
+    const cfgRaw = await getFile(`./data/${pid}/config.json`);
+    const data = cfgRaw ? JSON.parse(cfgRaw) : null;
+
+    let spj = '';
+    if (fs.existsSync(`./data/${pid}/checker.cpp`)) {
+      spj = await getFile(`./data/${pid}/checker.cpp`);
     }
+    if (!data) return res.status(202).send({ data: [], spj, subtask: [] });
 
-    let totsql = "SELECT COUNT(*) as total FROM problem " + (req.session.gid > 1 ? "WHERE 1=1 " : "WHERE isPublic=1 ");
-    if (filter.publisherUid)
-      totsql += `AND publisher=${filter.publisherUid} `;
-    if (filter.level)
-      totsql += `AND level=${filter.level} `;
-    if (filter.name)
-      totsql += `AND title like ${filter.name} `;
-    if (filter.tags?.length)
-      totsql += `AND JSON_CONTAINS(tags, '${JSON.stringify(filter.tags)}') `;
-    db.query(totsql, (err, data) => {
-      if (err) return res.status(202).send({ message: err });
-      return res.status(200).send({
-        total: data[0].total,
-        data: list
-      });
-    });
-  });
-}
-
-const ptype = ['传统文本比较', 'Special Judge'];
-
-const problemAuth = async (req, pid) => {
-  const data = await queryPromise('SELECT isPublic,publisher FROM problem WHERE pid=?', [pid]);
-  if (!data.length)
-    return {
-      view: false,
-      manage: false
-    };
-  return {
-    view: (!!data[0].isPublic || req.session.gid > 1),
-    manage: (data[0].publisher === req.session.uid) || (req.session.uid === 1)
-  };
-}
-module.exports.problemAuth = problemAuth;
-
-const getProblemLang = (pid) => {
-  return new Promise((resolve, reject) => {
-    db.query('SELECT lang FROM problem WHERE pid=?', [pid], (err, data) => {
-      if (err) {
-        reject(err);
+    const cases = data.cases;
+    let previewList = [];
+    if (fs.existsSync(`./data/${pid}/preview.json`)) {
+      previewList = JSON.parse(await getFile(`./data/${pid}/preview.json`));
+    } else {
+      for (const i in cases) {
+        const inputFile = await getFile(`./data/${pid}/${cases[i].input}`);
+        const inputStat = fs.statSync(`./data/${pid}/${cases[i].input}`);
+        const outputFile = await getFile(`./data/${pid}/${cases[i].output}`);
+        const outputStat = fs.statSync(`./data/${pid}/${cases[i].output}`);
+        previewList[i] = {
+          index: cases[i].index,
+          inName: cases[i].input,
+          outName: cases[i].output,
+          subtaskId: cases[i].subtaskId,
+          input: {
+            content: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
+            size: bFormat(inputStat.size),
+            create: Format(inputStat.birthtime),
+            modified: Format(inputStat.mtime),
+          },
+          output: {
+            content: outputFile.substring(0, 255) + (outputFile.length > 255 ? '......\n' : ''),
+            size: bFormat(outputStat.size),
+            create: Format(outputStat.birthtime),
+            modified: Format(outputStat.mtime),
+          },
+          edit: 0,
+        };
       }
-      resolve(data[0].lang);
-    })
-  }).catch(err => {
-    console.log(err);
-  });
-}
-module.exports.getProblemLang = getProblemLang;
-
-exports.getProblemInfo = (req, res) => {
-  const pid = req.body.pid;
-  let sql = "SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.description,p.time,p.timeLimit,p.memoryLimit,p.isPublic,p.type,p.tags,p.level,p.lang,p.publisher as publisherUid,u.`name` as publisher FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=? "
-    + (req.session.gid > 1 ? "" : "AND isPublic=1");
-  db.query(sql, [pid], (err, data) => {
-    if (err) return res.status(202).send({ message: err });
-    if (!data.length) return res.status(202).send({
-      message: '无权限查看或未找到此题目'
-    });
-    else {
-      data[0].type = ptype[data[0].type];
-      data[0].tags = JSON.parse(data[0].tags);
-      data[0].time = briefFormat(data[0].time);
-      return res.status(200).send({
-        data: data[0]
-      });
+      await setFile(`./data/${pid}/preview.json`, JSON.stringify(previewList));
     }
-  });
-}
+    return ok(res, { data: previewList, spj, subtask: data.subtask });
+  }),
+];
 
-exports.getProblemCasePreview = async (req, res) => {
-  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
-  const pid = req.body.pid;
-  const data = JSON.parse(await (getFile(`./data/${pid}/config.json`)));
+exports.clearCase = [
+  handler(async (req, res) => {
+    const { pid } = req.body;
+    if (!(await problemAuth(req, pid)).manage) return res.status(403).end('403 Forbidden');
+    const dir = path.join(__dirname, `../data/${pid}`);
+    recordEvent(req, 'problem.delAllCases', { pid });
+    if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true });
+    return ok(res);
+  }),
+];
 
-  let spj = '';
+exports.updateSubtaskId = [
+  handler(async (req, res) => {
+    const { pid, cases, subtask } = req.body;
+    if (!(await problemAuth(req, pid)).manage) return res.status(403).end('403 Forbidden');
 
-  if (fs.existsSync(`./data/${pid}/checker.cpp`)) {
-    spj = await getFile(`./data/${pid}/checker.cpp`);
-  }
-  if (!data) return res.status(202).send({ data: [], spj: spj, subtask: [] });
-
-  const cases = data.cases;
-
-  let previewList = [];
-  if (fs.existsSync(`./data/${pid}/preview.json`)) {
-    previewList = JSON.parse(await getFile(`./data/${pid}/preview.json`));
-  }
-  else {
-    for (let i in cases) {
-      const inputFile = (await getFile(`./data/${pid}/${cases[i].input}`)),
-        inputStat = fs.statSync(`./data/${pid}/${cases[i].input}`);
-      const outputFile = (await getFile(`./data/${pid}/${cases[i].output}`)),
-        outputStat = fs.statSync(`./data/${pid}/${cases[i].output}`);
-
-      previewList[i] = {
-        index: cases[i].index,
-        inName: cases[i].input,
-        outName: cases[i].output,
-        subtaskId: cases[i].subtaskId,
-        input: {
-          content: inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
-          size: bFormat(inputStat.size),
-          create: Format(inputStat.birthtime),
-          modified: Format(inputStat.mtime)
-        },
-        output: {
-          content: outputFile.substring(0, 255) + (outputFile.length > 255 ? '......\n' : ''),
-          size: bFormat(outputStat.size),
-          create: Format(outputStat.birthtime),
-          modified: Format(outputStat.mtime)
-        },
-        edit: 0,
-      }
-    }
-    setFile(`./data/${pid}/preview.json`, JSON.stringify(previewList));
-  }
-
-  return res.status(200).send({
-    data: previewList,
-    spj: spj,
-    subtask: data.subtask
-  });
-}
-
-exports.clearCase = async (req, res) => {
-  const pid = req.body.pid;
-  if (req.session.gid < 2 || !((await problemAuth(req, pid)).manage))
-    return res.status(403).end('403 Forbidden');
-  const dir = path.join(__dirname, `../data/${req.body.pid}`);
-
-  recordEvent(req, 'problem.delAllCases', {
-    pid: pid
-  });
-
-  if (fs.existsSync(dir))
-    fs.rmSync(dir, {
-      recursive: true
-    });
-  return res.status(200).send({ message: 'success' });
-}
-
-exports.updateSubtaskId = async (req, res) => {
-  const pid = req.body.pid, cases = req.body.cases, subtask = req.body.subtask;
-  if (req.session.gid < 2 || !((await problemAuth(req, pid)).manage)) return res.status(403).end('403 Forbidden');
-  try {
-    let subtaskMap = new Map(), totalScore = 0;
+    const subtaskMap = new Map();
+    let totalScore = 0;
     for (let i = 0; i < subtask.length; i++) {
-      if (typeof subtask[i].index !== "number" || subtask[i].index !== i + 1)
-        return res.status(202).send({
-          message: `子任务 #${subtask[i].index} 编号非法或不连续`
-        });
-      if (!Number.isInteger(subtask[i].score) || subtask[i].score < 1 || subtask[i].score > 100)
-        return res.status(202).send({
-          message: `子任务 #${subtask[i].index} 分数应为[1,100]之间的整数`
-        });
-      if (subtask[i].option !== 0 && subtask[i].option !== 1)
-        return res.status(202).send({
-          message: `子任务 #${subtask[i].index} 记分方式非法`
-        });
-      if (subtaskMap.has(subtask[i].index))
-        return res.status(202).send({
-          message: `子任务 #${subtask[i].index} 编号重复`
-        });
-      if (subtask[i].index < 1 || subtask[i].index > 100)
-        return res.status(202).send({
-          message: `子任务 #${subtask[i].index} 应在[1,100]之间`
-        });
-      if (!subtask[i].option && subtask[i].skip)
-        return res.status(202).send({
-          message: `测试点等分的子任务 #${subtask[i].index} 无法设置遇TLE止测`
-        });
-      if (!subtask[i].option && subtask[i]?.dependencies?.length)
-        return res.status(202).send({
-          message: `测试点等分的子任务 #${subtask[i].index} 无法设置子任务依赖`
-        });
-      for (let id of subtask[i].dependencies) {
-        if (id >= subtask[i].index) {
-          return res.status(202).send({
-            message: `子任务 #${subtask[i].index} 依赖了 id>=${subtask[i].index} 的子任务`
-          });
-        }
+      const s = subtask[i];
+      if (typeof s.index !== 'number' || s.index !== i + 1)
+        return fail(res, `子任务 #${s.index} 编号非法或不连续`);
+      if (!Number.isInteger(s.score) || s.score < 1 || s.score > 100)
+        return fail(res, `子任务 #${s.index} 分数应为[1,100]之间的整数`);
+      if (s.option !== 0 && s.option !== 1) return fail(res, `子任务 #${s.index} 记分方式非法`);
+      if (subtaskMap.has(s.index)) return fail(res, `子任务 #${s.index} 编号重复`);
+      if (s.index < 1 || s.index > 100) return fail(res, `子任务 #${s.index} 应在[1,100]之间`);
+      if (!s.option && s.skip) return fail(res, `测试点等分的子任务 #${s.index} 无法设置遇TLE止测`);
+      if (!s.option && s.dependencies?.length)
+        return fail(res, `测试点等分的子任务 #${s.index} 无法设置子任务依赖`);
+      for (const id of s.dependencies) {
+        if (id >= s.index) return fail(res, `子任务 #${s.index} 依赖了 id>=${s.index} 的子任务`);
       }
-      subtaskMap.set(subtask[i].index, subtask[i].score);
-      totalScore += subtask[i].score;
+      subtaskMap.set(s.index, s.score);
+      totalScore += s.score;
     }
-    if (totalScore !== 100)
-      return res.status(202).send({
-        message: `子任务分数之和应等于100分`
+    if (totalScore !== 100) return fail(res, '子任务分数之和应等于100分');
+
+    const newCases = [];
+    const subtaskVis = new Map();
+    for (const i in cases) {
+      const c = cases[i];
+      if (!fs.existsSync(`./data/${pid}/${c.inName}`) || !fs.existsSync(`./data/${pid}/${c.outName}`))
+        return fail(res, `找不到数据点 ${c.inName}/${c.outName}`);
+      if (!subtaskMap.has(Number(c.subtaskId)))
+        return fail(res, `测试点 #${c.index} 所属子任务 #${Number(c.subtaskId)} 未定义`);
+      newCases.push({
+        index: Number(i) + 1,
+        input: c.inName,
+        output: c.outName,
+        subtaskId: Number(c.subtaskId),
       });
-    let newCases = [], subtaskVis = new Map();
-    for (i in cases) {
-      if (fs.existsSync(`./data/${pid}/${cases[i].inName}`) && fs.existsSync(`./data/${pid}/${cases[i].outName}`)) {
-        if (!subtaskMap.has(Number(cases[i].subtaskId))) {
-          return res.status(202).send({
-            message: `测试点 #${cases[i].index} 所属子任务 #${Number(cases[i].subtaskId)} 未定义`
-          });
-        }
-        newCases.push({
-          index: Number(i) + 1,
-          input: cases[i].inName,
-          output: cases[i].outName,
-          subtaskId: Number(cases[i].subtaskId)
-        });
-        subtaskVis.set(Number(cases[i].subtaskId), true);
-      } else {
-        return res.status(202).send({
-          message: `找不到数据点 ${cases[i].inName}/${cases[i].outName}`
-        });
-      }
+      subtaskVis.set(Number(c.subtaskId), true);
     }
-    for (let i in subtask) {
-      subtaskVis[subtask[i].index];
-      if (!subtaskVis.has(subtask[i].index))
-        return res.status(202).send({
-          message: `子任务 #${subtask[i].index} 中没有测试点`
-        });
+    for (const s of subtask) {
+      if (!subtaskVis.has(s.index)) return fail(res, `子任务 #${s.index} 中没有测试点`);
     }
-    newCases.sort((a, b) => {
-      return a.index - b.index;
-    });
-    await setFile(`./data/${pid}/config.json`, JSON.stringify({ cases: newCases, subtask: subtask }));
-    recordEvent(req, 'problem.updateConfig', {
-      pid: pid
-    });
+    newCases.sort((a, b) => a.index - b.index);
+
+    await setFile(`./data/${pid}/config.json`, JSON.stringify({ cases: newCases, subtask }));
+    recordEvent(req, 'problem.updateConfig', { pid });
     if (fs.existsSync(`./data/${pid}/preview.json`)) {
       fs.rmSync(`./data/${pid}/preview.json`);
     }
-    return res.status(200).send({ message: 'success' });
-  } catch (err) {
-    return res.status(202).send({ message: String(err) });
-  }
-}
+    return ok(res);
+  }),
+];
 
-exports.getCase = async (req, res) => {
-  const pid = req.body.pid, caseInfo = req.body.caseInfo;
-  if (req.session.gid < 2 || !((await problemAuth(req, pid)).manage))
-    return res.status(403).end('403 Forbidden');
-  if (!fs.existsSync(`./data/${pid}/${caseInfo.inName}`) ||
-    !fs.existsSync(`./data/${pid}/${caseInfo.outName}`)) {
-    return res.status(202).send({ message: "未找到测试点" });
-  }
-  const inputFile = (await getFile(`./data/${pid}/${caseInfo.inName}`)),
-    inputStat = fs.statSync(`./data/${pid}/${caseInfo.inName}`);
-  const outputFile = (await getFile(`./data/${pid}/${caseInfo.outName}`)),
-    outputStat = fs.statSync(`./data/${pid}/${caseInfo.outName}`);
-  if (inputStat.size + outputStat.size > 5 * 1024 * 1024)
-    return res.status(202).send({
-      message: `超过编辑大小限制 5MB`
-    });
-  return res.status(200).send({
-    input: inputFile,
-    output: outputFile
-  });
-}
+exports.getCase = [
+  handler(async (req, res) => {
+    const { pid, caseInfo } = req.body;
+    if (!(await problemAuth(req, pid)).manage) return res.status(403).end('403 Forbidden');
+    if (!fs.existsSync(`./data/${pid}/${caseInfo.inName}`) || !fs.existsSync(`./data/${pid}/${caseInfo.outName}`))
+      return fail(res, '未找到测试点');
 
-exports.updateCase = async (req, res) => {
-  const pid = req.body.pid, caseInfo = req.body.caseInfo;
-  if (req.session.gid < 2 || !((await problemAuth(req, pid)).manage))
-    return res.status(403).end('403 Forbidden');
-  if (!fs.existsSync(`./data/${pid}/${caseInfo.inName}`) ||
-    !fs.existsSync(`./data/${pid}/${caseInfo.outName}`)) {
-    return res.status(202).send({ message: "未找到测试点" });
-  }
-  try {
+    const inputFile = await getFile(`./data/${pid}/${caseInfo.inName}`);
+    const inputStat = fs.statSync(`./data/${pid}/${caseInfo.inName}`);
+    const outputFile = await getFile(`./data/${pid}/${caseInfo.outName}`);
+    const outputStat = fs.statSync(`./data/${pid}/${caseInfo.outName}`);
+    if (inputStat.size + outputStat.size > 5 * 1024 * 1024) return fail(res, '超过编辑大小限制 5MB');
+    return ok(res, { input: inputFile, output: outputFile });
+  }),
+];
+
+exports.updateCase = [
+  handler(async (req, res) => {
+    const { pid, caseInfo } = req.body;
+    if (!(await problemAuth(req, pid)).manage) return res.status(403).end('403 Forbidden');
+    if (!fs.existsSync(`./data/${pid}/${caseInfo.inName}`) || !fs.existsSync(`./data/${pid}/${caseInfo.outName}`))
+      return fail(res, '未找到测试点');
+
     await setFile(`./data/${pid}/${caseInfo.inName}`, caseInfo.input.content);
     await setFile(`./data/${pid}/${caseInfo.outName}`, caseInfo.output.content);
-    recordEvent(req, 'problem.updateCase', {
-      pid: pid,
-      index: caseInfo.index
-    });
+    recordEvent(req, 'problem.updateCase', { pid, index: caseInfo.index });
     if (fs.existsSync(`./data/${pid}/preview.json`)) {
       fs.rmSync(`./data/${pid}/preview.json`);
     }
-    return res.status(200).send({
+    return ok(res, {
       inputM: Format(fs.statSync(`./data/${pid}/${caseInfo.inName}`).mtime),
       outputM: Format(fs.statSync(`./data/${pid}/${caseInfo.outName}`).mtime),
-      message: 'ok'
+      message: 'ok',
     });
-  } catch (err) {
-    return res.status(202).send({ message: String(err) });
-  }
-}
+  }),
+];
 
-exports.downloadCase = (req, res) => {
-  if (req.session.gid < 2) return res.status(403).end('403 Forbidden');
-  const pid = req.query.pid, index = req.query.index;
-  db.query('SELECT * FROM problem WHERE pid=?', [pid], async (err, data) => {
-    if (err) return res.status(202).send({ message: err });
-    if (!data.length || !fs.existsSync(`./data/${pid}/config.json`))
-      return res.status(202).send({ message: 'Not Found Error' });
-    if (req.session.uid !== 1 && data[0].publisher !== req.session.uid) {
-      return res.status(202).send({ message: '你只能下载自己题目的测试点' });
-    }
-    const cases = JSON.parse(await (getFile(`./data/${pid}/config.json`))).cases;
-    let files = [];
-    for (let i in cases) {
-      if (typeof index === 'undefined' || cases[i].index === parseInt(index)) {
-        files.push({
-          path: `./data/${pid}/${cases[i].input}`,
-          name: cases[i].input
-        });
-        files.push({
-          path: `./data/${pid}/${cases[i].output}`,
-          name: cases[i].output
-        });
+exports.downloadCase = [
+  handler(async (req, res) => {
+    const { pid, index } = req.query;
+    const problem = await db.one('SELECT publisher FROM problem WHERE pid=?', [pid]);
+    if (!problem || !fs.existsSync(`./data/${pid}/config.json`)) return fail(res, 'Not Found Error');
+    const scope = { type: 'problem', id: Number(pid) };
+    const allowed = problem.publisher === req.session.uid
+      || req.can('problem.case.manage', scope)
+      || req.can('problem.edit.any', scope);
+    if (!allowed) return fail(res, '你只能下载自己题目的测试点');
+
+    const { cases } = JSON.parse(await getFile(`./data/${pid}/config.json`));
+    const files = [];
+    for (const i in cases) {
+      if (typeof index === 'undefined' || cases[i].index === parseInt(index, 10)) {
+        files.push({ path: `./data/${pid}/${cases[i].input}`, name: cases[i].input });
+        files.push({ path: `./data/${pid}/${cases[i].output}`, name: cases[i].output });
       }
     }
     if (typeof index === 'undefined') {
-      files.push({
-        path: `./data/${pid}/config.json`,
-        name: 'config.json'
-      });
-      if (fs.existsSync(`./data/${pid}/checker.cpp`)) {
-        files.push({
-          path: `./data/${pid}/checker.cpp`,
-          name: 'checker.cpp'
-        });
-      }
-      recordEvent(req, 'problem.downloadCase', {
-        pid: pid
-      });
+      files.push({ path: `./data/${pid}/config.json`, name: 'config.json' });
+      if (fs.existsSync(`./data/${pid}/checker.cpp`))
+        files.push({ path: `./data/${pid}/checker.cpp`, name: 'checker.cpp' });
+      recordEvent(req, 'problem.downloadCase', { pid });
     } else {
-      recordEvent(req, 'problem.downloadCase', {
-        pid: pid,
-        index: index
-      });
+      recordEvent(req, 'problem.downloadCase', { pid, index });
     }
     const fileName = (index ? `nywoj_Testdata_#${pid}_case#${index}` : `nywoj_Testdata_#${pid}`) + '.zip';
     return res.zip(files, fileName);
-  });
-}
+  }),
+];
 
-exports.getProblemTags = (req, res) => {
-  db.query(`SELECT DISTINCT JSON_UNQUOTE(value) AS tag
-          FROM problem,
-          JSON_TABLE(tags, '$[*]' COLUMNS (value JSON PATH '$')) AS jt
-          WHERE JSON_VALID(tags);`, [], (err, data) => {
-    if (err) return res.status(202).send({ message: err });
-    const tags = data.map(data => data.tag);
-    return res.status(200).send(tags);
-  })
-}
+exports.getProblemTags = handler(async (req, res) => {
+  const data = await db.query(
+    `SELECT DISTINCT JSON_UNQUOTE(value) AS tag
+       FROM problem,
+       JSON_TABLE(tags, '$[*]' COLUMNS (value JSON PATH '$')) AS jt
+      WHERE JSON_VALID(tags)`
+  );
+  return res.status(200).send(data.map((r) => r.tag));
+});
 
-exports.getProblemPublishers = async (req, res) => {
-  try {
-    const data = await queryPromise('SELECT DISTINCT(p.publisher),u.name FROM problem p INNER JOIN userInfo u WHERE p.publisher=u.uid');
-    return res.status(200).send(data);
-  } catch (err) {
-    return res.status(202).send({ message: err });
-  }
-}
+exports.getProblemPublishers = handler(async (req, res) => {
+  const data = await db.query(
+    'SELECT DISTINCT(p.publisher),u.name FROM problem p INNER JOIN userInfo u WHERE p.publisher=u.uid'
+  );
+  return res.status(200).send(data);
+});
 
-const updateProblemStat = async (pid) => {
-  let stat = await queryPromise('SELECT score,judgeResult,COUNT(*) as cnt FROM submission WHERE pid=? GROUP BY score,judgeResult ORDER BY score,judgeResult', [pid]);
-  for (let i of stat)
-    i.judgeResult = judgeRes[i.judgeResult];
-  await queryPromise('UPDATE problem SET stat=? WHERE pid=?', [JSON.stringify(stat), pid]);
-  return stat;
-}
-module.exports.updateProblemStat = updateProblemStat;
+exports.getProblemStat = handler(async (req, res) => {
+  const { pid } = req.body;
+  if (!pid) return fail(res, 'expect pid');
+  if (!(await problemAuth(req, pid)).view) return fail(res, '权限不足');
 
-exports.getProblemStat = async (req, res) => {
-  let pid = req.body.pid;
-  if (!pid) return res.status(202).send({ message: 'expect pid' });
-  if (!((await problemAuth(req, pid)).view)) {
-    return res.status(202).send({
-      message: '权限不足'
-    });
-  }
-  try {
-    let data = await queryPromise('SELECT stat FROM problem WHERE pid=?', [pid]);
-    data = data[0];
-    if (!data.stat)
-      return res.status(200).send({ stat: await updateProblemStat(pid) });
-    else
-      return res.status(200).send({ stat: JSON.parse(data.stat) });
-  } catch (err) {
-    return res.status(202).send({ message: err });
-  }
-}
+  const row = await db.one('SELECT stat FROM problem WHERE pid=?', [pid]);
+  if (!row || !row.stat) return ok(res, { stat: await updateProblemStat(pid) });
+  return ok(res, { stat: JSON.parse(row.stat) });
+});
 
-exports.getProblemFastestSubmission = async (req, res) => {
-  let pid = req.body.pid;
-  if (!pid) return res.status(202).send({ message: 'expect pid' });
-  if (!((await problemAuth(req, pid)).view)) {
-    return res.status(202).send({
-      message: '权限不足'
-    });
-  }
-  try {
-    let sql = "SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.cid,s.machine,s.lang,u.name,p.title,p.isPublic FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE p.pid=? AND score=100 ORDER BY s.time LIMIT 10"
-    let data = await queryPromise(sql, [pid]);
-    for (let i of data) i.memory = kbFormat(i.memory);
-    return res.status(200).send({ data: data });
-  } catch (err) {
-    return res.status(202).send({ message: err });
-  }
-}
+exports.getProblemFastestSubmission = handler(async (req, res) => {
+  const { pid } = req.body;
+  if (!pid) return fail(res, 'expect pid');
+  if (!(await problemAuth(req, pid)).view) return fail(res, '权限不足');
 
-exports.bindPaste2Problem = async (req, res) => {
-  let pid = req.body.pid, mark = req.body.mark;
-  if (!pid || !mark) return res.status(202).send({ message: 'expect pid && mark' });
-  if (req.session.gid < 2) {
-    return res.status(202).send({
-      message: '权限不足'
-    });
-  }
-  try {
-    let paste = await queryPromise('SELECT COUNT(*) as cnt FROM pastes WHERE mark=?', [mark]);
-    if (!paste[0].cnt)
-      return res.status(202).send({ message: `未找到mark为${mark}的剪贴板` });
-    await queryPromise('INSERT INTO problemSolution(pid,mark) VALUES (?,?)', [pid, mark]);
-    return res.status(200).send({ message: 'success' })
-  } catch (err) {
-    return res.status(202).send({ message: err });
-  }
-}
+  const data = await db.query(
+    'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.cid,s.machine,s.lang,u.name,p.title,p.isPublic ' +
+      'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ' +
+      'WHERE p.pid=? AND score=100 ORDER BY s.time LIMIT 10',
+    [pid]
+  );
+  for (const r of data) r.memory = kbFormat(r.memory);
+  return ok(res, { data });
+});
 
-exports.getProblemSol = async (req, res) => {
-  let pid = req.body.pid;
-  if (!pid) return res.status(202).send({ message: 'expect pid' });
-  if (!((await problemAuth(req, pid)).view)) {
-    return res.status(202).send({
-      message: '权限不足'
-    });
-  }
-  try {
-    let sql = "SELECT s.id,s.mark,p.uid,p.title,u.name,p.time,p.isPublic FROM problemSolution s INNER JOIN pastes p ON s.mark=p.mark INNER JOIN userInfo u ON p.uid=u.uid WHERE s.show=1 AND s.pid=? ORDER BY p.time"
-    let data = await queryPromise(sql, [pid]);
-    for (let i of data) i.time = briefFormat(i.time);
-    return res.status(200).send({ data: data });
-  } catch (err) {
-    return res.status(202).send({ message: err });
-  }
-}
+exports.bindPaste2Problem = handler(async (req, res) => {
+  const { pid, mark } = req.body;
+  if (!pid || !mark) return fail(res, 'expect pid && mark');
+  if (!(await problemAuth(req, pid)).manage) return fail(res, '权限不足');
 
-exports.unbindSol = async (req, res) => {
-  let id = req.body.id;
-  if (req.session.gid < 2) {
-    return res.status(202).send({
-      message: '权限不足'
-    });
-  }
-  try {
-    await queryPromise('UPDATE problemSolution SET `show`=0 WHERE id=?', [id]);
-    return res.status(200).send({ message: 'success' });
-  } catch (err) {
-    return res.status(202).send({ message: err });
-  }
-}
+  const exists = await db.exists('SELECT 1 FROM pastes WHERE mark=?', [mark]);
+  if (!exists) return fail(res, `未找到mark为${mark}的剪贴板`);
+  await db.query('INSERT INTO problemSolution(pid,mark) VALUES (?,?)', [pid, mark]);
+  return ok(res);
+});
 
-exports.getProblemAuth = async (req, res) => {
-  return res.status(200).send({ data: await problemAuth(req, req.body.pid) });
-}
+exports.getProblemSol = handler(async (req, res) => {
+  const { pid } = req.body;
+  if (!pid) return fail(res, 'expect pid');
+  if (!(await problemAuth(req, pid)).view) return fail(res, '权限不足');
+
+  const data = await db.query(
+    'SELECT s.id,s.mark,p.uid,p.title,u.name,p.time,p.isPublic ' +
+      'FROM problemSolution s INNER JOIN pastes p ON s.mark=p.mark INNER JOIN userInfo u ON p.uid=u.uid ' +
+      'WHERE s.show=1 AND s.pid=? ORDER BY p.time',
+    [pid]
+  );
+  for (const r of data) r.time = briefFormat(r.time);
+  return ok(res, { data });
+});
+
+exports.unbindSol = handler(async (req, res) => {
+  const { id } = req.body;
+  const sol = await db.one('SELECT pid FROM problemSolution WHERE id=?', [id]);
+  if (!sol) return fail(res, '记录不存在');
+  if (!(await problemAuth(req, sol.pid)).manage) return fail(res, '权限不足');
+  await db.query('UPDATE problemSolution SET `show`=0 WHERE id=?', [id]);
+  return ok(res);
+});
+
+exports.getProblemAuth = handler(async (req, res) => {
+  return ok(res, { data: await problemAuth(req, req.body.pid) });
+});

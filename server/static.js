@@ -72,6 +72,12 @@ exports.eventList = [
   'problem.updateCase',
   'problem.downloadCase',
   'problem.updateConfig',
+  'auth.setUserRoles',
+  'auth.grantUserPermission',
+  'auth.revokeUserPermission',
+  'auth.createRole',
+  'auth.updateRole',
+  'auth.deleteRole',
 ];
 
 exports.eventExp = [
@@ -89,6 +95,12 @@ exports.eventExp = [
   '修改测试数据',
   '下载测试数据',
   '修改题目配置',
+  '设置用户角色',
+  '授予用户权限',
+  '撤销用户权限',
+  '创建角色',
+  '更新角色',
+  '删除角色',
 ]
 
 
@@ -101,17 +113,7 @@ exports.recordEvent = (req, reason, detail, uid) => {
   db.query('INSERT INTO userAudit(uid,event,ip,iploc,time,browser,os,detail) values(?,?,?,?,?,?,?,?)', [
     req.session.uid || uid, eventId, req.session.ip, this.ip2loc(req.session.ip), new Date(),
     `${req.useragent.browser.name} ${req.useragent.browser.version}`, `${req.useragent.os.name} ${req.useragent.os.version}`, detail ? JSON.stringify(detail, null, 2) : null
-  ], (err, data) => {
-    if (err)
-      console.log(err);
-  });
+  ]).catch((err) => console.log(err));
 }
 
-exports.queryPromise = (sql, values) => {
-  return new Promise((resolve, reject) => {
-    db.query(sql, values, (error, results) => {
-      if (error) reject(error);
-      else resolve(results);
-    });
-  });
-}
+exports.queryPromise = (sql, values) => db.query(sql, values);

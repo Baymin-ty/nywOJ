@@ -1,5 +1,7 @@
-export const getNameColor = (gid, cnt) => {
-  if (gid !== 1)
+// Staff (any moderator+ role) get a distinct purple. The server attaches an
+// `isStaff` flag on rabbit/leaderboard rows derived from the role table.
+export const getNameColor = (isStaff, cnt) => {
+  if (isStaff)
     return "#8e44ad";
   else if (cnt < 1000)
     return "#606266";
@@ -53,10 +55,11 @@ export const refreshUserInfo = async () => {
     if (res.status === 200) {
       store.state.uid = res.data.uid;
       store.state.name = res.data.name;
-      store.state.gid = res.data.gid;
       store.state.ip = res.data.ip;
       store.state.avatar = res.data.avatar;
       store.state.preferenceLang = res.data.preferenceLang;
+      store.commit('setPermissions', res.data.permissions || []);
+      store.commit('setIsRoot', !!res.data.isRoot);
     }
   });
 }
