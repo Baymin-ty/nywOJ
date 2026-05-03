@@ -59,6 +59,7 @@ export const refreshUserInfo = async () => {
       store.state.avatar = res.data.avatar;
       store.state.preferenceLang = res.data.preferenceLang;
       store.commit('setPermissions', res.data.permissions || []);
+      store.commit('setIsRoot', !!res.data.isRoot);
     }
   });
 }

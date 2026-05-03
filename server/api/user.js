@@ -106,6 +106,9 @@ exports.getUserInfo = handler(async (req, res) => {
     avatar: req.session.avatar,
     preferenceLang: req.session.preferenceLang,
     permissions,
+    // uid=1 is the root account: bypasses every guard, including the
+    // "builtin role is read-only" rule in /api/auth/updateRole.
+    isRoot: req.session.uid === 1,
   });
 });
 

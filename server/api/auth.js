@@ -3,10 +3,16 @@ const { handler, fail, ok } = require('../db/util');
 const { recordEvent } = require('../static');
 const policy = require('../auth/policy');
 const { PERMISSIONS, RESOURCE_TYPES, RESOURCE_GRANTABLE } = require('../auth/permissions');
+const { buildEndpointMap } = require('../auth/endpoints');
 
 const KEY_REGEX = /^[a-z][a-z0-9_]{0,30}[a-z0-9]$/;
 
 const requireAny = (req, ...keys) => keys.some((k) => req.can(k));
+
+// uid=1 is the root account: bypasses every guard, including the
+// "builtin role is read-only" rule. Everything else still goes through
+// the normal permission system.
+const isRoot = (req) => req.session && req.session.uid === 1;
 
 // ---------- read endpoints ----------
 
@@ -16,6 +22,10 @@ exports.listPermissions = handler(async (req, res) => {
   const rows = await db.query(
     'SELECT `key`, `group`, name, description, scopable FROM permissions ORDER BY `group`, `key`'
   );
+  // Attach the API endpoints that enforce each permission, derived from
+  // the live express router (see server/auth/endpoints.js).
+  const epMap = buildEndpointMap();
+  for (const r of rows) r.endpoints = epMap.get(r.key) || [];
   return ok(res, { permissions: rows });
 });
 
@@ -75,7 +85,7 @@ exports.updateRole = handler(async (req, res) => {
   if (!key) return fail(res, '请确认信息完善');
   const role = await db.one('SELECT id, builtin FROM roles WHERE `key`=?', [key]);
   if (!role) return fail(res, '角色不存在');
-  if (role.builtin) return fail(res, '内置角色不可修改');
+  if (role.builtin && !isRoot(req)) return fail(res, '内置角色仅 root (uid=1) 可修改');
   if (name != null || description != null) {
     await db.query(
       'UPDATE roles SET name=COALESCE(?,name), description=COALESCE(?,description) WHERE id=?',
@@ -318,6 +328,36 @@ exports.searchUsers = handler(async (req, res) => {
     isNumeric ? [parseInt(q, 10), `%${q}%`] : [`%${q}%`]
   );
   return ok(res, { users: rows });
+});
+
+// Resource pickers for the grant UI: anyone who can grant permissions can
+// search problems / contests by id or title.
+exports.searchProblems = handler(async (req, res) => {
+  if (!req.can('user.permission.grant')) return res.status(403).end('403 Forbidden');
+  const q = (req.body.q || '').trim();
+  if (!q) return ok(res, { problems: [] });
+  const isNumeric = /^\d+$/.test(q);
+  const rows = await db.query(
+    `SELECT pid, title FROM problem
+     WHERE ${isNumeric ? 'pid=? OR title LIKE ?' : 'title LIKE ?'}
+     ORDER BY pid DESC LIMIT 20`,
+    isNumeric ? [parseInt(q, 10), `%${q}%`] : [`%${q}%`]
+  );
+  return ok(res, { problems: rows });
+});
+
+exports.searchContests = handler(async (req, res) => {
+  if (!req.can('user.permission.grant')) return res.status(403).end('403 Forbidden');
+  const q = (req.body.q || '').trim();
+  if (!q) return ok(res, { contests: [] });
+  const isNumeric = /^\d+$/.test(q);
+  const rows = await db.query(
+    `SELECT cid, title FROM contest
+     WHERE ${isNumeric ? 'cid=? OR title LIKE ?' : 'title LIKE ?'}
+     ORDER BY cid DESC LIMIT 20`,
+    isNumeric ? [parseInt(q, 10), `%${q}%`] : [`%${q}%`]
+  );
+  return ok(res, { contests: rows });
 });
 
 // expose for sanity tests

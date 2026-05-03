@@ -46,6 +46,8 @@ router.post('/api/auth/grantUserPermission', auth.grantUserPermission);
 router.post('/api/auth/revokeUserPermission', auth.revokeUserPermission);
 router.post('/api/auth/listResourceGrants', auth.listResourceGrants);
 router.post('/api/auth/searchUsers', auth.searchUsers);
+router.post('/api/auth/searchProblems', auth.searchProblems);
+router.post('/api/auth/searchContests', auth.searchContests);
 
 const problem = require('./api/problem');
 

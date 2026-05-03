@@ -5,6 +5,10 @@
     width="640px"
     @closed="onClosed"
   >
+    <el-alert v-if="role && role.builtin" type="warning" show-icon :closable="false"
+      title="正在编辑内置角色（root 模式）" style="margin-bottom: 12px;">
+      <div>普通超管会被服务端拒绝；只有 uid=1 (root) 可以保存。修改将影响所有持有该角色的用户。</div>
+    </el-alert>
     <el-form :model="form" label-width="100px">
       <el-form-item label="角色 key">
         <el-input v-model="form.key" :disabled="!isCreate" placeholder="role_setter (小写字母/数字/下划线)" />
