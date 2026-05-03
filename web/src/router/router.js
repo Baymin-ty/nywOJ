@@ -32,12 +32,9 @@ import permissionCenter from "@/components/admin/permissionCenter"
 import { refreshUserInfo } from '@/assets/common'
 import store from '@/sto/store';
 
-const per = [];
-
-per["/admin/usermanage"] = 3;
-
-// permission-based gates: route -> [required permission keys, any-of]
+// Permission-gated routes: route -> [required permission keys, any-of].
 const perPermissions = {
+  '/admin/usermanage': ['user.list', 'user.edit', 'user.ban'],
   '/admin/permissions': ['user.role.assign', 'user.permission.grant'],
 };
 
@@ -215,7 +212,6 @@ router.beforeEach(async (to, from, next) => {
         await refreshUserInfo();
     }
     if (store.state.uid) {
-        if (per[to.path] && store.state.gid < per[to.path]) return;
         const need = perPermissions[to.path];
         if (need && !need.some((k) => (store.state.permissions || []).indexOf(k) >= 0)) return;
         next();

@@ -63,7 +63,6 @@ exports.login = handler(async (req, res) => {
   req.session.uid = user.uid;
   req.session.name = user.name;
   req.session.email = user.email;
-  req.session.gid = user.gid;
   recordEvent(req, 'user.login');
 
   const now = new Date();
@@ -94,7 +93,6 @@ exports.getUserInfo = handler(async (req, res) => {
   }
   req.session.name = user.name;
   req.session.email = user.email;
-  req.session.gid = user.gid;
   req.session.avatar = user.qq
     ? `https://q1.qlogo.cn/g?b=qq&nk=${user.qq}&s=3`
     : '/default-avatar.svg';
@@ -105,7 +103,6 @@ exports.getUserInfo = handler(async (req, res) => {
     name: req.session.name,
     email: req.session.email,
     ip: req.session.ip,
-    gid: req.session.gid,
     avatar: req.session.avatar,
     preferenceLang: req.session.preferenceLang,
     permissions,
@@ -198,13 +195,19 @@ exports.setUserEmail = handler(async (req, res) => {
 exports.getUserPublicInfo = handler(async (req, res) => {
   const { uid } = req.body;
   const info = await db.one(
-    'SELECT uid,name,email,reg_time,login_time,clickCnt,inUse,gid,motto,qq,preferenceLang FROM userInfo WHERE uid=?',
+    'SELECT uid,name,email,reg_time,login_time,clickCnt,inUse,motto,qq,preferenceLang FROM userInfo WHERE uid=?',
     [uid]
   );
   if (!info) return fail(res, '无此用户');
   if (info.reg_time) info.reg_time = briefFormat(info.reg_time);
   if (info.login_time) info.login_time = briefFormat(info.login_time);
-  if (req.session.gid !== 3 && req.session.uid !== info.uid) {
+  // Roles attached so the profile page can decorate the user (badges, name color).
+  info.roles = await db.column(
+    'SELECT r.`key` AS k FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.uid=?',
+    [uid],
+    'k'
+  );
+  if (!req.can('user.list') && req.session.uid !== info.uid) {
     delete info.login_time;
     delete info.email;
   }

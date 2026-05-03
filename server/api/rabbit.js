@@ -6,7 +6,9 @@ let dayClick = {};
 
 exports.all = handler(async (req, res) => {
   const list = await db.query(
-    'SELECT clickList.id,clickList.time,clickList.uid,userInfo.name,clickList.ip,clickList.iploc,userInfo.clickCnt,userInfo.gid ' +
+    'SELECT clickList.id,clickList.time,clickList.uid,userInfo.name,clickList.ip,clickList.iploc,userInfo.clickCnt, ' +
+      '(SELECT 1 FROM user_roles ur JOIN roles r ON r.id=ur.role_id ' +
+      "WHERE ur.uid=userInfo.uid AND r.`key` IN ('moderator','super_admin') LIMIT 1) AS isStaff " +
       'FROM clickList INNER JOIN userInfo ON userInfo.uid = clickList.uid ' +
       'ORDER BY clickList.id DESC LIMIT 20'
   );
@@ -50,7 +52,10 @@ exports.getClickCnt = handler(async (req, res) => {
 exports.getRankInfo = handler(async (req, res) => {
   const { pageId, offset, limit } = paginate(req);
   const list = await db.query(
-    'SELECT uid,name,clickCnt,motto,gid,qq FROM userInfo GROUP BY uid ORDER BY clickCnt DESC LIMIT ?,?',
+    'SELECT u.uid,u.name,u.clickCnt,u.motto,u.qq, ' +
+      '(SELECT 1 FROM user_roles ur JOIN roles r ON r.id=ur.role_id ' +
+      "WHERE ur.uid=u.uid AND r.`key` IN ('moderator','super_admin') LIMIT 1) AS isStaff " +
+      'FROM userInfo u GROUP BY u.uid ORDER BY u.clickCnt DESC LIMIT ?,?',
     [offset, limit]
   );
   for (let i = 0; i < list.length; i++) {

@@ -336,15 +336,14 @@ export default {
     }
   },
   mounted() {
-    if (this.$store.state.gid < 2) {
-      this.$router.push(`/problem/${this.$route.params.pid}`);
-      return;
-    }
     this.pid = this.$route.params.pid;
     axios.post('/api/problem/getProblemAuth', {
       pid: this.pid,
     }).then(res => {
       this.auth = res.data.data;
+      if (!this.auth.manage) {
+        this.$router.push(`/problem/${this.pid}`);
+      }
     });
     this.all(1);
   }

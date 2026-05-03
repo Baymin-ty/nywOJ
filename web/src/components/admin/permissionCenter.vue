@@ -23,10 +23,9 @@
           <div v-if="!pickedUid" style="color:#909399; padding: 20px;">请选择一个用户。</div>
 
           <div v-else>
-            <el-descriptions :column="3" border>
+            <el-descriptions :column="2" border>
               <el-descriptions-item label="uid">{{ userInfo.uid }}</el-descriptions-item>
               <el-descriptions-item label="用户名">{{ userInfo.name }}</el-descriptions-item>
-              <el-descriptions-item label="主 gid">{{ userInfo.gid }}</el-descriptions-item>
             </el-descriptions>
 
             <el-divider>角色</el-divider>
@@ -74,7 +73,6 @@
                 <el-tag size="small" type="info" v-else>自定义</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="legacy gid" width="110" prop="legacy_gid" />
             <el-table-column label="权限数" width="90">
               <template #default="scope">{{ (scope.row.permissions || []).length }}</template>
             </el-table-column>
@@ -132,7 +130,7 @@ export default {
       permissions: [],
       roles: [],
       pickedUid: null,
-      userInfo: { uid: 0, name: '', gid: 0 },
+      userInfo: { uid: 0, name: '' },
       userRoleKeys: [],
       originalRoleKeys: [],
       userPermissions: [],
@@ -178,14 +176,14 @@ export default {
     },
     onUserPicked(picked) {
       if (picked) this.loadUserGrants();
-      else { this.userInfo = { uid: 0, name: '', gid: 0 }; this.userRoleKeys = []; this.userPermissions = []; }
+      else { this.userInfo = { uid: 0, name: '' }; this.userRoleKeys = []; this.userPermissions = []; }
     },
     async loadUserGrants() {
       if (!this.pickedUid) return;
       try {
         const res = await axios.post('/api/auth/listUserGrants', { uid: this.pickedUid });
         if (res.status !== 200) { this.$message.error(res.data && res.data.message || '加载失败'); return; }
-        this.userInfo = res.data.user || { uid: this.pickedUid, name: '', gid: 0 };
+        this.userInfo = res.data.user || { uid: this.pickedUid, name: '' };
         this.userRoleKeys = res.data.roles || [];
         this.originalRoleKeys = [...this.userRoleKeys];
         this.userPermissions = res.data.permissions || [];

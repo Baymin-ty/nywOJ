@@ -114,7 +114,7 @@ exports.listUserGrants = handler(async (req, res) => {
   const uid = parseInt(req.body.uid, 10);
   if (!uid) return fail(res, '请确认信息完善');
 
-  const target = await db.one('SELECT uid, name, gid FROM userInfo WHERE uid=?', [uid]);
+  const target = await db.one('SELECT uid, name FROM userInfo WHERE uid=?', [uid]);
   if (!target) return fail(res, '用户不存在');
 
   const roles = await db.column(

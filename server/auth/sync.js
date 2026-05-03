@@ -101,9 +101,22 @@ const syncBuiltinRoles = async () => {
   }
 };
 
+// Returns true if the column exists. Used to gate the gid → role backfill so we
+// can run sync repeatedly even after the legacy column has been dropped.
+const columnExists = async (table, column) => {
+  const row = await db.one(
+    `SELECT 1 FROM information_schema.columns
+     WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ? LIMIT 1`,
+    [table, column]
+  );
+  return !!row;
+};
+
 // One-time backfill: assign builtin role to existing users based on their gid.
-// Idempotent (PRIMARY KEY (uid, role_id) prevents duplicates).
+// Idempotent (PRIMARY KEY (uid, role_id) prevents duplicates) and conditional
+// on userInfo.gid still existing — once dropped, this is a no-op.
 const backfillUserRoles = async () => {
+  if (!(await columnExists('userInfo', 'gid'))) return;
   const roleByGid = await db.query('SELECT id, legacy_gid FROM roles WHERE legacy_gid IS NOT NULL');
   for (const r of roleByGid) {
     await db.query(
@@ -114,11 +127,25 @@ const backfillUserRoles = async () => {
   }
 };
 
+// Final retirement of the legacy gid field. After backfill, every gid=2/3 user
+// has a moderator/super_admin role row, and the application no longer reads
+// gid anywhere. Dropping the column completes the migration so it can't be
+// silently relied on again. Set DISABLE_DROP_GID=1 to opt out (e.g., during a
+// rollback window where you may want to re-enable old code temporarily).
+const dropLegacyGid = async () => {
+  if (process.env.DISABLE_DROP_GID === '1') return;
+  if (!(await columnExists('userInfo', 'gid'))) return;
+  // Only drop after we've confirmed the backfill ran in this process startup.
+  console.log('[auth] dropping legacy userInfo.gid column');
+  await db.query('ALTER TABLE userInfo DROP COLUMN gid');
+};
+
 const syncPermissionCatalog = async () => {
   await ensureSchema();
   await syncPermissions();
   await syncBuiltinRoles();
   await backfillUserRoles();
+  await dropLegacyGid();
 };
 
 module.exports = { syncPermissionCatalog };

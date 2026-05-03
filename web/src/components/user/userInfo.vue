@@ -14,9 +14,11 @@
           <span class="subtitle">邮箱</span>
           <span style="float: right;">{{ info.email }}</span>
         </div>
-        <div class="infos">
+        <div class="infos" v-if="roleLabels.length">
           <span class="subtitle">用户类型</span>
-          <span style="float: right;">{{ group[info.gid] }}</span>
+          <span style="float: right;">
+            <el-tag v-for="r in roleLabels" :key="r" size="small" style="margin-left: 4px;">{{ r }}</el-tag>
+          </span>
         </div>
         <div class="infos">
           <span class="subtitle">注册时间</span>
@@ -53,10 +55,26 @@ export default {
       info: {},
       newMotto: '/',
       avatarAddress: '',
-      group: ['', '普通用户', '管理员', '超级管理员'],
+      // Friendly labels for builtin role keys; unknown keys fall through unchanged.
+      roleLabel: {
+        user: '普通用户',
+        problem_setter: '出题人',
+        contest_manager: '比赛管理员',
+        judge_admin: '判题管理员',
+        moderator: '管理员',
+        super_admin: '超级管理员',
+      },
       date: [],
       clickCnt: [],
     }
+  },
+  computed: {
+    roleLabels() {
+      const roles = (this.info && this.info.roles) || [];
+      return roles
+        .filter((k) => k !== 'user') // skip the default empty-permission role
+        .map((k) => this.roleLabel[k] || k);
+    },
   },
   methods: {
     all() {

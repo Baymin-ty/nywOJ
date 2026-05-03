@@ -12,13 +12,6 @@ const handler = (fn) => async (req, res, next) => {
 const fail = (res, message, status = 202) => res.status(status).send({ message });
 const ok = (res, payload = { message: 'success' }) => res.status(200).send(payload);
 
-const requireRole = (minGid) => (req, res, next) => {
-  if ((req.session.gid || 1) < minGid) {
-    return res.status(403).end('403 Forbidden');
-  }
-  return next();
-};
-
 const paginate = (req, defaultSize = 20) => {
   let pageId = parseInt(req.body.pageId, 10);
   if (!pageId || pageId < 1) pageId = 1;
@@ -43,4 +36,4 @@ const buildWhere = (conditions, prefix = '') => {
   return { where: head + parts.join(' AND '), params };
 };
 
-module.exports = { handler, fail, ok, requireRole, paginate, buildWhere };
+module.exports = { handler, fail, ok, paginate, buildWhere };
