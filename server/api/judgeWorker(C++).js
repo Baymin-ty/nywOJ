@@ -77,7 +77,12 @@ const judgeCode = async (sid) => {
 
     if (compileResult.exitStatus !== 0) { // Compilation Error
       const error = `Compilation Error, Time: ${Math.floor(compileResult.time / 1000 / 1000)} ms, Memory: ${Math.floor(compileResult.memory / 1024)} KB\n` + compileResult.files.stderr;
-      await db.query('UPDATE submission SET judgeResult=3,compileResult=? WHERE sid=?', [error, sid]);
+      await new Promise((resolve, reject) => {
+        db.query('UPDATE submission SET judgeResult=3,compileResult=? WHERE sid=?', [error, sid], (err, data) => {
+          if (err) reject(err);
+          else resolve(data);
+        });
+      });
       await updateProblemSubmitInfo(pid);
       await updateProblemStat(pid);
       return;
@@ -95,7 +100,12 @@ const judgeCode = async (sid) => {
     if (pinfo.type === 1) {
       const spj = await getFile(`data/${pid}/checker.cpp`);
       if (!spj) {
-        await db.query('UPDATE submission SET judgeResult=12,compileResult=? WHERE sid=?', ['No checker.cpp found, please contact the problem publisher.', sid]);
+        await new Promise((resolve, reject) => {
+          db.query('UPDATE submission SET judgeResult=12,compileResult=? WHERE sid=?', ['No checker.cpp found, please contact the problem publisher.', sid], (err, data) => {
+            if (err) reject(err);
+            else resolve(data);
+          });
+        });
         await updateProblemSubmitInfo(pid);
         await updateProblemStat(pid);
         return;
@@ -137,7 +147,12 @@ const judgeCode = async (sid) => {
       });
       if (SPJcompileResult.exitStatus !== 0) {
         const error = 'SPJ Error\n' + SPJcompileResult.files.stderr;
-        await db.query('UPDATE submission SET judgeResult=12,compileResult=? WHERE sid=?', [error, sid]);
+        await new Promise((resolve, reject) => {
+          db.query('UPDATE submission SET judgeResult=12,compileResult=? WHERE sid=?', [error, sid], (err, data) => {
+            if (err) reject(err);
+            else resolve(data);
+          });
+        });
         await updateProblemSubmitInfo(pid);
         await updateProblemStat(pid);
         return;
@@ -377,7 +392,12 @@ const judgeCode = async (sid) => {
     if (acSub === totalSub) {
       finalRes = 4;
       totalScore = 100;
-      await db.query('UPDATE problem SET acCnt=acCnt+1 WHERE pid=?', [pid]);
+      await new Promise((resolve, reject) => {
+        db.query('UPDATE problem SET acCnt=acCnt+1 WHERE pid=?', [pid], (err, data) => {
+          if (err) reject(err);
+          else resolve(data);
+        });
+      });
     }
     await setSubmission(sid, finalRes, totalTime, maxMemory, totalScore, null, JSON.stringify(subtaskList), conf.JUDGE.NAME);
 

@@ -7,7 +7,7 @@
           <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
             layout="total, prev, pager, next" :total="total"></el-pagination>
           <el-button-group>
-            <el-popconfirm v-if="$can('problem.create')" confirm-button-text="确认" cancel-button-text="取消" title="确认添加题目?"
+            <el-popconfirm v-if="this.gid >= 2" confirm-button-text="确认" cancel-button-text="取消" title="确认添加题目?"
               @confirm="addProblem">
               <template #reference>
                 <el-button type="success">
@@ -136,6 +136,7 @@ export default {
     return {
       problemList: [],
       total: 0,
+      gid: 1,
       pid: '',
       currentPage: 1,
       finished: false,
@@ -291,6 +292,7 @@ export default {
         this.$message.error('获取出题人失败' + res.data.message);
       }
     });
+    this.gid = this.$store.state.gid;
     let query = this.$route.query;
     if (query.name) this.filter.name = query.name;
     if (query.level) this.filter.level = parseInt(query.level);

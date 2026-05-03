@@ -27,16 +27,13 @@ import contestProblem from '@/components/contest/contestProblem.vue'
 import userEdit from '@/components/user/edit/userEdit.vue'
 
 import userManage from "@/components/admin/userManage"
-import permissionCenter from "@/components/admin/permissionCenter"
 
 import { refreshUserInfo } from '@/assets/common'
 import store from '@/sto/store';
 
-// Permission-gated routes: route -> [required permission keys, any-of].
-const perPermissions = {
-  '/admin/usermanage': ['user.list', 'user.edit', 'user.ban'],
-  '/admin/permissions': ['user.role.assign', 'user.permission.grant'],
-};
+const per = [];
+
+per["/admin/usermanage"] = 3;
 
 const router = createRouter({
     history: createWebHistory(),
@@ -64,12 +61,6 @@ const router = createRouter({
             activeTitle: '/user'
         },
         path: '/admin/usermanage', component: userManage,
-    }, {
-        meta: {
-            title: '权限管理中心',
-            activeTitle: '/user'
-        },
-        path: '/admin/permissions', component: permissionCenter,
     }, {
         meta: {
             title: '用户信息',
@@ -212,9 +203,8 @@ router.beforeEach(async (to, from, next) => {
         await refreshUserInfo();
     }
     if (store.state.uid) {
-        const need = perPermissions[to.path];
-        if (need && !need.some((k) => (store.state.permissions || []).indexOf(k) >= 0)) return;
-        next();
+        if (!per[to.path] || store.state.gid >= per[to.path])
+            next();
     }
     else {
         if (to.path !== '/user/login')

@@ -8,10 +8,10 @@ const { problemAuth } = require('./problem');
 
 const CASE_MAX_TOTAL_SIZE = 200 * 1024 * 1024; // 200MB limit
 
-// Check zip file size before extraction. `unlimited=true` skips the cap (super-admin equivalent).
-const checkZipSize = (zipPath, unlimited, maxTotalSize) => {
+// Check zip file size before extraction
+const checkZipSize = (zipPath, userGid, maxTotalSize) => {
   return new Promise((resolve, reject) => {
-    if (unlimited) {
+    if (userGid >= 3) {
       resolve(true);
       return;
     }
@@ -90,11 +90,11 @@ const processUploadedFiles = async (files, destination) => {
 
 const handleCaseUpload = async (req, res) => {
   try {
-    if (!(await problemAuth(req, req.body.pid)).manage) {
+    if (req.session.gid < 2 || !((await problemAuth(req, req.body.pid)).manage)) {
       return res.status(403).end('403 Forbidden');
     }
 
-    const isSizeValid = await checkZipSize(req.file.path, req.can('problem.edit.any'), CASE_MAX_TOTAL_SIZE);
+    const isSizeValid = await checkZipSize(req.file.path, req.session.gid, CASE_MAX_TOTAL_SIZE);
     if (!isSizeValid) {
       fs.unlinkSync(req.file.path); // delete
       return res.status(202).send({

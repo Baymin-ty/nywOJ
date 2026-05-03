@@ -29,8 +29,6 @@ app.use(session({
 }));
 const parser = require('ua-parser-js');
 const db = require('./db/index');
-const { syncPermissionCatalog } = require('./auth/sync');
-const { attachPermissions } = require('./auth/middleware');
 
 app.use((req, res, next) => {
   const ip = req.headers['x-forwarded-for']?.split(',')[0] ||
@@ -45,15 +43,15 @@ app.use((req, res, next) => {
   }
 });
 
-app.use(attachPermissions);
-
 app.use((req, res, next) => {
   req.useragent = parser(req.headers['user-agent']);
   if (req.session.uid) {
-    db.query('UPDATE userSession SET lastact=? WHERE token=? AND uid=?', [new Date(), req.sessionID, req.session.uid]).catch((err) => console.log(err));
-    // Each /api/admin/* handler enforces its own fine-grained permission via requirePermission.
+    db.query('UPDATE userSession SET lastact=? WHERE token=? AND uid=?', [new Date(), req.sessionID, req.session.uid]);
+    if (req.url.match('^\/api\/admin') && req.session.gid !== 3)
+      return res.status(403).end('403 Forbidden');
     next();
   } else {
+    req.session.gid = 1;
     if (req.url === '/api/user/login' ||
       req.url === '/api/user/reg' ||
       req.url === '/api/user/setUserEmail' ||
@@ -109,14 +107,7 @@ process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', `Error: ${err.message}\nStack: ${err.stack}`);
 });
 
-syncPermissionCatalog()
-  .then(() => {
-    app.listen(1234, () => {
-      console.log('success!!!');
-    });
-  })
-  .catch((err) => {
-    console.error('permission catalog sync failed:', err && err.stack ? err.stack : err);
-    process.exit(1);
-  });
+app.listen(1234, () => {
+  console.log('success!!!');
+});
 

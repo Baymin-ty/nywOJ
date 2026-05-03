@@ -5,7 +5,7 @@
         <template #header>
           <div class="card-header">
             公告栏
-            <el-popconfirm v-if="$can('announcement.manage')" confirm-button-text="确认" cancel-button-text="取消" title="确认添加公告?"
+            <el-popconfirm v-if="gid === 3" confirm-button-text="确认" cancel-button-text="取消" title="确认添加公告?"
               @confirm="addAnnouncement">
               <template #reference>
                 <el-button type="danger">
@@ -67,6 +67,7 @@ export default {
     return {
       motto: {},
       announcements: [],
+      gid: 0,
     }
   },
   methods: {
@@ -98,6 +99,7 @@ export default {
     }
   },
   mounted() {
+    this.gid = this.$store.state.gid;
     this.updateHitokoto();
     this.getAnnouncements();
   },
