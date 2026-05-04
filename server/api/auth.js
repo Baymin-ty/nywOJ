@@ -186,7 +186,7 @@ const canManageResource = async (req, resourceType, resourceId) => {
     const row = await db.one('SELECT publisher FROM problem WHERE pid=?', [resourceId]);
     if (!row) return false;
     if (row.publisher === req.session.uid) return true;
-    return req.can('problem.edit.any', { type: 'problem', id: resourceId });
+    return req.can('problem.manage.any', { type: 'problem', id: resourceId });
   }
   if (resourceType === 'contest') {
     const row = await db.one('SELECT host FROM contest WHERE cid=?', [resourceId]);

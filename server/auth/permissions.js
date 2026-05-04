@@ -4,10 +4,9 @@
 
 const PERMISSIONS = {
   'problem.create':       { group: 'problem', name: '创建题目', description: '创建新题目' },
-  'problem.edit.any':     { group: 'problem', name: '编辑任意题目', description: '编辑非自己创建的题目', scopable: true },
-  'problem.delete.any':   { group: 'problem', name: '删除任意题目', description: '删除非自己创建的题目', scopable: true },
-  'problem.case.manage':  { group: 'problem', name: '管理题目数据', description: '上传/修改/下载测试数据', scopable: true },
-  'problem.view.private': { group: 'problem', name: '查看非公开题目', description: '查看 isPublic=0 的题目' },
+  'problem.manage.any':   { group: 'problem', name: '管理任意题目', description: '编辑/删除/管理测试数据 任意题目', scopable: true },
+  'problem.manage.self':  { group: 'problem', name: '管理自己的题目', description: '编辑/删除/管理自己创建题目的测试数据' },
+  'problem.view.any':     { group: 'problem', name: '查看所有题目', description: '查看所有题目（包括非公开），无此权限只能看自己创建的和公开题目' },
 
   'contest.create':                { group: 'contest', name: '创建比赛' },
   'contest.edit.any':              { group: 'contest', name: '编辑任意比赛', scopable: true },
@@ -30,9 +29,8 @@ const PERMISSIONS = {
 
 const PROBLEM_SETTER_PERMS = [
   'problem.create',
-  'problem.edit.any',
-  'problem.case.manage',
-  'problem.view.private',
+  'problem.manage.self',
+  'problem.view.any',
   'submission.view.any',
 ];
 
@@ -52,6 +50,8 @@ const MODERATOR_PERMS = Array.from(new Set([
   ...PROBLEM_SETTER_PERMS,
   ...CONTEST_MANAGER_PERMS,
   ...JUDGE_ADMIN_PERMS,
+  // Moderators get manage.any over every problem (problem_setter only manages own).
+  'problem.manage.any',
 ]));
 
 const SUPER_ADMIN_PERMS = Object.keys(PERMISSIONS);
@@ -70,7 +70,7 @@ const RESOURCE_TYPES = ['problem', 'contest'];
 // Permissions that can be granted by a resource owner (via the resource collaborator UI),
 // without needing the global `user.permission.grant` permission.
 const RESOURCE_GRANTABLE = {
-  problem: ['problem.edit.any', 'problem.case.manage', 'problem.delete.any'],
+  problem: ['problem.manage.any'],
   contest: ['contest.edit.any', 'contest.player.manage', 'submission.rejudge'],
 };
 

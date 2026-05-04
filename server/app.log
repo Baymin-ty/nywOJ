@@ -1,1 +1,374 @@
 [2024-12-31 21:00:28] LOG: success!!!
+[2026-05-04 13:36:56] LOG: success!!!
+[2026-05-04 13:37:17] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:37:54] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:38:03] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:39:08] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:40:42] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:40:42] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:40:42] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:40:43] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:40:43] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:40:48] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:40:49] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:45:06] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:46:36] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:46:36] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:49:16] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:49:16] ERROR: handler error: Error: ER_NO_SUCH_TABLE: Table 'test.judge' doesn't exist
+    at Sequence._packetToError (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Sequence.js:47:14)
+    at Query.ErrorPacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/sequences/Query.js:79:18)
+    at Protocol._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:291:23)
+    at Parser._parsePacket (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:433:10)
+    at Parser.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Parser.js:43:10)
+    at Protocol.write (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/protocol/Protocol.js:38:16)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:88:28)
+    at Socket.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Connection.js:526:10)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    --------------------
+    at Pool.query (/Users/ty/Desktop/nywOJ/server/node_modules/mysql/lib/Pool.js:199:23)
+    at /Users/ty/Desktop/nywOJ/server/db/index.js:17:14
+    at new Promise (<anonymous>)
+    at Object.query (/Users/ty/Desktop/nywOJ/server/db/index.js:16:5)
+    at /Users/ty/Desktop/nywOJ/server/api/admin.js:37:27
+    at /Users/ty/Desktop/nywOJ/server/db/util.js:3:11
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/route.js:149:13)
+    at fn (/Users/ty/Desktop/nywOJ/server/auth/middleware.js:23:14)
+    at Layer.handle [as handle_request] (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/router/layer.js:95:5)
+[2026-05-04 13:49:31] LOG: success!!!
+[2026-05-04 16:22:05] ERROR: Uncaught Exception: Error: listen EADDRINUSE: address already in use :::1234
+Stack: Error: listen EADDRINUSE: address already in use :::1234
+    at Server.setupListenHandle [as _listen2] (node:net:1939:16)
+    at listenInCluster (node:net:1996:12)
+    at Server.listen (node:net:2101:7)
+    at Function.listen (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/application.js:635:24)
+    at /Users/ty/Desktop/nywOJ/server/app.js:114:9
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-05-04 16:45:31] ERROR: Uncaught Exception: Error: listen EADDRINUSE: address already in use :::1234
+Stack: Error: listen EADDRINUSE: address already in use :::1234
+    at Server.setupListenHandle [as _listen2] (node:net:1939:16)
+    at listenInCluster (node:net:1996:12)
+    at Server.listen (node:net:2101:7)
+    at Function.listen (/Users/ty/Desktop/nywOJ/server/node_modules/express/lib/application.js:635:24)
+    at /Users/ty/Desktop/nywOJ/server/app.js:114:9
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-05-04 16:45:42] LOG: success!!!
+[2026-05-04 16:49:46] LOG: 2026-05-04 16:49:46 server: localJudge 329
+[2026-05-04 16:51:14] LOG: 2026-05-04 16:51:14 server: localJudge 329

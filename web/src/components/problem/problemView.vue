@@ -116,10 +116,12 @@ export default {
   name: "problemView",
   computed: {
     canManage() {
-      return this.problemInfo && (
-        this.problemInfo.publisherUid === this.$store.state.uid
-        || this.$can('problem.edit.any')
-      );
+      if (!this.problemInfo) return false;
+      const isOwner = this.problemInfo.publisherUid === this.$store.state.uid;
+      // Mirrors server/api/problem.js#problemAuth: owner needs manage.self,
+      // anyone with manage.any can manage. Server is the final arbiter — this
+      // computed only gates the visibility of admin UI bits.
+      return (isOwner && this.$can('problem.manage.self')) || this.$can('problem.manage.any');
     },
   },
   data() {

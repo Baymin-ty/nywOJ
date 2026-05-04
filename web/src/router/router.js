@@ -35,7 +35,7 @@ import store from '@/sto/store';
 // Permission-gated routes: route -> [required permission keys, any-of].
 const perPermissions = {
   '/admin/usermanage': ['user.list', 'user.edit', 'user.ban'],
-  '/admin/permissions': ['user.role.assign', 'user.permission.grant'],
+  '/admin/permissions': ['user.list', 'user.edit', 'user.ban', 'user.role.assign', 'user.permission.grant'],
 };
 
 const router = createRouter({

@@ -140,9 +140,61 @@ const dropLegacyGid = async () => {
   await db.query('ALTER TABLE userInfo DROP COLUMN gid');
 };
 
+// One-shot rename map for permission keys that have been refactored.
+// Each entry: oldKey → newKey. Existing user_permissions / role_permissions
+// rows pointing at oldKey are repointed at newKey (deduping on the natural
+// unique key), and the old permission row is then deleted. Idempotent: if
+// the old key has already been removed, it's a no-op.
+//
+// 2026-05: problem.{edit.any, delete.any, case.manage} all collapse into
+// problem.manage.any (scopable). problem.view.private is renamed to
+// problem.view.any.
+const PERMISSION_RENAMES = [
+  ['problem.edit.any',     'problem.manage.any'],
+  ['problem.delete.any',   'problem.manage.any'],
+  ['problem.case.manage',  'problem.manage.any'],
+  ['problem.view.private', 'problem.view.any'],
+];
+
+const migrateRenamedPermissions = async () => {
+  for (const [oldKey, newKey] of PERMISSION_RENAMES) {
+    const oldRow = await db.one('SELECT id FROM permissions WHERE `key`=?', [oldKey]);
+    if (!oldRow) continue; // already migrated
+    const newRow = await db.one('SELECT id FROM permissions WHERE `key`=?', [newKey]);
+    if (!newRow) {
+      console.warn(`[auth] cannot migrate ${oldKey} → ${newKey}: target key missing`);
+      continue;
+    }
+    console.log(`[auth] migrating ${oldKey} → ${newKey}`);
+
+    // user_permissions: UPDATE IGNORE skips rows that would collide with
+    // an existing (uid, permission_id, effect, resource_type, resource_id),
+    // then we drop the leftovers.
+    await db.query(
+      'UPDATE IGNORE user_permissions SET permission_id=? WHERE permission_id=?',
+      [newRow.id, oldRow.id]
+    );
+    await db.query('DELETE FROM user_permissions WHERE permission_id=?', [oldRow.id]);
+
+    // role_permissions: same pattern.
+    await db.query(
+      'UPDATE IGNORE role_permissions SET permission_id=? WHERE permission_id=?',
+      [newRow.id, oldRow.id]
+    );
+    await db.query('DELETE FROM role_permissions WHERE permission_id=?', [oldRow.id]);
+
+    // Drop the old permission row.
+    await db.query('DELETE FROM permissions WHERE id=?', [oldRow.id]);
+  }
+};
+
 const syncPermissionCatalog = async () => {
   await ensureSchema();
   await syncPermissions();
+  // Renames must run AFTER syncPermissions (so the new keys exist) and
+  // BEFORE syncBuiltinRoles (which rewrites role_permissions and would
+  // otherwise leave stale rows referencing the soon-to-be-deleted old keys).
+  await migrateRenamedPermissions();
   await syncBuiltinRoles();
   await backfillUserRoles();
   await dropLegacyGid();

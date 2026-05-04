@@ -1,6 +1,7 @@
 const db = require('../db');
 const { handler, fail, ok, paginate, buildWhere } = require('../db/util');
 const { requirePermission } = require('../auth/middleware');
+const { Format, ip2loc, eventList, eventExp } = require('../static');
 
 exports.getUserInfoList = [
   requirePermission('user.list'),
@@ -8,32 +9,56 @@ exports.getUserInfoList = [
     const { offset, limit } = paginate(req);
     const filter = req.body.filter || {};
 
+    // `q` is a unified search box: matches uid (exact) OR name (LIKE) OR email (LIKE).
+    // The original separate filters (uid/name/email) are still honored for
+    // backwards-compat with the legacy /admin/usermanage page.
+    const q = (filter.q || '').trim();
     const cond = [
-      ['uid=?', filter.uid],
-      ['name LIKE ?', filter.name ? `%${filter.name}%` : null],
-      ['email LIKE ?', filter.email ? `%${filter.email}%` : null],
-      // 前端 inUse=1 表示封禁(=0)，inUse=2 表示正常(=1)
-      ['inUse=?', filter.inUse ? 2 - filter.inUse : null],
+      ['u.uid=?', filter.uid],
+      ['u.name LIKE ?', filter.name ? `%${filter.name}%` : null],
+      ['u.email LIKE ?', filter.email ? `%${filter.email}%` : null],
+      ['u.inUse=?', filter.inUse != null && filter.inUse !== '' ? Number(filter.inUse) : null],
     ];
+    if (q) {
+      const isNumeric = /^\d+$/.test(q);
+      if (isNumeric) {
+        cond.push(['(u.uid=? OR u.name LIKE ? OR u.email LIKE ?)', Number(q), `%${q}%`, `%${q}%`]);
+      } else {
+        cond.push(['(u.name LIKE ? OR u.email LIKE ?)', `%${q}%`, `%${q}%`]);
+      }
+    }
 
-    // Filter by role: filter.roleKey is the role's `key` (e.g. 'moderator').
     let join = '';
     let extraParams = [];
     if (filter.roleKey) {
-      join = ' INNER JOIN user_roles ur ON ur.uid = u.uid INNER JOIN roles r ON r.id = ur.role_id AND r.`key`=?';
-      extraParams.push(filter.roleKey);
+      if (filter.roleKey === '__none__') {
+        join = ' LEFT JOIN user_roles ur ON ur.uid = u.uid';
+        cond.push(['ur.uid IS NULL']);
+      } else {
+        join = ' INNER JOIN user_roles ur ON ur.uid = u.uid INNER JOIN roles r ON r.id = ur.role_id AND r.`key`=?';
+        extraParams.push(filter.roleKey);
+      }
     }
     const { where, params } = buildWhere(cond, 'u.uid > 0');
 
+    const sort = req.body.sort || {};
+    const allowedSortKeys = { uid: 'u.uid', name: 'u.name', solved: 'solved', lastLogin: 'u.login_time' };
+    const sortCol = allowedSortKeys[sort.key] || 'u.uid';
+    const sortDir = sort.dir === 'desc' ? 'DESC' : 'ASC';
+
     const list = await db.query(
-      `SELECT u.uid,u.name,u.email,u.inUse FROM userInfo u${join}${where} LIMIT ?,?`,
+      `SELECT u.uid, u.name, u.email, u.inUse, u.reg_time AS regDate, u.login_time AS lastLogin,
+              u.motto, u.qq,
+              (SELECT COUNT(DISTINCT pid) FROM submission s WHERE s.uid=u.uid AND s.judgeResult=4) AS solved
+       FROM userInfo u${join}${where}
+       ORDER BY ${sortCol} ${sortDir}
+       LIMIT ?,?`,
       [...extraParams, ...params, offset, limit]
     );
     const cnt = await db.one(
       `SELECT COUNT(*) as total FROM userInfo u${join}${where}`,
       [...extraParams, ...params]
     );
-    // Attach roles to each row so the admin table can render badges.
     if (list.length) {
       const uids = list.map((r) => r.uid);
       const links = await db.query(
@@ -45,7 +70,18 @@ exports.getUserInfoList = [
         if (!byUid.has(l.uid)) byUid.set(l.uid, []);
         byUid.get(l.uid).push(l.roleKey);
       }
-      for (const r of list) r.roles = byUid.get(r.uid) || [];
+      const grantCounts = await db.query(
+        'SELECT uid, COUNT(*) AS cnt FROM user_permissions WHERE uid IN (?) GROUP BY uid',
+        [uids]
+      );
+      const grantMap = new Map();
+      for (const g of grantCounts) grantMap.set(g.uid, g.cnt);
+      for (const r of list) {
+        r.roles = byUid.get(r.uid) || [];
+        r.grantCount = grantMap.get(r.uid) || 0;
+        if (r.regDate) r.regDate = Format(r.regDate);
+        if (r.lastLogin) r.lastLogin = Format(r.lastLogin);
+      }
     }
     return ok(res, { total: cnt.total, userList: list });
   }),
@@ -102,3 +138,92 @@ exports.updateAnnouncement = [
     return ok(res);
   }),
 ];
+
+exports.listAuditLog = [
+  requirePermission('audit.view'),
+  handler(async (req, res) => {
+    const { offset, limit } = paginate(req, 30);
+    const filter = req.body.filter || {};
+
+    let where = '';
+    const params = [];
+
+    const conditions = [];
+    if (filter.actorUid) {
+      conditions.push('a.uid=?');
+      params.push(Number(filter.actorUid));
+    }
+    if (filter.eventType != null && filter.eventType !== '') {
+      conditions.push('a.event=?');
+      params.push(Number(filter.eventType));
+    }
+    if (conditions.length) where = ' WHERE ' + conditions.join(' AND ');
+
+    const list = await db.query(
+      `SELECT a.uid, u.name AS actorName, a.event, a.ip, a.iploc, a.time, a.browser, a.os, a.detail
+       FROM userAudit a LEFT JOIN userInfo u ON u.uid = a.uid${where}
+       ORDER BY a.id DESC LIMIT ?,?`,
+      [...params, offset, limit]
+    );
+    const cnt = await db.one(
+      `SELECT COUNT(*) AS total FROM userAudit a${where}`,
+      params
+    );
+    for (const r of list) {
+      r.eventKey = eventList[r.event] || `event_${r.event}`;
+      r.eventName = eventExp[r.event] || r.eventKey;
+      if (r.time) r.time = Format(r.time);
+      if (r.detail) {
+        try { r.detail = JSON.parse(r.detail); } catch (_) {}
+      }
+    }
+    return ok(res, { total: cnt.total, list, eventList, eventExp });
+  }),
+];
+
+exports.getUserLoginLog = handler(async (req, res) => {
+  const uid = parseInt(req.body.uid, 10);
+  if (!uid) return fail(res, '请确认信息完善');
+  if (!req.can('user.list')) return res.status(403).end('403 Forbidden');
+  const list = await db.query(
+    `SELECT token, browser, os, loginIp, loginLoc, time, lastact
+     FROM userSession WHERE uid=? ORDER BY time DESC LIMIT 20`,
+    [uid]
+  );
+  for (const r of list) {
+    delete r.token;
+    if (r.time) r.time = Format(r.time);
+    if (r.lastact) r.lastact = Format(r.lastact);
+  }
+  return ok(res, { list });
+});
+
+exports.resetPassword = [
+  requirePermission('user.edit'),
+  handler(async (req, res) => {
+    const bcrypt = require('bcryptjs');
+    const uid = parseInt(req.body.uid, 10);
+    if (!uid) return fail(res, '请确认信息完善');
+    const newPwd = Math.random().toString(36).slice(2, 10);
+    const hash = bcrypt.hashSync(newPwd, 12);
+    const r = await db.query('UPDATE userInfo SET pwd=? WHERE uid=?', [hash, uid]);
+    if (!r.affectedRows) return fail(res, '用户不存在');
+    return ok(res, { newPassword: newPwd });
+  }),
+];
+
+exports.getAdminStats = handler(async (req, res) => {
+  if (!req.can('user.list')) return res.status(403).end('403 Forbidden');
+  const [total, withRoles, banned, grantCount] = await Promise.all([
+    db.one('SELECT COUNT(*) AS cnt FROM userInfo'),
+    db.one('SELECT COUNT(DISTINCT uid) AS cnt FROM user_roles'),
+    db.one('SELECT COUNT(*) AS cnt FROM userInfo WHERE inUse=0'),
+    db.one('SELECT COUNT(*) AS cnt FROM user_permissions'),
+  ]);
+  return ok(res, {
+    totalUsers: total.cnt,
+    withRoles: withRoles.cnt,
+    banned: banned.cnt,
+    grantCount: grantCount.cnt,
+  });
+});

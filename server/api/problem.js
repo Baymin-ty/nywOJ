@@ -9,14 +9,18 @@ const { briefFormat, Format, bFormat, recordEvent, kbFormat } = require('../stat
 const { judgeRes, ptype } = require('../db/format');
 
 // ---- shared helpers ----
+// view = public OR owner (always sees own) OR problem.view.any
+// manage = (owner AND problem.manage.self) OR problem.manage.any (scoped or global).
+//   problem.manage.self lets a user edit their own problems; without it, even
+//   the original creator can no longer manage the problem after creation.
 const problemAuth = async (req, pid) => {
   const row = await db.one('SELECT isPublic,publisher FROM problem WHERE pid=?', [pid]);
   if (!row) return { view: false, manage: false };
   const scope = { type: 'problem', id: Number(pid) };
   const isOwner = row.publisher === req.session.uid;
   return {
-    view: !!row.isPublic || isOwner || req.can('problem.view.private'),
-    manage: isOwner || req.can('problem.edit.any', scope) || req.can('problem.case.manage', scope),
+    view: !!row.isPublic || isOwner || req.can('problem.view.any'),
+    manage: (isOwner && req.can('problem.manage.self')) || req.can('problem.manage.any', scope),
   };
 };
 exports.problemAuth = problemAuth;
@@ -59,8 +63,8 @@ exports.updateProblem = [
     if (!info.title || !info.description || !info.timeLimit || !info.memoryLimit || !pid)
       return fail(res, '请确认信息完善');
 
-    // Holders of global problem.edit.any (e.g. moderator+) bypass per-problem limits.
-    if (!req.can('problem.edit.any')) {
+    // Holders of global problem.manage.any (e.g. moderator+) bypass per-problem limits.
+    if (!req.can('problem.manage.any')) {
       if (info.timeLimit > 10000 || info.timeLimit < 0) return fail(res, '时间限制最大为10000ms');
       if (info.memoryLimit > 512 || info.memoryLimit < 0) return fail(res, '空间限制最大为512MB');
       if (info.tags?.length > 5) return fail(res, '题目标签最多设置5个');
@@ -89,17 +93,26 @@ exports.getProblemList = handler(async (req, res) => {
   const filter = req.body.filter || {};
   if (filter.level === 6) filter.level = null;
 
-  const visibility = req.can('problem.view.private') ? '1=1' : 'isPublic=1';
+  // Without problem.view.any, users see public problems plus their own
+  // (visibility OR publisher=me). Otherwise see everything.
+  const canViewAny = req.can('problem.view.any');
+  let visibilityCond = null;
+  if (!canViewAny) {
+    visibilityCond = req.session.uid
+      ? ['(isPublic=1 OR publisher=?)', req.session.uid]
+      : ['isPublic=1'];
+  }
   const tagsParam = filter.tags?.length ? JSON.stringify(filter.tags) : null;
 
   // 注意：原实现里 list 用 (title LIKE ? OR description LIKE ?)，而 count 只看 title — 这里统一用同一份条件以避免漂移
   const cond = [
+    visibilityCond,
     ['publisher=?', filter.publisherUid],
     ['level=?', filter.level],
     filter.name ? ['(title LIKE ? OR description LIKE ?)', `%${filter.name}%`, `%${filter.name}%`] : null,
     ['JSON_CONTAINS(tags, ?)', tagsParam],
   ];
-  const { where, params } = buildWhere(cond, visibility);
+  const { where, params } = buildWhere(cond);
 
   const list = await db.query(
     'SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.time,p.level,p.tags,p.publisher as publisherUid,u.name as publisher,p.isPublic ' +
@@ -118,11 +131,21 @@ exports.getProblemList = handler(async (req, res) => {
 
 exports.getProblemInfo = handler(async (req, res) => {
   const { pid } = req.body;
-  const visibility = req.can('problem.view.private') ? '' : ' AND isPublic=1';
+  // Owners can always view their own problem (even when non-public).
+  let visibility = '';
+  const params = [pid];
+  if (!req.can('problem.view.any')) {
+    if (req.session.uid) {
+      visibility = ' AND (isPublic=1 OR publisher=?)';
+      params.push(req.session.uid);
+    } else {
+      visibility = ' AND isPublic=1';
+    }
+  }
   const row = await db.one(
     'SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.description,p.time,p.timeLimit,p.memoryLimit,p.isPublic,p.type,p.tags,p.level,p.lang,p.publisher as publisherUid,u.`name` as publisher ' +
       'FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=?' + visibility,
-    [pid]
+    params
   );
   if (!row) return fail(res, '无权限查看或未找到此题目');
   row.type = ptype[row.type];
@@ -291,9 +314,9 @@ exports.downloadCase = [
     const problem = await db.one('SELECT publisher FROM problem WHERE pid=?', [pid]);
     if (!problem || !fs.existsSync(`./data/${pid}/config.json`)) return fail(res, 'Not Found Error');
     const scope = { type: 'problem', id: Number(pid) };
-    const allowed = problem.publisher === req.session.uid
-      || req.can('problem.case.manage', scope)
-      || req.can('problem.edit.any', scope);
+    const isOwner = problem.publisher === req.session.uid;
+    const allowed = (isOwner && req.can('problem.manage.self'))
+      || req.can('problem.manage.any', scope);
     if (!allowed) return fail(res, '你只能下载自己题目的测试点');
 
     const { cases } = JSON.parse(await getFile(`./data/${pid}/config.json`));

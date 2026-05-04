@@ -197,33 +197,33 @@ const cleanupSandbox = async () => {
     });
 
     await test('grant scoped allow → appears in effective.scoped, not in global', async () => {
-      const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.edit.any'");
+      const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.manage.any'");
       await db.query(
         `INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)`,
         [normalUid, perm.id, 'allow', 'problem', 42]
       );
       policy.invalidate(normalUid);
       const p = await policy.loadEffectivePermissions(normalUid);
-      assert(!p.global.has('problem.edit.any'), 'scoped grant must NOT pollute global set');
-      assert(p.scoped.get('problem.edit.any')?.has('problem:42'), 'scoped grant lands in scoped[problem:42]');
+      assert(!p.global.has('problem.manage.any'), 'scoped grant must NOT pollute global set');
+      assert(p.scoped.get('problem.manage.any')?.has('problem:42'), 'scoped grant lands in scoped[problem:42]');
     });
 
     await test('policy.can: scoped grant authorizes only the matching scope', async () => {
       const p = await policy.loadEffectivePermissions(normalUid);
-      assert(policy.can(p, 'problem.edit.any', { type: 'problem', id: 42 }), 'allowed for pid=42');
-      assert(!policy.can(p, 'problem.edit.any', { type: 'problem', id: 43 }), 'denied for pid=43');
-      assert(!policy.can(p, 'problem.edit.any'), 'no global grant');
+      assert(policy.can(p, 'problem.manage.any', { type: 'problem', id: 42 }), 'allowed for pid=42');
+      assert(!policy.can(p, 'problem.manage.any', { type: 'problem', id: 43 }), 'denied for pid=43');
+      assert(!policy.can(p, 'problem.manage.any'), 'no global grant');
     });
 
     await test('global deny overrides role-derived allow', async () => {
-      const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.delete.any'");
+      const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.manage.any'");
       await db.query(
         `INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)`,
         [modUid, perm.id, 'deny', null, null]
       );
       policy.invalidate(modUid);
       const p = await policy.loadEffectivePermissions(modUid);
-      assert(!policy.can(p, 'problem.delete.any'), 'moderator denied problem.delete.any after explicit deny');
+      assert(!policy.can(p, 'problem.manage.any'), 'moderator denied problem.manage.any after explicit deny');
     });
 
     // -------- 4. Expires honored --------
@@ -391,7 +391,7 @@ const cleanupSandbox = async () => {
       const p = await policy.loadEffectivePermissions(normalUid);
       assert(p.global.has('problem.create'), 'has problem.create from problem_setter');
       assert(p.global.has('contest.create'), 'has contest.create from custom role');
-      assert(p.global.has('problem.edit.any'), 'has problem.edit.any from problem_setter');
+      assert(p.global.has('problem.manage.self'), 'has problem.manage.self from problem_setter');
     });
 
     await test('setUserRoles overwrites: removing a role drops its perms', async () => {
@@ -451,7 +451,7 @@ const cleanupSandbox = async () => {
     await test('grantUserPermission upserts scoped allow then revokeUserPermission removes it', async () => {
       const req = makeReq(superUid, superPerms);
       req.body = {
-        uid: normalUid, permissionKey: 'problem.case.manage', effect: 'allow',
+        uid: normalUid, permissionKey: 'problem.manage.any', effect: 'allow',
         resourceType: 'problem', resourceId: 7,
       };
       const res = await runHandler(auth.grantUserPermission, req);
@@ -459,7 +459,7 @@ const cleanupSandbox = async () => {
 
       policy.invalidate(normalUid);
       const p1 = await policy.loadEffectivePermissions(normalUid);
-      assert(p1.scoped.get('problem.case.manage')?.has('problem:7'), 'scoped grant active');
+      assert(p1.scoped.get('problem.manage.any')?.has('problem:7'), 'scoped grant active');
 
       const req2 = makeReq(superUid, superPerms);
       req2.body = { ...req.body, expiresAt: new Date(Date.now() + 60_000).toISOString() };
@@ -467,14 +467,14 @@ const cleanupSandbox = async () => {
       assertEq(res2.statusCode, 200, 'upsert ok');
       const cnt = await db.one(
         `SELECT COUNT(*) c FROM user_permissions up JOIN permissions p ON p.id=up.permission_id
-         WHERE up.uid=? AND p.\`key\`='problem.case.manage' AND up.resource_type='problem' AND up.resource_id=7`,
+         WHERE up.uid=? AND p.\`key\`='problem.manage.any' AND up.resource_type='problem' AND up.resource_id=7`,
         [normalUid]
       );
       assertEq(cnt.c, 1, 'exactly one row (upserted)');
 
       const row = await db.one(
         `SELECT up.id FROM user_permissions up JOIN permissions p ON p.id=up.permission_id
-         WHERE up.uid=? AND p.\`key\`='problem.case.manage' AND up.resource_type='problem' AND up.resource_id=7`,
+         WHERE up.uid=? AND p.\`key\`='problem.manage.any' AND up.resource_type='problem' AND up.resource_id=7`,
         [normalUid]
       );
       const req3 = makeReq(superUid, superPerms);
@@ -484,7 +484,7 @@ const cleanupSandbox = async () => {
 
       policy.invalidate(normalUid);
       const p2 = await policy.loadEffectivePermissions(normalUid);
-      assert(!p2.scoped.get('problem.case.manage')?.has('problem:7'), 'scoped grant gone');
+      assert(!p2.scoped.get('problem.manage.any')?.has('problem:7'), 'scoped grant gone');
     });
 
     await test('listUserGrants returns roles + permissions', async () => {
@@ -527,7 +527,7 @@ const cleanupSandbox = async () => {
         const req = makeReq(normalUid, ownerPerms);
         req.body = {
           uid: modUid,
-          permissionKey: 'problem.case.manage',
+          permissionKey: 'problem.manage.any',
           effect: 'allow',
           resourceType: 'problem',
           resourceId: pid,
@@ -537,13 +537,13 @@ const cleanupSandbox = async () => {
 
         policy.invalidate(modUid);
         const mp = await policy.loadEffectivePermissions(modUid);
-        assert(mp.scoped.get('problem.case.manage')?.has(`problem:${pid}`),
-          `modUid has problem.case.manage scoped to problem:${pid}`);
+        assert(mp.scoped.get('problem.manage.any')?.has(`problem:${pid}`),
+          `modUid has problem.manage.any scoped to problem:${pid}`);
 
         const req2 = makeReq(normalUid, ownerPerms);
         req2.body = {
           uid: modUid,
-          permissionKey: 'problem.view.private',
+          permissionKey: 'problem.view.any',
           effect: 'allow',
           resourceType: 'problem',
           resourceId: pid,
@@ -617,11 +617,11 @@ const cleanupSandbox = async () => {
 
     await test('requirePermission with scopeFrom honors scoped grants', async () => {
       const { requirePermission } = require('./middleware');
-      const mw = requirePermission('problem.edit.any', {
+      const mw = requirePermission('problem.manage.any', {
         scopeFrom: (req) => ({ type: 'problem', id: +req.body.pid }),
       });
       // normalUid currently has no roles/grants — give it ONLY a scoped allow on pid 99.
-      const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.edit.any'");
+      const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.manage.any'");
       await db.query(
         `INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)`,
         [normalUid, perm.id, 'allow', 'problem', 99]
@@ -647,6 +647,133 @@ const cleanupSandbox = async () => {
       });
       assert(!nextCalled2, 'blocked for pid=100');
       assertEq(res2.statusCode, 403, 'status 403');
+    });
+
+    // -------- 9. New problem permission model (manage.any / manage.self / view.any) --------
+    await test('problemAuth: owner with manage.self can manage own problem', async () => {
+      const { problemAuth } = require('../api/problem');
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
+        ['_test_p_msself', 'desc', normalUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        // Give normalUid problem.manage.self (it doesn't have it from clean state).
+        await db.query('DELETE FROM user_roles WHERE uid=?', [normalUid]);
+        await db.query('DELETE FROM user_permissions WHERE uid=?', [normalUid]);
+        const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.manage.self'");
+        await db.query(
+          'INSERT INTO user_permissions (uid, permission_id, effect) VALUES (?,?,?)',
+          [normalUid, perm.id, 'allow']
+        );
+        policy.invalidate(normalUid);
+        const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+        req.body = { pid };
+        const auth = await problemAuth(req, pid);
+        assertEq(auth.manage, true, 'owner with manage.self can manage');
+        assertEq(auth.view, true, 'owner can always view own problem');
+      } finally {
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+        await db.query('DELETE FROM user_permissions WHERE uid=?', [normalUid]);
+        policy.invalidate(normalUid);
+      }
+    });
+
+    await test('problemAuth: owner WITHOUT manage.self cannot manage', async () => {
+      const { problemAuth } = require('../api/problem');
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
+        ['_test_p_owneronly', 'desc', normalUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        // normalUid has no roles + no perms
+        policy.invalidate(normalUid);
+        const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+        req.body = { pid };
+        const auth = await problemAuth(req, pid);
+        assertEq(auth.manage, false, 'plain owner without manage.self cannot manage');
+        assertEq(auth.view, true, 'owner can still view own problem');
+      } finally {
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+      }
+    });
+
+    await test('problemAuth: non-owner with manage.any (scoped) can manage', async () => {
+      const { problemAuth } = require('../api/problem');
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
+        ['_test_p_scoped', 'desc', superUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.manage.any'");
+        await db.query(
+          'INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)',
+          [normalUid, perm.id, 'allow', 'problem', pid]
+        );
+        policy.invalidate(normalUid);
+        const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+        const auth = await problemAuth(req, pid);
+        assertEq(auth.manage, true, 'non-owner with manage.any@pid can manage');
+      } finally {
+        await db.query('DELETE FROM user_permissions WHERE uid=?', [normalUid]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+        policy.invalidate(normalUid);
+      }
+    });
+
+    await test('problemAuth: non-owner without view.any cannot view a private problem', async () => {
+      const { problemAuth } = require('../api/problem');
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
+        ['_test_p_private', 'desc', superUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        policy.invalidate(normalUid);
+        const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+        const auth = await problemAuth(req, pid);
+        assertEq(auth.view, false, 'no view.any + non-owner + private = no view');
+      } finally {
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+      }
+    });
+
+    await test('problem_setter role grants create + manage.self + view.any (NOT manage.any)', async () => {
+      const role = await db.one('SELECT id FROM roles WHERE `key`=?', ['problem_setter']);
+      const links = await db.query(
+        `SELECT p.\`key\` AS k FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id=?`,
+        [role.id]
+      );
+      const keys = new Set(links.map((l) => l.k));
+      assert(keys.has('problem.create'), 'has problem.create');
+      assert(keys.has('problem.manage.self'), 'has problem.manage.self');
+      assert(keys.has('problem.view.any'), 'has problem.view.any');
+      assert(!keys.has('problem.manage.any'), 'does NOT have problem.manage.any (problem_setters can only manage own)');
+    });
+
+    await test('moderator role grants problem.manage.any', async () => {
+      const role = await db.one('SELECT id FROM roles WHERE `key`=?', ['moderator']);
+      const links = await db.query(
+        `SELECT p.\`key\` AS k FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id=?`,
+        [role.id]
+      );
+      const keys = new Set(links.map((l) => l.k));
+      assert(keys.has('problem.manage.any'), 'moderator has problem.manage.any');
+      assert(keys.has('problem.manage.self'), 'moderator has problem.manage.self');
+      assert(keys.has('problem.view.any'), 'moderator has problem.view.any');
+    });
+
+    await test('migration: old keys (problem.edit.any etc.) no longer exist', async () => {
+      for (const oldKey of ['problem.edit.any', 'problem.delete.any', 'problem.case.manage', 'problem.view.private']) {
+        const row = await db.exists('SELECT 1 FROM permissions WHERE `key`=?', [oldKey]);
+        assert(!row, `${oldKey} removed from catalog`);
+      }
+    });
+
+    await test('RESOURCE_GRANTABLE.problem now whitelists only problem.manage.any', async () => {
+      assertSetEq(RESOURCE_GRANTABLE.problem, ['problem.manage.any'], 'problem grantable list');
     });
   } catch (err) {
     console.error('FATAL:', err && err.stack ? err.stack : err);

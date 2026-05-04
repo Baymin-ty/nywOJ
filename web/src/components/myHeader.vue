@@ -56,13 +56,7 @@
         </el-icon>
         编辑资料
       </el-menu-item>
-      <el-menu-item v-if="$canAny('user.list','user.edit','user.ban')" index="/admin/usermanage">
-        <el-icon>
-          <Operation />
-        </el-icon>
-        用户管理
-      </el-menu-item>
-      <el-menu-item v-if="$canAny('user.role.assign','user.permission.grant')" index="/admin/permissions">
+      <el-menu-item v-if="$canAny('user.list','user.edit','user.ban','user.role.assign','user.permission.grant')" index="/admin/permissions">
         <el-icon>
           <Lock />
         </el-icon>

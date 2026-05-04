@@ -126,7 +126,7 @@ export default {
         roleKey: null,
         inUse: null,
       },
-      status: [{ value: 1, label: '正常' }, { value: 2, label: '封禁' }],
+      status: [{ value: 1, label: '正常' }, { value: 0, label: '封禁' }],
     }
   },
   methods: {

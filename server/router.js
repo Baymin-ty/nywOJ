@@ -32,6 +32,10 @@ router.post('/api/admin/setBlock', admin.setBlock);
 router.post('/api/admin/updateUserInfo', admin.updateUserInfo);
 router.post('/api/admin/addAnnouncement', admin.addAnnouncement);
 router.post('/api/admin/updateAnnouncement', admin.updateAnnouncement);
+router.post('/api/admin/listAuditLog', admin.listAuditLog);
+router.post('/api/admin/getUserLoginLog', admin.getUserLoginLog);
+router.post('/api/admin/resetPassword', admin.resetPassword);
+router.post('/api/admin/getAdminStats', admin.getAdminStats);
 
 const auth = require('./api/auth');
 

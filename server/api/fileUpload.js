@@ -94,7 +94,7 @@ const handleCaseUpload = async (req, res) => {
       return res.status(403).end('403 Forbidden');
     }
 
-    const isSizeValid = await checkZipSize(req.file.path, req.can('problem.edit.any'), CASE_MAX_TOTAL_SIZE);
+    const isSizeValid = await checkZipSize(req.file.path, req.can('problem.manage.any'), CASE_MAX_TOTAL_SIZE);
     if (!isSizeValid) {
       fs.unlinkSync(req.file.path); // delete
       return res.status(202).send({
