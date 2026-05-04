@@ -18,9 +18,10 @@ const problemAuth = async (req, pid) => {
   if (!row) return { view: false, manage: false };
   const scope = { type: 'problem', id: Number(pid) };
   const isOwner = row.publisher === req.session.uid;
+  const canManage = (isOwner && req.can('problem.manage.self')) || req.can('problem.manage.any', scope);
   return {
-    view: !!row.isPublic || isOwner || req.can('problem.view.any'),
-    manage: (isOwner && req.can('problem.manage.self')) || req.can('problem.manage.any', scope),
+    view: !!row.isPublic || isOwner || req.can('problem.view.any') || canManage,
+    manage: canManage,
   };
 };
 exports.problemAuth = problemAuth;
