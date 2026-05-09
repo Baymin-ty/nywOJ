@@ -153,7 +153,12 @@
                 </el-icon>
                 协作者
               </template>
-              <CollaboratorPanel resource-type="contest" :resource-id="parseInt(cid)" :visible="canManage" />
+              <CollaboratorPanel
+                resource-type="contest"
+                :resource-id="parseInt(cid)"
+                :visible="canManage"
+                :can-edit="isOwner"
+              />
             </el-tab-pane>
           </el-tabs>
         </el-card>
@@ -180,14 +185,21 @@ export default {
     CollaboratorPanel,
   },
   computed: {
-    // Visible to the host or anyone with global contest.edit.any.
-    // The server's contestInfo.auth.manage is authoritative; mirror it here
-    // when present, falling back to a client-side guess for first paint.
+    // Mirrors server/api/contest.js#canManageContest. The server-computed
+    // contestInfo.auth.manage is authoritative; this is just the first-paint
+    // guess. The new model: (host AND contest.manage.self) OR contest.manage.any.
     canManage() {
       if (this.contestInfo && this.contestInfo.auth && this.contestInfo.auth.manage !== undefined)
         return this.contestInfo.auth.manage;
-      if (this.contestInfo && this.contestInfo.host === this.$store.state.uid) return true;
-      return this.$can('contest.edit.any');
+      const isHost = this.contestInfo && this.contestInfo.host === this.$store.state.uid;
+      return (isHost && this.$can('contest.manage.self')) || this.$can('contest.manage.any');
+    },
+    // Only the contest host (or a global grantor) can add/remove collaborators.
+    // A user with contest.manage.any scoped to this contest is just a
+    // collaborator and gets read-only access to the collaborator list.
+    isOwner() {
+      return (this.contestInfo && this.contestInfo.host === this.$store.state.uid)
+        || this.$can('user.permission.grant');
     },
   },
   data() {

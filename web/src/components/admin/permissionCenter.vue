@@ -368,7 +368,7 @@
     </main>
 
     <!-- Edit user drawer -->
-    <el-drawer v-model="editDrawerVisible" :title="null" direction="rtl" size="640px" :with-header="false" :close-on-click-modal="true">
+    <el-drawer v-model="editDrawerVisible" :title="null" direction="rtl" size="800px" :with-header="false" :close-on-click-modal="true">
       <template v-if="editingUser">
         <!-- Drawer header -->
         <div class="drawer-header">
@@ -466,9 +466,6 @@
           <div v-if="editTab === 'grants'">
             <div class="hint-box">
               单点授权（user_permissions 表）。<code>deny</code> 优先于 allow；scope 为空表示全局。需要 <code>user.permission.grant</code>。
-            </div>
-            <div style="margin-bottom: 12px;" v-if="canGrantPerm">
-              <el-button size="small" type="primary" plain :icon="Plus" @click="addGrantVisible = true">添加授权</el-button>
             </div>
             <GrantTable
               v-if="canGrantPerm"
@@ -1409,7 +1406,7 @@ export default {
 .legend-check.super { background: #0E1D69; }
 
 /* Roles grid */
-.roles-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.roles-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 10px; }
 .role-card { background: #fff; border: 1px solid #ebeef5; border-radius: 4px; padding: 16px; }
 .role-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
 .role-card-tags { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
@@ -1483,7 +1480,7 @@ export default {
 .drawer-user-title { display: flex; align-items: center; gap: 8px; }
 .drawer-user-name { font-size: 17px; font-weight: 800; color: #3f3f3f; }
 .drawer-tabs { padding: 0 22px; }
-.drawer-body { padding: 20px 22px; overflow: auto; flex: 1; }
+.drawer-body { padding: 14px 22px 20px; overflow: auto; flex: 1; }
 .drawer-footer {
   padding: 14px 22px;
   border-top: 1px solid #ebeef5;

@@ -6,27 +6,27 @@
           选手列表
           <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
             layout="total, prev, pager, next" :total="total"></el-pagination>
-          <el-button-group>
-            <el-button v-if="$canAny('contest.edit.any','contest.player.manage')" type="danger" @click="removePlayer" :disabled="!removeList.length">
+          <el-button-group v-if="canManage">
+            <el-button type="danger" @click="removePlayer" :disabled="!removeList.length">
               <el-icon class="el-icon--left">
                 <Remove />
               </el-icon>
               踢出
             </el-button>
-            <el-button v-if="$canAny('contest.edit.any','contest.player.manage')" type="success" :disabled="!addName.length" @click="addPlayer">
+            <el-button type="success" :disabled="!addName.length" @click="addPlayer">
               <el-icon class="el-icon--left">
                 <Plus />
               </el-icon>
               添加
             </el-button>
-            <el-input v-if="$canAny('contest.edit.any','contest.player.manage')" v-model="addName" style="width: 150px;" placeholder="添加用户名"
+            <el-input v-model="addName" style="width: 150px;" placeholder="添加用户名"
               @keyup.enter="addPlayer" />
           </el-button-group>
         </div>
       </template>
       <el-table :data="playerList" height="600px" @selection-change="select" :header-cell-style="{ textAlign: 'center' }"
         :cell-style="{ textAlign: 'center' }" v-loading="!finished">
-        <el-table-column v-if="$canAny('contest.edit.any','contest.player.manage')" type="selection" min-width="10%" />
+        <el-table-column v-if="canManage" type="selection" min-width="10%" />
         <el-table-column prop="uid" label="uid" min-width="20%" />
         <el-table-column prop="name" label="用户名" min-width="70%">
           <template #default="scope">
@@ -54,6 +54,10 @@ export default {
       cid: 0,
       currentPage: 1,
       addName: '',
+      // Server-computed manage flag (auth.manage from getContestInfo).
+      // Cannot be derived from the client alone — requires checking ownership
+      // + scoped manage.any grants which only the server has cached.
+      canManage: false,
     }
   },
   methods: {
@@ -72,6 +76,7 @@ export default {
     },
     removePlayer() {
       axios.post('/api/contest/removePlayer', {
+        cid: this.cid,
         list: this.removeList
       }).then(res => {
         if (res.status === 200) {
@@ -107,6 +112,12 @@ export default {
   },
   mounted() {
     this.cid = this.$route.params.cid;
+    // Ask the server who can manage this contest — the auth.manage flag in
+    // the contest info reflects host+manage.self / manage.any-scoped grants.
+    axios.post('/api/contest/getContestInfo', { cid: this.cid }).then((res) => {
+      if (res.status === 200 && res.data && res.data.data && res.data.data.auth)
+        this.canManage = !!res.data.data.auth.manage;
+    }).catch(() => { /* keep canManage=false */ });
     this.all();
   }
 }

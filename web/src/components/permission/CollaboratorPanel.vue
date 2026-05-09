@@ -7,18 +7,20 @@
       </div>
     </template>
 
-    <div v-if="!visible" style="color:#909399;">无权限管理本资源的协作者。</div>
+    <div v-if="!visible" style="color:#909399;">无权限查看本资源的协作者。</div>
     <div v-else>
+      <div v-if="!canEdit" style="font-size:12px;color:#909399;margin-bottom:10px;">
+        以下是当前协作者列表。仅资源所有者可以新增/移除协作者。
+      </div>
       <el-table :data="grants" :cell-style="{ textAlign: 'center' }" :header-cell-style="{ textAlign: 'center' }">
         <el-table-column label="用户" width="200">
           <template #default="scope">
             <router-link :to="'/user/' + scope.row.uid" class="rlink">{{ scope.row.name }} (#{{ scope.row.uid }})</router-link>
           </template>
         </el-table-column>
-        <el-table-column label="权限">
+        <el-table-column v-if="showPermissionColumn" label="权限">
           <template #default="scope">
             <el-tag size="small">{{ permName(scope.row.permissionKey) }}</el-tag>
-            <div style="font-size:12px;color:#909399;">{{ scope.row.permissionKey }}</div>
           </template>
         </el-table-column>
         <el-table-column label="过期" width="180">
@@ -27,34 +29,37 @@
             <span v-else style="color:#909399">永久</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="100">
+        <el-table-column v-if="canEdit" label="操作" width="100">
           <template #default="scope">
             <el-button type="danger" size="small" plain @click="revoke(scope.row)">移除</el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <el-divider>添加协作者</el-divider>
-      <el-form :inline="true">
-        <el-form-item label="用户">
-          <UserPicker v-model="form.uid" style="width: 240px;" />
-        </el-form-item>
-        <el-form-item label="权限">
-          <PermissionPicker
-            v-model="form.permissionKey"
-            :permissions="permissions"
-            :whitelist="grantablePermissions"
-            scopable-only
-            style="width: 240px;"
-          />
-        </el-form-item>
-        <el-form-item label="过期">
-          <el-date-picker v-model="form.expiresAt" type="datetime" placeholder="（永久）" style="width: 200px;" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :loading="granting" @click="grant">添加</el-button>
-        </el-form-item>
-      </el-form>
+      <template v-if="canEdit">
+        <el-divider>添加协作者</el-divider>
+        <el-form :inline="true">
+          <el-form-item label="用户">
+            <UserPicker v-model="form.uid" style="width: 240px;" />
+          </el-form-item>
+          <el-form-item v-if="showPermissionPicker" label="权限">
+            <PermissionPicker
+              v-model="form.permissionKey"
+              :permissions="displayPermissions"
+              :whitelist="grantablePermissions"
+              scopable-only
+              hide-key
+              style="width: 240px;"
+            />
+          </el-form-item>
+          <el-form-item label="过期">
+            <el-date-picker v-model="form.expiresAt" type="datetime" placeholder="（永久）" style="width: 200px;" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="granting" @click="grant">添加</el-button>
+          </el-form-item>
+        </el-form>
+      </template>
     </div>
   </el-card>
 </template>
@@ -71,8 +76,14 @@ export default {
   props: {
     resourceType: { type: String, required: true },   // 'problem' | 'contest'
     resourceId: { type: Number, required: true },
-    // visibility decided by parent (e.g. owner OR has *.edit.any). When false, panel renders an empty hint.
+    // `visible` controls whether the collaborator LIST is shown (owner +
+    // collaborators + global grantors can read).
     visible: { type: Boolean, default: true },
+    // `canEdit` controls whether the add/remove form is shown. ONLY the
+    // resource owner (or a global grantor) may modify the collaborator list —
+    // a collaborator with manage.any scoped on this resource cannot grant or
+    // revoke other collaborators. Server enforces the same rule.
+    canEdit: { type: Boolean, default: false },
   },
   data() {
     return {
@@ -84,6 +95,27 @@ export default {
       form: { uid: null, permissionKey: null, expiresAt: null },
     };
   },
+  computed: {
+    showPermissionColumn() {
+      return this.resourceType !== 'contest';
+    },
+    showPermissionPicker() {
+      return this.grantablePermissions.length > 1;
+    },
+    singleGrantable() {
+      return this.grantablePermissions.length === 1 ? this.grantablePermissions[0] : null;
+    },
+    // The permissions catalog returned by the server uses the global names
+    // (e.g. "管理任意题目"), which read as confusing in a single-resource
+    // collaborator UI. Re-label per-resource so the picker shows e.g.
+    // "管理本题目" / "查看本题目".
+    displayPermissions() {
+      return (this.permissions || []).map((p) => ({
+        ...p,
+        name: this.permName(p.key) || p.name,
+      }));
+    },
+  },
   watch: {
     resourceId() { this.reload(); },
     visible(v) { if (v) this.reload(); },
@@ -93,6 +125,9 @@ export default {
   },
   methods: {
     permName(key) {
+      if (this.resourceType === 'problem' && key === 'problem.manage.any') return '管理本题目';
+      if (this.resourceType === 'problem' && key === 'problem.view.any') return '查看本题目';
+      if (this.resourceType === 'contest' && key === 'contest.manage.any') return '管理本比赛';
       const p = this.permissions.find((x) => x.key === key);
       return p ? p.name : key;
     },
@@ -106,17 +141,21 @@ export default {
       if (!this.resourceId) return;
       this.loading = true;
       try {
-        const [pr, gr] = await Promise.all([
-          axios.post('/api/auth/listPermissions').catch(() => ({ data: { permissions: [] } })),
-          axios.post('/api/auth/listResourceGrants', {
-            resourceType: this.resourceType,
-            resourceId: this.resourceId,
-          }),
-        ]);
-        this.permissions = (pr.data && pr.data.permissions) || [];
+        const gr = await axios.post('/api/auth/listResourceGrants', {
+          resourceType: this.resourceType,
+          resourceId: this.resourceId,
+        });
+        this.permissions = (gr.data && gr.data.permissions) || [];
         if (gr.status === 200) {
           this.grants = gr.data.grants || [];
           this.grantablePermissions = gr.data.grantablePermissions || [];
+          if (this.singleGrantable && this.form.permissionKey !== this.singleGrantable) {
+            this.form.permissionKey = this.singleGrantable;
+          }
+          if (!this.singleGrantable && this.form.permissionKey &&
+            !this.grantablePermissions.includes(this.form.permissionKey)) {
+            this.form.permissionKey = null;
+          }
         } else if (gr.status !== 403) {
           this.$message.error(gr.data && gr.data.message || '加载失败');
         }
@@ -132,6 +171,9 @@ export default {
     },
     async grant() {
       if (!this.form.uid) { this.$message.error('请选择用户'); return; }
+      if (!this.form.permissionKey && this.singleGrantable) {
+        this.form.permissionKey = this.singleGrantable;
+      }
       if (!this.form.permissionKey) { this.$message.error('请选择权限'); return; }
       this.granting = true;
       try {
@@ -158,7 +200,10 @@ export default {
     },
     async revoke(row) {
       try {
-        await ElMessageBox.confirm(`确认移除 ${row.name} 的 ${row.permissionKey} 权限？`, '提示', { type: 'warning' });
+        const permText = this.showPermissionColumn
+          ? ` 的 ${this.permName(row.permissionKey)}`
+          : ' 的协作者';
+        await ElMessageBox.confirm(`确认移除 ${row.name}${permText} 权限？`, '提示', { type: 'warning' });
       } catch (_) { return; }
       try {
         const res = await axios.post('/api/auth/revokeUserPermission', { id: row.id });

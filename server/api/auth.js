@@ -177,23 +177,42 @@ exports.setUserRoles = handler(async (req, res) => {
   return ok(res);
 });
 
-// Resource-owner check: can the current user authorize this scoped grant without holding
-// the global user.permission.grant permission?
-const canManageResource = async (req, resourceType, resourceId) => {
-  if (req.can('user.permission.grant')) return true;
-  if (!resourceType || resourceId == null) return false;
+// Two distinct checks for resource-scoped permission grants:
+//
+// 1. canViewResourceCollab — can list current collaborators (read-only).
+//    Owners + collaborators (anyone with manage.any scoped) + global grantors.
+//
+// 2. canManageResourceCollab — can ADD or REMOVE collaborators on a resource.
+//    Only owners + global grantors. A collaborator who got manage.any scoped
+//    to one problem/contest is NOT empowered to grant new collaborators —
+//    that's the "协作者拥有manage的权利但不具有修改协作者的权利" rule.
+const fetchOwner = async (resourceType, resourceId) => {
   if (resourceType === 'problem') {
-    const row = await db.one('SELECT publisher FROM problem WHERE pid=?', [resourceId]);
-    if (!row) return false;
-    if (row.publisher === req.session.uid) return true;
-    return req.can('problem.manage.any', { type: 'problem', id: resourceId });
+    const row = await db.one('SELECT publisher AS ownerUid FROM problem WHERE pid=?', [resourceId]);
+    return row ? row.ownerUid : null;
   }
   if (resourceType === 'contest') {
-    const row = await db.one('SELECT host FROM contest WHERE cid=?', [resourceId]);
-    if (!row) return false;
-    if (row.host === req.session.uid) return true;
-    return req.can('contest.edit.any', { type: 'contest', id: resourceId });
+    const row = await db.one('SELECT host AS ownerUid FROM contest WHERE cid=?', [resourceId]);
+    return row ? row.ownerUid : null;
   }
+  return null;
+};
+
+const canManageResourceCollab = async (req, resourceType, resourceId) => {
+  if (req.can('user.permission.grant')) return true;
+  if (!resourceType || resourceId == null) return false;
+  const owner = await fetchOwner(resourceType, resourceId);
+  if (owner == null) return false;
+  return owner === req.session.uid;
+};
+
+const canViewResourceCollab = async (req, resourceType, resourceId) => {
+  if (await canManageResourceCollab(req, resourceType, resourceId)) return true;
+  // Collaborators (manage.any scoped) can also see the collaborator list.
+  if (resourceType === 'problem')
+    return req.can('problem.manage.any', { type: 'problem', id: resourceId });
+  if (resourceType === 'contest')
+    return req.can('contest.manage.any', { type: 'contest', id: resourceId });
   return false;
 };
 
@@ -210,10 +229,12 @@ exports.grantUserPermission = handler(async (req, res) => {
   if (!isScoped && (resourceType || resourceId != null))
     return fail(res, 'resourceType 与 resourceId 必须同时提供');
 
-  // Authorization: global grant requires user.permission.grant; scoped grant also accepts
-  // resource owner / *.edit.any holders, but only for whitelisted permissions.
+  // Authorization: global grant requires user.permission.grant; scoped grant
+  // also accepts the resource OWNER (not collaborators), but only for
+  // whitelisted permissions. Collaborators-can-grant was deliberately removed
+  // — see canManageResourceCollab.
   if (isScoped) {
-    if (!(await canManageResource(req, resourceType, resourceId)))
+    if (!(await canManageResourceCollab(req, resourceType, resourceId)))
       return res.status(403).end('403 Forbidden');
     if (!req.can('user.permission.grant')) {
       const allowed = RESOURCE_GRANTABLE[resourceType] || [];
@@ -276,11 +297,13 @@ exports.revokeUserPermission = handler(async (req, res) => {
   );
   if (!row) return fail(res, '记录不存在');
 
-  // Auth: global record requires user.permission.grant; scoped record also accepts owner.
+  // Auth: global record requires user.permission.grant; scoped record also
+  // accepts owner (collaborators with manage.any can NOT revoke other
+  // collaborators — only the owner manages the collaborator list).
   const isScoped = !!(row.resourceType && row.resourceId != null);
   if (!req.can('user.permission.grant')) {
     if (!isScoped) return res.status(403).end('403 Forbidden');
-    if (!(await canManageResource(req, row.resourceType, row.resourceId)))
+    if (!(await canManageResourceCollab(req, row.resourceType, row.resourceId)))
       return res.status(403).end('403 Forbidden');
   }
 
@@ -296,7 +319,7 @@ exports.listResourceGrants = handler(async (req, res) => {
   if (!resourceType || !resourceId) return fail(res, '请确认信息完善');
   if (!RESOURCE_TYPES.includes(resourceType)) return fail(res, '不支持的资源类型');
 
-  if (!(await canManageResource(req, resourceType, resourceId)))
+  if (!(await canViewResourceCollab(req, resourceType, resourceId)))
     return res.status(403).end('403 Forbidden');
 
   const rows = await db.query(
@@ -311,13 +334,23 @@ exports.listResourceGrants = handler(async (req, res) => {
   );
 
   const grantable = RESOURCE_GRANTABLE[resourceType] || [];
-  return ok(res, { grants: rows, grantablePermissions: grantable });
+  const keys = new Set(grantable);
+  for (const r of rows) keys.add(r.permissionKey);
+  const permissions = Array.from(keys).map((key) => {
+    const p = PERMISSIONS[key];
+    return p
+      ? { key, group: p.group, name: p.name, description: p.description, scopable: !!p.scopable }
+      : { key, group: 'other', name: key, description: '', scopable: false };
+  });
+  return ok(res, { grants: rows, grantablePermissions: grantable, permissions });
 });
 
-// Helper for the user picker on the management page.
+// Helper for the user picker on the admin page AND on resource collaborator
+// pickers (problem owner / contest host adding collaborators). Returns only
+// uid + name, both already public via /user/:uid, so the privacy bar is low.
+// Any logged-in user may use it — uid+name is already exposed on profile pages.
 exports.searchUsers = handler(async (req, res) => {
-  if (!requireAny(req, 'user.role.assign', 'user.permission.grant'))
-    return res.status(403).end('403 Forbidden');
+  if (!req.session.uid) return res.status(403).end('403 Forbidden');
   const q = (req.body.q || '').trim();
   if (!q) return ok(res, { users: [] });
   const isNumeric = /^\d+$/.test(q);
@@ -330,24 +363,33 @@ exports.searchUsers = handler(async (req, res) => {
   return ok(res, { users: rows });
 });
 
-// Resource pickers for the grant UI: anyone who can grant permissions can
-// search problems / contests by id or title.
+// Resource pickers for the grant UI. The admin/global grant flow uses
+// user.permission.grant; owners use them while building their collaborator
+// list, so we only require login + visibility (the queries already respect
+// public-vs-private via the regular problem/contest list endpoints — these
+// are idx-by-name pickers, not bulk dumps, and the result is gated by what
+// you'd see on the public problem/contest list anyway).
 exports.searchProblems = handler(async (req, res) => {
-  if (!req.can('user.permission.grant')) return res.status(403).end('403 Forbidden');
+  if (!req.session.uid) return res.status(403).end('403 Forbidden');
   const q = (req.body.q || '').trim();
   if (!q) return ok(res, { problems: [] });
+  const canViewAny = req.can('problem.view.any');
+  const visibility = canViewAny
+    ? '1=1'
+    : '(isPublic=1 OR publisher=?)';
+  const visParams = canViewAny ? [] : [req.session.uid];
   const isNumeric = /^\d+$/.test(q);
   const rows = await db.query(
     `SELECT pid, title FROM problem
-     WHERE ${isNumeric ? 'pid=? OR title LIKE ?' : 'title LIKE ?'}
+     WHERE ${visibility} AND ${isNumeric ? '(pid=? OR title LIKE ?)' : 'title LIKE ?'}
      ORDER BY pid DESC LIMIT 20`,
-    isNumeric ? [parseInt(q, 10), `%${q}%`] : [`%${q}%`]
+    [...visParams, ...(isNumeric ? [parseInt(q, 10), `%${q}%`] : [`%${q}%`])]
   );
   return ok(res, { problems: rows });
 });
 
 exports.searchContests = handler(async (req, res) => {
-  if (!req.can('user.permission.grant')) return res.status(403).end('403 Forbidden');
+  if (!req.session.uid) return res.status(403).end('403 Forbidden');
   const q = (req.body.q || '').trim();
   if (!q) return ok(res, { contests: [] });
   const isNumeric = /^\d+$/.test(q);

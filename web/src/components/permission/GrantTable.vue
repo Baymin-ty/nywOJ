@@ -43,8 +43,8 @@
           v-model="form.permissionKey"
           :permissions="permissions"
           :whitelist="whitelist"
-          :scopable-only="scopedOnly || !!form.resourceType"
-          :placeholder="form.resourceType ? '只显示可作用域的权限' : '选择权限'"
+          :scopable-only="scopedOnly"
+          :placeholder="scopedOnly ? '只显示可作用域的权限' : '选择权限'"
           style="width: 260px;"
         />
       </el-form-item>
@@ -54,15 +54,8 @@
           <el-option label="拒绝" value="deny" />
         </el-select>
       </el-form-item>
-      <template v-if="!fixedScope">
-        <el-form-item label="资源类型">
-          <el-select v-model="form.resourceType" clearable placeholder="（全局）" style="width: 130px;"
-            @change="form.resourceId = null">
-            <el-option label="题目" value="problem" />
-            <el-option label="比赛" value="contest" />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="form.resourceType === 'contest' ? '比赛' : '题目'" v-if="form.resourceType">
+      <template v-if="!fixedScope && form.resourceType">
+        <el-form-item :label="form.resourceType === 'contest' ? '比赛' : '题目'">
           <ResourcePicker v-model="form.resourceId" :resource-type="form.resourceType" style="width: 260px;" />
         </el-form-item>
       </template>
@@ -111,8 +104,26 @@ export default {
       handler(v) { this.form = formDefaults(v); },
       deep: true,
     },
+    'form.permissionKey'() {
+      this.syncScopeFromPermission();
+    },
   },
   methods: {
+    scopeTypeForPerm(key) {
+      const p = this.permissions.find((x) => x.key === key);
+      if (!p || !p.scopable) return null;
+      if (p.group === 'problem' || p.group === 'contest') return p.group;
+      return null;
+    },
+    syncScopeFromPermission() {
+      if (this.fixedScope) return;
+      const nextType = this.scopeTypeForPerm(this.form.permissionKey);
+      if (nextType !== this.form.resourceType) {
+        this.form.resourceType = nextType;
+        this.form.resourceId = null;
+      }
+      if (!nextType) this.form.resourceId = null;
+    },
     permName(key) {
       const p = this.permissions.find((x) => x.key === key);
       return p ? p.name : key;

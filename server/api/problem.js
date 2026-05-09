@@ -9,10 +9,12 @@ const { briefFormat, Format, bFormat, recordEvent, kbFormat } = require('../stat
 const { judgeRes, ptype } = require('../db/format');
 
 // ---- shared helpers ----
-// view = public OR owner (always sees own) OR problem.view.any
-// manage = (owner AND problem.manage.self) OR problem.manage.any (scoped or global).
+// view   = public OR owner OR problem.view.any (global or scoped to this pid) OR canManage
+// manage = (owner AND problem.manage.self) OR problem.manage.any (scoped or global)
 //   problem.manage.self lets a user edit their own problems; without it, even
 //   the original creator can no longer manage the problem after creation.
+//   problem.view.any can now be granted scoped to a single pid as a
+//   "view-only collaborator" perm — see RESOURCE_GRANTABLE.problem.
 const problemAuth = async (req, pid) => {
   const row = await db.one('SELECT isPublic,publisher FROM problem WHERE pid=?', [pid]);
   if (!row) return { view: false, manage: false };
@@ -20,7 +22,7 @@ const problemAuth = async (req, pid) => {
   const isOwner = row.publisher === req.session.uid;
   const canManage = (isOwner && req.can('problem.manage.self')) || req.can('problem.manage.any', scope);
   return {
-    view: !!row.isPublic || isOwner || req.can('problem.view.any') || canManage,
+    view: !!row.isPublic || isOwner || req.can('problem.view.any', scope) || canManage,
     manage: canManage,
   };
 };
@@ -94,14 +96,39 @@ exports.getProblemList = handler(async (req, res) => {
   const filter = req.body.filter || {};
   if (filter.level === 6) filter.level = null;
 
-  // Without problem.view.any, users see public problems plus their own
-  // (visibility OR publisher=me). Otherwise see everything.
+  // Visibility filtering for lists:
+  // - With global problem.view.any or global problem.manage.any: see all problems
+  // - With scoped problem.{manage,view}.any (collaborator on specific problems):
+  //   include those pids in the visibility set so collaborators — including
+  //   view-only collaborators — can find non-public problems they have access to
+  // - Otherwise: see public problems + own problems
   const canViewAny = req.can('problem.view.any');
+  const canManageAny = req.can('problem.manage.any');
   let visibilityCond = null;
-  if (!canViewAny) {
-    visibilityCond = req.session.uid
-      ? ['(isPublic=1 OR publisher=?)', req.session.uid]
-      : ['isPublic=1'];
+  if (!canViewAny && !canManageAny) {
+    // Pull pids the caller has any scoped problem-level grant on (manage OR
+    // view), so both manage- and view-collaborators see their problems here.
+    const scopedPids = new Set();
+    for (const key of ['problem.manage.any', 'problem.view.any']) {
+      const bucket = req.perms?.scoped?.get(key);
+      if (!bucket) continue;
+      for (const tag of bucket) {
+        const m = /^problem:(\d+)$/.exec(tag);
+        if (m) scopedPids.add(Number(m[1]));
+      }
+    }
+    const parts = ['isPublic=1'];
+    const params = [];
+    if (req.session.uid) {
+      parts.push('publisher=?');
+      params.push(req.session.uid);
+    }
+    if (scopedPids.size) {
+      const ids = [...scopedPids];
+      parts.push(`pid IN (${ids.map(() => '?').join(',')})`);
+      params.push(...ids);
+    }
+    visibilityCond = [`(${parts.join(' OR ')})`, ...params];
   }
   const tagsParam = filter.tags?.length ? JSON.stringify(filter.tags) : null;
 
@@ -132,21 +159,18 @@ exports.getProblemList = handler(async (req, res) => {
 
 exports.getProblemInfo = handler(async (req, res) => {
   const { pid } = req.body;
-  // Owners can always view their own problem (even when non-public).
-  let visibility = '';
-  const params = [pid];
-  if (!req.can('problem.view.any')) {
-    if (req.session.uid) {
-      visibility = ' AND (isPublic=1 OR publisher=?)';
-      params.push(req.session.uid);
-    } else {
-      visibility = ' AND isPublic=1';
-    }
-  }
+  // problemAuth is the single source of truth for view/manage rights:
+  //   view = public OR owner OR problem.view.any (scoped or global) OR canManage
+  //   canManage = (owner AND problem.manage.self) OR problem.manage.any (scoped or global)
+  // Scoped collaborators (manage OR view) on a private problem get view=true,
+  // so this single auth.view check covers them without an extra SQL filter.
+  const auth = await problemAuth(req, pid);
+  if (!auth.view) return fail(res, '无权限查看或未找到此题目');
+
   const row = await db.one(
     'SELECT p.pid,p.title,p.acCnt,p.submitCnt,p.description,p.time,p.timeLimit,p.memoryLimit,p.isPublic,p.type,p.tags,p.level,p.lang,p.publisher as publisherUid,u.`name` as publisher ' +
-      'FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=?' + visibility,
-    params
+      'FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=?',
+    [pid]
   );
   if (!row) return fail(res, '无权限查看或未找到此题目');
   row.type = ptype[row.type];

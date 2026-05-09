@@ -3,19 +3,27 @@ const { handler, fail, ok, paginate } = require('../db/util');
 const { requirePermission } = require('../auth/middleware');
 const { Format, briefFormat, kbFormat } = require('../static');
 const { judgeRes, formatSubmissionRow, formatCaseRow, ctype, cstatus } = require('../db/format');
-const { pushSidIntoQueue } = require('./judge');
-const { getProblemLang } = require('./problem');
+const { pushSidIntoQueue, streamSubmission } = require('./judge');
+const { getProblemLang, problemAuth } = require('./problem');
+const { readJudgeLogEntries } = require('./judgeLog');
 
 const ctypeToIndex = { OI: 0, IOI: 1 };
 const ptype = ['传统文本比较', 'Special Judge'];
 
 // ---- shared helpers ----
-// Owner of a contest, OR holder of contest.edit.any (global or scoped to this cid).
-const canManageContest = (req, contest) => {
-  if (!contest) return false;
-  if (contest.host === req.session.uid) return true;
-  return req.can('contest.edit.any', { type: 'contest', id: Number(contest.cid) });
+// Mirrors problem.js#problemAuth.manage (by cid):
+//   manage = (host AND contest.manage.self) OR contest.manage.any (scoped or global)
+// contest.manage.any covers everything contest.edit.any + contest.player.manage
+// did before — the two were collapsed in 2026-05.
+const canManageContest = async (req, cid) => {
+  if (!cid) return null;
+  const contest = await getContest(cid);
+  if (!contest) return null;
+  const isHost = contest.host === req.session.uid;
+  if (isHost && req.can('contest.manage.self')) return true;
+  return req.can('contest.manage.any', { type: 'contest', id: Number(contest.cid) });
 };
+exports.canManageContest = canManageContest;
 
 const contestStatus = (info) => {
   if (info.done) return 3;
@@ -50,7 +58,7 @@ const loadContestForView = async (req, cid) => {
   const canView =
     (contest.status === 3 && (contest.isPublic || isReged)) ||
     (isReged && contest.status > 0) ||
-    canManageContest(req, contest);
+    (await canManageContest(req, contest.cid));
   return { contest, status: contest.status, isReged, canView };
 };
 
@@ -86,7 +94,7 @@ exports.updateContestInfo = [
     const { cid, info } = req.body;
     const contest = await getContest(cid);
     if (!contest) return fail(res, '无此比赛');
-    if (!canManageContest(req, contest))
+    if (!(await canManageContest(req, cid)))
       return fail(res, '你只能修改自己的比赛');
     if (contest.done) return fail(res, '比赛已经结束');
     if (!info.title || !info.start || !info.length || !info.type) return fail(res, '请确认信息完善');
@@ -108,7 +116,7 @@ exports.getContestList = handler(async (req, res) => {
   const { offset, limit } = paginate(req);
   const list = await db.query(
     'SELECT c.cid,c.title,c.start,c.length,c.isPublic,c.type,c.host,c.done,u.name as hostName ' +
-      'FROM contest c INNER JOIN userInfo u ON u.uid = c.host ORDER BY c.start DESC LIMIT ?,?',
+    'FROM contest c INNER JOIN userInfo u ON u.uid = c.host ORDER BY c.start DESC LIMIT ?,?',
     [offset, limit]
   );
   for (const c of list) {
@@ -125,13 +133,13 @@ exports.getContestInfo = handler(async (req, res) => {
   const { cid } = req.body;
   const contest = await db.one(
     'SELECT c.cid,c.title,c.start,c.length,c.isPublic,c.type,c.host,c.description,c.lang,c.done,u.name as hostName ' +
-      'FROM contest c INNER JOIN userInfo u ON u.uid = c.host WHERE cid=?',
+    'FROM contest c INNER JOIN userInfo u ON u.uid = c.host WHERE cid=?',
     [cid]
   );
   if (!contest) return fail(res, '无此比赛');
 
   contest.isReg = await isReg(req.session.uid, contest.cid);
-  const isManager = canManageContest(req, contest);
+  const isManager = await canManageContest(req, contest.cid);
   if (!contest.isPublic && !contest.isReg && !isManager)
     return fail(res, '比赛私有，请联系管理员报名');
 
@@ -154,19 +162,9 @@ exports.getContestInfo = handler(async (req, res) => {
   return ok(res, { data: contest });
 });
 
-// Owner / contest.player.manage / contest.edit.any (scoped or global) can manage players.
-const canManagePlayers = async (req, cid) => {
-  const contest = await getContest(cid);
-  if (!contest) return null;
-  const scope = { type: 'contest', id: Number(cid) };
-  if (canManageContest(req, contest)) return contest;
-  if (req.can('contest.player.manage', scope)) return contest;
-  return false;
-};
-
 exports.addPlayer = handler(async (req, res) => {
   const { cid, name } = req.body;
-  const allowed = await canManagePlayers(req, cid);
+  const allowed = await canManageContest(req, cid);
   if (allowed === null) return fail(res, '无此比赛');
   if (!allowed) return res.status(403).end('403 Forbidden');
 
@@ -185,7 +183,7 @@ exports.addPlayer = handler(async (req, res) => {
 
 exports.removePlayer = handler(async (req, res) => {
   const { cid } = req.body;
-  const allowed = await canManagePlayers(req, cid);
+  const allowed = await canManageContest(req, cid);
   if (allowed === null) return fail(res, '无此比赛');
   if (!allowed) return res.status(403).end('403 Forbidden');
 
@@ -212,7 +210,7 @@ exports.closeContest = [
     const { cid } = req.body;
     const contest = await getContest(cid);
     if (!contest) return fail(res, '无此比赛');
-    if (!canManageContest(req, contest))
+    if (!(await canManageContest(req, cid)))
       return fail(res, '你只能修改自己的比赛');
     const status = contestStatus(contest);
     if (status < 2) return fail(res, '还未至比赛截止时间');
@@ -243,13 +241,15 @@ exports.getPlayerProblemList = handler(async (req, res) => {
   const reged = await isReg(req.session.uid, contest.cid);
   const status = contestStatus(contest);
   const allowed =
-    (reged && status > 0) || canManageContest(req, contest) || ((contest.isPublic || reged) && contest.done);
+    (reged && status > 0) ||
+    (await canManageContest(req, cid)) ||
+    ((contest.isPublic || reged) && contest.done);
   if (!allowed) return res.status(403).end('403 Forbidden');
 
   const data = await db.query(
     'SELECT cp.idx,p.title,cp.weight,p.publisher as publisherUid,u.name as publisher ' +
-      'FROM contestProblem cp INNER JOIN problem p ON cp.pid = p.pid INNER JOIN userInfo u ON p.publisher = u.uid ' +
-      'WHERE cp.cid=?',
+    'FROM contestProblem cp INNER JOIN problem p ON cp.pid = p.pid INNER JOIN userInfo u ON p.publisher = u.uid ' +
+    'WHERE cp.cid=?',
     [cid]
   );
   return ok(res, { data });
@@ -260,7 +260,7 @@ exports.getProblemInfo = handler(async (req, res) => {
   const v = await loadContestForView(req, cid);
   if (!v) return fail(res, '无此比赛');
   // 这里使用比赛进入条件，不是 view-only
-  const isManager = canManageContest(req, v.contest);
+  const isManager = await canManageContest(req, cid);
   const allowed =
     (v.isReged && v.status > 0) ||
     isManager ||
@@ -272,7 +272,7 @@ exports.getProblemInfo = handler(async (req, res) => {
 
   const problem = await db.one(
     'SELECT p.title,p.description,p.time,p.timeLimit,p.memoryLimit,p.type,p.lang,p.publisher as publisherUid,u.name as publisher ' +
-      'FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=?',
+    'FROM problem p INNER JOIN userInfo u ON u.uid = p.publisher WHERE pid=?',
     [pinfo.pid]
   );
   if (!problem) return fail(res, '无此题目');
@@ -291,12 +291,12 @@ exports.getProblemList = [
     const { cid } = req.body;
     const contest = await getContest(cid);
     if (!contest) return fail(res, '无此比赛');
-    if (!canManageContest(req, contest)) return res.status(403).end('403 Forbidden');
+    if (!(await canManageContest(req, cid))) return res.status(403).end('403 Forbidden');
 
     const data = await db.query(
       'SELECT cp.idx,cp.pid,p.title,p.time,cp.weight,p.isPublic,p.publisher as publisherUid,u.name as publisher ' +
-        'FROM contestProblem cp INNER JOIN problem p ON cp.pid = p.pid INNER JOIN userInfo u ON p.publisher = u.uid ' +
-        'WHERE cp.cid=?',
+      'FROM contestProblem cp INNER JOIN problem p ON cp.pid = p.pid INNER JOIN userInfo u ON p.publisher = u.uid ' +
+      'WHERE cp.cid=?',
       [cid]
     );
     for (const r of data) r.time = briefFormat(r.time);
@@ -321,9 +321,14 @@ exports.updateProblemList = [
     }
     const contest = await getContest(cid);
     if (!contest) return fail(res, '无此比赛');
-    if (!canManageContest(req, contest))
+    if (!(await canManageContest(req, cid)))
       return fail(res, '你只能修改自己的比赛');
     if (contestStatus(contest) === 3) return fail(res, '比赛已结束');
+
+    for (const p of unilist) {
+      const auth = await problemAuth(req, p.pid);
+      if (!auth.view) return fail(res, `无权限查看题目#${p.pid}`);
+    }
 
     await db.tx(async (tx) => {
       await tx.query('DELETE FROM contestProblem WHERE cid=?', [cid]);
@@ -396,11 +401,12 @@ exports.getSubmissionList = handler(async (req, res) => {
   }
   const list = await db.query(
     'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
-      'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ' +
-      `WHERE cid=?${extra} ORDER BY s.sid DESC LIMIT ?,?`,
+    'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ' +
+    `WHERE cid=?${extra} ORDER BY s.sid DESC LIMIT ?,?`,
     [...params, offset, limit]
   );
-  const ctx = { cid, contest: v.contest, manager: canManageContest(req, v.contest) };
+  const manager = await canManageContest(req, cid);
+  const ctx = { cid, contest: v.contest, manager };
   for (const r of list) await formatContestSubmissionRow(r, ctx);
 
   const cnt = await db.one(
@@ -423,40 +429,53 @@ exports.getLastSubmissionList = handler(async (req, res) => {
 
   const list = await db.query(
     'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
-      'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
+    'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
     [sids]
   );
-  const ctx = { cid, contest: v.contest, manager: canManageContest(req, v.contest) };
+  const manager = await canManageContest(req, cid);
+  const ctx = { cid, contest: v.contest, manager };
   for (const r of list) await formatContestSubmissionRow(r, ctx);
   return ok(res, { data: list, total: allLast.length });
 });
 
-exports.getSubmissionInfo = handler(async (req, res) => {
-  const { sid } = req.body;
+// Same shape as judge.js#loadSubmissionInfo, used by both the POST
+// getSubmissionInfo handler and the SSE streamSubmissionInfo bridge.
+const loadContestSubmissionInfo = async (req, sid) => {
   const row = await db.one(
     'SELECT s.sid,s.uid,s.cid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,s.machine,s.lang,u.name,p.title ' +
-      'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=?',
+    'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=?',
     [sid]
   );
-  if (!row) return fail(res, 'error');
+  if (!row) return { status: 202, message: 'error' };
 
   const contest = await getContest(row.cid);
-  if (!contest) return fail(res, '无此比赛');
+  if (!contest) return { status: 202, message: '无此比赛' };
   contest.status = contestStatus(contest);
   const reged = await isReg(req.session.uid, row.cid);
-  const isManager = canManageContest(req, contest);
+  const isManager = await canManageContest(req, row.cid);
+  // Contest submissions: only the contest manager or submission.rejudge.any
+  // can rejudge. submission.rejudge.self is non-contest only.
+  row.canRejudge = isManager || req.can('submission.rejudge.any');
+  // Visibility for contest submissions follows the contest's own rules:
+  // contest done (public/registered), own submission, contest manager, or
+  // the global submission.view.any. submission.view.notcontest does NOT
+  // unlock contest-internal submissions by design.
   const allowed =
     (contest.status === 3 && (contest.isPublic || reged)) ||
     req.session.uid === row.uid ||
     isManager ||
     req.can('submission.view.any');
-  if (!allowed) return res.status(403).end('403 Forbidden');
+  if (!allowed) return { status: 403 };
 
-  row.caseResult = JSON.parse(row.caseResult);
+  row.caseResult = row.caseResult ? JSON.parse(row.caseResult) : null;
   row.singleCaseResult = await db.query('SELECT * FROM submissionDetail WHERE sid=?', [sid]);
   row.singleCaseResult.sort((a, b) => a.caseId - b.caseId);
   row.done = false;
 
+  // fullView reveals testdata I/O and judge details. For contests in progress
+  // it's restricted to the manager and the global submission.view.any holder;
+  // once the contest ends it's open. submission.view.notcontest is irrelevant
+  // here — by definition this is a contest submission.
   const fullView = isManager || req.can('submission.view.any') || contest.status === 3;
 
   if (row.caseResult) {
@@ -488,17 +507,65 @@ exports.getSubmissionInfo = handler(async (req, res) => {
       formatCaseRow(c);
     }
   }
+  if (fullView) {
+    row.judgeLog = await readJudgeLogEntries(sid);
+    row.judgeLogRestricted = false;
+  } else {
+    row.judgeLog = [];
+    row.judgeLogRestricted = true;
+  }
   // OI 赛制比赛中：非管理员选手只能看到提交时间，不能看到结果
   if (!contest.type && !contest.done && !isManager) {
     row.caseResult = row.singleCaseResult = row.subtaskInfo = null;
     row.score = row.judgeResult = row.time = row.memory = 0;
     row.unShown = true;
+    row.judgeLog = [];
+    row.judgeLogRestricted = true;
   }
   row.idx = await getIdxByPid(row.cid, row.pid);
   delete row.pid;
   formatSubmissionRow(row);
-  return ok(res, { data: row });
+  return { data: row };
+};
+
+exports.getSubmissionLog = handler(async (req, res) => {
+  const sid = parseInt(req.body.sid, 10);
+  if (!sid) return fail(res, 'bad sid');
+
+  const row = await db.one('SELECT sid,uid,cid FROM submission WHERE sid=?', [sid]);
+  if (!row) return fail(res, 'error');
+
+  const contest = await getContest(row.cid);
+  if (!contest) return fail(res, '无此比赛');
+  contest.status = contestStatus(contest);
+
+  const reged = await isReg(req.session.uid, row.cid);
+  const isManager = await canManageContest(req, row.cid);
+  const allowed =
+    (contest.status === 3 && (contest.isPublic || reged)) ||
+    req.session.uid === row.uid ||
+    isManager ||
+    req.can('submission.view.any');
+  if (!allowed) return res.status(403).end('403 Forbidden');
+
+  const fullView = isManager || req.can('submission.view.any') || contest.status === 3;
+  if (!fullView) {
+    return ok(res, { data: { entries: [], restricted: true } });
+  }
+
+  const entries = await readJudgeLogEntries(sid);
+  return ok(res, { data: { entries, restricted: false } });
 });
+
+exports.getSubmissionInfo = handler(async (req, res) => {
+  const r = await loadContestSubmissionInfo(req, req.body.sid);
+  if (r.status === 403) return res.status(403).end('403 Forbidden');
+  if (r.status) return fail(res, r.message || 'error', r.status);
+  return ok(res, { data: r.data });
+});
+
+exports.streamSubmissionInfo = (req, res) =>
+  streamSubmission(req, res, loadContestSubmissionInfo, req.query.sid);
 
 exports.getRank = handler(async (req, res) => {
   const { cid } = req.body;
@@ -515,7 +582,7 @@ exports.getRank = handler(async (req, res) => {
   const allowed =
     (status === 3 && (contest.isPublic || reged)) ||
     (reged && contest.type === 1 && status > 0) ||
-    canManageContest(req, contest);
+    (await canManageContest(req, cid));
   if (!allowed) return res.status(403).end('403 Forbidden');
 
   const pidToIdx = [];
@@ -586,10 +653,11 @@ exports.getSingleUserLastSubmission = handler(async (req, res) => {
 
   const list = await db.query(
     'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
-      'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
+    'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE s.sid in (?)',
     [sids]
   );
-  const ctx = { cid, contest: v.contest, manager: canManageContest(req, v.contest) };
+  const manager = await canManageContest(req, cid);
+  const ctx = { cid, contest: v.contest, manager };
   for (const r of list) await formatContestSubmissionRow(r, ctx);
   return ok(res, { data: list });
 });
@@ -605,11 +673,11 @@ exports.getSingleUserProblemSubmission = handler(async (req, res) => {
 
   const list = await db.query(
     'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
-      'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ' +
-      'WHERE s.cid=? AND s.uid=? AND s.pid=? ORDER BY s.sid DESC',
+    'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ' +
+    'WHERE s.cid=? AND s.uid=? AND s.pid=? ORDER BY s.sid DESC',
     [cid, uid, pinfo.pid]
   );
-  const isManager = canManageContest(req, v.contest);
+  const isManager = await canManageContest(req, cid);
   for (const r of list) {
     r.idx = idx;
     r.pid = null;

@@ -116,12 +116,10 @@ export default {
   name: "problemView",
   computed: {
     canManage() {
-      if (!this.problemInfo) return false;
-      const isOwner = this.problemInfo.publisherUid === this.$store.state.uid;
-      // Mirrors server/api/problem.js#problemAuth: owner needs manage.self,
-      // anyone with manage.any can manage. Server is the final arbiter — this
-      // computed only gates the visibility of admin UI bits.
-      return (isOwner && this.$can('problem.manage.self')) || this.$can('problem.manage.any');
+      // Use server-side authorization to correctly handle scoped permissions.
+      // authInfo comes from getProblemAuth endpoint and is the authoritative source.
+      if (this.authInfo && this.authInfo.manage) return true;
+      return false;
     },
   },
   data() {
@@ -130,6 +128,7 @@ export default {
       submitLang: null,
       langList: [],
       problemInfo: {},
+      authInfo: { view: false, manage: false },
       code: '',
       isSubmit: false,
       levels: [
@@ -223,6 +222,14 @@ export default {
         this.$router.push({ path: '/problem' });
         this.$message.error(res.data.message)
       }
+    });
+    // Fetch authorization info from server to handle scoped permissions correctly
+    await axios.post('/api/problem/getProblemAuth', { pid: this.pid }).then(res => {
+      if (res.status === 200) {
+        this.authInfo = res.data.data;
+      }
+    }).catch(() => {
+      // If auth fetch fails, authInfo remains { view: false, manage: false }
     });
     document.title = "题目 — " + this.problemInfo.title;
   }

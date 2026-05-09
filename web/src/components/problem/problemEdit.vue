@@ -93,7 +93,12 @@
       </el-card>
     </el-col>
     <el-col :span="24" v-if="auth.manage && problemInfo.pid">
-      <CollaboratorPanel resource-type="problem" :resource-id="problemInfo.pid" :visible="auth.manage" />
+      <CollaboratorPanel
+        resource-type="problem"
+        :resource-id="problemInfo.pid"
+        :visible="auth.manage"
+        :can-edit="isOwner"
+      />
     </el-col>
   </el-row>
 </template>
@@ -105,6 +110,15 @@ import CollaboratorPanel from '@/components/permission/CollaboratorPanel.vue';
 export default {
   name: "problemEdit",
   components: { CollaboratorPanel },
+  computed: {
+    // Owners (and global grantors) can manage the collaborator list.
+    // Collaborators with manage.any scoped to this problem can only view it.
+    isOwner() {
+      return this.problemInfo
+        && this.problemInfo.publisherUid === this.$store.state.uid
+        || this.$can('user.permission.grant');
+    },
+  },
   data() {
     return {
       problemInfo: [],

@@ -12,7 +12,7 @@
       <el-option
         v-for="p in g.items"
         :key="p.key"
-        :label="`${p.name} (${p.key})`"
+        :label="hideKey ? p.name : `${p.name} (${p.key})`"
         :value="p.key"
       />
     </el-option-group>
@@ -38,6 +38,10 @@ export default {
     scopableOnly: { type: Boolean, default: false },
     clearable: { type: Boolean, default: true },
     placeholder: { type: String, default: '选择权限' },
+    // hideKey suppresses the "(permission.key)" suffix in the option label.
+    // Used by the resource-collaborator picker, where end users shouldn't see
+    // raw keys like `problem.view.any` — only the friendly scoped name.
+    hideKey: { type: Boolean, default: false },
   },
   emits: ['update:modelValue', 'change'],
   data() {

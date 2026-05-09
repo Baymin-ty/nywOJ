@@ -69,6 +69,7 @@ const invalidate = (uid) => {
 
 // scope: { type, id } | undefined
 const can = (perms, key, scope) => {
+  console.log(perms, key, scope);
   if (!perms) return false;
   if (perms.denies.has(key)) return false;
   if (perms.global.has(key)) return true;

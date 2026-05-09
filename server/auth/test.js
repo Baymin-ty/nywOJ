@@ -272,17 +272,50 @@ const cleanupSandbox = async () => {
         'problem.create endpoint registry includes createProblem');
     });
 
-    await test('searchProblems / searchContests reject non-grantor', async () => {
-      // a normal user (no roles) cannot use the resource pickers
+    await test('searchProblems / searchContests are open to any logged-in user', async () => {
+      // Resource owners need these pickers to find their own problems/contests
+      // when adding collaborators — gating on user.permission.grant would
+      // lock them out. The pickers respect visibility: searchProblems hides
+      // private problems unless the caller has problem.view.any.
       policy.invalidate(normalUid);
       const r1 = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
       r1.body = { q: '1' };
       const res1 = await runHandler(auth.searchProblems, r1);
-      assertEq(res1.statusCode, 403, 'searchProblems 403 for normal user');
+      assertEq(res1.statusCode, 200, 'searchProblems open to logged-in user');
       const r2 = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
       r2.body = { q: '1' };
       const res2 = await runHandler(auth.searchContests, r2);
-      assertEq(res2.statusCode, 403, 'searchContests 403 for normal user');
+      assertEq(res2.statusCode, 200, 'searchContests open to logged-in user');
+    });
+
+    await test('searchProblems hides private problems for users without view.any', async () => {
+      // Insert a private problem owned by superUid
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
+        ['_test_p_search_private_unique_xyz', 'desc', superUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        // normalUid currently has roles + grants from prior tests; just
+        // checking its existing perms. Should not have view.any (no
+        // problem_setter role yet at this point in the suite).
+        policy.invalidate(normalUid);
+        const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+        req.body = { q: '_test_p_search_private_unique_xyz' };
+        const res = await runHandler(auth.searchProblems, req);
+        assertEq(res.statusCode, 200, 'status 200');
+        assert(!res.payload.problems.some((p) => p.pid === pid),
+          'private problem hidden from non-viewer');
+
+        // superUid (has view.any via super_admin) sees it
+        const req2 = makeReq(superUid, superPerms);
+        req2.body = { q: '_test_p_search_private_unique_xyz' };
+        const res2 = await runHandler(auth.searchProblems, req2);
+        assert(res2.payload.problems.some((p) => p.pid === pid),
+          'super_admin sees private problem in search');
+      } finally {
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+      }
     });
 
     await test('searchProblems works for super_admin', async () => {
@@ -540,10 +573,13 @@ const cleanupSandbox = async () => {
         assert(mp.scoped.get('problem.manage.any')?.has(`problem:${pid}`),
           `modUid has problem.manage.any scoped to problem:${pid}`);
 
+        // owner-as-grantor must NOT be able to grant a permission that isn't
+        // on the resource's whitelist. contest.manage.any is scopable so the
+        // generic scopable check would pass — the whitelist is what blocks it.
         const req2 = makeReq(normalUid, ownerPerms);
         req2.body = {
           uid: modUid,
-          permissionKey: 'problem.view.any',
+          permissionKey: 'contest.manage.any',
           effect: 'allow',
           resourceType: 'problem',
           resourceId: pid,
@@ -565,7 +601,7 @@ const cleanupSandbox = async () => {
       const cid = c.insertId;
       try {
         const grant = makeReq(superUid, superPerms);
-        grant.body = { uid: modUid, permissionKey: 'contest.player.manage', effect: 'allow', resourceType: 'contest', resourceId: cid };
+        grant.body = { uid: modUid, permissionKey: 'contest.manage.any', effect: 'allow', resourceType: 'contest', resourceId: cid };
         await runHandler(auth.grantUserPermission, grant);
 
         policy.invalidate(normalUid);
@@ -574,9 +610,11 @@ const cleanupSandbox = async () => {
         req.body = { resourceType: 'contest', resourceId: cid };
         const res = await runHandler(auth.listResourceGrants, req);
         assertEq(res.statusCode, 200, 'owner can list resource grants');
-        assert(res.payload.grants.some((g) => g.uid === modUid && g.permissionKey === 'contest.player.manage'),
+        assert(res.payload.grants.some((g) => g.uid === modUid && g.permissionKey === 'contest.manage.any'),
           'returned grant matches');
         assertSetEq(res.payload.grantablePermissions, RESOURCE_GRANTABLE.contest, 'returns whitelist for contest');
+        const permKeys = new Set((res.payload.permissions || []).map((p) => p.key));
+        assert(permKeys.has('contest.manage.any'), 'permissions include contest.manage.any');
       } finally {
         await db.query('DELETE FROM user_permissions WHERE resource_type=? AND resource_id=?', ['contest', cid]);
         await db.query('DELETE FROM contest WHERE cid=?', [cid]);
@@ -772,8 +810,284 @@ const cleanupSandbox = async () => {
       }
     });
 
-    await test('RESOURCE_GRANTABLE.problem now whitelists only problem.manage.any', async () => {
-      assertSetEq(RESOURCE_GRANTABLE.problem, ['problem.manage.any'], 'problem grantable list');
+    await test('RESOURCE_GRANTABLE.problem whitelists problem.manage.any + problem.view.any', async () => {
+      assertSetEq(RESOURCE_GRANTABLE.problem,
+        ['problem.manage.any', 'problem.view.any'],
+        'problem grantable list');
+    });
+
+    // -------- 10. New contest permission model (manage.any / manage.self) --------
+    await test('contest old keys (edit.any / player.manage) removed from catalog', async () => {
+      for (const oldKey of ['contest.edit.any', 'contest.player.manage']) {
+        const row = await db.exists('SELECT 1 FROM permissions WHERE `key`=?', [oldKey]);
+        assert(!row, `${oldKey} removed`);
+      }
+    });
+
+    await test('contest new keys present and contest.manage.any is scopable', async () => {
+      const row = await db.one('SELECT scopable FROM permissions WHERE `key`=?', ['contest.manage.any']);
+      assert(row, 'contest.manage.any exists');
+      assertEq(row.scopable, 1, 'contest.manage.any scopable');
+      const self = await db.one('SELECT scopable FROM permissions WHERE `key`=?', ['contest.manage.self']);
+      assert(self, 'contest.manage.self exists');
+      assertEq(self.scopable, 0, 'contest.manage.self NOT scopable');
+    });
+
+    await test('contest_manager role grants manage.self (NOT manage.any)', async () => {
+      const role = await db.one('SELECT id FROM roles WHERE `key`=?', ['contest_manager']);
+      const links = await db.query(
+        `SELECT p.\`key\` AS k FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id=?`,
+        [role.id]
+      );
+      const keys = new Set(links.map((l) => l.k));
+      assert(keys.has('contest.create'), 'has contest.create');
+      assert(keys.has('contest.manage.self'), 'has contest.manage.self');
+      assert(!keys.has('contest.manage.any'), 'does NOT have contest.manage.any');
+    });
+
+    await test('moderator role grants contest.manage.any', async () => {
+      const role = await db.one('SELECT id FROM roles WHERE `key`=?', ['moderator']);
+      const links = await db.query(
+        `SELECT p.\`key\` AS k FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id=?`,
+        [role.id]
+      );
+      const keys = new Set(links.map((l) => l.k));
+      assert(keys.has('contest.manage.any'), 'has contest.manage.any');
+      assert(keys.has('contest.manage.self'), 'has contest.manage.self');
+    });
+
+    await test('canManageContest: host with manage.self can manage own contest', async () => {
+      const { canManageContest } = require('../api/contest');
+      const c = await db.query(
+        `INSERT INTO contest(title, host, start, length, type, isPublic) VALUES (?,?,?,?,?,?)`,
+        ['_test_c_self', normalUid, new Date(), 60, 0, 0]
+      );
+      const cid = c.insertId;
+      try {
+        // Give normalUid contest.manage.self
+        await db.query('DELETE FROM user_roles WHERE uid=?', [normalUid]);
+        await db.query('DELETE FROM user_permissions WHERE uid=?', [normalUid]);
+        const perm = await db.one("SELECT id FROM permissions WHERE `key`='contest.manage.self'");
+        await db.query(
+          'INSERT INTO user_permissions (uid, permission_id, effect) VALUES (?,?,?)',
+          [normalUid, perm.id, 'allow']
+        );
+        policy.invalidate(normalUid);
+        const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+        assertEq(await canManageContest(req, cid), true, 'host with manage.self can manage');
+      } finally {
+        await db.query('DELETE FROM contest WHERE cid=?', [cid]);
+        await db.query('DELETE FROM user_permissions WHERE uid=?', [normalUid]);
+        policy.invalidate(normalUid);
+      }
+    });
+
+    await test('canManageContest: host WITHOUT manage.self cannot manage', async () => {
+      const { canManageContest } = require('../api/contest');
+      const c = await db.query(
+        `INSERT INTO contest(title, host, start, length, type, isPublic) VALUES (?,?,?,?,?,?)`,
+        ['_test_c_owneronly', normalUid, new Date(), 60, 0, 0]
+      );
+      const cid = c.insertId;
+      try {
+        policy.invalidate(normalUid);
+        const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+        assertEq(await canManageContest(req, cid), false, 'host without manage.self cannot manage');
+      } finally {
+        await db.query('DELETE FROM contest WHERE cid=?', [cid]);
+      }
+    });
+
+    await test('canManageContest: scoped manage.any grants management to non-host', async () => {
+      const { canManageContest } = require('../api/contest');
+      const c = await db.query(
+        `INSERT INTO contest(title, host, start, length, type, isPublic) VALUES (?,?,?,?,?,?)`,
+        ['_test_c_collab', superUid, new Date(), 60, 0, 0]
+      );
+      const cid = c.insertId;
+      try {
+        const perm = await db.one("SELECT id FROM permissions WHERE `key`='contest.manage.any'");
+        await db.query(
+          'INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)',
+          [normalUid, perm.id, 'allow', 'contest', cid]
+        );
+        policy.invalidate(normalUid);
+        const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+        assertEq(await canManageContest(req, cid), true, 'collaborator with manage.any@cid can manage');
+      } finally {
+        await db.query('DELETE FROM user_permissions WHERE uid=?', [normalUid]);
+        await db.query('DELETE FROM contest WHERE cid=?', [cid]);
+        policy.invalidate(normalUid);
+      }
+    });
+
+    // -------- 11. Collaborators cannot grant new collaborators --------
+    await test('collaborator (manage.any scoped) CANNOT grant new collaborators', async () => {
+      // superUid creates a problem; normalUid is added as a collaborator with
+      // manage.any scoped. normalUid (collaborator, not owner) tries to grant
+      // a third user manage.any on the same problem ⇒ must be rejected.
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags) VALUES (?,?,?,NOW(),?)`,
+        ['_test_p_collab', 'desc', superUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        // Make normalUid a collaborator
+        const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.manage.any'");
+        await db.query(
+          'INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)',
+          [normalUid, perm.id, 'allow', 'problem', pid]
+        );
+        policy.invalidate(normalUid);
+        const collabPerms = await policy.loadEffectivePermissions(normalUid);
+        // normalUid (collaborator) tries to grant modUid the same scoped perm
+        const req = makeReq(normalUid, collabPerms);
+        req.body = {
+          uid: modUid,
+          permissionKey: 'problem.manage.any',
+          effect: 'allow',
+          resourceType: 'problem',
+          resourceId: pid,
+        };
+        const res = await runHandler(auth.grantUserPermission, req);
+        assertEq(res.statusCode, 403, 'collaborator cannot grant — only owner can');
+      } finally {
+        await db.query('DELETE FROM user_permissions WHERE resource_type=? AND resource_id=?', ['problem', pid]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+        policy.invalidate(normalUid);
+      }
+    });
+
+    await test('regression: collaborator (scoped manage.any) can fetch a private problem via getProblemInfo', async () => {
+      const problemApi = require('../api/problem');
+      // superUid creates a private problem; normalUid gets manage.any scoped to it.
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
+        ['_test_p_collab_view', 'desc', superUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        // Strip normalUid back to a clean state (some prior tests left grants)
+        await db.query('DELETE FROM user_roles WHERE uid=?', [normalUid]);
+        await db.query('DELETE FROM user_permissions WHERE uid=?', [normalUid]);
+        // Add the scoped manage.any grant
+        const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.manage.any'");
+        await db.query(
+          'INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)',
+          [normalUid, perm.id, 'allow', 'problem', pid]
+        );
+        policy.invalidate(normalUid);
+
+        const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+        req.body = { pid };
+        const res = await runHandler(problemApi.getProblemInfo, req);
+        assertEq(res.statusCode, 200, 'getProblemInfo returns 200 for scoped collaborator');
+        assert(res.payload?.data?.pid === pid, 'returns the requested problem');
+      } finally {
+        await db.query('DELETE FROM user_permissions WHERE resource_type=? AND resource_id=?', ['problem', pid]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+        policy.invalidate(normalUid);
+      }
+    });
+
+    await test('regression: collaborator (scoped manage.any) sees the private problem in getProblemList', async () => {
+      const problemApi = require('../api/problem');
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
+        ['_test_p_collab_list_unique_marker', 'desc', superUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        await db.query('DELETE FROM user_roles WHERE uid=?', [normalUid]);
+        await db.query('DELETE FROM user_permissions WHERE uid=?', [normalUid]);
+        const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.manage.any'");
+        await db.query(
+          'INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)',
+          [normalUid, perm.id, 'allow', 'problem', pid]
+        );
+        policy.invalidate(normalUid);
+
+        const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+        req.body = { pageSize: 100, filter: { name: '_test_p_collab_list_unique_marker' } };
+        const res = await runHandler(problemApi.getProblemList, req);
+        assertEq(res.statusCode, 200, 'getProblemList returns 200');
+        assert(res.payload.data.some((p) => p.pid === pid),
+          'collaborator finds private problem in list');
+
+        // Sanity: a third user (modUid) without the scoped grant should NOT see it.
+        // modUid is a moderator (has problem.manage.any GLOBAL) so they would see it
+        // regardless. Strip to plain user temporarily.
+        const cleanUid = await mkUser([]);
+        const req2 = makeReq(cleanUid, await policy.loadEffectivePermissions(cleanUid));
+        req2.body = { pageSize: 100, filter: { name: '_test_p_collab_list_unique_marker' } };
+        const res2 = await runHandler(problemApi.getProblemList, req2);
+        assert(!res2.payload.data.some((p) => p.pid === pid),
+          'unrelated user does NOT see private problem in list');
+      } finally {
+        await db.query('DELETE FROM user_permissions WHERE resource_type=? AND resource_id=?', ['problem', pid]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+        policy.invalidate(normalUid);
+      }
+    });
+
+    await test('regression: anonymous (no session) reading getProblemList does not crash', async () => {
+      const problemApi = require('../api/problem');
+      const req = {
+        body: { pageSize: 5 },
+        session: {},
+        useragent: { browser: { name: 'test', version: '0' }, os: { name: 'test', version: '0' } },
+        can: () => false,
+        // perms intentionally undefined
+      };
+      const res = await runHandler(problemApi.getProblemList, req);
+      assertEq(res.statusCode, 200, 'anonymous gets 200');
+      assert(Array.isArray(res.payload.data), 'data array');
+      // Every visible problem must be public (no perms means public-only)
+      for (const p of res.payload.data) assertEq(p.isPublic, 1, `pid ${p.pid} is public`);
+    });
+
+    await test('owner CAN grant new collaborators (regression for above test)', async () => {
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags) VALUES (?,?,?,NOW(),?)`,
+        ['_test_p_owner_grants', 'desc', normalUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        policy.invalidate(normalUid);
+        const ownerPerms = await policy.loadEffectivePermissions(normalUid);
+        const req = makeReq(normalUid, ownerPerms);
+        req.body = {
+          uid: modUid,
+          permissionKey: 'problem.manage.any',
+          effect: 'allow',
+          resourceType: 'problem',
+          resourceId: pid,
+        };
+        const res = await runHandler(auth.grantUserPermission, req);
+        assertEq(res.statusCode, 200, 'owner can grant scoped manage.any');
+      } finally {
+        await db.query('DELETE FROM user_permissions WHERE resource_type=? AND resource_id=?', ['problem', pid]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+      }
+    });
+
+    // -------- 12. searchUsers is now open to any logged-in user --------
+    await test('searchUsers: any logged-in user can search (was: only role/grant holders)', async () => {
+      // normalUid currently has no roles/perms (cleaned in earlier tests).
+      policy.invalidate(normalUid);
+      const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+      req.body = { q: String(superUid) };
+      const res = await runHandler(auth.searchUsers, req);
+      assertEq(res.statusCode, 200, 'logged-in user gets results');
+      assert(res.payload.users.some((u) => u.uid === superUid), 'found by uid');
+    });
+
+    await test('searchUsers: anonymous (no session) is rejected', async () => {
+      const req = { body: { q: '1' }, session: {}, perms: undefined,
+        useragent: { browser: { name: 'test', version: '0' }, os: { name: 'test', version: '0' } },
+        can: () => false };
+      const res = await runHandler(auth.searchUsers, req);
+      assertEq(res.statusCode, 403, 'anonymous user rejected');
     });
   } catch (err) {
     console.error('FATAL:', err && err.stack ? err.stack : err);

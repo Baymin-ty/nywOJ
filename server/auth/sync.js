@@ -149,11 +149,31 @@ const dropLegacyGid = async () => {
 // 2026-05: problem.{edit.any, delete.any, case.manage} all collapse into
 // problem.manage.any (scopable). problem.view.private is renamed to
 // problem.view.any.
+// 2026-05 (later): contest.{edit.any, player.manage} collapse into
+// contest.manage.any (scopable). contest_manager role's contest.create
+// path now also gets contest.manage.self (the new own-only manage perm).
+// 2026-05 (latest): submission.rejudge (scopable) → submission.rejudge.any
+// (global only). Scoped grants on the old key become inert global rows after
+// rename — contest/problem managers now rejudge automatically through their
+// manage.* permissions, so a scoped submission.rejudge no longer has meaning.
 const PERMISSION_RENAMES = [
-  ['problem.edit.any',     'problem.manage.any'],
-  ['problem.delete.any',   'problem.manage.any'],
-  ['problem.case.manage',  'problem.manage.any'],
-  ['problem.view.private', 'problem.view.any'],
+  ['problem.edit.any',      'problem.manage.any'],
+  ['problem.delete.any',    'problem.manage.any'],
+  ['problem.case.manage',   'problem.manage.any'],
+  ['problem.view.private',  'problem.view.any'],
+  ['contest.edit.any',      'contest.manage.any'],
+  ['contest.player.manage', 'contest.manage.any'],
+  ['submission.rejudge',    'submission.rejudge.any'],
+];
+
+// Permission keys that are deleted outright (no successor). All
+// role_permissions / user_permissions rows referencing them are dropped via
+// ON DELETE CASCADE when the parent permission row is removed.
+//
+// 2026-05: contest.submission.view.cross removed. Cross-contest viewing now
+// piggybacks on submission.view.any.
+const PERMISSION_REMOVALS = [
+  'contest.submission.view.cross',
 ];
 
 const migrateRenamedPermissions = async () => {
@@ -188,6 +208,16 @@ const migrateRenamedPermissions = async () => {
   }
 };
 
+const removeDeletedPermissions = async () => {
+  for (const key of PERMISSION_REMOVALS) {
+    const row = await db.one('SELECT id FROM permissions WHERE `key`=?', [key]);
+    if (!row) continue;
+    console.log(`[auth] removing deprecated permission ${key}`);
+    // user_permissions / role_permissions cascade-delete via FK ON DELETE CASCADE.
+    await db.query('DELETE FROM permissions WHERE id=?', [row.id]);
+  }
+};
+
 const syncPermissionCatalog = async () => {
   await ensureSchema();
   await syncPermissions();
@@ -195,6 +225,7 @@ const syncPermissionCatalog = async () => {
   // BEFORE syncBuiltinRoles (which rewrites role_permissions and would
   // otherwise leave stale rows referencing the soon-to-be-deleted old keys).
   await migrateRenamedPermissions();
+  await removeDeletedPermissions();
   await syncBuiltinRoles();
   await backfillUserRoles();
   await dropLegacyGid();
