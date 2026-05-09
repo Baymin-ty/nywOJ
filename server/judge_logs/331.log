@@ -1,34 +1,34 @@
-{"ts":"2026-05-09T07:04:43.129Z","event":"start","meta":{"sid":"331","pid":1,"lang":1,"isRejudge":true,"worker":"ty's MBP","timeLimit":1000,"memoryLimit":512}}
-{"ts":"2026-05-09T07:04:43.140Z","event":"compile.start","data":{"args":["g++-9","-O2","-std=c++14","-DONLINE_JUDGE","main.cpp","-o","main"]}}
-{"ts":"2026-05-09T07:04:43.764Z","event":"compile.result","data":{"status":"Accepted","exitStatus":0,"time":593097000,"memory":180400128,"runTime":594345125,"files":{"stderr":"","stdout":""},"fileIds":{"main":"Y4X3TMFQ"}}}
-{"ts":"2026-05-09T07:04:43.767Z","event":"case.start","data":{"caseId":1,"subtaskId":1,"input":"-114514 1919810\n"}}
-{"ts":"2026-05-09T07:04:43.784Z","event":"case.run","data":{"caseId":1,"status":"Accepted","time":2344000,"memory":6664192,"exitStatus":0,"files":{"stderr":"","stdout":"1805296\n"}}}
-{"ts":"2026-05-09T07:04:43.794Z","event":"case.compare","data":{"caseId":1,"result":"ok","detail":"ok total line: 1\n"}}
-{"ts":"2026-05-09T07:04:43.795Z","event":"case.start","data":{"caseId":2,"subtaskId":1,"input":"-1919810 114514\n"}}
-{"ts":"2026-05-09T07:04:43.803Z","event":"case.run","data":{"caseId":2,"status":"Accepted","time":2133000,"memory":6664192,"exitStatus":0,"files":{"stderr":"","stdout":"-1805296\n"}}}
-{"ts":"2026-05-09T07:04:43.813Z","event":"case.compare","data":{"caseId":2,"result":"ok","detail":"ok total line: 1\n"}}
-{"ts":"2026-05-09T07:04:43.815Z","event":"case.start","data":{"caseId":3,"subtaskId":1,"input":"349154568 180247698\n"}}
-{"ts":"2026-05-09T07:04:43.822Z","event":"case.run","data":{"caseId":3,"status":"Accepted","time":1851000,"memory":6664192,"exitStatus":0,"files":{"stderr":"","stdout":"529402266\n"}}}
-{"ts":"2026-05-09T07:04:43.831Z","event":"case.compare","data":{"caseId":3,"result":"ok","detail":"ok total line: 1\n"}}
-{"ts":"2026-05-09T07:04:43.832Z","event":"case.start","data":{"caseId":4,"subtaskId":2,"input":"-175136475 817059220\n"}}
-{"ts":"2026-05-09T07:04:43.848Z","event":"case.run","data":{"caseId":4,"status":"Accepted","time":2184000,"memory":6664192,"exitStatus":0,"files":{"stderr":"","stdout":"641922745\n"}}}
-{"ts":"2026-05-09T07:04:43.857Z","event":"case.compare","data":{"caseId":4,"result":"ok","detail":"ok total line: 1\n"}}
-{"ts":"2026-05-09T07:04:43.859Z","event":"case.start","data":{"caseId":5,"subtaskId":2,"input":"155692013 -501656708\n"}}
-{"ts":"2026-05-09T07:04:43.867Z","event":"case.run","data":{"caseId":5,"status":"Accepted","time":2215000,"memory":6664192,"exitStatus":0,"files":{"stderr":"","stdout":"-345964695\n"}}}
-{"ts":"2026-05-09T07:04:43.876Z","event":"case.compare","data":{"caseId":5,"result":"ok","detail":"ok total line: 1\n"}}
-{"ts":"2026-05-09T07:04:43.877Z","event":"case.start","data":{"caseId":6,"subtaskId":3,"input":"-255188006 -145225879\n"}}
-{"ts":"2026-05-09T07:04:43.885Z","event":"case.run","data":{"caseId":6,"status":"Accepted","time":2341000,"memory":6664192,"exitStatus":0,"files":{"stderr":"","stdout":"-400413885\n"}}}
-{"ts":"2026-05-09T07:04:43.894Z","event":"case.compare","data":{"caseId":6,"result":"ok","detail":"ok total line: 1\n"}}
-{"ts":"2026-05-09T07:04:43.895Z","event":"case.start","data":{"caseId":7,"subtaskId":3,"input":"-105074228 241408813\n"}}
-{"ts":"2026-05-09T07:04:43.904Z","event":"case.run","data":{"caseId":7,"status":"Accepted","time":3738000,"memory":6664192,"exitStatus":0,"files":{"stderr":"","stdout":"136334585\n"}}}
-{"ts":"2026-05-09T07:04:43.913Z","event":"case.compare","data":{"caseId":7,"result":"ok","detail":"ok total line: 1\n"}}
-{"ts":"2026-05-09T07:04:43.914Z","event":"case.start","data":{"caseId":8,"subtaskId":3,"input":"-104387541 557196859\n"}}
-{"ts":"2026-05-09T07:04:43.924Z","event":"case.run","data":{"caseId":8,"status":"Accepted","time":1986000,"memory":6664192,"exitStatus":0,"files":{"stderr":"","stdout":"452809318\n"}}}
-{"ts":"2026-05-09T07:04:43.935Z","event":"case.compare","data":{"caseId":8,"result":"ok","detail":"ok total line: 1\n"}}
-{"ts":"2026-05-09T07:04:43.937Z","event":"case.start","data":{"caseId":9,"subtaskId":3,"input":"549325784 -690933930\n"}}
-{"ts":"2026-05-09T07:04:43.948Z","event":"case.run","data":{"caseId":9,"status":"Accepted","time":2022000,"memory":6664192,"exitStatus":0,"files":{"stderr":"","stdout":"-141608146\n"}}}
-{"ts":"2026-05-09T07:04:43.958Z","event":"case.compare","data":{"caseId":9,"result":"ok","detail":"ok total line: 1\n"}}
-{"ts":"2026-05-09T07:04:43.959Z","event":"case.start","data":{"caseId":10,"subtaskId":4,"input":"937032200 584941400\n"}}
-{"ts":"2026-05-09T07:04:43.966Z","event":"case.run","data":{"caseId":10,"status":"Accepted","time":1855000,"memory":6664192,"exitStatus":0,"files":{"stderr":"","stdout":"1521973600\n"}}}
-{"ts":"2026-05-09T07:04:43.975Z","event":"case.compare","data":{"caseId":10,"result":"ok","detail":"ok total line: 1\n"}}
-{"ts":"2026-05-09T07:04:43.977Z","event":"finish","data":{"finalRes":4,"totalTime":18,"maxMemory":6508,"totalScore":100}}
+{"ts":"2026-05-09T08:05:04.098Z","event":"start","meta":{"sid":331,"pid":1,"lang":1,"isRejudge":true,"worker":"ty's MBP","timeLimit":1000,"memoryLimit":512}}
+{"ts":"2026-05-09T08:05:04.106Z","event":"compile.start","data":{"args":["g++-9","-O2","-std=c++14","-DONLINE_JUDGE","main.cpp","-o","main"]}}
+{"ts":"2026-05-09T08:05:04.880Z","event":"compile.result","data":{"status":"Accepted","exitStatus":0,"time":720499000,"memory":180416512,"runTime":724458501,"files":{"stderr":"","stdout":""},"fileIds":{"main":"HRQ4D66R"}}}
+{"ts":"2026-05-09T08:05:04.881Z","event":"case.start","data":{"caseId":1,"subtaskId":1,"input":"-114514 1919810\n"}}
+{"ts":"2026-05-09T08:05:04.894Z","event":"case.run","data":{"caseId":1,"status":"Accepted","time":2156000,"memory":6684672,"exitStatus":0,"files":{"stderr":"","stdout":"1805296\n"}}}
+{"ts":"2026-05-09T08:05:04.909Z","event":"case.compare","data":{"caseId":1,"result":"ok","detail":"ok total line: 1\n"}}
+{"ts":"2026-05-09T08:05:04.910Z","event":"case.start","data":{"caseId":2,"subtaskId":1,"input":"-1919810 114514\n"}}
+{"ts":"2026-05-09T08:05:04.925Z","event":"case.run","data":{"caseId":2,"status":"Accepted","time":2229000,"memory":6684672,"exitStatus":0,"files":{"stderr":"","stdout":"-1805296\n"}}}
+{"ts":"2026-05-09T08:05:04.933Z","event":"case.compare","data":{"caseId":2,"result":"ok","detail":"ok total line: 1\n"}}
+{"ts":"2026-05-09T08:05:04.934Z","event":"case.start","data":{"caseId":3,"subtaskId":1,"input":"349154568 180247698\n"}}
+{"ts":"2026-05-09T08:05:04.942Z","event":"case.run","data":{"caseId":3,"status":"Accepted","time":2228000,"memory":6684672,"exitStatus":0,"files":{"stderr":"","stdout":"529402266\n"}}}
+{"ts":"2026-05-09T08:05:04.954Z","event":"case.compare","data":{"caseId":3,"result":"ok","detail":"ok total line: 1\n"}}
+{"ts":"2026-05-09T08:05:04.955Z","event":"case.start","data":{"caseId":4,"subtaskId":2,"input":"-175136475 817059220\n"}}
+{"ts":"2026-05-09T08:05:04.964Z","event":"case.run","data":{"caseId":4,"status":"Accepted","time":2330000,"memory":6684672,"exitStatus":0,"files":{"stderr":"","stdout":"641922745\n"}}}
+{"ts":"2026-05-09T08:05:04.973Z","event":"case.compare","data":{"caseId":4,"result":"ok","detail":"ok total line: 1\n"}}
+{"ts":"2026-05-09T08:05:04.974Z","event":"case.start","data":{"caseId":5,"subtaskId":2,"input":"155692013 -501656708\n"}}
+{"ts":"2026-05-09T08:05:04.985Z","event":"case.run","data":{"caseId":5,"status":"Accepted","time":1943000,"memory":6684672,"exitStatus":0,"files":{"stderr":"","stdout":"-345964695\n"}}}
+{"ts":"2026-05-09T08:05:04.994Z","event":"case.compare","data":{"caseId":5,"result":"ok","detail":"ok total line: 1\n"}}
+{"ts":"2026-05-09T08:05:04.994Z","event":"case.start","data":{"caseId":6,"subtaskId":3,"input":"-255188006 -145225879\n"}}
+{"ts":"2026-05-09T08:05:05.001Z","event":"case.run","data":{"caseId":6,"status":"Accepted","time":2074000,"memory":6684672,"exitStatus":0,"files":{"stderr":"","stdout":"-400413885\n"}}}
+{"ts":"2026-05-09T08:05:05.009Z","event":"case.compare","data":{"caseId":6,"result":"ok","detail":"ok total line: 1\n"}}
+{"ts":"2026-05-09T08:05:05.010Z","event":"case.start","data":{"caseId":7,"subtaskId":3,"input":"-105074228 241408813\n"}}
+{"ts":"2026-05-09T08:05:05.016Z","event":"case.run","data":{"caseId":7,"status":"Accepted","time":1773000,"memory":6684672,"exitStatus":0,"files":{"stderr":"","stdout":"136334585\n"}}}
+{"ts":"2026-05-09T08:05:05.025Z","event":"case.compare","data":{"caseId":7,"result":"ok","detail":"ok total line: 1\n"}}
+{"ts":"2026-05-09T08:05:05.026Z","event":"case.start","data":{"caseId":8,"subtaskId":3,"input":"-104387541 557196859\n"}}
+{"ts":"2026-05-09T08:05:05.035Z","event":"case.run","data":{"caseId":8,"status":"Accepted","time":2174000,"memory":6684672,"exitStatus":0,"files":{"stderr":"","stdout":"452809318\n"}}}
+{"ts":"2026-05-09T08:05:05.044Z","event":"case.compare","data":{"caseId":8,"result":"ok","detail":"ok total line: 1\n"}}
+{"ts":"2026-05-09T08:05:05.045Z","event":"case.start","data":{"caseId":9,"subtaskId":3,"input":"549325784 -690933930\n"}}
+{"ts":"2026-05-09T08:05:05.051Z","event":"case.run","data":{"caseId":9,"status":"Accepted","time":2009000,"memory":6684672,"exitStatus":0,"files":{"stderr":"","stdout":"-141608146\n"}}}
+{"ts":"2026-05-09T08:05:05.060Z","event":"case.compare","data":{"caseId":9,"result":"ok","detail":"ok total line: 1\n"}}
+{"ts":"2026-05-09T08:05:05.061Z","event":"case.start","data":{"caseId":10,"subtaskId":4,"input":"937032200 584941400\n"}}
+{"ts":"2026-05-09T08:05:05.077Z","event":"case.run","data":{"caseId":10,"status":"Accepted","time":2320000,"memory":6684672,"exitStatus":0,"files":{"stderr":"","stdout":"1521973600\n"}}}
+{"ts":"2026-05-09T08:05:05.086Z","event":"case.compare","data":{"caseId":10,"result":"ok","detail":"ok total line: 1\n"}}
+{"ts":"2026-05-09T08:05:05.088Z","event":"finish","data":{"finalRes":4,"totalTime":18,"maxMemory":6528,"totalScore":100}}

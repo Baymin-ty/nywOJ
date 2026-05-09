@@ -17,7 +17,7 @@ const isRoot = (req) => req.session && req.session.uid === 1;
 // ---------- read endpoints ----------
 
 exports.listPermissions = handler(async (req, res) => {
-  if (!requireAny(req, 'user.role.assign', 'user.permission.grant'))
+  if (!requireAny(req, 'user.role.admin', 'user.manage'))
     return res.status(403).end('403 Forbidden');
   const rows = await db.query(
     'SELECT `key`, `group`, name, description, scopable FROM permissions ORDER BY `group`, `key`'
@@ -30,10 +30,10 @@ exports.listPermissions = handler(async (req, res) => {
 });
 
 exports.listRoles = handler(async (req, res) => {
-  if (!requireAny(req, 'user.role.assign', 'user.permission.grant'))
+  if (!requireAny(req, 'user.role.admin', 'user.manage'))
     return res.status(403).end('403 Forbidden');
   const roles = await db.query(
-    'SELECT id, `key`, name, description, builtin, legacy_gid FROM roles ORDER BY builtin DESC, id'
+    'SELECT id, `key`, name, description, builtin FROM roles ORDER BY builtin DESC, id'
   );
   const links = await db.query(
     `SELECT rp.role_id, p.\`key\` AS permission_key
@@ -64,7 +64,7 @@ const setRolePermissions = async (roleId, permKeys) => {
 };
 
 exports.createRole = handler(async (req, res) => {
-  if (!req.can('user.role.assign')) return res.status(403).end('403 Forbidden');
+  if (!req.can('user.role.admin')) return res.status(403).end('403 Forbidden');
   const { key, name, description, permissionKeys } = req.body;
   if (!key || !name) return fail(res, '请确认信息完善');
   if (!KEY_REGEX.test(key)) return fail(res, '角色 key 格式非法（小写字母/数字/下划线）');
@@ -80,7 +80,7 @@ exports.createRole = handler(async (req, res) => {
 });
 
 exports.updateRole = handler(async (req, res) => {
-  if (!req.can('user.role.assign')) return res.status(403).end('403 Forbidden');
+  if (!req.can('user.role.admin')) return res.status(403).end('403 Forbidden');
   const { key, name, description, permissionKeys } = req.body;
   if (!key) return fail(res, '请确认信息完善');
   const role = await db.one('SELECT id, builtin FROM roles WHERE `key`=?', [key]);
@@ -102,7 +102,7 @@ exports.updateRole = handler(async (req, res) => {
 });
 
 exports.deleteRole = handler(async (req, res) => {
-  if (!req.can('user.role.assign')) return res.status(403).end('403 Forbidden');
+  if (!req.can('user.role.admin')) return res.status(403).end('403 Forbidden');
   const { key } = req.body;
   if (!key) return fail(res, '请确认信息完善');
   const role = await db.one('SELECT id, builtin FROM roles WHERE `key`=?', [key]);
@@ -119,7 +119,7 @@ exports.deleteRole = handler(async (req, res) => {
 // ---------- user grants ----------
 
 exports.listUserGrants = handler(async (req, res) => {
-  if (!requireAny(req, 'user.role.assign', 'user.permission.grant'))
+  if (!requireAny(req, 'user.role.admin', 'user.manage'))
     return res.status(403).end('403 Forbidden');
   const uid = parseInt(req.body.uid, 10);
   if (!uid) return fail(res, '请确认信息完善');
@@ -146,7 +146,7 @@ exports.listUserGrants = handler(async (req, res) => {
 });
 
 exports.setUserRoles = handler(async (req, res) => {
-  if (!req.can('user.role.assign')) return res.status(403).end('403 Forbidden');
+  if (!req.can('user.role.admin')) return res.status(403).end('403 Forbidden');
   const uid = parseInt(req.body.uid, 10);
   const roleKeys = Array.isArray(req.body.roleKeys) ? req.body.roleKeys : null;
   if (!uid || !roleKeys) return fail(res, '请确认信息完善');
@@ -199,7 +199,7 @@ const fetchOwner = async (resourceType, resourceId) => {
 };
 
 const canManageResourceCollab = async (req, resourceType, resourceId) => {
-  if (req.can('user.permission.grant')) return true;
+  if (req.can('user.role.admin')) return true;
   if (!resourceType || resourceId == null) return false;
   const owner = await fetchOwner(resourceType, resourceId);
   if (owner == null) return false;
@@ -236,14 +236,14 @@ exports.grantUserPermission = handler(async (req, res) => {
   if (isScoped) {
     if (!(await canManageResourceCollab(req, resourceType, resourceId)))
       return res.status(403).end('403 Forbidden');
-    if (!req.can('user.permission.grant')) {
+    if (!req.can('user.role.admin')) {
       const allowed = RESOURCE_GRANTABLE[resourceType] || [];
       if (!allowed.includes(permissionKey))
         return fail(res, '资源所有者不可授予此权限');
       if (effect !== 'allow')
         return fail(res, '资源所有者只能授予允许（allow）权限');
     }
-  } else if (!req.can('user.permission.grant')) {
+  } else if (!req.can('user.role.admin')) {
     return res.status(403).end('403 Forbidden');
   }
 
@@ -301,7 +301,7 @@ exports.revokeUserPermission = handler(async (req, res) => {
   // accepts owner (collaborators with manage.any can NOT revoke other
   // collaborators — only the owner manages the collaborator list).
   const isScoped = !!(row.resourceType && row.resourceId != null);
-  if (!req.can('user.permission.grant')) {
+  if (!req.can('user.role.admin')) {
     if (!isScoped) return res.status(403).end('403 Forbidden');
     if (!(await canManageResourceCollab(req, row.resourceType, row.resourceId)))
       return res.status(403).end('403 Forbidden');

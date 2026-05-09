@@ -1,5 +1,3 @@
-.DS_Store
-node_modules
-
-comparer/testlib.h
-data_backup
+# All ignore rules now live in the repo-root .gitignore. This file only
+# exists so historical clones still see the same effective ignores; new
+# rules should go in the root .gitignore.

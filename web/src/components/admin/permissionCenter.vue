@@ -21,7 +21,6 @@
       </div>
       <div class="sidebar-footer">
         <div class="sidebar-footer-title">RBAC v2 · next</div>
-        gid → role 已迁移
       </div>
     </aside>
 
@@ -128,9 +127,9 @@
                 <td class="mono last-login">{{ u.lastLogin || '—' }}</td>
                 <td>
                   <div class="action-buttons">
-                    <el-button size="small" type="primary" plain :icon="EditPen" @click="openEdit(u)" v-if="$canAny('user.edit', 'user.role.assign', 'user.permission.grant')">编辑</el-button>
-                    <el-button size="small" type="info" plain :icon="Key" @click="resetPassword(u)" v-if="$can('user.edit')">重置密码</el-button>
-                    <el-button size="small" :type="u.inUse ? 'danger' : 'success'" plain @click="setBlock(u.uid, !u.inUse)" v-if="$can('user.ban')">
+                    <el-button size="small" type="primary" plain :icon="EditPen" @click="openEdit(u)" v-if="$canAny('user.manage', 'user.role.admin')">编辑</el-button>
+                    <el-button size="small" type="info" plain :icon="Key" @click="resetPassword(u)" v-if="$can('user.manage')">重置密码</el-button>
+                    <el-button size="small" :type="u.inUse ? 'danger' : 'success'" plain @click="setBlock(u.uid, !u.inUse)" v-if="$can('user.manage')">
                       {{ u.inUse ? '封禁' : '解封' }}
                     </el-button>
                   </div>
@@ -183,7 +182,6 @@
                       <el-icon v-if="r.key === 'super_admin'" :size="11"><Lock /></el-icon>
                       {{ r.name }}
                     </span>
-                    <div class="matrix-gid">{{ r.legacy_gid != null ? 'gid=' + r.legacy_gid : '—' }}</div>
                     <div class="matrix-count">{{ (r.permissions || []).length }}/{{ permissions.length }}</div>
                   </div>
                 </th>
@@ -249,7 +247,7 @@
                   </span>
                   <span v-if="r.builtin" class="builtin-badge">BUILTIN</span>
                 </div>
-                <code class="role-key-text">{{ r.key }}<span v-if="r.legacy_gid != null" class="gid-text"> · legacy gid={{ r.legacy_gid }}</span></code>
+                <code class="role-key-text">{{ r.key }}</code>
               </div>
               <div class="role-card-actions">
                 <el-button size="small" plain :disabled="(r.builtin && !isRoot) || !canAssignRoles" :icon="EditPen" @click="openEditRole(r)">编辑</el-button>
@@ -409,11 +407,11 @@
           <div v-if="editTab === 'profile'">
             <div class="field-row">
               <label>用户名</label>
-              <el-input v-model="editForm.name" :disabled="!$can('user.edit')" />
+              <el-input v-model="editForm.name" :disabled="!$can('user.manage')" />
             </div>
             <div class="field-row">
               <label>邮箱</label>
-              <el-input v-model="editForm.email" :disabled="!$can('user.edit')" />
+              <el-input v-model="editForm.email" :disabled="!$can('user.manage')" />
             </div>
             <div class="field-row">
               <label>注册时间</label>
@@ -430,8 +428,8 @@
             <div class="danger-zone">
               <div class="danger-title">危险操作</div>
               <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <el-button size="small" plain type="warning" :icon="Key" @click="resetPassword(editingUser)" v-if="$can('user.edit')">重置密码</el-button>
-                <el-button size="small" plain :type="editingUser.inUse ? 'danger' : 'success'" @click="setBlock(editingUser.uid, !editingUser.inUse)" v-if="$can('user.ban')">
+                <el-button size="small" plain type="warning" :icon="Key" @click="resetPassword(editingUser)" v-if="$can('user.manage')">重置密码</el-button>
+                <el-button size="small" plain :type="editingUser.inUse ? 'danger' : 'success'" @click="setBlock(editingUser.uid, !editingUser.inUse)" v-if="$can('user.manage')">
                   {{ editingUser.inUse ? '封禁账号' : '解除封禁' }}
                 </el-button>
               </div>
@@ -453,7 +451,6 @@
                       {{ r.name }}
                     </span>
                     <code class="role-key-inline">{{ r.key }}</code>
-                    <span v-if="r.legacy_gid != null" class="gid-inline">· legacy gid={{ r.legacy_gid }}</span>
                   </div>
                   <div class="role-check-desc">{{ r.description }}</div>
                   <div class="role-check-count">{{ (r.permissions || []).length }} 项权限</div>
@@ -465,7 +462,7 @@
           <!-- Direct grants -->
           <div v-if="editTab === 'grants'">
             <div class="hint-box">
-              单点授权（user_permissions 表）。<code>deny</code> 优先于 allow；scope 为空表示全局。需要 <code>user.permission.grant</code>。
+              单点授权（user_permissions 表）。<code>deny</code> 优先于 allow；scope 为空表示全局。需要 <code>user.role.admin</code>。
             </div>
             <GrantTable
               v-if="canGrantPerm"
@@ -474,7 +471,7 @@
               :permissions="permissions"
               @changed="refreshEditGrants"
             />
-            <div v-else class="empty-grants">需要 user.permission.grant 权限以管理直接授权。</div>
+            <div v-else class="empty-grants">需要 user.role.admin 权限以管理直接授权。</div>
           </div>
 
           <!-- Effective permissions -->
@@ -638,7 +635,7 @@ export default {
       // edit drawer
       editDrawerVisible: false,
       editingUser: null,
-      editTab: 'roles',
+      editTab: 'profile',
       editForm: { name: '', email: '' },
       editRoleKeys: [],
       originalRoleKeys: [],
@@ -659,8 +656,8 @@ export default {
     };
   },
   computed: {
-    canAssignRoles() { return can('user.role.assign'); },
-    canGrantPerm() { return can('user.permission.grant'); },
+    canAssignRoles() { return can('user.role.admin'); },
+    canGrantPerm() { return can('user.role.admin'); },
     isRoot() { return this.$store.state.isRoot; },
     sidebarItems() {
       return [
@@ -881,7 +878,9 @@ export default {
     async openEdit(u) {
       this.editingUser = { ...u };
       this.editForm = { name: u.name, email: u.email };
-      this.editTab = 'roles';
+      // Default tab follows what the caller can actually do: role admins land
+      // on the role/grant flow, plain user-managers land on profile/ban.
+      this.editTab = this.canAssignRoles ? 'roles' : 'profile';
       this.editRoleKeys = [...(u.roles || [])];
       this.originalRoleKeys = [...(u.roles || [])];
       this.editGrants = [];
@@ -1313,7 +1312,6 @@ export default {
 }
 .matrix-role-header.highlighted { background: #f5fbff; }
 .matrix-role-cell { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-.matrix-gid { font-size: 10px; color: #c0c4cc; font-family: 'Courier New', monospace; }
 .matrix-count { font-size: 11px; color: #909399; font-weight: 600; }
 .group-row td {
   padding: 8px 14px;
@@ -1420,7 +1418,6 @@ export default {
   font-family: 'Courier New', monospace;
 }
 .role-key-text { font-size: 11px; color: #909399; font-family: 'Courier New', monospace; }
-.gid-text { margin-left: 6px; color: #c0c4cc; }
 .role-card-actions { display: flex; gap: 6px; }
 .role-desc { font-size: 12px; color: #606266; margin-bottom: 12px; }
 .role-perm-count { font-size: 11px; color: #909399; margin-bottom: 6px; }
@@ -1528,7 +1525,6 @@ export default {
 .role-check-item.checked { background: #f5fbff; border-color: #b3d8ff; }
 .role-check-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .role-key-inline { font-size: 11px; color: #909399; font-family: 'Courier New', monospace; }
-.gid-inline { font-size: 10px; color: #c0c4cc; font-family: 'Courier New', monospace; }
 .role-check-desc { font-size: 12px; color: #606266; margin-bottom: 4px; }
 .role-check-count { font-size: 11px; color: #909399; }
 .empty-grants { padding: 40px; text-align: center; color: #c0c4cc; font-size: 13px; background: #fafbfc; border-radius: 4px; border: 1px dashed #ebeef5; }

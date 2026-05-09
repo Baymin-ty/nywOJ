@@ -86,6 +86,7 @@ router.post('/api/judge/getSubmissionInfo', judge.getSubmissionInfo);
 router.post('/api/judge/getSubmissionLog', judge.getSubmissionLog);
 router.get('/api/judge/streamSubmission', judge.streamSubmissionInfo);
 router.post('/api/judge/reJudge', judge.reJudge);
+router.post('/api/judge/reJudgeBatch', judge.reJudgeBatch);
 router.post('/api/judge/reJudgeProblem', judge.reJudgeProblem);
 router.post('/api/judge/reJudgeContest', judge.reJudgeContest);
 router.post('/api/judge/cancelSubmission', judge.cancelSubmission);

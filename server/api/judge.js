@@ -1,18 +1,16 @@
 const axios = require('axios');
 const async = require('async');
 const { EventEmitter } = require('events');
-const { exec } = require('child_process');
-const { fork } = require('child_process');
-const fs = require('fs');
+const { exec, fork } = require('child_process');
 const path = require('path');
 const db = require('../db');
 const { handler, fail, ok, paginate, buildWhere } = require('../db/util');
-const { requirePermission } = require('../auth/middleware');
 const { Format, kbFormat } = require('../static');
 const conf = require('../config.json');
 const { updateProblemStat, problemAuth, getProblemLang } = require('./problem');
 const { judgeRes, formatSubmissionRow, formatCaseRow } = require('../db/format');
 const { readJudgeLogEntries } = require('./judgeLog');
+const { getLanguage } = require('./judgeLanguages');
 
 // ---- live progress bus ----
 // SSE clients (web/src/components/submission/submissionView.vue) subscribe here
@@ -36,9 +34,11 @@ const notifyProgress = (sid) => {
 exports.notifySubmissionProgress = notifyProgress;
 
 // ---- judging queue ----
+// Single unified worker handles every language; the worker reads
+// submission.lang and dispatches via judgeLanguages.js. See judgeWorker.js.
+const WORKER_PATH = path.join(__dirname, 'judgeWorker.js');
 const judgeQueue = async.queue((submission, callback) => {
-  const workerPath = submission.workerFile || `./api/judgeWorker(${submission.lang}).js`;
-  const worker = fork(workerPath);
+  const worker = fork(WORKER_PATH);
   worker.on('message', (msg) => {
     if (msg && msg.type === 'progress') {
       submissionEvents.emit('update', Number(msg.sid));
@@ -63,18 +63,20 @@ const machines = ['localhost'];
 let taskId = 0;
 
 const pushSidIntoQueue = async (sid, isreJudge) => {
+  // Validate language is known up-front so the user gets a clear error here
+  // instead of an opaque crash inside the forked worker.
   const lang = await db.one(
     'SELECT l.name FROM languages l INNER JOIN submission s ON l.id = s.lang WHERE s.sid=?',
     [sid]
   );
   if (!lang || !lang.name) throw new Error(`language not found for submission ${sid}`);
-  const workerFile = path.join(__dirname, `judgeWorker(${lang.name}).js`);
-  if (!fs.existsSync(workerFile)) throw new Error(`judge worker not found for language ${lang.name}`);
+  if (!getLanguage(lang.name)) throw new Error(`language ${lang.name} has no judge config`);
+
   if (conf.JUDGE.ISSERVER) {
     const machine = machines[++taskId % machines.length];
     if (machine === 'localhost') {
       console.log(Format(new Date()), 'server: localJudge', sid);
-      judgeQueue.push({ sid, isreJudge, lang: lang.name, workerFile });
+      judgeQueue.push({ sid, isreJudge });
     } else {
       console.log(Format(new Date()), 'server: task assigned to', machine, sid);
       try {
@@ -92,7 +94,7 @@ const pushSidIntoQueue = async (sid, isreJudge) => {
     }
   } else {
     console.log(Format(new Date()), 'client: task received', sid, isreJudge);
-    judgeQueue.push({ sid, isreJudge, lang: lang.name, workerFile });
+    judgeQueue.push({ sid, isreJudge });
   }
 };
 exports.pushSidIntoQueue = pushSidIntoQueue;
@@ -468,6 +470,39 @@ exports.reJudge = [
     pushSidIntoQueue(req.body.sid, true);
     await exports.clearCase(req.body.sid);
     return ok(res, { message: 'ok' });
+  }),
+];
+
+// Batch rejudge:
+// - Accepts { sids: number[] }
+// - Each sid is authorized via canRejudgeSubmission (same as single reJudge)
+// - Returns { total, accepted, denied: [{ sid, reason }] }
+exports.reJudgeBatch = [
+  handler(async (req, res) => {
+    const raw = req.body && req.body.sids;
+    if (!Array.isArray(raw)) return fail(res, 'bad sids');
+    const sids = raw
+      .map((x) => parseInt(x, 10))
+      .filter((x) => Number.isFinite(x) && x > 0);
+    if (!sids.length) return ok(res, { total: 0, accepted: 0, denied: [] });
+
+    // soft limit to avoid accidental huge fan-out
+    if (sids.length > 200) return fail(res, '一次最多批量重测 200 条提交');
+
+    const denied = [];
+    let accepted = 0;
+    for (const sid of sids) {
+      const allowed = await canRejudgeSubmission(req, sid);
+      if (!allowed) {
+        denied.push({ sid, reason: '权限不足' });
+        continue;
+      }
+      await exports.setSubmission(sid, 2, 0, 0, 0, null, null);
+      pushSidIntoQueue(sid, true);
+      await exports.clearCase(sid);
+      accepted += 1;
+    }
+    return ok(res, { total: sids.length, accepted, denied });
   }),
 ];
 

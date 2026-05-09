@@ -1,0 +1,25 @@
+{
+  "DB": {
+    "host": "localhost",
+    "port": 3306,
+    "username": "root",
+    "password": "<your-mysql-password>",
+    "databasename": "nywoj"
+  },
+  "EMAIL": {
+    "username": "<your-smtp-user>@163.com",
+    "password": "<your-smtp-auth-code>"
+  },
+  "SESSION": {
+    "expire": "604800000"
+  },
+  "JUDGE": {
+    "ISSERVER": true,
+    "NAME": "<judge-machine-name>"
+  },
+  "SYNC": {
+    "remote": "root@<deploy-host>",
+    "remoteDataDir": "/root/nywoj/server/data",
+    "comment": "Used by sync_data.sh to rsync test cases from the deploy server. The script reads SYNC.remote / SYNC.remoteDataDir if jq is available, otherwise falls back to env vars NYWOJ_SYNC_REMOTE / NYWOJ_SYNC_REMOTE_DIR."
+  }
+}

@@ -85,14 +85,14 @@
           </template>
           <template #default="scope">
             <span>
-              <el-button size="small" :type="scope.row.edit ? 'warning' : 'primary'" plain @click="edit(scope.row)" v-if="$can('user.edit')">
+              <el-button size="small" :type="scope.row.edit ? 'warning' : 'primary'" plain @click="edit(scope.row)" v-if="$can('user.manage')">
                 {{ scope.row.edit ? "保存信息" : "编辑信息" }}
               </el-button>
-              <el-button size="small" :type="scope.row.inUse ? 'danger' : 'success'" plain v-if="$can('user.ban')"
+              <el-button size="small" :type="scope.row.inUse ? 'danger' : 'success'" plain v-if="$can('user.manage')"
                 @click="setBlock(scope.row.uid, !scope.row.inUse)">
                 {{ scope.row.inUse ? "封禁账号" : "解除封禁" }}
               </el-button>
-              <el-button size="small" type="info" plain v-if="$canAny('user.role.assign','user.permission.grant')"
+              <el-button size="small" type="info" plain v-if="$can('user.role.admin')"
                 @click="openPermission(scope.row.uid)">
                 角色权限
               </el-button>

@@ -116,7 +116,7 @@ export default {
     isOwner() {
       return this.problemInfo
         && this.problemInfo.publisherUid === this.$store.state.uid
-        || this.$can('user.permission.grant');
+        || this.$can('user.role.admin');
     },
   },
   data() {

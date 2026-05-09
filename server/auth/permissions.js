@@ -32,11 +32,12 @@ const PERMISSIONS = {
   'submission.rejudge.any':  { group: 'judge', name: '重测任意提交', description: '重测任意提交（含比赛与非比赛）' },
   'submission.rejudge.self': { group: 'judge', name: '重测自己的提交', description: '重测自己提交的非比赛代码' },
 
-  'user.list':             { group: 'user', name: '查看用户列表' },
-  'user.edit':             { group: 'user', name: '编辑用户资料' },
-  'user.ban':              { group: 'user', name: '封禁/解封用户' },
-  'user.role.assign':      { group: 'user', name: '分配角色' },
-  'user.permission.grant': { group: 'user', name: '单点授权' },
+  // User admin:
+  //   user.manage      — user list/edit/ban (merged from user.{list,edit,ban})
+  //   user.role.admin  — role assign + direct grants (merged from
+  //                      user.role.assign + user.permission.grant)
+  'user.manage':     { group: 'user', name: '用户管理', description: '查看用户列表 / 编辑用户资料 / 封禁与解封用户' },
+  'user.role.admin': { group: 'user', name: '角色与授权管理', description: '分配角色 / 单点授权（角色权限管理）' },
 
   'announcement.manage': { group: 'system', name: '管理公告' },
   'paste.edit.any':      { group: 'system', name: '编辑他人 paste' },
@@ -63,6 +64,8 @@ const MODERATOR_PERMS = Array.from(new Set([
   ...PROBLEM_SETTER_PERMS,
   ...CONTEST_MANAGER_PERMS,
   ...JUDGE_ADMIN_PERMS,
+  'user.manage',
+  'user.role.admin',
   // Moderators escalate to *.manage.any over every problem/contest
   // (the *_setter / *_manager roles only get manage.self).
   'problem.manage.any',

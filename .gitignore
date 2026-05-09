@@ -1,2 +1,42 @@
+# --- OS / editor noise ---
 .DS_Store
+*.swp
+.idea/
+.vscode/
+
+# --- Claude harness ---
 .claude/
+
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-error.log
+
+# --- Build output ---
+web/dist/
+
+# --- Server: secrets & runtime config ---
+# config.json holds DB / SMTP credentials. Use config.example.json as the
+# template; copy and fill in locally.
+server/config.json
+
+# --- Server: log files ---
+# app.log churns on every startup; per-submission judge_logs/<sid>.log churns
+# on every submission. Neither belongs in git.
+*.log
+server/judge_logs/
+
+# --- Server: judge runtime caches ---
+# spjCache.js writes here; safe to lose, regenerated on next compile.
+server/judge_cache/
+
+# --- Server: comparer build artifacts ---
+# comparer/comparer is platform-specific; build with `make` in that dir.
+server/comparer/comparer
+server/comparer/tmp/
+
+# --- Server: test data ---
+# Test cases live on the deploy server and reach this checkout via
+# `sync_data.sh` (rsync). Authoritative copy is the deploy server, not git.
+server/data/
+server/data_backup/

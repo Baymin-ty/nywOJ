@@ -57,7 +57,7 @@
                 </el-icon>
                 提交记录
               </template>
-              <contestSubmission ref="submission" />
+              <contestSubmission ref="submission" :can-manage="canManage" />
             </el-tab-pane>
             <el-tab-pane name="rank" v-if="viewAuth">
               <template #label>
@@ -199,7 +199,7 @@ export default {
     // collaborator and gets read-only access to the collaborator list.
     isOwner() {
       return (this.contestInfo && this.contestInfo.host === this.$store.state.uid)
-        || this.$can('user.permission.grant');
+        || this.$can('user.role.admin');
     },
   },
   data() {

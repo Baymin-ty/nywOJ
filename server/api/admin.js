@@ -3,8 +3,11 @@ const { handler, fail, ok, paginate, buildWhere } = require('../db/util');
 const { requirePermission } = require('../auth/middleware');
 const { Format, ip2loc, eventList, eventExp } = require('../static');
 
+// Read-only listing: useful both to user.manage (edit/ban flow) and to
+// user.role.admin (role/grant flow), so accept either. Modifying endpoints
+// below stay tied to a single permission.
 exports.getUserInfoList = [
-  requirePermission('user.list'),
+  requirePermission(['user.manage', 'user.role.admin']),
   handler(async (req, res) => {
     const { offset, limit } = paginate(req);
     const filter = req.body.filter || {};
@@ -88,7 +91,7 @@ exports.getUserInfoList = [
 ];
 
 exports.setBlock = [
-  requirePermission('user.ban'),
+  requirePermission('user.manage'),
   handler(async (req, res) => {
     const { uid, status } = req.body;
     if (uid == null || status == null) return fail(res, '请确认信息完善');
@@ -99,7 +102,7 @@ exports.setBlock = [
 ];
 
 exports.updateUserInfo = [
-  requirePermission('user.edit'),
+  requirePermission('user.manage'),
   handler(async (req, res) => {
     const info = req.body.info || {};
     const { uid, name, email } = info;
@@ -184,7 +187,8 @@ exports.listAuditLog = [
 exports.getUserLoginLog = handler(async (req, res) => {
   const uid = parseInt(req.body.uid, 10);
   if (!uid) return fail(res, '请确认信息完善');
-  if (!req.can('user.list')) return res.status(403).end('403 Forbidden');
+  if (!req.can('user.manage') && !req.can('user.role.admin'))
+    return res.status(403).end('403 Forbidden');
   const list = await db.query(
     `SELECT token, browser, os, loginIp, loginLoc, time, lastact
      FROM userSession WHERE uid=? ORDER BY time DESC LIMIT 20`,
@@ -199,7 +203,7 @@ exports.getUserLoginLog = handler(async (req, res) => {
 });
 
 exports.resetPassword = [
-  requirePermission('user.edit'),
+  requirePermission('user.manage'),
   handler(async (req, res) => {
     const bcrypt = require('bcryptjs');
     const uid = parseInt(req.body.uid, 10);
@@ -213,7 +217,8 @@ exports.resetPassword = [
 ];
 
 exports.getAdminStats = handler(async (req, res) => {
-  if (!req.can('user.list')) return res.status(403).end('403 Forbidden');
+  if (!req.can('user.manage') && !req.can('user.role.admin'))
+    return res.status(403).end('403 Forbidden');
   const [total, withRoles, banned, grantCount] = await Promise.all([
     db.one('SELECT COUNT(*) AS cnt FROM userInfo'),
     db.one('SELECT COUNT(DISTINCT uid) AS cnt FROM user_roles'),

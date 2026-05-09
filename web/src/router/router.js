@@ -34,8 +34,8 @@ import store from '@/sto/store';
 
 // Permission-gated routes: route -> [required permission keys, any-of].
 const perPermissions = {
-  '/admin/usermanage': ['user.list', 'user.edit', 'user.ban'],
-  '/admin/permissions': ['user.list', 'user.edit', 'user.ban', 'user.role.assign', 'user.permission.grant'],
+  '/admin/usermanage':  ['user.manage', 'user.role.admin'],
+  '/admin/permissions': ['user.manage', 'user.role.admin'],
 };
 
 const router = createRouter({
@@ -213,7 +213,10 @@ router.beforeEach(async (to, from, next) => {
     }
     if (store.state.uid) {
         const need = perPermissions[to.path];
-        if (need && !need.some((k) => (store.state.permissions || []).indexOf(k) >= 0)) return;
+        if (need && !need.some((k) => (store.state.permissions || []).includes(k))) {
+            next(false);
+            return;
+        }
         next();
     }
     else {

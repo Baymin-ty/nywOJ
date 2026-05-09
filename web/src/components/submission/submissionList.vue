@@ -13,6 +13,14 @@
               </el-icon>
               我的提交
             </el-button>
+            <el-popconfirm v-if="canBulkRejudge" confirm-button-text="确认" cancel-button-text="取消"
+              :title="`确认批量重测选中的 ${selectedSids.length} 条提交？`" @confirm="bulkRejudge">
+              <template #reference>
+                <el-button type="warning" :disabled="selectedSids.length === 0">
+                  批量重测
+                </el-button>
+              </template>
+            </el-popconfirm>
             <el-button type="primary" @click="all">
               <el-icon class="el-icon--left">
                 <Refresh />
@@ -60,8 +68,10 @@
           </el-button>
         </el-button-group>
       </div>
-      <el-table :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }"
-        :cell-style="cellStyle" :row-class-name="tableRowClassName" v-loading="!finished">
+      <el-table ref="table" :data="submissionList" height="600px" :header-cell-style="{ textAlign: 'center' }"
+        :cell-style="cellStyle" :row-class-name="tableRowClassName" v-loading="!finished"
+        @selection-change="onSelectionChange">
+        <el-table-column v-if="canBulkRejudge" type="selection" width="46" fixed />
         <el-table-column prop="sid" label="#" width="100px" />
         <el-table-column prop="title" label="题目" min-width="200px">
           <template #default="scope">
@@ -127,6 +137,7 @@ export default {
       total: 0,
       finished: false,
       currentPage: 1,
+      selectedSids: [],
       filter: {
         pid: null,
         name: null,
@@ -184,9 +195,18 @@ export default {
       }],
     }
   },
+  computed: {
+    canBulkRejudge() {
+      return this.$can('submission.rejudge.any');
+    },
+  },
   methods: {
     all() {
       this.finished = false;
+      this.selectedSids = [];
+      if (this.$refs.table && typeof this.$refs.table.clearSelection === 'function') {
+        this.$refs.table.clearSelection();
+      }
       let param = {}, url = location.pathname;
       if (this.filter.name) param.name = this.filter.name;
       if (this.filter.pid) param.pid = this.filter.pid;
@@ -218,6 +238,26 @@ export default {
         this.$message.error('获取提交记录失败' + err.message);
       });
     },
+    onSelectionChange(rows) {
+      this.selectedSids = (rows || []).map(r => r.sid);
+    },
+    bulkRejudge() {
+      const sids = [...this.selectedSids];
+      if (!sids.length) return;
+      axios.post('/api/judge/reJudgeBatch', { sids }).then(res => {
+        const data = res.data || {};
+        const accepted = data.accepted ?? 0;
+        const denied = (data.denied || []).length;
+        if (denied) {
+          this.$message.warning(`已重测 ${accepted} 条，${denied} 条因权限不足被跳过`);
+        } else {
+          this.$message.success(`已重测 ${accepted} 条提交`);
+        }
+        this.all();
+      }).catch(err => {
+        this.$message.error('批量重测失败' + err.message);
+      });
+    },
     clear() {
       this.filter.name = this.filter.pid = this.filter.res = this.filter.score = this.filter.cid = this.filter.lang = null;
       this.all();
@@ -242,11 +282,13 @@ export default {
     cellStyle({ row, columnIndex }) {
       let style = {};
       style['textAlign'] = 'center';
-      if (columnIndex === 3) {
+      const resCol = this.canBulkRejudge ? 4 : 3;
+      const scoreCol = this.canBulkRejudge ? 5 : 4;
+      if (columnIndex === resCol) {
         style['font-weight'] = 500;
         style['color'] = resColor[row.judgeResult];
       }
-      if (columnIndex === 4) {
+      if (columnIndex === scoreCol) {
         style['font-weight'] = 500;
         style['color'] = scoreColor[Math.floor(row.score / 10)];
       }

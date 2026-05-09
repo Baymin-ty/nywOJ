@@ -23,8 +23,14 @@ const buildEndpointMap = () => {
       const handle = sub && sub.handle;
       const key = handle && handle.permissionKey;
       if (!key) continue;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(`${method} ${path}`);
+      // permissionKey may be a string OR an array (any-of). Surface the
+      // endpoint under each key so the matrix shows the same row twice when
+      // an endpoint is reachable via multiple permissions.
+      const ks = Array.isArray(key) ? key : [key];
+      for (const k of ks) {
+        if (!map.has(k)) map.set(k, []);
+        map.get(k).push(`${method} ${path}`);
+      }
     }
   }
   cached = map;

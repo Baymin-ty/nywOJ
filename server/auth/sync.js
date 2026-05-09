@@ -164,6 +164,12 @@ const PERMISSION_RENAMES = [
   ['contest.edit.any',      'contest.manage.any'],
   ['contest.player.manage', 'contest.manage.any'],
   ['submission.rejudge',    'submission.rejudge.any'],
+  // 2026-05: user admin permissions collapsed into two keys.
+  ['user.list',             'user.manage'],
+  ['user.edit',             'user.manage'],
+  ['user.ban',              'user.manage'],
+  ['user.role.assign',      'user.role.admin'],
+  ['user.permission.grant', 'user.role.admin'],
 ];
 
 // Permission keys that are deleted outright (no successor). All
