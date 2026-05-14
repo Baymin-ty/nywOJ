@@ -1,5 +1,8 @@
 const axios = require('axios');
 const async = require('async');
+const fs = require('fs');
+const fsp = require('fs').promises;
+const compressing = require('compressing');
 const { EventEmitter } = require('events');
 const { exec, fork } = require('child_process');
 const path = require('path');
@@ -7,10 +10,14 @@ const db = require('../db');
 const { handler, fail, ok, paginate, buildWhere } = require('../db/util');
 const { Format, kbFormat } = require('../static');
 const conf = require('../config.json');
+const { getFile, setFile } = require('../file');
 const { updateProblemStat, problemAuth, getProblemLang } = require('./problem');
-const { judgeRes, formatSubmissionRow, formatCaseRow } = require('../db/format');
+const { judgeRes, formatSubmissionRow, formatCaseRow, isAnswerType } = require('../db/format');
 const { readJudgeLogEntries } = require('./judgeLog');
 const { getLanguage } = require('./judgeLanguages');
+
+const ANSWER_SUBMIT_DIR = './answerSubmissions';
+const ANSWER_TOTAL_LIMIT = 10 * 1024 * 1024; // 10MB combined
 
 // ---- live progress bus ----
 // SSE clients (web/src/components/submission/submissionView.vue) subscribe here
@@ -64,13 +71,19 @@ let taskId = 0;
 
 const pushSidIntoQueue = async (sid, isreJudge) => {
   // Validate language is known up-front so the user gets a clear error here
-  // instead of an opaque crash inside the forked worker.
-  const lang = await db.one(
-    'SELECT l.name FROM languages l INNER JOIN submission s ON l.id = s.lang WHERE s.sid=?',
-    [sid]
-  );
-  if (!lang || !lang.name) throw new Error(`language not found for submission ${sid}`);
-  if (!getLanguage(lang.name)) throw new Error(`language ${lang.name} has no judge config`);
+  // instead of an opaque crash inside the forked worker. Answer-submission
+  // submissions store lang=NULL and skip this check entirely; the worker
+  // branches on problem.type and never reads a language config for them.
+  const row = await db.one('SELECT s.lang FROM submission s WHERE s.sid=?', [sid]);
+  if (!row) throw new Error(`submission ${sid} not found`);
+  if (row.lang != null) {
+    const lang = await db.one(
+      'SELECT l.name FROM languages l INNER JOIN submission s ON l.id = s.lang WHERE s.sid=?',
+      [sid]
+    );
+    if (!lang || !lang.name) throw new Error(`language not found for submission ${sid}`);
+    if (!getLanguage(lang.name)) throw new Error(`language ${lang.name} has no judge config`);
+  }
 
   if (conf.JUDGE.ISSERVER) {
     const machine = machines[++taskId % machines.length];
@@ -559,4 +572,209 @@ exports.getLangs = handler(async (req, res) => {
     return acc;
   }, {});
   return ok(res, { data: langList });
+});
+
+// ---- submit-answer (problem.type ∈ {2,3}) ----
+//
+// Accepts a JSON payload of textarea answers via `answers` (object keyed by
+// case name) and/or a zip file (multer single 'file') whose entries match
+// `{case.name}.out`. We dedupe by case.name — zip wins over textarea if both
+// supply the same case. User-submitted answers land in
+// `./answerSubmissions/{sid}/{case.name}.out`; judgeWorker.judgeAnswer reads
+// them back when judging.
+const stripOut = (n) => (n.endsWith('.out') ? n.slice(0, -4) : n);
+
+const extractZipAnswers = (zipPath, caseNames) =>
+  new Promise((resolve, reject) => {
+    const out = {};
+    const stream = new compressing.zip.UncompressStream({ source: zipPath });
+    stream
+      .on('error', reject)
+      .on('finish', () => resolve(out))
+      .on('entry', (header, entryStream, next) => {
+        if (header.type !== 'file') {
+          entryStream.resume();
+          return next();
+        }
+        // Match by basename to tolerate users zipping a folder containing
+        // the .out files (common with macOS Finder).
+        const base = path.basename(header.name);
+        const name = stripOut(base);
+        if (!caseNames.has(name)) {
+          entryStream.resume();
+          return next();
+        }
+        const chunks = [];
+        let size = 0;
+        entryStream.on('data', (c) => {
+          chunks.push(c);
+          size += c.length;
+          if (size > ANSWER_TOTAL_LIMIT) {
+            stream.destroy(new Error('单个答案超过 10MB 限制'));
+          }
+        });
+        entryStream.on('end', () => {
+          out[name] = Buffer.concat(chunks).toString('utf-8');
+          next();
+        });
+        entryStream.on('error', reject);
+      });
+  });
+
+exports.submitAnswer = handler(async (req, res) => {
+  const cleanupZip = async () => {
+    if (req.file && req.file.path) {
+      try { await fsp.unlink(req.file.path); } catch (_) { /* best effort */ }
+    }
+  };
+  try {
+    // multer puts text fields into req.body even on multipart; pid may arrive
+    // as a string here.
+    const pid = parseInt(req.body.pid, 10);
+    if (!pid) { await cleanupZip(); return fail(res, '请确认信息完善'); }
+    const auth = await problemAuth(req, pid);
+    if (!auth.view) { await cleanupZip(); return fail(res, '权限不足'); }
+
+    const pinfo = await db.one('SELECT type FROM problem WHERE pid=?', [pid]);
+    if (!pinfo) { await cleanupZip(); return fail(res, '题目不存在'); }
+    if (!isAnswerType(pinfo.type)) {
+      await cleanupZip();
+      return fail(res, '该题不是提交答案题');
+    }
+
+    const cfgRaw = await getFile(`./data/${pid}/config.json`);
+    if (!cfgRaw) { await cleanupZip(); return fail(res, '题目尚未配置测试点'); }
+    const cfg = JSON.parse(cfgRaw);
+    const cases = cfg.cases || [];
+    // case "name" = the .in filename without extension; ZIP entries match
+    // `{name}.out`, textarea keys also use this name.
+    const caseNames = new Set();
+    for (const c of cases) {
+      const n = c.input ? c.input.replace(/\.in$/, '') : String(c.index);
+      caseNames.add(n);
+    }
+
+    const answers = {};
+
+    // 1) textarea / JSON input — keys must match a known case name
+    if (req.body.answers) {
+      let parsed;
+      try {
+        parsed = typeof req.body.answers === 'string'
+          ? JSON.parse(req.body.answers)
+          : req.body.answers;
+      } catch (e) {
+        await cleanupZip();
+        return fail(res, 'answers 字段格式错误');
+      }
+      if (parsed && typeof parsed === 'object') {
+        for (const k of Object.keys(parsed)) {
+          if (!caseNames.has(k)) continue;
+          const v = parsed[k];
+          if (v == null) continue;
+          const s = String(v);
+          if (s.length === 0) continue;
+          answers[k] = s;
+        }
+      }
+    }
+
+    // 2) ZIP overrides textarea on conflict
+    if (req.file && req.file.path) {
+      let zipAnswers = {};
+      try {
+        zipAnswers = await extractZipAnswers(req.file.path, caseNames);
+      } catch (e) {
+        await cleanupZip();
+        return fail(res, 'ZIP 解析失败: ' + (e.message || e));
+      }
+      for (const k of Object.keys(zipAnswers)) {
+        answers[k] = zipAnswers[k];
+      }
+    }
+
+    if (!Object.keys(answers).length) {
+      await cleanupZip();
+      return fail(res, '请上传或输入至少一个测试点的答案');
+    }
+
+    let totalSize = 0;
+    for (const k of Object.keys(answers)) totalSize += Buffer.byteLength(answers[k], 'utf-8');
+    if (totalSize > ANSWER_TOTAL_LIMIT) {
+      await cleanupZip();
+      return fail(res, '答案总大小超过 10MB');
+    }
+
+    const r = await db.query(
+      'INSERT INTO submission(pid,uid,code,codelength,submitTime,lang) VALUES (?,?,?,?,?,?)',
+      [pid, req.session.uid, '', totalSize, new Date(), null]
+    );
+    if (!r.affectedRows) { await cleanupZip(); return fail(res, 'error'); }
+    const sid = r.insertId;
+
+    const dir = path.join(__dirname, '..', ANSWER_SUBMIT_DIR, String(sid));
+    await fsp.mkdir(dir, { recursive: true });
+    for (const [name, content] of Object.entries(answers)) {
+      await fsp.writeFile(path.join(dir, `${name}.out`), content);
+    }
+    await cleanupZip();
+
+    await db.query('UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?', [pid]);
+    pushSidIntoQueue(sid, false);
+    return ok(res, { sid });
+  } catch (err) {
+    await cleanupZip();
+    console.error('submitAnswer err:', err);
+    return fail(res, err.message || '提交失败');
+  }
+});
+
+// Return the user's submitted answer for a single case in an answer-submission.
+// Caller may identify the case by its `name` (the case.input basename without
+// extension) OR by `caseId` (the integer case.index from config.json); the
+// submission detail view only has caseId, so we resolve via config.json when
+// needed. Auth mirrors the submission detail visibility (own submission, or
+// view-collaborator / submission.view.any). Capped at 256KB per case.
+exports.getAnswerFile = handler(async (req, res) => {
+  const sid = parseInt(req.body.sid, 10);
+  if (!sid) return fail(res, '参数非法');
+  let name = req.body.name != null ? String(req.body.name) : '';
+  const caseId = req.body.caseId != null ? parseInt(req.body.caseId, 10) : NaN;
+  if (!name && !Number.isFinite(caseId)) return fail(res, '参数非法');
+  if (name && /[\/\\]/.test(name)) return fail(res, '参数非法');
+
+  const row = await db.one('SELECT pid,uid,lang FROM submission WHERE sid=?', [sid]);
+  if (!row) return fail(res, '提交不存在');
+  if (row.lang != null) return fail(res, '该提交不是答案题');
+  const auth = await problemAuth(req, row.pid);
+  const ownSelf = row.uid === req.session.uid;
+  const allowed =
+    ownSelf
+    || auth.view
+    || req.can('submission.view.any')
+    || req.can('submission.view.notcontest');
+  if (!allowed) return res.status(403).end('403 Forbidden');
+
+  if (!name) {
+    const cfgRaw = await getFile(`./data/${row.pid}/config.json`);
+    if (!cfgRaw) return fail(res, '题目未配置');
+    const cfg = JSON.parse(cfgRaw);
+    const hit = (cfg.cases || []).find((c) => c.index === caseId);
+    if (!hit) return fail(res, '测试点不存在');
+    name = hit.input ? hit.input.replace(/\.in$/, '') : String(hit.index);
+  }
+
+  const filePath = path.join(__dirname, '..', ANSWER_SUBMIT_DIR, String(sid), `${name}.out`);
+  if (!fs.existsSync(filePath)) return ok(res, { name, content: '', missing: true, size: 0 });
+  const stat = fs.statSync(filePath);
+  const MAX = 256 * 1024;
+  const truncated = stat.size > MAX;
+  const fd = await fsp.open(filePath, 'r');
+  try {
+    const buf = Buffer.alloc(Math.min(stat.size, MAX));
+    await fd.read(buf, 0, buf.length, 0);
+    return ok(res, { name, content: buf.toString('utf-8'), truncated, size: stat.size });
+  } finally {
+    await fd.close();
+  }
 });

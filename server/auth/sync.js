@@ -83,7 +83,7 @@ const syncBuiltinRoles = async () => {
        VALUES (?,?,?,1,?)
        ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description),
                                builtin=1, legacy_gid=VALUES(legacy_gid)`,
-      [key, meta.name, meta.description || null, meta.legacy_gid]
+      [key, meta.name, meta.description || null, meta.legacyLevel]
     );
     const role = await db.one('SELECT id FROM roles WHERE `key`=?', [key]);
 
@@ -101,8 +101,8 @@ const syncBuiltinRoles = async () => {
   }
 };
 
-// Returns true if the column exists. Used to gate the gid → role backfill so we
-// can run sync repeatedly even after the legacy column has been dropped.
+// Returns true if the column exists. Used to gate the legacy level backfill so
+// we can run sync repeatedly even after the legacy column has been dropped.
 const columnExists = async (table, column) => {
   const row = await db.one(
     `SELECT 1 FROM information_schema.columns
@@ -112,31 +112,32 @@ const columnExists = async (table, column) => {
   return !!row;
 };
 
-// One-time backfill: assign builtin role to existing users based on their gid.
+// One-time backfill: assign builtin role to existing users based on their
+// legacy level.
 // Idempotent (PRIMARY KEY (uid, role_id) prevents duplicates) and conditional
-// on userInfo.gid still existing — once dropped, this is a no-op.
+// on the old userInfo column still existing — once dropped, this is a no-op.
 const backfillUserRoles = async () => {
   if (!(await columnExists('userInfo', 'gid'))) return;
-  const roleByGid = await db.query('SELECT id, legacy_gid FROM roles WHERE legacy_gid IS NOT NULL');
-  for (const r of roleByGid) {
+  const roleByLevel = await db.query('SELECT id, legacy_gid AS legacyLevel FROM roles WHERE legacy_gid IS NOT NULL');
+  for (const r of roleByLevel) {
     await db.query(
       `INSERT IGNORE INTO user_roles (uid, role_id, granted_by)
        SELECT uid, ?, NULL FROM userInfo WHERE gid=?`,
-      [r.id, r.legacy_gid]
+      [r.id, r.legacyLevel]
     );
   }
 };
 
-// Final retirement of the legacy gid field. After backfill, every gid=2/3 user
-// has a moderator/super_admin role row, and the application no longer reads
-// gid anywhere. Dropping the column completes the migration so it can't be
+// Final retirement of the old level field. After backfill, elevated legacy
+// users have moderator/super_admin role rows, and the application no longer
+// reads that column. Dropping it completes the migration so it can't be
 // silently relied on again. Set DISABLE_DROP_GID=1 to opt out (e.g., during a
 // rollback window where you may want to re-enable old code temporarily).
 const dropLegacyGid = async () => {
   if (process.env.DISABLE_DROP_GID === '1') return;
   if (!(await columnExists('userInfo', 'gid'))) return;
   // Only drop after we've confirmed the backfill ran in this process startup.
-  console.log('[auth] dropping legacy userInfo.gid column');
+  console.log('[auth] dropping legacy user level column');
   await db.query('ALTER TABLE userInfo DROP COLUMN gid');
 };
 
@@ -157,21 +158,21 @@ const dropLegacyGid = async () => {
 // rename — contest/problem managers now rejudge automatically through their
 // manage.* permissions, so a scoped submission.rejudge no longer has meaning.
 const PERMISSION_RENAMES = [
-  ['problem.edit.any',      'problem.manage.any'],
-  ['problem.delete.any',    'problem.manage.any'],
-  ['problem.case.manage',   'problem.manage.any'],
-  ['problem.view.private',  'problem.view.any'],
-  ['contest.edit.any',      'contest.manage.any'],
+  ['problem.edit.any', 'problem.manage.any'],
+  ['problem.delete.any', 'problem.manage.any'],
+  ['problem.case.manage', 'problem.manage.any'],
+  ['problem.view.private', 'problem.view.any'],
+  ['contest.edit.any', 'contest.manage.any'],
   ['contest.player.manage', 'contest.manage.any'],
-  ['submission.rejudge',    'submission.rejudge.any'],
+  ['submission.rejudge', 'submission.rejudge.any'],
   // 2026-05: user admin permissions collapsed into two keys.
-  ['user.list',             'user.manage'],
-  ['user.edit',             'user.manage'],
-  ['user.ban',              'user.manage'],
-  ['user.role.assign',      'user.role.admin'],
+  ['user.list', 'user.manage'],
+  ['user.edit', 'user.manage'],
+  ['user.ban', 'user.manage'],
+  ['user.role.assign', 'user.role.admin'],
   ['user.permission.grant', 'user.role.admin'],
   // 2026-05: early draft key for solution binding management.
-  ['solution.manage',       'problem.solmanage'],
+  ['solution.manage', 'problem.solmanage'],
 ];
 
 // Permission keys that are deleted outright (no successor). All

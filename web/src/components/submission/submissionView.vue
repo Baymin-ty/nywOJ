@@ -47,7 +47,8 @@
       </el-table-column>
       <el-table-column prop="codeLength" label="语言 / 代码长度" min-width="12%">
         <template #default="scope">
-          <span>{{ $store.state.langList[scope.row.lang].des }} / {{ scope.row.codeLength }} B </span>
+          <span v-if="scope.row.lang == null">答案 / {{ scope.row.codeLength }} B</span>
+          <span v-else>{{ $store.state.langList[scope.row.lang].des }} / {{ scope.row.codeLength }} B </span>
         </template>
       </el-table-column>
       <el-table-column prop="submitTime" label="提交时间" min-width="13%" />
@@ -59,7 +60,7 @@
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class=" card-header">
-            代码
+            <span>{{ isAnswerSubmission ? '答案文件' : '代码' }}</span>
             <el-button-group>
               <el-popconfirm v-if="canRejudge" confirm-button-text="确认" cancel-button-text="取消" title="确认取消成绩?"
                 @confirm="cancelSubmission">
@@ -86,7 +87,16 @@
             </el-button-group>
           </div>
         </template>
-        <monacoEditor v-if="hasTaken" :value="code"  :language="$store.state.langList[submissionInfo.lang].lang" @update:value="code = $event" :readOnly="true" />
+        <monacoEditor v-if="hasTaken && !isAnswerSubmission" :value="code"  :language="$store.state.langList[submissionInfo.lang].lang" @update:value="code = $event" :readOnly="true" />
+        <div v-else-if="hasTaken && isAnswerSubmission" class="answer-files">
+          <el-collapse v-if="answerFiles.length" v-model="openAnswerFiles" @change="onAnswerFilesOpen">
+            <el-collapse-item v-for="f in answerFiles" :key="f.caseId" :name="f.caseId"
+              :title="`测试点 #${f.caseId}` + (f.loaded ? ` (${f.size} B${f.truncated ? ', 已截断' : ''}${f.missing ? ', 缺失' : ''})` : '')">
+              <pre class="answer-content">{{ f.loaded ? (f.missing ? '(此测试点未提交答案)' : f.content) : '加载中...' }}</pre>
+            </el-collapse-item>
+          </el-collapse>
+          <div v-else class="answer-empty">该提交未关联任何答案文件</div>
+        </div>
       </el-card>
     </el-col>
   </el-row>
@@ -143,31 +153,64 @@
         <template #header>
           <div class="log-header">
             <div class="log-title">
-              评测日志
+              <span class="log-title-text">评测日志</span>
               <span v-if="isLive" class="log-live"><span class="log-live-dot" />LIVE</span>
-              <span class="log-count">{{ filteredLogEntries.length }}/{{ logEntries.length }}</span>
+              <span class="log-count">{{ groupedLogEntries.length }} 组 · {{ logEntries.length }} 条</span>
             </div>
-            <el-input v-model="logFilter" size="small" clearable placeholder="过滤事件 / 内容" class="log-filter" />
+            <div class="log-tools">
+              <el-radio-group v-model="logCategoryFilter" size="small" class="log-cats">
+                <el-radio-button value="all">全部</el-radio-button>
+                <el-radio-button value="case">测试点</el-radio-button>
+                <el-radio-button value="compile">编译</el-radio-button>
+                <el-radio-button value="error">错误</el-radio-button>
+              </el-radio-group>
+              <el-input v-model="logFilter" size="small" clearable placeholder="搜索" class="log-filter" />
+              <el-button size="small" link @click="expandAllGroups">展开</el-button>
+              <el-button size="small" link @click="collapseAllGroups">折叠</el-button>
+            </div>
           </div>
         </template>
         <div v-if="submissionInfo.judgeLogRestricted" class="log-empty">比赛进行中，评测日志暂不可见。</div>
         <div v-else-if="!logEntries.length" class="log-empty">暂无评测日志</div>
+        <div v-else-if="!groupedLogEntries.length" class="log-empty">当前过滤条件下没有日志</div>
         <el-timeline v-else class="log-timeline">
           <el-timeline-item
-            v-for="(e, i) in filteredLogEntries"
-            :key="i"
-            :type="logItemType(e.event)"
-            :timestamp="formatLogTime(e.ts)"
+            v-for="g in groupedLogEntries"
+            :key="g.key"
+            :type="g.type"
+            :timestamp="formatLogTime(g.ts)"
+            :hollow="!isGroupOpen(g)"
           >
-            <div class="log-item">
-              <div class="log-item-head">
-                <span class="log-event">{{ logEventLabel(e.event) }}</span>
-                <span v-if="e.event" class="log-event-key">{{ e.event }}</span>
+            <div class="log-group" :class="{ 'is-open': isGroupOpen(g) }">
+              <div class="log-group-head" @click="toggleGroup(g)" role="button" tabindex="0" @keydown.enter.prevent="toggleGroup(g)" @keydown.space.prevent="toggleGroup(g)">
+                <span class="log-group-arrow" :class="{ 'is-open': isGroupOpen(g) }">▸</span>
+                <span class="log-group-label">{{ g.label }}</span>
+                <span class="log-group-key">{{ g.keyLabel }}</span>
+                <span v-if="g.summary" class="log-group-summary" :class="g.summaryClass">{{ g.summary }}</span>
+                <span v-if="g.kind === 'case' && g.entries.length > 1" class="log-group-count">{{ g.entries.length }} 条</span>
               </div>
-              <div class="log-item-body">
-                <pre v-if="e.meta" class="log-json">{{ formatLogPayload(e.meta) }}</pre>
-                <pre v-if="e.data" class="log-json">{{ formatLogPayload(e.data) }}</pre>
-              </div>
+              <transition name="log-slide">
+                <div v-show="isGroupOpen(g)" class="log-group-body" :class="{ 'is-single': g.kind === 'single' }">
+                  <template v-if="g.kind === 'single'">
+                    <pre v-if="g.entries[0].meta" class="log-json">{{ formatLogPayload(g.entries[0].meta) }}</pre>
+                    <pre v-if="g.entries[0].data" class="log-json">{{ formatLogPayload(g.entries[0].data) }}</pre>
+                    <div v-if="!g.entries[0].meta && !g.entries[0].data" class="log-empty-body">(无附加数据)</div>
+                  </template>
+                  <template v-else>
+                    <div v-for="(e, i) in g.entries" :key="i" class="log-sub" :class="logItemTypeClass(e.event)">
+                      <div class="log-sub-head">
+                        <span class="log-sub-dot" />
+                        <span class="log-sub-event">{{ logEventLabel(e.event) }}</span>
+                        <span class="log-sub-key">{{ e.event }}</span>
+                        <span class="log-sub-time">{{ formatLogTime(e.ts) }}</span>
+                      </div>
+                      <div v-if="entrySubSummary(e)" class="log-sub-summary">{{ entrySubSummary(e) }}</div>
+                      <pre v-if="e.meta" class="log-json">{{ formatLogPayload(e.meta) }}</pre>
+                      <pre v-if="e.data" class="log-json">{{ formatLogPayload(e.data) }}</pre>
+                    </div>
+                  </template>
+                </div>
+              </transition>
             </div>
           </el-timeline-item>
         </el-timeline>
@@ -205,11 +248,24 @@ export default {
       // 'is-new' class for a fade/flash animation.
       newCaseIds: new Set(),
       logFilter: '',
+      logCategoryFilter: 'all',
+      // Per-group expansion state, keyed by stable group.key. Survives recompute
+      // across SSE refreshes because the key derives from caseId / event+ts.
+      expandedGroups: new Set(),
+      // answer-submission state
+      answerFiles: [],
+      openAnswerFiles: [],
+      answerLoading: new Set(),
     }
   },
   computed: {
     isLive() {
       return LIVE_STATES.has(this.submissionInfo.judgeResult);
+    },
+    isAnswerSubmission() {
+      // submission.lang is NULL only for answer-submission problems
+      // (type ∈ {2,3}). Server preserves null through the JSON payload.
+      return this.hasTaken && this.submissionInfo.lang == null;
     },
     caseCount() {
       const list = this.submissionInfo.singleCaseResult;
@@ -219,12 +275,92 @@ export default {
       return Array.isArray(this.submissionInfo.judgeLog) ? this.submissionInfo.judgeLog : [];
     },
     filteredLogEntries() {
+      const cat = this.logCategoryFilter;
       const q = this.logFilter.trim().toLowerCase();
-      if (!q) return this.logEntries;
       return this.logEntries.filter((e) => {
-        const hay = JSON.stringify(e).toLowerCase();
+        if (cat !== 'all' && !this.matchesCategory(e, cat)) return false;
+        if (!q) return true;
+        // Match against raw JSON + the rendered label so "答案错误" / "通过" /
+        // "测试点开始" work in addition to "wa" / "caseId".
+        const hay = [
+          JSON.stringify(e),
+          this.logEventLabel(e.event),
+          this.entrySubSummary(e),
+        ].join(' ').toLowerCase();
         return hay.includes(q);
       });
+    },
+    // Builds a packed timeline of groups. Test-case events sharing a caseId
+    // collapse into a single group whose body lists the sub-events; everything
+    // else is a single-entry group. Each group has a stable `key` (caseId or
+    // event#ts) so expansion state survives SSE refreshes.
+    groupedLogEntries() {
+      const out = [];
+      const caseGroupByCid = new Map();
+      for (const e of this.filteredLogEntries) {
+        const ev = e.event || '';
+        const caseId = this.entryCaseId(e);
+        if (caseId != null && /^case\./.test(ev)) {
+          let g = caseGroupByCid.get(caseId);
+          if (!g) {
+            g = {
+              kind: 'case',
+              caseId,
+              key: 'case#' + caseId,
+              label: '测试点 #' + caseId,
+              keyLabel: 'case#' + caseId,
+              type: 'warning',
+              entries: [],
+            };
+            caseGroupByCid.set(caseId, g);
+            out.push(g);
+          }
+          g.entries.push(e);
+          continue;
+        }
+        // Non-case event → its own group.
+        out.push({
+          kind: 'single',
+          key: ev + '#' + (e.ts || out.length),
+          label: this.logEventLabel(ev),
+          keyLabel: ev || '-',
+          type: this.logItemType(ev),
+          entries: [e],
+        });
+      }
+      // Finalize: per-group summary line shown in the collapsed header.
+      for (const g of out) {
+        if (g.kind === 'case') {
+          const compare = g.entries.find((x) => x.event === 'case.compare');
+          const run = g.entries.find((x) => x.event === 'case.run');
+          const err = g.entries.find((x) => x.event === 'case.error');
+          const parts = [];
+          if (run && run.data && run.data.time != null) {
+            parts.push(Math.max(1, Math.floor((run.data.time || 0) / 1e6)) + ' ms');
+          }
+          if (run && run.data && run.data.memory != null) {
+            parts.push(Math.max(1, Math.floor((run.data.memory || 0) / 1024)) + ' KB');
+          }
+          if (err) {
+            parts.push('错误');
+            g.type = 'danger';
+            g.summaryClass = 'is-bad';
+          } else if (compare && compare.data) {
+            const ok = compare.data.result === 'ok';
+            parts.push(ok ? '通过' : '答案错误');
+            g.type = ok ? 'success' : 'danger';
+            g.summaryClass = ok ? 'is-ok' : 'is-bad';
+          }
+          g.summary = parts.join(' · ');
+          g.ts = g.entries[0] && g.entries[0].ts;
+        } else {
+          const e = g.entries[0];
+          g.summary = this.entrySummary(e);
+          g.summaryClass = '';
+          g.ts = e && e.ts;
+        }
+      }
+      return out;
     },
   },
   components: {
@@ -303,6 +439,168 @@ export default {
       try { return JSON.stringify(payload, null, 2); }
       catch (_e) { return String(payload); }
     },
+    logItemTypeClass(event) {
+      const t = this.logItemType(event);
+      return 'is-' + t;
+    },
+    entryCaseId(e) {
+      if (!e) return null;
+      const d = e.data || e.meta || {};
+      return Number.isFinite(d.caseId) ? d.caseId : null;
+    },
+    matchesCategory(e, cat) {
+      const ev = e.event || '';
+      if (cat === 'case') return /^case\./.test(ev);
+      if (cat === 'compile') return /compile/.test(ev);
+      if (cat === 'error') return /error/i.test(ev) || ev === 'error';
+      return true;
+    },
+    // Compact, single-line summary shown in the collapsed header of single-
+    // entry groups. Kept under ~80 chars so it doesn't wrap the row.
+    entrySummary(e) {
+      if (!e) return '';
+      const d = e.data || e.meta || {};
+      const ev = e.event || '';
+      const clip = (s, n) => {
+        if (s == null) return '';
+        const t = String(s);
+        return t.length > n ? t.slice(0, n) + '…' : t;
+      };
+      if (ev === 'start') {
+        const bits = [];
+        if (d.pid != null) bits.push('pid=' + d.pid);
+        if (d.langName) bits.push(d.langName);
+        if (d.timeLimit) bits.push(d.timeLimit + ' ms');
+        if (d.memoryLimit) bits.push(d.memoryLimit + ' MB');
+        if (d.mode && d.mode !== d.langName) bits.push(d.mode);
+        return bits.join(' · ');
+      }
+      if (ev === 'compile.start' || ev === 'spj.compile.start') {
+        return Array.isArray(d.args) ? clip(d.args.join(' '), 90) : '';
+      }
+      if (ev === 'compile.result' || ev === 'spj.compile.result') {
+        const bits = [];
+        if (d.exitStatus != null) bits.push('exit=' + d.exitStatus);
+        if (d.time != null) bits.push(Math.max(1, Math.floor(d.time / 1e6)) + ' ms');
+        if (d.memory != null) bits.push(Math.max(1, Math.floor(d.memory / 1024)) + ' KB');
+        return bits.join(' · ');
+      }
+      if (ev === 'compile.error' || ev === 'spj.compile.error' || ev === 'spj.run.error' || ev === 'error') {
+        const msg = d.message || (d.error && d.error.message) || '';
+        return clip(msg, 90);
+      }
+      if (ev === 'finish') {
+        const bits = [];
+        if (d.totalScore != null) bits.push(d.totalScore + ' 分');
+        if (d.totalTime != null) bits.push(d.totalTime + ' ms');
+        if (d.maxMemory != null) bits.push(d.maxMemory + ' KB');
+        return bits.join(' · ');
+      }
+      return '';
+    },
+    // Sub-entry summary (shown inside an expanded case group, above the JSON
+    // payload). Mostly mirrors entrySummary, but for case.* events.
+    entrySubSummary(e) {
+      const ev = e.event || '';
+      const d = e.data || e.meta || {};
+      const clip = (s, n) => {
+        if (s == null) return '';
+        const t = String(s);
+        return t.length > n ? t.slice(0, n) + '…' : t;
+      };
+      if (ev === 'case.start') return d.input ? '输入: ' + clip(d.input.replace(/\n+/g, ' '), 100) : '';
+      if (ev === 'case.run') {
+        const bits = [];
+        if (d.status) bits.push(d.status);
+        if (d.time != null) bits.push(Math.max(1, Math.floor(d.time / 1e6)) + ' ms');
+        if (d.memory != null) bits.push(Math.max(1, Math.floor(d.memory / 1024)) + ' KB');
+        if (d.exitStatus != null) bits.push('exit=' + d.exitStatus);
+        return bits.join(' · ');
+      }
+      if (ev === 'case.compare') {
+        const r = d.result === 'ok' ? '通过' : '答案错误';
+        const detail = d.detail ? ' · ' + clip(d.detail.replace(/\n+/g, ' '), 80) : '';
+        return r + detail;
+      }
+      if (ev === 'case.error') return clip((d.error && d.error.message) || d.message || '', 100);
+      return this.entrySummary(e);
+    },
+    isGroupOpen(g) {
+      return this.expandedGroups.has(g.key);
+    },
+    toggleGroup(g) {
+      if (this.expandedGroups.has(g.key)) this.expandedGroups.delete(g.key);
+      else this.expandedGroups.add(g.key);
+      this.expandedGroups = new Set(this.expandedGroups);
+    },
+    expandAllGroups() {
+      this.expandedGroups = new Set(this.groupedLogEntries.map((g) => g.key));
+    },
+    collapseAllGroups() {
+      this.expandedGroups = new Set();
+    },
+    rebuildAnswerFiles(info) {
+      if (info.lang != null) {
+        this.answerFiles = [];
+        return;
+      }
+      // Collect case IDs from whichever data shape is currently populated.
+      // singleCaseResult is the streaming list while judging; subtaskInfo is
+      // the post-aggregation shape. Some cases can appear in both during the
+      // transition; dedupe by caseId.
+      const seen = new Map();
+      const push = (caseId) => {
+        if (!Number.isFinite(caseId)) return;
+        if (!seen.has(caseId)) seen.set(caseId, { caseId, loaded: false, missing: false, content: '', size: null, truncated: false });
+      };
+      if (Array.isArray(info.singleCaseResult)) {
+        for (const c of info.singleCaseResult) push(c.caseId);
+      }
+      if (info.subtaskInfo) {
+        for (const sid of Object.keys(info.subtaskInfo)) {
+          const cs = info.subtaskInfo[sid].cases || [];
+          for (const c of cs) push(c.caseId);
+        }
+      }
+      const next = Array.from(seen.values()).sort((a, b) => a.caseId - b.caseId);
+      // Preserve loaded content across re-renders.
+      const prev = new Map(this.answerFiles.map((f) => [f.caseId, f]));
+      for (const f of next) {
+        const old = prev.get(f.caseId);
+        if (old && old.loaded) Object.assign(f, old);
+      }
+      this.answerFiles = next;
+    },
+    async loadAnswerFile(caseId) {
+      if (this.answerLoading.has(caseId)) return;
+      this.answerLoading.add(caseId);
+      try {
+        const res = await axios.post('/api/judge/getAnswerFile', { sid: this.sid, caseId });
+        if (res.status === 200 && res.data) {
+          const idx = this.answerFiles.findIndex((f) => f.caseId === caseId);
+          if (idx >= 0) {
+            const f = this.answerFiles[idx];
+            f.loaded = true;
+            f.content = res.data.content || '';
+            f.size = res.data.size != null ? res.data.size : 0;
+            f.truncated = !!res.data.truncated;
+            f.missing = !!res.data.missing;
+            this.answerFiles = [...this.answerFiles];
+          }
+        }
+      } catch (err) {
+        this.$message.error('加载答案失败');
+      } finally {
+        this.answerLoading.delete(caseId);
+      }
+    },
+    onAnswerFilesOpen(activeNames) {
+      const list = Array.isArray(activeNames) ? activeNames : [activeNames];
+      for (const cid of list) {
+        const f = this.answerFiles.find((x) => x.caseId === cid);
+        if (f && !f.loaded) this.loadAnswerFile(cid);
+      }
+    },
     applySubmissionInfo(info) {
       // Flag any caseIds that weren't in the previous payload — the table
       // row class hook reads `newCaseIds` and adds `.is-new` so CSS can flash
@@ -333,6 +631,7 @@ export default {
       this.hasTaken = true;
       this.canRejudge = !!info.canRejudge;
       this.table = [info];
+      this.rebuildAnswerFiles(info);
     },
     openStream() {
       this.closeStream();
@@ -535,11 +834,13 @@ export default {
   padding: 18px;
   color: #909399;
   font-size: 12px;
+  text-align: center;
 }
 
 .log-card :deep(.el-card__header) {
   background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
   border-bottom: 1px solid #e2e8f0;
+  padding: 12px 16px;
 }
 
 .log-header {
@@ -547,6 +848,7 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .log-title {
@@ -559,13 +861,18 @@ export default {
   color: #0f172a;
 }
 
+.log-title-text {
+  font-size: 14px;
+}
+
 .log-count {
   font-size: 11px;
   color: #64748b;
   background: #e2e8f0;
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: 999px;
   font-family: "IBM Plex Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  letter-spacing: 0.2px;
 }
 
 .log-live {
@@ -577,8 +884,9 @@ export default {
   background: #ccfbf1;
   border: 1px solid #99f6e4;
   border-radius: 999px;
-  padding: 2px 6px;
+  padding: 2px 7px;
   letter-spacing: 0.6px;
+  font-weight: 700;
 }
 
 .log-live-dot {
@@ -596,59 +904,271 @@ export default {
   100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0); }
 }
 
+.log-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.log-cats :deep(.el-radio-button__inner) {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
 .log-filter {
-  width: 220px;
+  width: 180px;
 }
 
 .log-timeline {
-  padding: 6px 4px 2px;
+  padding: 12px 4px 2px;
 }
 
-.log-item {
+/* Tighter timeline rail — default is too generous for a compact view. */
+.log-timeline :deep(.el-timeline-item) {
+  padding-bottom: 12px;
+}
+
+.log-timeline :deep(.el-timeline-item__timestamp.is-top) {
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: #94a3b8;
+  font-family: "IBM Plex Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.log-group {
   background: #ffffff;
   border: 1px solid #eef2f7;
   border-radius: 10px;
-  padding: 10px 12px;
-  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
-.log-item-head {
+.log-group:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.08);
+}
+
+.log-group.is-open {
+  border-color: #c7d2fe;
+  background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
+  box-shadow: 0 14px 28px rgba(79, 70, 229, 0.10);
+}
+
+.log-group-head {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
 }
 
-.log-event {
+.log-group-head:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(79, 70, 229, 0.35);
+  border-radius: 10px;
+}
+
+.log-group-arrow {
+  color: #94a3b8;
+  font-size: 12px;
+  width: 12px;
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.log-group-arrow.is-open {
+  transform: rotate(90deg);
+  color: #4f46e5;
+}
+
+.log-group-label {
   font-weight: 700;
   color: #0f172a;
   font-family: "Space Grotesk", "IBM Plex Sans", "Helvetica Neue", sans-serif;
+  font-size: 13px;
 }
 
-.log-event-key {
+.log-group-key {
   font-size: 11px;
   color: #64748b;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
-  padding: 2px 6px;
+  padding: 1px 7px;
   border-radius: 6px;
+  font-family: "IBM Plex Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  letter-spacing: 0.2px;
+}
+
+.log-group-summary {
+  margin-left: auto;
+  font-size: 12px;
+  color: #475569;
+  font-family: "IBM Plex Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60%;
+}
+
+.log-group-summary.is-ok {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.log-group-summary.is-bad {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.log-group-count {
+  font-size: 10px;
+  color: #6366f1;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.log-group-body {
+  padding: 0 14px 12px;
+  border-top: 1px dashed #e2e8f0;
+  margin-top: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.log-group-body > .log-sub:first-child {
+  margin-top: 10px;
+}
+
+.log-group-body.is-single {
+  padding-top: 10px;
+}
+
+.log-empty-body {
+  padding: 8px 10px;
+  color: #94a3b8;
+  font-size: 12px;
   font-family: "IBM Plex Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-.log-item-body {
-  margin-top: 6px;
+.log-sub {
+  padding: 8px 10px;
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  background: #fafbfd;
+}
+
+.log-sub.is-success { border-left: 3px solid #22c55e; }
+.log-sub.is-danger  { border-left: 3px solid #ef4444; }
+.log-sub.is-warning { border-left: 3px solid #f59e0b; }
+.log-sub.is-primary { border-left: 3px solid #6366f1; }
+.log-sub.is-info    { border-left: 3px solid #94a3b8; }
+
+.log-sub-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.log-sub-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #cbd5e1;
+}
+
+.log-sub.is-success .log-sub-dot { background: #22c55e; }
+.log-sub.is-danger  .log-sub-dot { background: #ef4444; }
+.log-sub.is-warning .log-sub-dot { background: #f59e0b; }
+.log-sub.is-primary .log-sub-dot { background: #6366f1; }
+
+.log-sub-event {
+  font-weight: 700;
+  font-size: 12px;
+  color: #1e293b;
+}
+
+.log-sub-key {
+  font-size: 10px;
+  color: #64748b;
+  background: #eef2f7;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: "IBM Plex Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.log-sub-time {
+  margin-left: auto;
+  font-size: 11px;
+  color: #94a3b8;
+  font-family: "IBM Plex Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.log-sub-summary {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #334155;
+  font-family: "IBM Plex Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .log-json {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   padding: 8px 10px;
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   border: 1px dashed #e2e8f0;
   border-radius: 8px;
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 11.5px;
+  line-height: 1.45;
   color: #0f172a;
   font-family: "IBM Plex Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.log-slide-enter-active,
+.log-slide-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.log-slide-enter-from,
+.log-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.answer-files {
+  padding: 6px 12px 12px;
+}
+
+.answer-content {
+  margin: 0;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px dashed #e2e8f0;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #0f172a;
+  font-family: "IBM Plex Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: pre-wrap;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.answer-empty {
+  padding: 18px;
+  color: #909399;
+  font-size: 12px;
+  text-align: center;
 }
 </style>

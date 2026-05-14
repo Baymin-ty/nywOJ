@@ -12,10 +12,14 @@ router.post('/api/rabbit/getClickData', rabbit.getClickData);
 const user = require('./api/user');
 
 router.post('/api/user/login', user.login);
+router.post('/api/user/sendLoginEmailCode', user.sendLoginEmailCode);
+router.post('/api/user/loginByEmailCode', user.loginByEmailCode);
 router.post('/api/user/reg', user.reg);
 router.post('/api/user/logout', user.logout);
 router.post('/api/user/sendEmailVerifyCode', user.sendEmailVerifyCode);
 router.post('/api/user/setUserEmail', user.setUserEmail);
+router.post('/api/user/sendPasswordResetCode', user.sendPasswordResetCode);
+router.post('/api/user/resetPasswordByEmail', user.resetPasswordByEmail);
 router.post('/api/user/getUserInfo', user.getUserInfo);
 router.post('/api/user/getUserPublicInfo', user.getUserPublicInfo);
 router.post('/api/user/setUserMotto', user.setUserMotto);
@@ -73,6 +77,7 @@ router.post('/api/problem/getProblemSol', problem.getProblemSol);
 router.post('/api/problem/bindPaste2Problem', problem.bindPaste2Problem);
 router.post('/api/problem/unbindSol', problem.unbindSol);
 router.post('/api/problem/getProblemAuth', problem.getProblemAuth);
+router.post('/api/problem/getAnswerCaseList', problem.getAnswerCaseList);
 
 
 const fileUpload = require('./api/fileUpload');
@@ -81,6 +86,8 @@ router.post('/api/problem/uploadData', fileUpload.caseUpload.single('file'), fil
 const judge = require('./api/judge');
 
 router.post('/api/judge/submit', judge.submit);
+router.post('/api/judge/submitAnswer', fileUpload.answerUpload.single('file'), judge.submitAnswer);
+router.post('/api/judge/getAnswerFile', judge.getAnswerFile);
 router.post('/api/judge/getSubmissionList', judge.getSubmissionList);
 router.post('/api/judge/getSubmissionInfo', judge.getSubmissionInfo);
 router.post('/api/judge/getSubmissionLog', judge.getSubmissionLog);

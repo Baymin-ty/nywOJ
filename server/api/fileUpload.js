@@ -128,7 +128,32 @@ const handleCaseUpload = async (req, res) => {
   }
 };
 
+// Submit-answer uploads (problem.type ∈ {2,3}). User drops a ZIP of `.out`
+// files. We accept the upload to a temp path and the submitAnswer handler
+// extracts / matches case names. Single in-flight upload per request — no
+// per-pid directory collision possible because the temp filename is
+// uuid-tagged on the request.
+const ANSWER_TMP_DIR = './tmp/answerUpload';
+
+const answerUpload = () => {
+  if (!fs.existsSync(ANSWER_TMP_DIR)) fs.mkdirSync(ANSWER_TMP_DIR, { recursive: true });
+  return multer({
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB hard cap on the zip itself
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        if (!fs.existsSync(ANSWER_TMP_DIR)) fs.mkdirSync(ANSWER_TMP_DIR, { recursive: true });
+        cb(null, ANSWER_TMP_DIR);
+      },
+      filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.zip`);
+      },
+    }),
+  });
+};
+
 module.exports = {
   caseUpload: caseUpload(),
-  handleCaseUpload
+  handleCaseUpload,
+  answerUpload: answerUpload(),
+  ANSWER_TMP_DIR,
 };

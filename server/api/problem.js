@@ -90,6 +90,8 @@ exports.updateProblem = [
     info.isPublic = info.isPublic ? 1 : 0;
     if (info.type === '传统文本比较') info.type = 0;
     else if (info.type === 'Special Judge') info.type = 1;
+    else if (info.type === '提交答案') info.type = 2;
+    else if (info.type === '提交答案 (SPJ)') info.type = 3;
 
     const r = await db.query(
       'UPDATE problem SET title=?,description=?,timeLimit=?,memoryLimit=?,isPublic=?,type=?,tags=?,level=?,lang=? WHERE pid=?',
@@ -182,10 +184,30 @@ exports.getProblemInfo = handler(async (req, res) => {
     [pid]
   );
   if (!row) return fail(res, '无权限查看或未找到此题目');
+  // typeId = raw integer (frontend uses this for branching answer-problem UI);
+  // type = localized label (existing displays read this).
+  row.typeId = row.type;
   row.type = ptype[row.type];
   row.tags = JSON.parse(row.tags);
   row.time = briefFormat(row.time);
   return ok(res, { data: row });
+});
+
+// For answer-submission problems, the submitter needs to know how many
+// test cases there are and their `name`s to map textareas / zip entries.
+// Returns the case names only — no input/output content — gated on auth.view.
+exports.getAnswerCaseList = handler(async (req, res) => {
+  const { pid } = req.body;
+  if (!(await problemAuth(req, pid)).view) return res.status(403).end('403 Forbidden');
+  const cfgRaw = await getFile(`./data/${pid}/config.json`);
+  if (!cfgRaw) return ok(res, { data: [] });
+  const cfg = JSON.parse(cfgRaw);
+  const cases = (cfg.cases || []).map((c) => ({
+    index: c.index,
+    name: c.input ? c.input.replace(/\.in$/, '') : String(c.index),
+    subtaskId: c.subtaskId,
+  }));
+  return ok(res, { data: cases });
 });
 
 exports.getProblemCasePreview = [

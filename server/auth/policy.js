@@ -1,23 +1,28 @@
 const db = require('../db');
+const { PERMISSIONS } = require('./permissions');
 
 // Process-wide cache: uid -> { perms, expiresAt }.
 // Invalidated explicitly by setUserRoles / grantUserPermission etc.
 const CACHE_TTL_MS = 60 * 1000;
 const cache = new Map();
 
-const buildEmpty = () => ({
+const buildEmpty = (uid) => ({
+  isRoot: Number(uid) === 1,
   global: new Set(),
   denies: new Set(),
   scoped: new Map(), // permKey -> Set<"type:id">
 });
 
 const loadEffectivePermissions = async (uid) => {
-  if (!uid) return buildEmpty();
+  if (!uid) return buildEmpty(uid);
 
   const cached = cache.get(uid);
   if (cached && cached.expiresAt > Date.now()) return cached.perms;
 
-  const perms = buildEmpty();
+  const perms = buildEmpty(uid);
+  if (perms.isRoot) {
+    for (const key of Object.keys(PERMISSIONS)) perms.global.add(key);
+  }
 
   // Permissions inherited from roles (always allow; deny is only expressible at user level).
   const rolePerms = await db.query(
@@ -71,6 +76,7 @@ const invalidate = (uid) => {
 const can = (perms, key, scope) => {
   console.log(perms, key, scope);
   if (!perms) return false;
+  if (perms.isRoot) return true;
   if (perms.denies.has(key)) return false;
   if (perms.global.has(key)) return true;
   if (scope && scope.type && scope.id != null) {
@@ -82,7 +88,11 @@ const can = (perms, key, scope) => {
 
 // Convenience: flatten effective permission keys into an array (global only).
 // Used by getUserInfo to feed the frontend `$can` helper.
-const listGlobalKeys = (perms) => Array.from(perms.global).filter((k) => !perms.denies.has(k));
+const listGlobalKeys = (perms) => {
+  if (!perms) return [];
+  if (perms.isRoot) return Object.keys(PERMISSIONS);
+  return Array.from(perms.global).filter((k) => !perms.denies.has(k));
+};
 
 module.exports = {
   loadEffectivePermissions,

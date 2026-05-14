@@ -19,15 +19,12 @@
           {{ item.badge }}
         </span>
       </div>
-      <div class="sidebar-footer">
-        <div class="sidebar-footer-title">RBAC v2 · next</div>
-      </div>
     </aside>
 
     <!-- Main content -->
     <main class="perm-main">
       <!-- Users tab -->
-      <div v-if="activeTab === 'users'">
+      <div v-if="activeTab === 'users'" class="tab-layout users-layout">
         <!-- Stats strip -->
         <div class="stat-strip" v-if="stats">
           <div v-for="(s, i) in statItems" :key="s.label" class="stat-item" :style="{ borderRight: i < statItems.length - 1 ? '1px solid #ebeef5' : 'none' }">
@@ -66,80 +63,82 @@
         </div>
 
         <!-- Table -->
-        <div class="user-table-wrap">
-          <table class="user-table" v-loading="loading">
-            <thead>
-              <tr>
-                <th style="width: 40px;">
-                  <input type="checkbox" :checked="allSelected" @change="toggleAll" />
-                </th>
-                <th style="width: 80px; cursor: pointer;" @click="toggleSort('uid')">
-                  UID<span :class="sortIconClass('uid')">{{ sortArrow('uid') }}</span>
-                </th>
-                <th style="cursor: pointer; text-align: left;" @click="toggleSort('name')">
-                  用户<span :class="sortIconClass('name')">{{ sortArrow('name') }}</span>
-                </th>
-                <th style="text-align: left;">角色</th>
-                <th style="width: 110px;">状态</th>
-                <th style="width: 100px; cursor: pointer;" @click="toggleSort('solved')">
-                  AC<span :class="sortIconClass('solved')">{{ sortArrow('solved') }}</span>
-                </th>
-                <th style="width: 170px; cursor: pointer;" @click="toggleSort('lastLogin')">
-                  最近登录<span :class="sortIconClass('lastLogin')">{{ sortArrow('lastLogin') }}</span>
-                </th>
-                <th style="width: 280px;">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="u in userList" :key="u.uid" :class="{ 'row-selected': selected.has(u.uid) }">
-                <td><input type="checkbox" :checked="selected.has(u.uid)" @change="toggleOne(u.uid)" /></td>
-                <td class="mono uid-cell">#{{ u.uid }}</td>
-                <td style="text-align: left;">
-                  <div class="user-cell">
-                    <div class="avatar" :style="avatarStyle(u)">{{ (u.name || '?')[0].toUpperCase() }}</div>
-                    <div style="min-width: 0;">
-                      <div class="user-name-row">
-                        <router-link :to="'/user/' + u.uid" class="rlink user-name" :class="userNameClass(u)">{{ u.name }}</router-link>
-                        <span v-if="u.grantCount > 0" class="grant-badge" :title="u.grantCount + ' 条直接授权'">
-                          <el-icon :size="9"><Key /></el-icon>{{ u.grantCount }}
-                        </span>
+        <div class="user-table-wrap list-table-wrap">
+          <div class="table-scroll">
+            <table class="user-table" v-loading="loading">
+              <thead>
+                <tr>
+                  <th style="width: 40px;">
+                    <input type="checkbox" :checked="allSelected" @change="toggleAll" />
+                  </th>
+                  <th style="width: 80px; cursor: pointer;" @click="toggleSort('uid')">
+                    UID<span :class="sortIconClass('uid')">{{ sortArrow('uid') }}</span>
+                  </th>
+                  <th style="cursor: pointer; text-align: left;" @click="toggleSort('name')">
+                    用户<span :class="sortIconClass('name')">{{ sortArrow('name') }}</span>
+                  </th>
+                  <th style="text-align: left;">角色</th>
+                  <th style="width: 110px;">状态</th>
+                  <th style="width: 100px; cursor: pointer;" @click="toggleSort('solved')">
+                    AC<span :class="sortIconClass('solved')">{{ sortArrow('solved') }}</span>
+                  </th>
+                  <th style="width: 170px; cursor: pointer;" @click="toggleSort('lastLogin')">
+                    最近登录<span :class="sortIconClass('lastLogin')">{{ sortArrow('lastLogin') }}</span>
+                  </th>
+                  <th style="width: 280px;">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="u in userList" :key="u.uid" :class="{ 'row-selected': selected.has(u.uid) }">
+                  <td><input type="checkbox" :checked="selected.has(u.uid)" @change="toggleOne(u.uid)" /></td>
+                  <td class="mono uid-cell">#{{ u.uid }}</td>
+                  <td style="text-align: left;">
+                    <div class="user-cell">
+                      <div class="avatar" :style="avatarStyle(u)">{{ (u.name || '?')[0].toUpperCase() }}</div>
+                      <div style="min-width: 0;">
+                        <div class="user-name-row">
+                          <router-link :to="'/user/' + u.uid" class="rlink user-name" :class="userNameClass(u)">{{ u.name }}</router-link>
+                          <span v-if="u.grantCount > 0" class="grant-badge" :title="u.grantCount + ' 条直接授权'">
+                            <el-icon :size="9"><Key /></el-icon>{{ u.grantCount }}
+                          </span>
+                        </div>
+                        <div class="user-email">{{ u.email }}</div>
                       </div>
-                      <div class="user-email">{{ u.email }}</div>
                     </div>
-                  </div>
-                </td>
-                <td style="text-align: left;">
-                  <span v-if="!u.roles || !u.roles.length" class="no-role">—</span>
-                  <div v-else class="role-tags">
-                    <span v-for="rk in u.roles" :key="rk" class="role-tag" :style="roleTagStyle(rk)">
-                      <el-icon v-if="rk === 'super_admin'" :size="11"><Lock /></el-icon>
-                      {{ roleName(rk) }}
+                  </td>
+                  <td style="text-align: left;">
+                    <span v-if="!u.roles || !u.roles.length" class="no-role">—</span>
+                    <div v-else class="role-tags">
+                      <span v-for="rk in u.roles" :key="rk" class="role-tag" :style="roleTagStyle(rk)">
+                        <el-icon v-if="rk === 'super_admin'" :size="11"><Lock /></el-icon>
+                        {{ roleName(rk) }}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="status-pill" :class="u.inUse ? 'ok' : 'banned'">
+                      <span class="status-dot" />
+                      {{ u.inUse ? '正常' : '封禁' }}
                     </span>
-                  </div>
-                </td>
-                <td>
-                  <span class="status-pill" :class="u.inUse ? 'ok' : 'banned'">
-                    <span class="status-dot" />
-                    {{ u.inUse ? '正常' : '封禁' }}
-                  </span>
-                </td>
-                <td class="mono" :style="{ fontWeight: 600, color: u.solved >= 200 ? '#19be6b' : '#606266' }">{{ u.solved || 0 }}</td>
-                <td class="mono last-login">{{ u.lastLogin || '—' }}</td>
-                <td>
-                  <div class="action-buttons">
-                    <el-button size="small" type="primary" plain :icon="EditPen" @click="openEdit(u)" v-if="$canAny('user.manage', 'user.role.admin')">编辑</el-button>
-                    <el-button size="small" type="info" plain :icon="Key" @click="resetPassword(u)" v-if="$can('user.manage')">重置密码</el-button>
-                    <el-button size="small" :type="u.inUse ? 'danger' : 'success'" plain @click="setBlock(u.uid, !u.inUse)" v-if="$can('user.manage')">
-                      {{ u.inUse ? '封禁' : '解封' }}
-                    </el-button>
-                  </div>
-                </td>
-              </tr>
-              <tr v-if="userList.length === 0 && !loading">
-                <td colspan="8" class="empty-row">无匹配用户</td>
-              </tr>
-            </tbody>
-          </table>
+                  </td>
+                  <td class="mono" :style="{ fontWeight: 600, color: u.solved >= 200 ? '#19be6b' : '#606266' }">{{ u.solved || 0 }}</td>
+                  <td class="mono last-login">{{ u.lastLogin || '—' }}</td>
+                  <td>
+                    <div class="action-buttons">
+                      <el-button size="small" type="primary" plain :icon="EditPen" @click="openEdit(u)" v-if="$canAny('user.manage', 'user.role.admin')">编辑</el-button>
+                      <el-button size="small" type="info" plain :icon="Key" @click="resetPassword(u)" v-if="$can('user.manage')">重置密码</el-button>
+                      <el-button size="small" :type="u.inUse ? 'danger' : 'success'" plain @click="setBlock(u.uid, !u.inUse)" v-if="$can('user.manage')">
+                        {{ u.inUse ? '封禁' : '解封' }}
+                      </el-button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="userList.length === 0 && !loading">
+                  <td colspan="8" class="empty-row">无匹配用户</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
           <!-- Pagination -->
           <div class="table-footer">
@@ -162,12 +161,12 @@
           <div>
             <div class="section-title">角色 × 权限矩阵</div>
             <div class="section-subtitle">
-              来自 <code>server/auth/permissions.js</code> · 内置角色不可修改
+              角色权限总览 · 只有 uid=1 可维护角色权限
             </div>
           </div>
           <div class="section-actions">
             <el-button size="small" plain :icon="Refresh" @click="reloadAll">同步目录</el-button>
-            <el-button size="small" type="primary" :icon="Plus" :disabled="!canAssignRoles" @click="openCreateRole">新建自定义角色</el-button>
+            <el-button v-if="isRoot" size="small" type="primary" :icon="Plus" @click="openCreateRole">新建自定义角色</el-button>
           </div>
         </div>
         <div class="matrix-wrap">
@@ -183,6 +182,7 @@
                       {{ r.name }}
                     </span>
                     <div class="matrix-count">{{ (r.permissions || []).length }}/{{ permissions.length }}</div>
+                    <el-button v-if="isRoot" size="small" type="primary" plain :icon="EditPen" @click.stop="openEditRole(r)">编辑</el-button>
                   </div>
                 </th>
               </tr>
@@ -230,46 +230,6 @@
         </div>
       </div>
 
-      <!-- Roles management tab -->
-      <div v-if="activeTab === 'roles'">
-        <div class="section-header">
-          <div class="section-subtitle">共 <b>{{ roles.length }}</b> 个角色 · 内置 {{ roles.filter(r => r.builtin).length }} · 自定义 {{ roles.filter(r => !r.builtin).length }}</div>
-          <el-button size="small" type="primary" :icon="Plus" :disabled="!canAssignRoles" @click="openCreateRole">新建自定义角色</el-button>
-        </div>
-        <div class="roles-grid">
-          <div v-for="r in roles" :key="r.key" class="role-card">
-            <div class="role-card-header">
-              <div>
-                <div class="role-card-tags">
-                  <span class="role-tag" :style="roleTagStyle(r.key)">
-                    <el-icon v-if="r.key === 'super_admin'" :size="11"><Lock /></el-icon>
-                    {{ r.name }}
-                  </span>
-                  <span v-if="r.builtin" class="builtin-badge">BUILTIN</span>
-                </div>
-                <code class="role-key-text">{{ r.key }}</code>
-              </div>
-              <div class="role-card-actions">
-                <el-button size="small" plain :disabled="(r.builtin && !isRoot) || !canAssignRoles" :icon="EditPen" @click="openEditRole(r)">编辑</el-button>
-                <el-button size="small" plain type="danger" :disabled="r.builtin || !canAssignRoles" :icon="Delete" @click="deleteRole(r)">删除</el-button>
-              </div>
-            </div>
-            <div class="role-desc">{{ r.description }}</div>
-            <div class="role-perm-count">权限 {{ (r.permissions || []).length }}/{{ permissions.length }}</div>
-            <div class="role-progress-bar">
-              <div class="role-progress-fill" :style="{ width: (100 * (r.permissions || []).length / Math.max(permissions.length, 1)) + '%', background: r.key === 'super_admin' ? '#0E1D69' : roleColor(r.key) }" />
-            </div>
-            <div class="role-group-tags">
-              <template v-for="g in ['problem','contest','judge','user','system']" :key="g">
-                <span v-if="roleGroupCount(r, g) > 0" class="group-mini-tag" :style="{ background: groupColor(g) + '15', color: groupColor(g) }">
-                  {{ groupLabel(g) }} {{ roleGroupCount(r, g) }}/{{ permGroupCount(g) }}
-                </span>
-              </template>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Permission catalog tab -->
       <div v-if="activeTab === 'catalog'">
         <div class="toolbar" style="margin-bottom: 10px;">
@@ -305,7 +265,7 @@
       </div>
 
       <!-- Audit log tab -->
-      <div v-if="activeTab === 'audit'">
+      <div v-if="activeTab === 'audit'" class="tab-layout audit-layout">
         <div class="section-header">
           <div>
             <div class="section-title">审计日志</div>
@@ -328,46 +288,48 @@
           <el-button size="small" type="primary" plain @click="onAuditFilterChange">筛选</el-button>
           <el-button size="small" plain @click="resetAuditFilter">重置</el-button>
         </div>
-        <div class="user-table-wrap">
-          <table class="user-table" v-loading="auditLoading">
-            <thead>
-              <tr>
-                <th style="width: 160px; text-align: left;">时间</th>
-                <th style="width: 80px;">类型</th>
-                <th style="width: 120px; text-align: left;">操作者</th>
-                <th style="text-align: left;">事件</th>
-                <th style="text-align: left;">详情</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(e, i) in auditList" :key="i">
-                <td class="mono" style="font-size: 12px; color: #909399; text-align: left; padding: 10px 14px;">{{ e.time }}</td>
-                <td style="text-align: center;">
-                  <span class="audit-kind-tag" :style="auditKindStyle(e.eventKey)">{{ auditKindLabel(e.eventKey) }}</span>
-                </td>
-                <td style="text-align: left; padding: 10px 14px;">
-                  <span v-if="e.actorName" style="color: #9c27b0; font-weight: 600;">{{ e.actorName }}</span>
-                  <span v-else style="color: #c0c4cc;">—</span>
-                </td>
-                <td style="text-align: left; padding: 10px 14px;">
-                  <code style="color: #409EFF; font-weight: 600;">{{ e.eventKey }}</code>
-                  <span style="color: #909399; margin: 0 6px;">→</span>
-                  <span>{{ e.eventName }}</span>
-                </td>
-                <td style="text-align: left; padding: 10px 14px; font-size: 12px; color: #606266;">
-                  {{ typeof e.detail === 'object' ? JSON.stringify(e.detail) : (e.detail || '—') }}
-                </td>
-              </tr>
-              <tr v-if="auditList.length === 0 && !auditLoading">
-                <td colspan="5" class="empty-row">暂无审计记录</td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="table-footer" v-if="auditTotal > 30">
+        <div class="user-table-wrap list-table-wrap">
+          <div class="table-scroll">
+            <table class="user-table" v-loading="auditLoading">
+              <thead>
+                <tr>
+                  <th style="width: 160px; text-align: left;">时间</th>
+                  <th style="width: 80px;">类型</th>
+                  <th style="width: 120px; text-align: left;">操作者</th>
+                  <th style="text-align: left;">事件</th>
+                  <th style="text-align: left;">详情</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(e, i) in auditList" :key="i">
+                  <td class="mono" style="font-size: 12px; color: #909399; text-align: left; padding: 10px 14px;">{{ e.time }}</td>
+                  <td style="text-align: center;">
+                    <span class="audit-kind-tag" :style="auditKindStyle(e.eventKey)">{{ auditKindLabel(e.eventKey) }}</span>
+                  </td>
+                  <td style="text-align: left; padding: 10px 14px;">
+                    <span v-if="e.actorName" style="color: #9c27b0; font-weight: 600;">{{ e.actorName }}</span>
+                    <span v-else style="color: #c0c4cc;">—</span>
+                  </td>
+                  <td style="text-align: left; padding: 10px 14px;">
+                    <code style="color: #409EFF; font-weight: 600;">{{ e.eventKey }}</code>
+                    <span style="color: #909399; margin: 0 6px;">→</span>
+                    <span>{{ e.eventName }}</span>
+                  </td>
+                  <td style="text-align: left; padding: 10px 14px; font-size: 12px; color: #606266;">
+                    {{ typeof e.detail === 'object' ? JSON.stringify(e.detail) : (e.detail || '—') }}
+                  </td>
+                </tr>
+                <tr v-if="auditList.length === 0 && !auditLoading">
+                  <td colspan="5" class="empty-row">暂无审计记录</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-footer" v-if="auditTotal > auditPageSize">
             <div>共 <b>{{ auditTotal }}</b> 条</div>
             <el-pagination
               v-model:current-page="auditPage"
-              :page-size="30"
+              :page-size="auditPageSize"
               :total="auditTotal"
               layout="prev, pager, next"
               small
@@ -583,7 +545,7 @@
 <script>
 import axios from 'axios';
 import { ElMessageBox, ElMessage } from 'element-plus';
-import { Search, Refresh, Plus, EditPen, Delete, Key, Lock, Check, Close } from '@element-plus/icons-vue';
+import { Search, Refresh, Plus, EditPen, Key, Lock, Check, Close } from '@element-plus/icons-vue';
 import { markRaw } from 'vue';
 import UserPicker from '@/components/permission/UserPicker.vue';
 import GrantTable from '@/components/permission/GrantTable.vue';
@@ -615,11 +577,14 @@ const AUDIT_KIND_MAP = {
   'user.updateProfile': { color: '#409EFF', label: 'EDIT' },
   'auth.changePassword': { color: '#409EFF', label: 'AUTH' },
   'auth.changeEmail': { color: '#409EFF', label: 'EDIT' },
+  'auth.sendPasswordResetCode': { color: '#409EFF', label: 'AUTH' },
+  'auth.resetPasswordByEmail': { color: '#409EFF', label: 'AUTH' },
+  'auth.sendLoginEmailCode': { color: '#409EFF', label: 'AUTH' },
 };
 
 export default {
   name: 'PermissionCenter',
-  components: { UserPicker, GrantTable, RoleEditor, Search, Refresh, Plus, EditPen, Delete, Key, Lock, Check, Close },
+  components: { UserPicker, GrantTable, RoleEditor, Search, Refresh, Plus, EditPen, Key, Lock, Check, Close },
   data() {
     return {
       activeTab: 'users',
@@ -630,7 +595,7 @@ export default {
       userList: [],
       total: 0,
       currentPage: 1,
-      pageSize: 10,
+      pageSize: 20,
       filter: { q: '', roleKey: '', inUse: '' },
       sort: { key: 'uid', dir: 'asc' },
       selected: new Set(),
@@ -644,6 +609,7 @@ export default {
       auditList: [],
       auditTotal: 0,
       auditPage: 1,
+      auditPageSize: 20,
       auditLoading: false,
       auditFilter: { actorUid: '', eventType: '', q: '', timeRange: [] },
       auditEventKeys: [],
@@ -667,7 +633,6 @@ export default {
       Refresh: markRaw(Refresh),
       Plus: markRaw(Plus),
       EditPen: markRaw(EditPen),
-      Delete: markRaw(Delete),
       Key: markRaw(Key),
     };
   },
@@ -680,7 +645,6 @@ export default {
       const items = [
         { id: 'users', label: '用户列表', icon: 'User', badge: this.total || null },
         { id: 'matrix', label: '角色权限矩阵', icon: 'Grid', badge: this.roles.length || null },
-        { id: 'roles', label: '角色管理', icon: 'Lock' },
         { id: 'catalog', label: '权限目录', icon: 'Document', badge: this.permissions.length || null },
         this.canAuditView ? { id: 'audit', label: '审计日志', icon: 'List' } : null,
       ];
@@ -875,9 +839,6 @@ export default {
       const c = ROLE_COLORS[key] || { bg: '#f5f7fa', fg: '#606266', border: '#dcdfe6' };
       return { background: c.bg, color: c.fg, borderColor: c.border };
     },
-    roleColor(key) {
-      return (ROLE_COLORS[key] || {}).fg || '#409EFF';
-    },
     groupColor(g) { return GROUP_COLORS[g] || '#909399'; },
     groupLabel(g) { return GROUP_LABELS[g] || g; },
     avatarStyle(u) {
@@ -895,14 +856,6 @@ export default {
     permissionsOfGroup(g) {
       return this.permissions.filter(p => p.group === g);
     },
-    roleGroupCount(role, group) {
-      const groupPerms = this.permissions.filter(p => p.group === group);
-      return (role.permissions || []).filter(k => groupPerms.find(p => p.key === k)).length;
-    },
-    permGroupCount(group) {
-      return this.permissions.filter(p => p.group === group).length;
-    },
-
     // ---- Edit user ----
     async openEdit(u) {
       this.editingUser = { ...u };
@@ -999,22 +952,24 @@ export default {
     batchChangeRole() { ElMessage.info('批量修改角色 — 待实现'); },
     batchBan() { ElMessage.info('批量封禁 — 待实现'); },
 
-    // ---- Role management ----
-    openCreateRole() { this.editingRole = null; this.roleEditorVisible = true; },
-    openEditRole(role) { this.editingRole = role; this.roleEditorVisible = true; },
-    async onRoleSaved() { await this.reloadAll(); },
-    async deleteRole(role) {
-      try {
-        await ElMessageBox.confirm(`确认删除自定义角色 ${role.key}？`, '提示', { type: 'warning' });
-      } catch (_) { return; }
-      try {
-        const res = await axios.post('/api/auth/deleteRole', { key: role.key });
-        if (res.status === 200) { ElMessage.success('已删除'); await this.reloadAll(); }
-        else ElMessage.error(res.data?.message || '删除失败');
-      } catch (e) {
-        ElMessage.error(e.message || '删除失败');
+    // ---- Role permission matrix maintenance ----
+    openCreateRole() {
+      if (!this.isRoot) {
+        ElMessage.error('只有 uid=1 可新建自定义角色');
+        return;
       }
+      this.editingRole = null;
+      this.roleEditorVisible = true;
     },
+    openEditRole(role) {
+      if (!this.isRoot) {
+        ElMessage.error('只有 uid=1 可编辑角色权限');
+        return;
+      }
+      this.editingRole = role;
+      this.roleEditorVisible = true;
+    },
+    async onRoleSaved() { await this.reloadAll(); },
 
     // ---- Audit log ----
     auditRequestFilter() {
@@ -1044,6 +999,7 @@ export default {
       try {
         const res = await axios.post('/api/admin/listAuditLog', {
           pageId: this.auditPage,
+          pageSize: this.auditPageSize,
           filter: this.auditRequestFilter(),
         });
         if (res.status === 200) {
@@ -1074,7 +1030,9 @@ export default {
   display: flex;
   align-items: stretch;
   background: #f0f2f5;
-  min-height: calc(100vh - 60px);
+  height: calc(100vh - 60px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Sidebar */
@@ -1131,20 +1089,26 @@ export default {
   text-align: center;
 }
 .sidebar-badge.active { color: #409EFF; background: #ecf5ff; }
-.sidebar-footer {
-  margin: 20px 18px;
-  padding: 12px;
-  background: #f5f7fa;
-  border-radius: 4px;
-  font-size: 11px;
-  color: #909399;
-  line-height: 1.6;
-  font-family: 'Courier New', monospace;
-}
-.sidebar-footer-title { color: #3f3f3f; font-weight: 700; margin-bottom: 4px; }
-
 /* Main */
-.perm-main { flex: 1; padding: 16px; min-width: 0; }
+.perm-main {
+  flex: 1;
+  padding: 12px;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.tab-layout {
+  min-height: 0;
+}
+
+.users-layout,
+.audit-layout {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
 
 /* Stat strip */
 .stat-strip {
@@ -1157,7 +1121,7 @@ export default {
   margin-bottom: 10px;
 }
 .stat-item {
-  padding: 14px 18px;
+  padding: 10px 16px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1171,7 +1135,7 @@ export default {
   justify-content: center;
   flex-shrink: 0;
 }
-.stat-value { font-size: 22px; font-weight: 800; color: #3f3f3f; line-height: 1.1; letter-spacing: -0.3px; }
+.stat-value { font-size: 20px; font-weight: 800; color: #3f3f3f; line-height: 1.1; letter-spacing: -0.3px; }
 .stat-label-text { font-size: 12px; color: #909399; margin-top: 3px; }
 
 /* Toolbar */
@@ -1179,7 +1143,7 @@ export default {
   background: #fff;
   border: 1px solid #ebeef5;
   border-radius: 4px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   margin-bottom: 10px;
   display: flex;
   gap: 10px;
@@ -1218,9 +1182,23 @@ export default {
   border-radius: 4px;
   overflow: hidden;
 }
+
+.list-table-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 .user-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .user-table thead th {
-  padding: 10px 12px;
+  padding: 8px 10px;
   font-size: 12px;
   font-weight: 600;
   color: #909399;
@@ -1228,9 +1206,12 @@ export default {
   border-bottom: 1px solid #ebeef5;
   white-space: nowrap;
   background: #fafbfc;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 .user-table tbody td {
-  padding: 12px;
+  padding: 8px 10px;
   text-align: center;
   vertical-align: middle;
   border-top: 1px solid #f2f4f7;
@@ -1342,6 +1323,7 @@ export default {
   background: #fff;
   border: 1px solid #ebeef5;
   border-radius: 4px;
+  max-height: calc(100vh - 190px);
   overflow: auto;
 }
 .matrix-table { border-collapse: collapse; width: 100%; min-width: 980px; }
@@ -1458,35 +1440,6 @@ export default {
   color: #fff;
 }
 .legend-check.super { background: #0E1D69; }
-
-/* Roles grid */
-.roles-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 10px; }
-.role-card { background: #fff; border: 1px solid #ebeef5; border-radius: 4px; padding: 16px; }
-.role-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
-.role-card-tags { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.builtin-badge {
-  font-size: 10px;
-  color: #909399;
-  background: #f5f7fa;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-weight: 700;
-  font-family: 'Courier New', monospace;
-}
-.role-key-text { font-size: 11px; color: #909399; font-family: 'Courier New', monospace; }
-.role-card-actions { display: flex; gap: 6px; }
-.role-desc { font-size: 12px; color: #606266; margin-bottom: 12px; }
-.role-perm-count { font-size: 11px; color: #909399; margin-bottom: 6px; }
-.role-progress-bar { height: 8px; background: #f5f7fa; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
-.role-progress-fill { height: 100%; transition: width 0.3s; }
-.role-group-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-.group-mini-tag {
-  font-size: 10px;
-  font-family: 'Courier New', monospace;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-weight: 600;
-}
 
 /* Catalog */
 .catalog-summary { font-size: 12px; color: #909399; }

@@ -63,7 +63,7 @@
               <el-option v-for="item in levels" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-descriptions-item>
-          <el-descriptions-item label="支持语言">
+          <el-descriptions-item v-if="!isAnswerProblem" label="支持语言">
             <el-select v-model="avalangList" multiple collapse-tags :max-collapse-tags="3" placeholder="支持语言">
               <el-option v-for="l in this.$store.state.langList" :key="l.id" :label="l.des" :value="l.id" />
             </el-select>
@@ -118,6 +118,12 @@ export default {
         && this.problemInfo.publisherUid === this.$store.state.uid
         || this.$can('user.role.admin');
     },
+    // problemInfo.type can be either the integer (after user picks in select)
+    // or the localized label (on initial load from getProblemInfo). Match both.
+    isAnswerProblem() {
+      const t = this.problemInfo.type;
+      return t === 2 || t === 3 || t === '提交答案' || t === '提交答案 (SPJ)';
+    },
   },
   data() {
     return {
@@ -127,7 +133,9 @@ export default {
       inputVisible: false,
       ptype: [
         { value: 0, label: '传统文本比较' },
-        { value: 1, label: 'Special Judge' }
+        { value: 1, label: 'Special Judge' },
+        { value: 2, label: '提交答案' },
+        { value: 3, label: '提交答案 (SPJ)' }
       ],
       auth: {},
       levels: [
@@ -171,7 +179,7 @@ export default {
   },
   methods: {
     updateProblem() {
-      if (!this.avalangList.length) {
+      if (!this.isAnswerProblem && !this.avalangList.length) {
         this.$message.error('请选择至少一个支持语言');
         return;
       }

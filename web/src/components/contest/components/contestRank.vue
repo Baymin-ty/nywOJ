@@ -74,7 +74,8 @@
       </el-table-column>
       <el-table-column prop="codeLength" label="语言 / 代码长度" min-width="15%">
         <template #default="scope">
-          <span>{{ $store.state.langList[scope.row.lang].des }} / {{ scope.row.codeLength }} B </span>
+          <span v-if="scope.row.lang == null">答案 / {{ scope.row.codeLength }} B</span>
+          <span v-else>{{ $store.state.langList[scope.row.lang].des }} / {{ scope.row.codeLength }} B </span>
         </template>
       </el-table-column>
       <el-table-column prop="submitTime" label="提交时间" min-width="15%" />

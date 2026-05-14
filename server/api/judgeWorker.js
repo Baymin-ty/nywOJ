@@ -14,6 +14,8 @@
 // language-agnostic.
 
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 const db = require('../db');
 const conf = require('../config.json');
 const { getFile, setFile, delFile } = require('../file');
@@ -271,6 +273,128 @@ const aggregate = (subtasks, judgeResult) => {
   return { finalRes, totalTime, maxMemory, totalScore, acSub, totalSub, subtaskList };
 };
 
+// ---- answer-submission judge ----
+// problem.type ∈ {2,3}: no code, no sandbox run. The submission stored each
+// user-supplied answer to `./answerSubmissions/{sid}/{case.name}.out`. We
+// compare those against the expected outputs case by case, then aggregate
+// the same way as code submissions so the result UI is identical.
+const judgeAnswer = async (sid, sinfo, pinfo, isRejudge) => {
+  const pid = pinfo.pid;
+  try {
+    await setSubmission(sid, 1, 0, 0, 0, null, null, conf.JUDGE.NAME);
+    await resetJudgeLog(sid, {
+      sid, pid,
+      lang: null,
+      langName: 'answer',
+      isRejudge: !!isRejudge,
+      worker: conf.JUDGE.NAME,
+      timeLimit: 0,
+      memoryLimit: 0,
+      mode: pinfo.type === 3 ? 'answer-spj' : 'answer',
+    });
+    await clearCase(sid);
+
+    if (!conf.JUDGE.ISSERVER) await updateData(pid);
+
+    // SPJ binary (cached) — only when type=3
+    let spjFileId = '';
+    if (pinfo.type === 3) {
+      const spj = await ensureSPJ(sid, pid);
+      if (spj.error) {
+        await db.query('UPDATE submission SET judgeResult=12,compileResult=? WHERE sid=?', [spj.error, sid]);
+        await updateProblemSubmitInfo(pid);
+        await updateProblemStat(pid);
+        return;
+      }
+      spjFileId = spj.fileId;
+    }
+
+    const config = JSON.parse(await getFile(`./data/${pid}/config.json`));
+    if (!config || !config.cases) throw new Error('CASE ERROR: config.cases is null or undefined');
+    const cases = config.cases;
+    const subtasks = config.subtask;
+
+    const judgeResult = [];
+    const answerDir = path.join(__dirname, '..', 'answerSubmissions', String(sid));
+
+    for (const c of cases) {
+      const caseName = c.input ? c.input.replace(/\.in$/, '') : String(c.index);
+      const userAnswerPath = path.join(answerDir, `${caseName}.out`);
+      const usrOutput = fs.existsSync(userAnswerPath)
+        ? fs.readFileSync(userAnswerPath, 'utf-8')
+        : '';
+      const inputFile = await getFile(`./data/${pid}/${c.input}`);
+      const outputFile = await getFile(`./data/${pid}/${c.output}`);
+
+      await logEvent(sid, 'case.start', {
+        caseId: c.index,
+        subtaskId: c.subtaskId,
+        input: truncateText(inputFile, 1024),
+      });
+
+      let compareRes = '';
+      try {
+        if (pinfo.type === 2) {
+          compareRes = await compareDefault(sid, usrOutput, outputFile);
+        } else {
+          const spjRun = await runSPJ(spjFileId, inputFile, usrOutput, outputFile);
+          compareRes = (spjRun.files && spjRun.files.stderr) || '';
+        }
+      } catch (err) {
+        await logEvent(sid, 'case.error', { caseId: c.index, error: summarizeAxiosError(err) });
+        // SPJ runtime is the only thing here that can fail loud — propagate so
+        // the outer catch records a System Error.
+        if (pinfo.type === 3) spjCache.invalidate(pid);
+        throw err;
+      }
+
+      const ok = compareRes.substring(0, 2) === 'ok';
+      await logEvent(sid, 'case.compare', {
+        caseId: c.index,
+        result: ok ? 'ok' : 'wa',
+        detail: truncateText(compareRes, 4096),
+      });
+      // time/memory are not meaningful for answer-submission — keep 1ms/1KB
+      // so the UI doesn't crash on divisions or color thresholds.
+      const t = 1;
+      const mem = 1;
+      await updateSubmissionDetail(
+        sid, c.index,
+        inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
+        usrOutput.substring(0, 255) + (usrOutput.length > 255 ? '......\n' : ''),
+        t, mem, ok ? 4 : 5, compareRes, c.subtaskId,
+      );
+      judgeResult.push({ time: t, memory: mem, subtaskId: c.subtaskId, judgeResult: ok ? 4 : 5 });
+    }
+
+    const agg = aggregate(subtasks, judgeResult);
+    if (agg.totalSub > 0 && agg.acSub === agg.totalSub) {
+      await db.query('UPDATE problem SET acCnt=acCnt+1 WHERE pid=?', [pid]);
+    }
+    await logEvent(sid, 'finish', {
+      finalRes: agg.finalRes,
+      totalTime: agg.totalTime,
+      maxMemory: agg.maxMemory,
+      totalScore: agg.totalScore,
+    });
+    await setSubmission(
+      sid, agg.finalRes, agg.totalTime, agg.maxMemory, agg.totalScore,
+      null, JSON.stringify(agg.subtaskList), conf.JUDGE.NAME,
+    );
+    await updateProblemSubmitInfo(pid);
+    await updateProblemStat(pid);
+  } catch (err) {
+    console.log(err);
+    await logEvent(sid, 'error', {
+      message: err && err.message ? err.message : String(err),
+      stack: truncateText(err && err.stack ? err.stack : ''),
+    });
+    await setSubmission(sid, 12, 0, 0, 0, String(err), null, conf.JUDGE.NAME);
+    await updateProblemSubmitInfo(pid);
+    await updateProblemStat(pid);
+  }
+};
+
 // ---- main ----
 const judgeCode = async (sid, isRejudge) => {
   const sinfo = await SubmissionInfo(sid);
@@ -278,6 +402,10 @@ const judgeCode = async (sid, isRejudge) => {
   const pid = sinfo.pid;
   const pinfo = await ProblemInfo(pid);
   if (!pinfo) return;
+
+  if (pinfo.type === 2 || pinfo.type === 3) {
+    return judgeAnswer(sid, sinfo, pinfo, isRejudge);
+  }
 
   try {
     const lang = await resolveLanguage(sinfo.lang);

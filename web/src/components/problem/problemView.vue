@@ -12,7 +12,7 @@
             </p>
           </div>
         </template>
-        <div v-if="isSubmit">
+        <div v-if="isSubmit && !isAnswerProblem">
           <div style="margin: 10px;">
             选择语言：
             <el-select v-model="submitLang" placeholder="选择语言" style="width: 160px;">
@@ -25,6 +25,35 @@
           <el-divider />
           <div style="text-align: center;">
             <el-button type="primary" @click="submit">
+              <el-icon class="el-icon--left">
+                <Upload />
+              </el-icon>
+              确认提交
+            </el-button>
+          </div>
+        </div>
+        <div v-if="isSubmit && isAnswerProblem" class="answer-submit">
+          <el-upload drag :auto-upload="false" :limit="1" :on-change="onZipPicked"
+            :on-remove="onZipRemoved" accept=".zip" class="answer-upload">
+            <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+            <div class="el-upload__text">拖拽 ZIP 到此 或 <em>点击选择</em></div>
+            <template #tip>
+              <div class="el-upload__tip">
+                ZIP 内文件名按 <code>&lbrace;测试点名&rbrace;.out</code> 匹配,例如 <code>1.out</code>、<code>case1.out</code>。
+              </div>
+            </template>
+          </el-upload>
+          <el-divider>或为每个测试点直接输入答案</el-divider>
+          <div v-if="answerCases.length === 0" style="text-align: center; color: #909399;">
+            题目尚未配置测试点,无法提交。
+          </div>
+          <div v-for="c in answerCases" :key="c.name" class="answer-case">
+            <div class="answer-case-label">测试点 {{ c.name }} <span class="answer-case-sub">(子任务 #{{ c.subtaskId }})</span></div>
+            <el-input type="textarea" :rows="6" v-model="answers[c.name]" :placeholder="`测试点 ${c.name} 的答案`" />
+          </div>
+          <el-divider />
+          <div style="text-align: center;">
+            <el-button type="primary" :loading="submitting" :disabled="answerCases.length === 0" @click="submitAnswer">
               <el-icon class="el-icon--left">
                 <Upload />
               </el-icon>
@@ -110,6 +139,7 @@
 
 <script>
 import axios from 'axios';
+import { UploadFilled } from '@element-plus/icons-vue';
 import monacoEditor from '@/components/monacoEditor.vue'
 
 export default {
@@ -121,6 +151,9 @@ export default {
       if (this.authInfo && this.authInfo.manage) return true;
       return false;
     },
+    isAnswerProblem() {
+      return this.problemInfo.typeId === 2 || this.problemInfo.typeId === 3;
+    },
   },
   data() {
     return {
@@ -131,6 +164,11 @@ export default {
       authInfo: { view: false, manage: false },
       code: '',
       isSubmit: false,
+      // answer-submission state
+      answerCases: [],
+      answers: {},
+      answerZip: null,
+      submitting: false,
       levels: [
         {
           label: '暂未评级',
@@ -171,7 +209,8 @@ export default {
     }
   },
   components: {
-    monacoEditor
+    monacoEditor,
+    UploadFilled
   },
   methods: {
     submit() {
@@ -186,6 +225,58 @@ export default {
           this.$message.error('提交失败' + res.data.message);
         }
       });
+    },
+    async loadAnswerCases() {
+      try {
+        const res = await axios.post('/api/problem/getAnswerCaseList', { pid: this.pid });
+        if (res.status === 200 && res.data && res.data.data) {
+          this.answerCases = res.data.data;
+          const next = {};
+          for (const c of this.answerCases) next[c.name] = this.answers[c.name] || '';
+          this.answers = next;
+        }
+      } catch (e) {
+        this.$message.error('加载测试点列表失败');
+      }
+    },
+    onZipPicked(file) {
+      // el-upload :auto-upload="false" — we hold the raw File until submit.
+      this.answerZip = file.raw || null;
+    },
+    onZipRemoved() {
+      this.answerZip = null;
+    },
+    async submitAnswer() {
+      if (this.submitting) return;
+      // Drop empty textareas so server-side dedupe (zip wins) sees only real
+      // input.
+      const trimmed = {};
+      for (const k of Object.keys(this.answers)) {
+        const v = this.answers[k];
+        if (v != null && String(v).length > 0) trimmed[k] = String(v);
+      }
+      if (!this.answerZip && !Object.keys(trimmed).length) {
+        this.$message.error('请上传 ZIP 或在至少一个测试点填入答案');
+        return;
+      }
+      const fd = new FormData();
+      fd.append('pid', String(this.pid));
+      fd.append('answers', JSON.stringify(trimmed));
+      if (this.answerZip) fd.append('file', this.answerZip);
+      this.submitting = true;
+      try {
+        const res = await axios.post('/api/judge/submitAnswer', fd);
+        if (res.status === 200 && res.data && res.data.sid) {
+          this.$router.push('/submission/' + res.data.sid);
+        } else {
+          this.$message.error((res.data && res.data.message) || '提交失败');
+        }
+      } catch (err) {
+        const msg = err && err.response && err.response.data && err.response.data.message;
+        this.$message.error(msg || err.message || '提交失败');
+      } finally {
+        this.submitting = false;
+      }
     },
     hash(str) {
       let t = 0;
@@ -203,20 +294,26 @@ export default {
       if (res.status === 200) {
         this.problemInfo = res.data.data
         this.problemInfo.isPublic = res.data.data.isPublic ? true : false;
-        for (let l in this.$store.state.langList) {
-          let lid = this.$store.state.langList[l].id;
-          if ((1 << lid) & this.problemInfo.lang) {
-            this.langList.push(this.$store.state.langList[l]);
-            if (!this.submitLang)
-              this.submitLang = lid;
-            if (lid === this.$store.state.preferenceLang)
-              this.submitLang = lid;
+        // Answer-submission problems don't use languages at all; skip the
+        // language picker setup and preference warning.
+        if (!this.isAnswerProblem) {
+          for (let l in this.$store.state.langList) {
+            let lid = this.$store.state.langList[l].id;
+            if ((1 << lid) & this.problemInfo.lang) {
+              this.langList.push(this.$store.state.langList[l]);
+              if (!this.submitLang)
+                this.submitLang = lid;
+              if (lid === this.$store.state.preferenceLang)
+                this.submitLang = lid;
+            }
           }
+          if (!this.$store.state.preferenceLang)
+            this.$message.info('可在编辑资料--个人信息中设置您的偏好语言');
+          else if (this.submitLang !== this.$store.state.preferenceLang)
+            this.$message.warning('本题无法用您的偏好语言提交');
+        } else {
+          this.loadAnswerCases();
         }
-        if (!this.$store.state.preferenceLang)
-          this.$message.info('可在编辑资料--个人信息中设置您的偏好语言');
-        else if (this.submitLang !== this.$store.state.preferenceLang)
-          this.$message.warning('本题无法用您的偏好语言提交');
       }
       else {
         this.$router.push({ path: '/problem' });
@@ -301,5 +398,34 @@ export default {
 #hidden {
   vertical-align: -4px;
   color: #312b2b;
+}
+
+.answer-submit {
+  padding: 10px;
+}
+
+.answer-upload :deep(.el-upload) {
+  width: 100%;
+}
+
+.answer-upload :deep(.el-upload-dragger) {
+  width: 100%;
+}
+
+.answer-case {
+  margin: 10px 0;
+}
+
+.answer-case-label {
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.answer-case-sub {
+  margin-left: 6px;
+  font-weight: 400;
+  font-size: 12px;
+  color: #909399;
 }
 </style>

@@ -78,6 +78,9 @@ exports.eventList = [
   'auth.createRole',
   'auth.updateRole',
   'auth.deleteRole',
+  'auth.sendPasswordResetCode',
+  'auth.resetPasswordByEmail',
+  'auth.sendLoginEmailCode',
 ];
 
 exports.eventExp = [
@@ -101,6 +104,9 @@ exports.eventExp = [
   '创建角色',
   '更新角色',
   '删除角色',
+  '发送找回密码验证码',
+  '邮箱找回密码',
+  '发送邮箱登录验证码',
 ]
 
 

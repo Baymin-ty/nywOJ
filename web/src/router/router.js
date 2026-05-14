@@ -12,6 +12,7 @@ import pasteList from "@/components/paste/pasteList.vue"
 import cuteRabbit from '@/components/rabbit/cuteRabbit.vue'
 import userLogin from "@/components/user/userLogin.vue"
 import userReg from "@/components/user/userReg.vue"
+import userForgotPassword from "@/components/user/userForgotPassword.vue"
 import userInfo from '@/components/user/userInfo.vue'
 import problemList from '@/components/problem/problemList.vue'
 import problemView from '@/components/problem/problemView.vue'
@@ -58,6 +59,12 @@ const router = createRouter({
             activeTitle: '/user/reg'
         },
         path: '/user/reg', component: userReg,
+    }, {
+        meta: {
+            title: '找回密码',
+            activeTitle: '/user/login'
+        },
+        path: '/user/forgot', component: userForgotPassword,
     }, {
         meta: {
             title: '用户管理',
@@ -225,6 +232,7 @@ router.beforeEach(async (to, from, next) => {
         if (to.path === '/' ||
             to.path === '/user/reg' ||
             to.path === '/user/login' ||
+            to.path === '/user/forgot' ||
             to.path === '/rabbit' ||
             to.path === '/problem' ||
             to.path === '/contest' ||

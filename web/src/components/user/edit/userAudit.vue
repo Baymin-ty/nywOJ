@@ -7,7 +7,7 @@
         </div>
       </el-col>
       <el-col :span="16">
-        <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="10"
+        <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="pageSize"
           layout="total, prev, pager, next" :total="total"></el-pagination>
       </el-col>
     </el-row>
@@ -60,6 +60,7 @@ export default {
       eventKeys: [],
       eventNames: [],
       currentPage: 1,
+      pageSize: 20,
       total: 0,
       filter: { eventType: '', q: '', timeRange: [] },
     }
@@ -115,6 +116,7 @@ export default {
       this.updateUrl();
       axios.post('/api/user/listAudits', {
         pageId: this.currentPage,
+        pageSize: this.pageSize,
         filter: this.requestFilter(),
       }).then(res => {
         this.eventList = res.data.data;

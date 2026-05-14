@@ -5,9 +5,13 @@
     width="640px"
     @closed="onClosed"
   >
-    <el-alert v-if="role && role.builtin" type="warning" show-icon :closable="false"
-      title="正在编辑内置角色（root 模式）" style="margin-bottom: 12px;">
-      <div>普通超管会被服务端拒绝；只有 uid=1 (root) 可以保存。修改将影响所有持有该角色的用户。</div>
+    <el-alert v-if="!isRoot" type="warning" show-icon :closable="false"
+      title="只有 uid=1 可以保存角色变更" style="margin-bottom: 12px;">
+      <div>当前页面仅用于查看角色配置，保存请求会被服务端拒绝。</div>
+    </el-alert>
+    <el-alert v-else-if="role && role.builtin" type="warning" show-icon :closable="false"
+      title="正在编辑内置角色" style="margin-bottom: 12px;">
+      <div>修改将影响所有持有该角色的用户。</div>
     </el-alert>
     <el-form :model="form" label-width="100px">
       <el-form-item label="角色 key">
@@ -30,7 +34,7 @@
     </el-form>
     <template #footer>
       <el-button @click="visible = false">取消</el-button>
-      <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+      <el-button type="primary" :disabled="!isRoot" :loading="saving" @click="save">保存</el-button>
     </template>
   </el-dialog>
 </template>
@@ -59,6 +63,7 @@ export default {
       set(v) { this.$emit('update:modelValue', v); },
     },
     isCreate() { return !this.role; },
+    isRoot() { return this.$store.state.isRoot; },
   },
   watch: {
     modelValue(open) {
@@ -81,6 +86,10 @@ export default {
       this.saving = false;
     },
     async save() {
+      if (!this.isRoot) {
+        this.$message.error('只有 uid=1 可以保存角色变更');
+        return;
+      }
       if (!this.form.key || !this.form.name) {
         this.$message.error('请填写 key 和名称');
         return;

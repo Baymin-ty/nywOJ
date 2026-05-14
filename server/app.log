@@ -5841,3 +5841,581 @@ Stack: Error: listen EADDRINUSE: address already in use :::1234
 [2026-05-10 00:09:27] LOG: [object Object] submission.rejudge.any 
 [2026-05-10 00:09:35] LOG: [object Object] problem.manage.any [object Object]
 [2026-05-10 00:09:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:06:34] LOG: success!!!
+[2026-05-14 19:06:38] ERROR: handler error: Error: Invalid login: 535 Error: authentication failed
+    at SMTPConnection._formatError (/Users/ty/Desktop/nywOJ/server/node_modules/nodemailer/lib/smtp-connection/index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (/Users/ty/Desktop/nywOJ/server/node_modules/nodemailer/lib/smtp-connection/index.js:1586:34)
+    at SMTPConnection.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/nodemailer/lib/smtp-connection/index.js:554:26)
+    at SMTPConnection._processResponse (/Users/ty/Desktop/nywOJ/server/node_modules/nodemailer/lib/smtp-connection/index.js:991:20)
+    at SMTPConnection._onData (/Users/ty/Desktop/nywOJ/server/node_modules/nodemailer/lib/smtp-connection/index.js:772:14)
+    at SMTPConnection._onSocketData (/Users/ty/Desktop/nywOJ/server/node_modules/nodemailer/lib/smtp-connection/index.js:195:44)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+[2026-05-14 19:07:22] ERROR: handler error: Error: Invalid login: 535 Error: authentication failed
+    at SMTPConnection._formatError (/Users/ty/Desktop/nywOJ/server/node_modules/nodemailer/lib/smtp-connection/index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (/Users/ty/Desktop/nywOJ/server/node_modules/nodemailer/lib/smtp-connection/index.js:1586:34)
+    at SMTPConnection.<anonymous> (/Users/ty/Desktop/nywOJ/server/node_modules/nodemailer/lib/smtp-connection/index.js:554:26)
+    at SMTPConnection._processResponse (/Users/ty/Desktop/nywOJ/server/node_modules/nodemailer/lib/smtp-connection/index.js:991:20)
+    at SMTPConnection._onData (/Users/ty/Desktop/nywOJ/server/node_modules/nodemailer/lib/smtp-connection/index.js:772:14)
+    at SMTPConnection._onSocketData (/Users/ty/Desktop/nywOJ/server/node_modules/nodemailer/lib/smtp-connection/index.js:195:44)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+[2026-05-14 19:07:30] LOG: success!!!
+[2026-05-14 19:08:16] LOG: [object Object] submission.view.any 
+[2026-05-14 19:08:18] LOG: [object Object] user.list 
+[2026-05-14 19:08:20] LOG: [object Object] submission.view.any 
+[2026-05-14 19:08:20] LOG: [object Object] problem.view.any 
+[2026-05-14 19:08:20] LOG: [object Object] problem.manage.any 
+[2026-05-14 19:08:22] LOG: [object Object] user.list 
+[2026-05-14 19:08:23] LOG: [object Object] user.list 
+[2026-05-14 19:08:53] LOG: [object Object] problem.view.any 
+[2026-05-14 19:08:53] LOG: [object Object] problem.manage.any 
+[2026-05-14 19:08:54] LOG: [object Object] submission.view.any 
+[2026-05-14 19:08:55] LOG: [object Object] user.role.admin 
+[2026-05-14 19:08:55] LOG: [object Object] user.role.admin 
+[2026-05-14 19:08:55] LOG: [object Object] user.manage 
+[2026-05-14 19:08:55] LOG: [object Object] user.manage 
+[2026-05-14 19:14:44] LOG: [object Object] paste.edit.any 
+[2026-05-14 19:14:45] LOG: [object Object] submission.view.any 
+[2026-05-14 19:14:45] LOG: [object Object] submission.view.notcontest 
+[2026-05-14 19:14:45] LOG: [object Object] problem.manage.any 
+[2026-05-14 19:14:45] LOG: [object Object] problem.view.any 
+[2026-05-14 19:14:45] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:14:45] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:14:47] LOG: [object Object] submission.view.any 
+[2026-05-14 19:14:47] LOG: [object Object] submission.view.notcontest 
+[2026-05-14 19:14:47] LOG: [object Object] problem.manage.any 
+[2026-05-14 19:14:47] LOG: [object Object] problem.view.any 
+[2026-05-14 19:14:47] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:14:47] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:14:50] LOG: [object Object] submission.view.any 
+[2026-05-14 19:14:51] LOG: [object Object] user.role.admin 
+[2026-05-14 19:14:51] LOG: [object Object] user.role.admin 
+[2026-05-14 19:14:51] LOG: [object Object] user.manage 
+[2026-05-14 19:14:51] LOG: [object Object] user.manage 
+[2026-05-14 19:14:53] LOG: [object Object] audit.view 
+[2026-05-14 19:15:11] LOG: [object Object] audit.view 
+[2026-05-14 19:15:12] LOG: [object Object] audit.view 
+[2026-05-14 19:15:12] LOG: [object Object] audit.view 
+[2026-05-14 19:15:44] LOG: [object Object] audit.view 
+[2026-05-14 19:15:44] LOG: [object Object] audit.view 
+[2026-05-14 19:15:45] LOG: [object Object] audit.view 
+[2026-05-14 19:15:45] LOG: [object Object] audit.view 
+[2026-05-14 19:15:45] LOG: [object Object] audit.view 
+[2026-05-14 19:15:46] LOG: [object Object] audit.view 
+[2026-05-14 19:15:46] LOG: [object Object] audit.view 
+[2026-05-14 19:15:46] LOG: [object Object] audit.view 
+[2026-05-14 19:15:46] LOG: [object Object] audit.view 
+[2026-05-14 19:15:47] LOG: [object Object] audit.view 
+[2026-05-14 19:15:47] LOG: [object Object] audit.view 
+[2026-05-14 19:15:47] LOG: [object Object] audit.view 
+[2026-05-14 19:15:54] LOG: [object Object] audit.view 
+[2026-05-14 19:15:55] LOG: [object Object] audit.view 
+[2026-05-14 19:15:55] LOG: [object Object] audit.view 
+[2026-05-14 19:15:55] LOG: [object Object] audit.view 
+[2026-05-14 19:15:55] LOG: [object Object] audit.view 
+[2026-05-14 19:15:55] LOG: [object Object] audit.view 
+[2026-05-14 19:15:56] LOG: [object Object] audit.view 
+[2026-05-14 19:15:56] LOG: [object Object] audit.view 
+[2026-05-14 19:25:22] LOG: success!!!
+[2026-05-14 19:26:23] LOG: [object Object] submission.view.any 
+[2026-05-14 19:26:24] LOG: [object Object] problem.view.any 
+[2026-05-14 19:26:24] LOG: [object Object] problem.manage.any 
+[2026-05-14 19:26:26] LOG: [object Object] user.role.admin 
+[2026-05-14 19:26:26] LOG: [object Object] user.role.admin 
+[2026-05-14 19:26:26] LOG: [object Object] user.manage 
+[2026-05-14 19:26:26] LOG: [object Object] user.manage 
+[2026-05-14 19:26:34] LOG: [object Object] audit.view 
+[2026-05-14 19:26:41] LOG: [object Object] problem.view.any 
+[2026-05-14 19:26:41] LOG: [object Object] problem.manage.any 
+[2026-05-14 19:26:43] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:26:43] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:26:53] LOG: [object Object] user.list 
+[2026-05-14 19:27:08] LOG: [object Object] submission.view.any 
+[2026-05-14 19:27:09] LOG: [object Object] user.list 
+[2026-05-14 19:27:10] LOG: [object Object] submission.view.any 
+[2026-05-14 19:27:12] LOG: [object Object] user.list 
+[2026-05-14 19:27:23] LOG: [object Object] problem.view.any 
+[2026-05-14 19:27:23] LOG: [object Object] problem.manage.any 
+[2026-05-14 19:27:24] LOG: [object Object] submission.view.any 
+[2026-05-14 19:27:24] LOG: [object Object] user.list 
+[2026-05-14 19:27:31] LOG: [object Object] problem.view.any 
+[2026-05-14 19:27:31] LOG: [object Object] problem.manage.any 
+[2026-05-14 19:27:31] LOG: [object Object] submission.view.any 
+[2026-05-14 19:27:32] LOG: [object Object] user.list 
+[2026-05-14 19:27:37] LOG: [object Object] user.role.admin 
+[2026-05-14 19:27:37] LOG: [object Object] user.role.admin 
+[2026-05-14 19:27:37] LOG: [object Object] user.manage 
+[2026-05-14 19:27:37] LOG: [object Object] user.manage 
+[2026-05-14 19:27:39] LOG: [object Object] user.list 
+[2026-05-14 19:27:40] LOG: [object Object] user.list 
+[2026-05-14 19:27:41] LOG: [object Object] user.role.admin 
+[2026-05-14 19:27:41] LOG: [object Object] user.role.admin 
+[2026-05-14 19:27:41] LOG: [object Object] user.manage 
+[2026-05-14 19:27:41] LOG: [object Object] user.manage 
+[2026-05-14 19:27:44] LOG: [object Object] audit.view 
+[2026-05-14 19:27:45] LOG: [object Object] submission.view.any 
+[2026-05-14 19:27:46] LOG: [object Object] problem.view.any 
+[2026-05-14 19:27:46] LOG: [object Object] problem.manage.any 
+[2026-05-14 19:27:48] LOG: [object Object] problem.view.any 
+[2026-05-14 19:27:48] LOG: [object Object] problem.manage.any 
+[2026-05-14 19:27:48] LOG: [object Object] submission.view.any 
+[2026-05-14 19:35:32] LOG: [object Object] problem.view.any 
+[2026-05-14 19:35:32] LOG: [object Object] problem.manage.any 
+[2026-05-14 19:35:39] LOG: success!!!
+[2026-05-14 19:36:12] LOG: [object Object] submission.view.any 
+[2026-05-14 19:36:13] LOG: [object Object] submission.view.any 
+[2026-05-14 19:36:14] LOG: [object Object] problem.view.any 
+[2026-05-14 19:36:14] LOG: [object Object] problem.manage.any 
+[2026-05-14 19:36:23] LOG: [object Object] submission.view.any 
+[2026-05-14 19:36:24] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:36:24] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:36:35] LOG: [object Object] user.list 
+[2026-05-14 19:36:36] LOG: [object Object] user.list 
+[2026-05-14 19:36:38] LOG: [object Object] user.role.admin 
+[2026-05-14 19:36:38] LOG: [object Object] user.role.admin 
+[2026-05-14 19:36:38] LOG: [object Object] user.manage 
+[2026-05-14 19:36:38] LOG: [object Object] user.manage 
+[2026-05-14 19:36:39] LOG: [object Object] paste.edit.any 
+[2026-05-14 19:40:54] LOG: [object Object] paste.edit.any 
+[2026-05-14 19:48:10] LOG: [object Object] paste.edit.any 
+[2026-05-14 19:49:15] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:49:15] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:49:15] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:49:15] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:49:15] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:49:15] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: 2026-05-14 19:50:35 server: localJudge 338
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:35] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:35] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:35] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:36] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:36] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:36] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:36] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:50:36] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:50:36] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:50:36] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:50:36] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:51:46] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:51:46] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:51:53] LOG: [object Object] paste.edit.any 
+[2026-05-14 19:51:53] LOG: [object Object] submission.view.any 
+[2026-05-14 19:51:55] LOG: [object Object] user.list 
+[2026-05-14 19:51:59] LOG: [object Object] submission.view.any 
+[2026-05-14 19:52:00] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:00] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:52:02] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:04] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:04] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:05] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:10] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:24] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:24] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:52:26] LOG: [object Object] submission.view.any 
+[2026-05-14 19:52:30] LOG: [object Object] submission.view.any 
+[2026-05-14 19:52:31] LOG: [object Object] submission.view.any 
+[2026-05-14 19:52:32] LOG: [object Object] submission.view.any 
+[2026-05-14 19:52:36] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:36] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:36] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:37] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:37] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:37] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:37] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:37] LOG: [object Object] paste.edit.any 
+[2026-05-14 19:52:39] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:39] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:39] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:40] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:40] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:40] LOG: [object Object] user.role.admin 
+[2026-05-14 19:52:42] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:42] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:46] LOG: [object Object] submission.view.any 
+[2026-05-14 19:52:47] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:47] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:52:49] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:49] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:52:53] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:52:53] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:52:53] LOG: 2026-05-14 19:52:53 server: localJudge 339
+[2026-05-14 19:52:57] LOG: [object Object] submission.view.any 
+[2026-05-14 19:52:58] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:52:58] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:53:11] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:53:11] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:53:12] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:53:12] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:53:13] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:53:13] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:53:55] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:53:55] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:53:55] LOG: 2026-05-14 19:53:55 server: localJudge 340
+[2026-05-14 19:55:52] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:55:52] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:55:53] LOG: [object Object] submission.view.any 
+[2026-05-14 19:55:54] LOG: [object Object] submission.view.any 
+[2026-05-14 19:55:56] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:55:56] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:55:56] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:55:57] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:55:57] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:55:57] LOG: [object Object] user.role.admin 
+[2026-05-14 19:55:58] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:55:58] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:01] LOG: [object Object] submission.view.any 
+[2026-05-14 19:56:02] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:02] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:56:04] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:05] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:05] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:05] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:07] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:08] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:11] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:11] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:11] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:12] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:12] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:12] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:12] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:12] LOG: [object Object] paste.edit.any 
+[2026-05-14 19:56:14] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:14] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:14] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:15] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:15] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:15] LOG: [object Object] user.role.admin 
+[2026-05-14 19:56:16] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:16] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:56:40] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:56:40] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:56:40] LOG: 2026-05-14 19:56:40 server: localJudge 341
+[2026-05-14 19:56:40] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:56:40] LOG: [object Object] submission.rejudge.self 
+[2026-05-14 19:56:40] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 19:56:40] LOG: [object Object] problem.solmanage 
+[2026-05-14 19:59:02] LOG: [object Object] submission.view.any 
+[2026-05-14 19:59:03] LOG: [object Object] submission.view.any 
+[2026-05-14 19:59:04] LOG: [object Object] problem.manage.self 
+[2026-05-14 19:59:04] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 19:59:19] LOG: [object Object] submission.view.any 
+[2026-05-14 20:00:14] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 20:00:14] LOG: [object Object] problem.solmanage 
+[2026-05-14 20:00:14] LOG: 2026-05-14 20:00:14 server: localJudge 342
+[2026-05-14 20:01:06] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 20:01:06] LOG: [object Object] problem.solmanage 
+[2026-05-14 20:01:06] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 20:01:06] LOG: [object Object] problem.solmanage 
+[2026-05-14 20:01:06] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 20:01:06] LOG: [object Object] problem.solmanage 
+[2026-05-14 20:01:06] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 20:01:06] LOG: [object Object] problem.solmanage 
+[2026-05-14 20:01:15] LOG: [object Object] submission.view.any 
+[2026-05-14 20:01:15] LOG: [object Object] submission.view.any 
+[2026-05-14 20:01:17] LOG: [object Object] problem.manage.self 
+[2026-05-14 20:01:17] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 20:01:30] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 20:01:30] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 20:01:30] LOG: [object Object] user.role.admin 
+[2026-05-14 21:15:08] LOG: [object Object] user.role.admin 
+[2026-05-14 21:15:08] LOG: [object Object] user.role.admin 
+[2026-05-14 21:15:08] LOG: [object Object] user.manage 
+[2026-05-14 21:15:08] LOG: [object Object] user.manage 
+[2026-05-14 21:15:27] LOG: [object Object] submission.view.any 
+[2026-05-14 21:15:30] LOG: [object Object] problem.view.any 
+[2026-05-14 21:15:30] LOG: [object Object] problem.manage.any 
+[2026-05-14 21:22:38] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:38] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:52] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:52] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:52] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:52] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:52] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:52] LOG: 2026-05-14 21:22:52 server: localJudge 342
+[2026-05-14 21:22:52] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:52] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:52] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:52] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:52] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:52] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:52] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:52] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:52] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:52] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:52] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:52] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:22:53] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:22:53] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:23:38] LOG: [object Object] submission.view.any 
+[2026-05-14 21:23:41] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:23:41] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:23:42] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:23:43] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:23:44] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:23:45] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:23:46] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:23:47] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:23:48] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:23:49] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:23:50] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:23:51] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:25:08] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:25:08] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:25:11] LOG: [object Object] submission.view.any 
+[2026-05-14 21:25:12] LOG: [object Object] user.list 
+[2026-05-14 21:27:20] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 21:27:20] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:28:15] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 21:28:15] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:28:57] LOG: [object Object] submission.view.any 
+[2026-05-14 21:29:01] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:29:01] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:29:08] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 21:29:08] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:29:21] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 21:29:21] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:29:53] LOG: [object Object] submission.view.any 
+[2026-05-14 21:29:54] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:29:54] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:31:47] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 21:31:47] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:32:22] LOG: [object Object] submission.view.any 
+[2026-05-14 21:32:24] LOG: [object Object] problem.manage.self 
+[2026-05-14 21:32:24] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:33:23] LOG: [object Object] problem.manage.any [object Object]
+[2026-05-14 21:33:23] LOG: [object Object] submission.rejudge.any 
+[2026-05-14 21:34:23] LOG: [object Object] submission.view.any 
+[2026-05-14 21:34:25] LOG: [object Object] submission.view.any 
+[2026-05-14 21:34:26] LOG: [object Object] submission.view.any 
+[2026-05-14 21:34:27] LOG: [object Object] submission.view.any 
+[2026-05-14 21:34:27] LOG: [object Object] submission.view.any 
+[2026-05-14 21:34:28] LOG: [object Object] submission.view.any 
+[2026-05-14 21:34:28] LOG: [object Object] submission.view.any 
+[2026-05-14 21:34:29] LOG: [object Object] submission.view.any 
+[2026-05-14 21:34:30] LOG: [object Object] submission.view.any 
+[2026-05-14 21:34:37] LOG: [object Object] problem.view.any 
+[2026-05-14 21:34:37] LOG: [object Object] problem.manage.any 
+[2026-05-14 21:34:40] LOG: [object Object] problem.view.any 
+[2026-05-14 21:34:40] LOG: [object Object] problem.manage.any 
+[2026-05-14 21:34:41] LOG: [object Object] submission.view.any 
+[2026-05-14 21:34:43] LOG: [object Object] user.list 
+[2026-05-14 21:34:44] LOG: [object Object] user.list 
+[2026-05-14 21:34:45] LOG: [object Object] user.list 
+[2026-05-14 21:34:46] LOG: [object Object] user.list 
+[2026-05-14 21:34:47] LOG: [object Object] user.role.admin 
+[2026-05-14 21:34:47] LOG: [object Object] user.role.admin 
+[2026-05-14 21:34:47] LOG: [object Object] user.manage 
+[2026-05-14 21:34:47] LOG: [object Object] user.manage 
+[2026-05-14 21:34:48] LOG: [object Object] user.list 
+[2026-05-14 21:34:49] LOG: [object Object] user.list 
+[2026-05-14 21:34:51] LOG: [object Object] user.role.admin 
+[2026-05-14 21:34:51] LOG: [object Object] user.role.admin 
+[2026-05-14 21:34:51] LOG: [object Object] user.manage 
+[2026-05-14 21:34:51] LOG: [object Object] user.manage 

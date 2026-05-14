@@ -1,6 +1,6 @@
 // Integration tests for the RBAC permission system. Runs against the real
-// database in server/config.json. The legacy `userInfo.gid` column is dropped
-// during sync (one-time on first start), so this test seeds users without gid
+// database in server/config.json. The legacy user level column is dropped
+// during sync (one-time on first start), so this test seeds users without it
 // and assigns roles directly via user_roles.
 //
 //   node server/auth/test.js
@@ -104,17 +104,17 @@ const cleanupSandbox = async () => {
 
 (async () => {
   try {
-    // -------- 0. Schema sync (idempotent + drops legacy gid) --------
+    // -------- 0. Schema sync (idempotent + drops legacy level) --------
     await test('syncPermissionCatalog runs without error', async () => {
       await syncPermissionCatalog();
     });
 
-    await test('legacy userInfo.gid column is gone after sync', async () => {
+    await test('legacy user level column is gone after sync', async () => {
       const row = await db.one(
         `SELECT 1 FROM information_schema.columns
          WHERE table_schema = DATABASE() AND table_name='userInfo' AND column_name='gid' LIMIT 1`
       );
-      assert(!row, 'userInfo.gid column dropped');
+      assert(!row, 'legacy user level column dropped');
     });
 
     // -------- 1. Catalog sanity --------
@@ -127,7 +127,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('all builtin roles upserted with builtin=1', async () => {
-      const rows = await db.query("SELECT `key`, builtin, legacy_gid FROM roles WHERE `key` IN (?)", [Object.keys(BUILTIN_ROLES)]);
+      const rows = await db.query("SELECT `key`, builtin FROM roles WHERE `key` IN (?)", [Object.keys(BUILTIN_ROLES)]);
       const map = new Map(rows.map((r) => [r.key, r]));
       for (const [k, meta] of Object.entries(BUILTIN_ROLES)) {
         const row = map.get(k);
@@ -342,8 +342,15 @@ const cleanupSandbox = async () => {
     });
 
     let customRoleId = null;
-    await test('createRole creates a custom role', async () => {
+    await test('createRole rejects a non-root role admin', async () => {
       const req = makeReq(superUid, superPerms);
+      req.body = { key: 'test_custom_reject', name: '测试角色', permissionKeys: [] };
+      const res = await runHandler(auth.createRole, req);
+      assertEq(res.statusCode, 403, 'status 403');
+    });
+
+    await test('createRole creates a custom role for uid=1', async () => {
+      const req = makeReq(1, superPerms);
       req.body = { key: 'test_custom1', name: '测试角色', description: 'desc', permissionKeys: ['problem.create'] };
       const res = await runHandler(auth.createRole, req);
       assertEq(res.statusCode, 200, 'status 200');
@@ -359,29 +366,21 @@ const cleanupSandbox = async () => {
     });
 
     await test('createRole rejects an illegal key', async () => {
-      const req = makeReq(superUid, superPerms);
+      const req = makeReq(1, superPerms);
       req.body = { key: 'BAD-KEY', name: 'x', permissionKeys: [] };
       const res = await runHandler(auth.createRole, req);
       assertEq(res.statusCode, 202, 'status 202 (validation error via fail())');
       assert(/格式/.test(res.payload.message || ''), 'rejection message about format');
     });
 
-    await test('updateRole rejects builtin role for non-root', async () => {
-      // sandbox superUid has user.role.admin but is not uid=1
+    await test('updateRole rejects non-root role admin', async () => {
       const req = makeReq(superUid, superPerms);
-      req.body = { key: 'super_admin', name: 'pwn' };
+      req.body = { key: 'test_custom1', name: 'pwn' };
       const res = await runHandler(auth.updateRole, req);
-      assertEq(res.statusCode, 202, 'status 202');
-      assert(/root/.test(res.payload.message || ''), 'rejection message mentions root');
+      assertEq(res.statusCode, 403, 'status 403');
     });
 
-    await test('updateRole accepts builtin role for root (uid=1)', async () => {
-      // Only run if uid=1 actually exists and has user.role.admin
-      const root = await db.exists('SELECT 1 FROM userInfo WHERE uid=1');
-      if (!root) return ok('skip (uid=1 absent)');
-      const rootPerms = await policy.loadEffectivePermissions(1);
-      if (!rootPerms.global.has('user.role.admin'))
-        return ok('skip (uid=1 has no user.role.admin)');
+    await test('updateRole accepts builtin role for uid=1', async () => {
       // Read current super_admin metadata so we can restore identical values.
       const before = await db.one("SELECT name, description FROM roles WHERE `key`='super_admin'");
       const linkRows = await db.query(
@@ -391,7 +390,7 @@ const cleanupSandbox = async () => {
       );
       const beforePerms = linkRows.map((r) => r.k);
 
-      const req = makeReq(1, rootPerms);
+      const req = makeReq(1, superPerms);
       req.body = {
         key: 'super_admin',
         name: before.name,                  // identical
@@ -403,7 +402,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('updateRole modifies a custom role and resets permissions', async () => {
-      const req = makeReq(superUid, superPerms);
+      const req = makeReq(1, superPerms);
       req.body = { key: 'test_custom1', name: '改了名', permissionKeys: ['contest.create', 'problem.create'] };
       const res = await runHandler(auth.updateRole, req);
       assertEq(res.statusCode, 200, 'status 200');
@@ -441,7 +440,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('deleteRole succeeds for unused custom role', async () => {
-      const req = makeReq(superUid, superPerms);
+      const req = makeReq(1, superPerms);
       req.body = { key: 'test_custom1' };
       const res = await runHandler(auth.deleteRole, req);
       assertEq(res.statusCode, 200, 'status 200');
@@ -450,13 +449,13 @@ const cleanupSandbox = async () => {
     });
 
     await test('deleteRole rejects when role still in use', async () => {
-      const r1 = makeReq(superUid, superPerms);
+      const r1 = makeReq(1, superPerms);
       r1.body = { key: 'test_custom2', name: 'x', permissionKeys: [] };
       await runHandler(auth.createRole, r1);
       const r2 = makeReq(superUid, superPerms);
       r2.body = { uid: normalUid, roleKeys: ['test_custom2'] };
       await runHandler(auth.setUserRoles, r2);
-      const r3 = makeReq(superUid, superPerms);
+      const r3 = makeReq(1, superPerms);
       r3.body = { key: 'test_custom2' };
       const res = await runHandler(auth.deleteRole, r3);
       assertEq(res.statusCode, 202, 'status 202');
@@ -464,7 +463,7 @@ const cleanupSandbox = async () => {
       const r4 = makeReq(superUid, superPerms);
       r4.body = { uid: normalUid, roleKeys: [] };
       await runHandler(auth.setUserRoles, r4);
-      const r5 = makeReq(superUid, superPerms);
+      const r5 = makeReq(1, superPerms);
       r5.body = { key: 'test_custom2' };
       const res2 = await runHandler(auth.deleteRole, r5);
       assertEq(res2.statusCode, 200, 'cleanup delete ok');
@@ -1360,9 +1359,11 @@ const cleanupSandbox = async () => {
     });
 
     await test('searchUsers: anonymous (no session) is rejected', async () => {
-      const req = { body: { q: '1' }, session: {}, perms: undefined,
+      const req = {
+        body: { q: '1' }, session: {}, perms: undefined,
         useragent: { browser: { name: 'test', version: '0' }, os: { name: 'test', version: '0' } },
-        can: () => false };
+        can: () => false
+      };
       const res = await runHandler(auth.searchUsers, req);
       assertEq(res.statusCode, 403, 'anonymous user rejected');
     });

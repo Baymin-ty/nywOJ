@@ -12,7 +12,7 @@ const requireAny = (req, ...keys) => keys.some((k) => req.can(k));
 // uid=1 is the root account: bypasses every guard, including the
 // "builtin role is read-only" rule. Everything else still goes through
 // the normal permission system.
-const isRoot = (req) => req.session && req.session.uid === 1;
+const isRoot = (req) => req.session && Number(req.session.uid) === 1;
 
 // ---------- read endpoints ----------
 
@@ -64,14 +64,14 @@ const setRolePermissions = async (roleId, permKeys) => {
 };
 
 exports.createRole = handler(async (req, res) => {
-  if (!req.can('user.role.admin')) return res.status(403).end('403 Forbidden');
+  if (!isRoot(req)) return res.status(403).end('403 Forbidden');
   const { key, name, description, permissionKeys } = req.body;
   if (!key || !name) return fail(res, '请确认信息完善');
   if (!KEY_REGEX.test(key)) return fail(res, '角色 key 格式非法（小写字母/数字/下划线）');
   const exist = await db.exists('SELECT id FROM roles WHERE `key`=?', [key]);
   if (exist) return fail(res, '该角色 key 已存在');
   const r = await db.query(
-    'INSERT INTO roles (`key`, name, description, builtin, legacy_gid) VALUES (?,?,?,0,NULL)',
+    'INSERT INTO roles (`key`, name, description, builtin) VALUES (?,?,?,0)',
     [key, name, description || null]
   );
   await setRolePermissions(r.insertId, permissionKeys || []);
@@ -80,12 +80,11 @@ exports.createRole = handler(async (req, res) => {
 });
 
 exports.updateRole = handler(async (req, res) => {
-  if (!req.can('user.role.admin')) return res.status(403).end('403 Forbidden');
+  if (!isRoot(req)) return res.status(403).end('403 Forbidden');
   const { key, name, description, permissionKeys } = req.body;
   if (!key) return fail(res, '请确认信息完善');
   const role = await db.one('SELECT id, builtin FROM roles WHERE `key`=?', [key]);
   if (!role) return fail(res, '角色不存在');
-  if (role.builtin && !isRoot(req)) return fail(res, '内置角色仅 root (uid=1) 可修改');
   if (name != null || description != null) {
     await db.query(
       'UPDATE roles SET name=COALESCE(?,name), description=COALESCE(?,description) WHERE id=?',
@@ -102,7 +101,7 @@ exports.updateRole = handler(async (req, res) => {
 });
 
 exports.deleteRole = handler(async (req, res) => {
-  if (!req.can('user.role.admin')) return res.status(403).end('403 Forbidden');
+  if (!isRoot(req)) return res.status(403).end('403 Forbidden');
   const { key } = req.body;
   if (!key) return fail(res, '请确认信息完善');
   const role = await db.one('SELECT id, builtin FROM roles WHERE `key`=?', [key]);

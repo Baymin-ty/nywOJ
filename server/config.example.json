@@ -7,8 +7,12 @@
     "databasename": "nywoj"
   },
   "EMAIL": {
+    "host": "smtp.163.com",
+    "port": 465,
+    "secure": true,
     "username": "<your-smtp-user>@163.com",
-    "password": "<your-smtp-auth-code>"
+    "password": "<your-smtp-auth-code>",
+    "from": "nywOJ <your-smtp-user@163.com>"
   },
   "SESSION": {
     "expire": "604800000"

@@ -55,9 +55,13 @@ app.use((req, res, next) => {
     next();
   } else {
     if (req.url === '/api/user/login' ||
+      req.url === '/api/user/sendLoginEmailCode' ||
+      req.url === '/api/user/loginByEmailCode' ||
       req.url === '/api/user/reg' ||
       req.url === '/api/user/setUserEmail' ||
       req.url === '/api/user/sendEmailVerifyCode' ||
+      req.url === '/api/user/sendPasswordResetCode' ||
+      req.url === '/api/user/resetPasswordByEmail' ||
       req.url === '/api/user/getUserInfo' ||
       req.url === '/api/common/getAnnouncementList' ||
       req.url === '/api/common/getHitokoto' ||
@@ -119,4 +123,3 @@ syncPermissionCatalog()
     console.error('permission catalog sync failed:', err && err.stack ? err.stack : err);
     process.exit(1);
   });
-

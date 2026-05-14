@@ -40,3 +40,9 @@ server/comparer/tmp/
 # `sync_data.sh` (rsync). Authoritative copy is the deploy server, not git.
 server/data/
 server/data_backup/
+
+# --- Server: submit-answer uploads ---
+# Per-submission answer files (./answerSubmissions/<sid>/<case>.out) and the
+# multer staging area for incoming ZIPs. Both are derivable runtime state.
+server/answerSubmissions/
+server/tmp/

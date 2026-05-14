@@ -145,7 +145,7 @@ exports.updateAnnouncement = [
 exports.listAuditLog = [
   requirePermission('audit.view'),
   handler(async (req, res) => {
-    const { offset, limit } = paginate(req, 30);
+    const { offset, limit } = paginate(req, 20);
     const filter = req.body.filter || {};
 
     const q = (filter.q || '').trim();

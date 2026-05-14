@@ -16,7 +16,7 @@
 | 后端 | Node.js · Express · express-session (MySQL store) |
 | 数据库 | MariaDB / MySQL |
 | 评测沙箱 | [go-judge](https://github.com/criyle/go-judge)（运行在 `localhost:5050`） |
-| 邮件 | Nodemailer (163 SMTP) |
+| 邮件 | Nodemailer (SMTP) |
 | IP 归属地 | ip2region |
 
 ---
@@ -24,7 +24,7 @@
 ## 功能模块 / Features
 
 ### 用户系统
-- 注册（邮箱验证码，30 秒限频）、登录、退出
+- 注册（邮箱验证码，30 秒限频）、用户名/邮箱密码登录、邮箱验证码登录、退出、邮箱找回密码
 - 密码 bcrypt 哈希存储；修改密码后吊销所有其他会话
 - 邮箱绑定 / 修改（验证码 3 分钟有效）
 - 个人资料：QQ 头像、个人主页（motto）、偏好语言
@@ -32,9 +32,9 @@
 - 安全审计日志（登录、密码修改、邮箱变更、下载测试数据等）
 
 ### 权限体系（RBAC，2026-05 重构）
-旧的 `gid` 三档模型已被 RBAC 取代：权限是细粒度的 key（如 `problem.create` /
+早期三档身份模型已被 RBAC 取代：权限是细粒度的 key（如 `problem.create` /
 `submission.rejudge.any` / `user.role.admin`），多个权限组成"角色"，用户可持
-有多个角色，最终权限取并集。`uid=1` 始终拥有全部权限（root override）。
+有多个角色，最终权限取并集。`uid=1` 始终拥有全部权限。
 
 内置角色：
 
@@ -46,7 +46,7 @@
 | `judge_admin` | 判题管理员 | `submission.view.any` / `submission.rejudge.any` |
 | `solution_admin` | 题解管理员 | `problem.solmanage`，可绑定/解绑自己可查看题目的题解，不含 `paste.edit.any` |
 | `moderator` | 管理员 | 出题 + 办赛 + 判题三合一，加 `*.manage.any` 与用户相关权限 |
-| `super_admin` | 超级管理员 | 所有权限（兼容历史 `gid=3`） |
+| `super_admin` | 超级管理员 | 所有权限 |
 
 权限可"作用域化"：`problem.manage.any` / `contest.manage.any` / `problem.view.any`
 都支持 `(resource_type, resource_id)` 绑定，资源所有者可以把这些 key 授予
@@ -183,7 +183,7 @@ cp server/config.example.json server/config.json
 字段说明：
 
 - `DB` — MySQL/MariaDB 连接信息
-- `EMAIL` — 注册 / 改邮箱使用的 SMTP 账号（默认 163）
+- `EMAIL` — 注册、登录验证码、改邮箱、找回密码使用的 SMTP 配置；`host/port/secure/from` 可选，未填时默认使用 163 SMTP
 - `SESSION.expire` — express-session cookie 过期毫秒数
 - `JUDGE.ISSERVER`
   - `true`：本机同时作为调度服务端与评测机
@@ -213,8 +213,7 @@ npm install
 node app.js                            # 监听 :1234
 ```
 
-启动时 `auth/sync.js` 会自动 reconcile 权限目录到 DB，并把历史 `userInfo.gid`
-迁移到 `user_roles`（如果列还在）。
+启动时 `auth/sync.js` 会自动 reconcile 权限目录到 DB，并同步内置角色与权限关系。
 
 ### 前端
 
@@ -271,9 +270,11 @@ npm run build        # 生产构建（输出到 web/dist/，已 git-ignored）
 
 未登录用户仅可访问白名单接口（题目列表、比赛列表、提交列表、一言等）。
 其余接口由 `auth/middleware.js` 的 `requirePermission(key)` 守卫；调用方必须
-持有该权限（直接授予或通过角色继承）。`/api/admin/*` 需要 `user.manage`，
-`/api/auth/*` 的角色 / 授权管理接口需要 `user.role.admin`，列表型只读接口
-（`listPermissions` / `listRoles` / `listUserGrants`）放开给两者任一。
+持有该权限（直接授予或通过角色继承）。`/api/admin/*` 需要 `user.manage`。
+`/api/auth/*` 中的用户角色分配与直接授权需要 `user.role.admin`；角色结构维护
+（新建角色、编辑角色权限、删除角色）仅允许 `uid=1`。列表型只读接口
+（`listPermissions` / `listRoles` / `listUserGrants`）放开给 `user.manage`
+或 `user.role.admin` 任一。
 
 ---
 

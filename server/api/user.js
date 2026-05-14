@@ -1,13 +1,64 @@
 const bcrypt = require('bcryptjs');
-const mail = require('nodemailer');
+const crypto = require('crypto');
 const db = require('../db');
 const { handler, fail, ok, paginate, buildWhere } = require('../db/util');
 const { Format, ip2loc, msFormat, recordEvent, eventList, eventExp, briefFormat } = require('../static');
 const config = require('../config.json');
 const { listGlobalKeys } = require('../auth/policy');
+const { sendVerificationCode } = require('../services/mail');
+const { judgeRes } = require('../db/format');
 
 const NAME_REGEX = /^[A-Za-z0-9]+$/;
 const EMAIL_REGEX = /^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/;
+const VERIFY_CODE_TTL_MS = 3 * 60 * 1000;
+const VERIFY_CODE_RATE_LIMIT_MS = 30 * 1000;
+
+const generateVerifyCode = () => {
+  const charset = 'abcdefghijklmnpqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ1234567890';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += charset[crypto.randomInt(charset.length)];
+  return code;
+};
+
+const normalizeEmail = (email) => String(email || '').trim();
+
+const checkRateLimit = (req, key) => {
+  const bucket = `${req.session.ip || req.ip || 'unknown'}:${key}`;
+  const last = lastSent[bucket];
+  if (last) {
+    const rest = Date.now() - last - VERIFY_CODE_RATE_LIMIT_MS;
+    if (rest < 0) return Math.ceil(rest / -1000);
+  }
+  return 0;
+};
+
+const markRateLimit = (req, key) => {
+  const bucket = `${req.session.ip || req.ip || 'unknown'}:${key}`;
+  lastSent[bucket] = Date.now();
+};
+
+const startLoginSession = async (req, user) => {
+  req.session.uid = user.uid;
+  req.session.name = user.name;
+  req.session.email = user.email;
+  recordEvent(req, 'user.login');
+
+  const now = new Date();
+  await db.query('UPDATE userInfo SET login_time=? WHERE uid=?', [now, user.uid]);
+  await db.query(
+    'INSERT INTO userSession(uid,token,browser,os,loginIp,loginLoc,time,lastact) values (?,?,?,?,?,?,?,?)',
+    [
+      user.uid,
+      req.sessionID,
+      `${req.useragent.browser.name} ${req.useragent.browser.version}`,
+      `${req.useragent.os.name} ${req.useragent.os.version}`,
+      req.session.ip,
+      ip2loc(req.session.ip),
+      now,
+      now,
+    ]
+  );
+};
 
 const revokeAllSessions = async (uid, curToken) => {
   const sessions = await db.query(
@@ -46,10 +97,15 @@ exports.reg = handler(async (req, res) => {
 });
 
 exports.login = handler(async (req, res) => {
-  const { name, pwd } = req.body;
-  if (!name || !pwd) return fail(res, '请确认信息完善');
+  const account = String(req.body.name || req.body.account || '').trim();
+  const { pwd } = req.body;
+  if (!account || !pwd) return fail(res, '请确认信息完善');
 
-  const user = await db.one('SELECT * FROM userInfo WHERE name=?', [name]);
+  const isEmail = EMAIL_REGEX.test(account);
+  const user = await db.one(
+    isEmail ? 'SELECT * FROM userInfo WHERE email=? LIMIT 1' : 'SELECT * FROM userInfo WHERE name=? LIMIT 1',
+    [account]
+  );
   if (!user) return fail(res, '请先注册后再登录');
   if (!user.inUse) {
     recordEvent(req, 'user.loginFail.userBlocked', null, user.uid);
@@ -60,26 +116,57 @@ exports.login = handler(async (req, res) => {
     return fail(res, '密码错误');
   }
 
-  req.session.uid = user.uid;
-  req.session.name = user.name;
-  req.session.email = user.email;
-  recordEvent(req, 'user.login');
+  await startLoginSession(req, user);
+  return ok(res);
+});
 
-  const now = new Date();
-  await db.query('UPDATE userInfo SET login_time=? WHERE uid=?', [now, user.uid]);
-  await db.query(
-    'INSERT INTO userSession(uid,token,browser,os,loginIp,loginLoc,time,lastact) values (?,?,?,?,?,?,?,?)',
-    [
-      user.uid,
-      req.sessionID,
-      `${req.useragent.browser.name} ${req.useragent.browser.version}`,
-      `${req.useragent.os.name} ${req.useragent.os.version}`,
-      req.session.ip,
-      ip2loc(req.session.ip),
-      now,
-      now,
-    ]
-  );
+exports.sendLoginEmailCode = handler(async (req, res) => {
+  const email = normalizeEmail(req.body.email);
+  const purpose = 'loginEmailCode';
+  const wait = checkRateLimit(req, purpose);
+  if (wait > 0) return fail(res, `请 ${wait} 秒后再试`);
+  if (!EMAIL_REGEX.test(email)) return fail(res, '请检查邮箱是否合法');
+
+  const user = await db.one('SELECT uid, name, email, inUse FROM userInfo WHERE email=? LIMIT 1', [email]);
+  if (user && user.inUse) {
+    const verifyCode = generateVerifyCode();
+    req.session.emailLogin = {
+      uid: user.uid,
+      email,
+      code: verifyCode,
+      expire: Date.now() + VERIFY_CODE_TTL_MS,
+    };
+    await sendVerificationCode({
+      to: email,
+      purpose,
+      code: verifyCode,
+      name: user.name,
+    });
+    recordEvent(req, 'auth.sendLoginEmailCode', { to: email }, user.uid);
+  } else {
+    req.session.emailLogin = null;
+  }
+
+  markRateLimit(req, purpose);
+  return ok(res, { message: '如果该邮箱已绑定账号，验证码会发送到该邮箱' });
+});
+
+exports.loginByEmailCode = handler(async (req, res) => {
+  const login = req.session.emailLogin;
+  const code = String(req.body.code || '').trim();
+  if (!login || !code) return fail(res, '请确认信息完善且操作正确');
+  if (Date.now() > login.expire) return fail(res, '验证码超时');
+  if (code !== login.code) return fail(res, '验证码错误');
+
+  const user = await db.one('SELECT * FROM userInfo WHERE uid=? AND email=? LIMIT 1', [login.uid, login.email]);
+  if (!user) return fail(res, '账号不存在');
+  if (!user.inUse) {
+    recordEvent(req, 'user.loginFail.userBlocked', null, user.uid);
+    return fail(res, '你号没了');
+  }
+
+  await startLoginSession(req, user);
+  req.session.emailLogin = null;
   return ok(res);
 });
 
@@ -108,7 +195,7 @@ exports.getUserInfo = handler(async (req, res) => {
     permissions,
     // uid=1 is the root account: bypasses every guard, including the
     // "builtin role is read-only" rule in /api/auth/updateRole.
-    isRoot: req.session.uid === 1,
+    isRoot: Number(req.session.uid) === 1,
   });
 });
 
@@ -122,60 +209,43 @@ exports.logout = handler(async (req, res) => {
 let lastSent = {};
 
 exports.sendEmailVerifyCode = handler(async (req, res) => {
-  const { email } = req.body;
-
-  if (lastSent[req.session.ip]) {
-    const rest = Date.now() - lastSent[req.session.ip] - 30 * 1000;
-    if (rest < 0) return fail(res, `请 ${Math.ceil(rest / -1000)} 秒后再试`);
-  }
+  const email = normalizeEmail(req.body.email);
+  const purpose = req.body.update ? 'changeEmail' : 'bindEmail';
+  if (purpose === 'changeEmail' && !req.session.uid) return fail(res, '请先登录');
+  const wait = checkRateLimit(req, purpose);
+  if (wait > 0) return fail(res, `请 ${wait} 秒后再试`);
   if (!EMAIL_REGEX.test(email)) return fail(res, '请检查邮箱是否合法');
 
-  const charset = 'abcdefghijklmnpqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ1234567890';
-  let verifyCode = '';
-  for (let i = 0; i < 6; i++) verifyCode += charset.charAt(Math.floor(Math.random() * 60));
+  const verifyCode = generateVerifyCode();
 
   req.session.verifyCode = {
     code: verifyCode,
-    expire: Date.now() + 3 * 60 * 1000,
+    expire: Date.now() + VERIFY_CODE_TTL_MS,
     email,
-  };
-
-  const transporter = mail.createTransport({
-    host: 'smtp.163.com',
-    port: 465,
-    secureConnection: true,
-    auth: { user: config.EMAIL.username, pass: config.EMAIL.password },
-  });
-
-  const mailOptions = {
-    from: 'nywojservice@163.com',
-    to: email,
-    subject: req.body.update ? 'nywOJ修改邮箱验证码' : 'nywOJ绑定邮箱验证码',
-    text: req.body.update
-      ? `你正在nywOJ进行修改邮箱操作(用户名: ${req.session.name}), 验证码为 ${verifyCode}\n该验证码3分钟内有效。`
-      : `你正在nywOJ进行绑定邮箱操作,验证码为 ${verifyCode}\n该验证码3分钟内有效。`,
+    purpose,
   };
 
   if (req.session.uid) {
-    recordEvent(req, 'auth.sendEmailVerifyCode', { to: email });
+    recordEvent(req, 'auth.sendEmailVerifyCode', { to: email, purpose });
   }
 
-  await new Promise((resolve, reject) => {
-    transporter.sendMail(mailOptions, (err) => (err ? reject(err) : resolve()));
-  });
-  lastSent[req.session.ip] = Date.now();
+  await sendVerificationCode({ to: email, purpose, code: verifyCode, name: req.session.name });
+  markRateLimit(req, purpose);
   return ok(res);
 });
 
 exports.setUserEmail = handler(async (req, res) => {
-  const userCode = req.body.code;
+  const userCode = String(req.body.code || '').trim();
+  const purpose = req.body.update ? 'changeEmail' : 'bindEmail';
+  if (purpose === 'changeEmail' && !req.session.uid) return fail(res, '请先登录');
   if (!req.session.verifyCode || !userCode) return fail(res, '请确认信息完善且操作正确');
+  if (req.session.verifyCode.purpose !== purpose) return fail(res, '请重新获取验证码');
   if (userCode !== req.session.verifyCode.code) return fail(res, '验证码错误');
   if (Date.now() > req.session.verifyCode.expire) return fail(res, '验证码超时');
 
   const newEmail = req.session.verifyCode.email;
-  const taken = await db.exists('SELECT email FROM userInfo WHERE email=?', [newEmail]);
-  if (taken) return fail(res, '此邮箱已绑定过其他账号');
+  const taken = await db.one('SELECT uid FROM userInfo WHERE email=? LIMIT 1', [newEmail]);
+  if (taken && (!req.body.update || taken.uid !== req.session.uid)) return fail(res, '此邮箱已绑定过其他账号');
 
   if (!req.body.update) {
     req.session.verifiedEmail = {
@@ -195,6 +265,58 @@ exports.setUserEmail = handler(async (req, res) => {
   return ok(res, { message: '更新邮箱成功' });
 });
 
+exports.sendPasswordResetCode = handler(async (req, res) => {
+  const email = normalizeEmail(req.body.email);
+  const purpose = 'resetPassword';
+  const wait = checkRateLimit(req, purpose);
+  if (wait > 0) return fail(res, `请 ${wait} 秒后再试`);
+  if (!EMAIL_REGEX.test(email)) return fail(res, '请检查邮箱是否合法');
+
+  const user = await db.one('SELECT uid, name, inUse FROM userInfo WHERE email=? LIMIT 1', [email]);
+  if (user && user.inUse) {
+    const verifyCode = generateVerifyCode();
+    req.session.passwordReset = {
+      uid: user.uid,
+      email,
+      code: verifyCode,
+      expire: Date.now() + VERIFY_CODE_TTL_MS,
+    };
+    await sendVerificationCode({
+      to: email,
+      purpose,
+      code: verifyCode,
+      name: user.name,
+    });
+    recordEvent(req, 'auth.sendPasswordResetCode', { to: email }, user.uid);
+  } else {
+    req.session.passwordReset = null;
+  }
+
+  markRateLimit(req, purpose);
+  return ok(res, { message: '如果该邮箱已绑定账号，验证码会发送到该邮箱' });
+});
+
+exports.resetPasswordByEmail = handler(async (req, res) => {
+  const reset = req.session.passwordReset;
+  const code = String(req.body.code || '').trim();
+  const { pwd, rePwd } = req.body;
+  if (!reset || !code || !pwd || !rePwd) return fail(res, '请确认信息完善且操作正确');
+  if (Date.now() > reset.expire) return fail(res, '验证码超时');
+  if (code !== reset.code) return fail(res, '验证码错误');
+  if (pwd !== rePwd) return fail(res, '两次输入的密码不一致');
+  if (pwd.length > 31 || pwd.length < 6) return fail(res, '密码长度应在6~31之间');
+
+  const user = await db.one('SELECT uid, inUse FROM userInfo WHERE uid=? AND email=?', [reset.uid, reset.email]);
+  if (!user || !user.inUse) return fail(res, '账号不存在或不可用');
+
+  const updPwd = bcrypt.hashSync(pwd, 12);
+  await db.query('UPDATE userInfo SET pwd=? WHERE uid=?', [updPwd, reset.uid]);
+  await revokeAllSessions(reset.uid, null);
+  recordEvent(req, 'auth.resetPasswordByEmail', { email: reset.email }, reset.uid);
+  req.session.passwordReset = null;
+  return ok(res, { message: '密码已重置，请重新登录' });
+});
+
 exports.getUserPublicInfo = handler(async (req, res) => {
   const { uid } = req.body;
   const info = await db.one(
@@ -210,7 +332,34 @@ exports.getUserPublicInfo = handler(async (req, res) => {
     [uid],
     'k'
   );
-  if (!req.can('user.list') && req.session.uid !== info.uid) {
+  const [heatmap, resultRows] = await Promise.all([
+    db.query(
+      `SELECT DATE_FORMAT(submitTime, '%Y-%m-%d') AS date, COUNT(*) AS cnt
+       FROM submission
+       WHERE uid=? AND submitTime >= DATE_SUB(CURDATE(), INTERVAL 89 DAY)
+       GROUP BY DATE_FORMAT(submitTime, '%Y-%m-%d')
+       ORDER BY date`,
+      [uid]
+    ),
+    db.query(
+      'SELECT judgeResult, COUNT(*) AS cnt FROM submission WHERE uid=? GROUP BY judgeResult ORDER BY cnt DESC',
+      [uid]
+    ),
+  ]);
+  const resultStats = resultRows.map((r) => ({
+    resultId: r.judgeResult,
+    result: judgeRes[r.judgeResult] || `Result ${r.judgeResult}`,
+    cnt: r.cnt,
+  }));
+  info.submissionStats = {
+    heatmap: heatmap.map((r) => ({ date: r.date, cnt: r.cnt })),
+    results: resultStats,
+    total: resultStats.reduce((sum, r) => sum + Number(r.cnt || 0), 0),
+    accepted: resultStats
+      .filter((r) => r.resultId === 4)
+      .reduce((sum, r) => sum + Number(r.cnt || 0), 0),
+  };
+  if (!req.can('user.list') && Number(req.session.uid) !== Number(info.uid)) {
     delete info.login_time;
     delete info.email;
   }
@@ -270,7 +419,7 @@ exports.updateUserPublicInfo = handler(async (req, res) => {
 });
 
 exports.listAudits = handler(async (req, res) => {
-  const { offset, limit } = paginate(req, 10);
+  const { offset, limit } = paginate(req, 20);
   const filter = req.body.filter || {};
   const q = (filter.q || '').trim();
   const qLike = q ? `%${q}%` : null;
