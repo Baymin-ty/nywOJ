@@ -167,18 +167,23 @@ exports.receiveTask = handler(async (req, res) => {
 
 exports.submit = handler(async (req, res) => {
   const { code, pid, lang } = req.body;
+  const langId = parseInt(lang, 10);
   if (!pid) return fail(res, '请确认信息完善');
   const auth = await problemAuth(req, pid);
   if (!auth.view) return fail(res, '权限不足');
   if (code.length < 10) return fail(res, '代码太短');
   if (code.length > 1024 * 100) return fail(res, '选手提交的程序源文件必须不大于 100KB。');
+  if (!Number.isSafeInteger(langId) || langId <= 0) return fail(res, '非法语言');
+
+  const langRow = await db.one('SELECT name FROM languages WHERE id=?', [langId]);
+  if (!langRow || !getLanguage(langRow.name)) return fail(res, '非法语言');
 
   const alang = await getProblemLang(pid);
-  if (!((1 << lang) & alang)) return fail(res, '非法语言');
+  if (!((1 << langId) & alang)) return fail(res, '非法语言');
 
   const r = await db.query(
     'INSERT INTO submission(pid,uid,code,codelength,submitTime,lang) VALUES (?,?,?,?,?,?)',
-    [pid, req.session.uid, code, code.length, new Date(), lang]
+    [pid, req.session.uid, code, code.length, new Date(), langId]
   );
   if (!r.affectedRows) return fail(res, 'error');
 
@@ -566,9 +571,10 @@ exports.cancelSubmission = [
 ];
 
 exports.getLangs = handler(async (req, res) => {
-  const data = await db.query('SELECT id,des,lang FROM languages');
-  const langList = data.reduce((acc, i) => {
-    acc[i.id] = i;
+  const data = await db.query('SELECT id,name,des,lang FROM languages');
+  const langList = data.filter((i) => getLanguage(i.name)).reduce((acc, i) => {
+    const { name, ...payload } = i;
+    acc[i.id] = payload;
     return acc;
   }, {});
   return ok(res, { data: langList });

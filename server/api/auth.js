@@ -198,10 +198,10 @@ const fetchOwner = async (resourceType, resourceId) => {
 };
 
 const canManageResourceCollab = async (req, resourceType, resourceId) => {
-  if (req.can('user.role.admin')) return true;
   if (!resourceType || resourceId == null) return false;
   const owner = await fetchOwner(resourceType, resourceId);
   if (owner == null) return false;
+  if (req.can('user.role.admin')) return true;
   return owner === req.session.uid;
 };
 
@@ -213,6 +213,59 @@ const canViewResourceCollab = async (req, resourceType, resourceId) => {
   if (resourceType === 'contest')
     return req.can('contest.manage.any', { type: 'contest', id: resourceId });
   return false;
+};
+
+const scopedResourceIds = (req, permissionKeys, resourceType) => {
+  const ids = new Set();
+  const prefix = `${resourceType}:`;
+  for (const key of permissionKeys) {
+    const bucket = req.perms?.scoped?.get(key);
+    if (!bucket) continue;
+    for (const tag of bucket) {
+      if (!tag.startsWith(prefix)) continue;
+      const id = Number(tag.slice(prefix.length));
+      if (Number.isSafeInteger(id) && id > 0) ids.add(id);
+    }
+  }
+  return [...ids];
+};
+
+const buildProblemSearchVisibility = (req) => {
+  if (req.can('user.role.admin') || req.can('problem.view.any') || req.can('problem.manage.any')) {
+    return { sql: '1=1', params: [] };
+  }
+  const parts = ['isPublic=1'];
+  const params = [];
+  if (req.session.uid) {
+    parts.push('publisher=?');
+    params.push(req.session.uid);
+  }
+  const scopedPids = scopedResourceIds(req, ['problem.manage.any', 'problem.view.any'], 'problem');
+  if (scopedPids.length) {
+    parts.push(`pid IN (${scopedPids.map(() => '?').join(',')})`);
+    params.push(...scopedPids);
+  }
+  return { sql: `(${parts.join(' OR ')})`, params };
+};
+
+const buildContestSearchVisibility = (req) => {
+  if (req.can('user.role.admin') || req.can('contest.manage.any')) {
+    return { sql: '1=1', params: [] };
+  }
+  const parts = ['isPublic=1'];
+  const params = [];
+  if (req.session.uid) {
+    parts.push('host=?');
+    params.push(req.session.uid);
+    parts.push('cid IN (SELECT cpv.cid FROM contestPlayer cpv WHERE cpv.uid=?)');
+    params.push(req.session.uid);
+  }
+  const scopedCids = scopedResourceIds(req, ['contest.manage.any'], 'contest');
+  if (scopedCids.length) {
+    parts.push(`cid IN (${scopedCids.map(() => '?').join(',')})`);
+    params.push(...scopedCids);
+  }
+  return { sql: `(${parts.join(' OR ')})`, params };
 };
 
 exports.grantUserPermission = handler(async (req, res) => {
@@ -362,27 +415,20 @@ exports.searchUsers = handler(async (req, res) => {
   return ok(res, { users: rows });
 });
 
-// Resource pickers for the grant UI. The admin/global grant flow uses
-// user.permission.grant; owners use them while building their collaborator
-// list, so we only require login + visibility (the queries already respect
-// public-vs-private via the regular problem/contest list endpoints — these
-// are idx-by-name pickers, not bulk dumps, and the result is gated by what
-// you'd see on the public problem/contest list anyway).
+// Resource pickers for the grant UI. Role admins can search globally; owners,
+// registered users and scoped collaborators only see resources already visible
+// to them, so private titles do not become searchable side channels.
 exports.searchProblems = handler(async (req, res) => {
   if (!req.session.uid) return res.status(403).end('403 Forbidden');
   const q = (req.body.q || '').trim();
   if (!q) return ok(res, { problems: [] });
-  const canViewAny = req.can('problem.view.any');
-  const visibility = canViewAny
-    ? '1=1'
-    : '(isPublic=1 OR publisher=?)';
-  const visParams = canViewAny ? [] : [req.session.uid];
+  const visibility = buildProblemSearchVisibility(req);
   const isNumeric = /^\d+$/.test(q);
   const rows = await db.query(
     `SELECT pid, title FROM problem
-     WHERE ${visibility} AND ${isNumeric ? '(pid=? OR title LIKE ?)' : 'title LIKE ?'}
+     WHERE ${visibility.sql} AND ${isNumeric ? '(pid=? OR title LIKE ?)' : 'title LIKE ?'}
      ORDER BY pid DESC LIMIT 20`,
-    [...visParams, ...(isNumeric ? [parseInt(q, 10), `%${q}%`] : [`%${q}%`])]
+    [...visibility.params, ...(isNumeric ? [parseInt(q, 10), `%${q}%`] : [`%${q}%`])]
   );
   return ok(res, { problems: rows });
 });
@@ -391,12 +437,13 @@ exports.searchContests = handler(async (req, res) => {
   if (!req.session.uid) return res.status(403).end('403 Forbidden');
   const q = (req.body.q || '').trim();
   if (!q) return ok(res, { contests: [] });
+  const visibility = buildContestSearchVisibility(req);
   const isNumeric = /^\d+$/.test(q);
   const rows = await db.query(
     `SELECT cid, title FROM contest
-     WHERE ${isNumeric ? 'cid=? OR title LIKE ?' : 'title LIKE ?'}
+     WHERE ${visibility.sql} AND ${isNumeric ? '(cid=? OR title LIKE ?)' : 'title LIKE ?'}
      ORDER BY cid DESC LIMIT 20`,
-    isNumeric ? [parseInt(q, 10), `%${q}%`] : [`%${q}%`]
+    [...visibility.params, ...(isNumeric ? [parseInt(q, 10), `%${q}%`] : [`%${q}%`])]
   );
   return ok(res, { contests: rows });
 });

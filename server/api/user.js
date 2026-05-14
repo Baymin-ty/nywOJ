@@ -359,7 +359,7 @@ exports.getUserPublicInfo = handler(async (req, res) => {
       .filter((r) => r.resultId === 4)
       .reduce((sum, r) => sum + Number(r.cnt || 0), 0),
   };
-  if (!req.can('user.list') && Number(req.session.uid) !== Number(info.uid)) {
+  if (!req.can('user.manage') && !req.can('user.role.admin') && Number(req.session.uid) !== Number(info.uid)) {
     delete info.login_time;
     delete info.email;
   }

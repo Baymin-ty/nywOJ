@@ -14,6 +14,7 @@ const { syncPermissionCatalog } = require('./sync');
 const { PERMISSIONS, BUILTIN_ROLES, RESOURCE_GRANTABLE } = require('./permissions');
 
 const auth = require('../api/auth');
+const contestApi = require('../api/contest');
 
 let pass = 0, fail = 0;
 const results = [];
@@ -275,8 +276,7 @@ const cleanupSandbox = async () => {
     await test('searchProblems / searchContests are open to any logged-in user', async () => {
       // Resource owners need these pickers to find their own problems/contests
       // when adding collaborators — gating on user.permission.grant would
-      // lock them out. The pickers respect visibility: searchProblems hides
-      // private problems unless the caller has problem.view.any.
+      // lock them out. The pickers still respect resource visibility.
       policy.invalidate(normalUid);
       const r1 = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
       r1.body = { q: '1' };
@@ -318,12 +318,97 @@ const cleanupSandbox = async () => {
       }
     });
 
+    await test('searchProblems includes private problems from scoped grants', async () => {
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
+        ['_test_p_search_scoped_view_unique_xyz', 'desc', superUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        const perm = await db.one("SELECT id FROM permissions WHERE `key`='problem.view.any'");
+        await db.query(
+          `INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)`,
+          [normalUid, perm.id, 'allow', 'problem', pid]
+        );
+        policy.invalidate(normalUid);
+        const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+        req.body = { q: '_test_p_search_scoped_view_unique_xyz' };
+        const res = await runHandler(auth.searchProblems, req);
+        assert(res.payload.problems.some((p) => p.pid === pid),
+          'scoped view collaborator sees private problem in search');
+      } finally {
+        await db.query('DELETE FROM user_permissions WHERE uid=? AND resource_type=? AND resource_id=?', [normalUid, 'problem', pid]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+      }
+    });
+
     await test('searchProblems works for super_admin', async () => {
       const req = makeReq(superUid, superPerms);
       req.body = { q: '1' }; // numeric — searches by pid OR title
       const res = await runHandler(auth.searchProblems, req);
       assertEq(res.statusCode, 200, 'status 200');
       assert(Array.isArray(res.payload.problems), 'problems array');
+    });
+
+    await test('searchContests and getContestList hide private contests unless visible', async () => {
+      const start = new Date(2999, 0, 1);
+      const hidden = await db.query(
+        `INSERT INTO contest(title, host, start, length, type, isPublic) VALUES (?,?,?,?,?,?)`,
+        ['_test_c_search_hidden_unique_xyz', superUid, start, 60, 0, 0]
+      );
+      const hosted = await db.query(
+        `INSERT INTO contest(title, host, start, length, type, isPublic) VALUES (?,?,?,?,?,?)`,
+        ['_test_c_search_hosted_unique_xyz', normalUid, start, 60, 0, 0]
+      );
+      const registered = await db.query(
+        `INSERT INTO contest(title, host, start, length, type, isPublic) VALUES (?,?,?,?,?,?)`,
+        ['_test_c_search_registered_unique_xyz', superUid, start, 60, 0, 0]
+      );
+      const scoped = await db.query(
+        `INSERT INTO contest(title, host, start, length, type, isPublic) VALUES (?,?,?,?,?,?)`,
+        ['_test_c_search_scoped_unique_xyz', superUid, start, 60, 0, 0]
+      );
+      try {
+        await db.query('INSERT INTO contestPlayer(cid,uid) VALUES (?,?)', [registered.insertId, normalUid]);
+        const perm = await db.one("SELECT id FROM permissions WHERE `key`='contest.manage.any'");
+        await db.query(
+          `INSERT INTO user_permissions (uid, permission_id, effect, resource_type, resource_id) VALUES (?,?,?,?,?)`,
+          [normalUid, perm.id, 'allow', 'contest', scoped.insertId]
+        );
+        policy.invalidate(normalUid);
+        const perms = await policy.loadEffectivePermissions(normalUid);
+
+        const hiddenReq = makeReq(normalUid, perms);
+        hiddenReq.body = { q: '_test_c_search_hidden_unique_xyz' };
+        const hiddenRes = await runHandler(auth.searchContests, hiddenReq);
+        assert(!hiddenRes.payload.contests.some((c) => c.cid === hidden.insertId),
+          'unrelated private contest hidden from search');
+
+        for (const [title, cid] of [
+          ['_test_c_search_hosted_unique_xyz', hosted.insertId],
+          ['_test_c_search_registered_unique_xyz', registered.insertId],
+          ['_test_c_search_scoped_unique_xyz', scoped.insertId],
+        ]) {
+          const req = makeReq(normalUid, perms);
+          req.body = { q: title };
+          const res = await runHandler(auth.searchContests, req);
+          assert(res.payload.contests.some((c) => c.cid === cid), `${title} visible in search`);
+        }
+
+        const listReq = makeReq(normalUid, perms);
+        listReq.body = { pageId: 1, pageSize: 100 };
+        const listRes = await runHandler(contestApi.getContestList, listReq);
+        const listed = new Set(listRes.payload.data.map((c) => c.cid));
+        assert(!listed.has(hidden.insertId), 'unrelated private contest hidden from list');
+        assert(listed.has(hosted.insertId), 'hosted private contest visible in list');
+        assert(listed.has(registered.insertId), 'registered private contest visible in list');
+        assert(listed.has(scoped.insertId), 'scoped private contest visible in list');
+      } finally {
+        const ids = [hidden.insertId, hosted.insertId, registered.insertId, scoped.insertId];
+        await db.query('DELETE FROM user_permissions WHERE resource_type=? AND resource_id IN (?)', ['contest', ids]);
+        await db.query('DELETE FROM contestPlayer WHERE cid IN (?)', [ids]);
+        await db.query('DELETE FROM contest WHERE cid IN (?)', [ids]);
+      }
     });
 
     await test('listPermissions returns 403 for normal user', async () => {
@@ -470,53 +555,71 @@ const cleanupSandbox = async () => {
     });
 
     await test('grantUserPermission rejects scoped grant on non-scopable key', async () => {
+      const p = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags) VALUES (?,?,?,NOW(),?)`,
+        ['_test_non_scopable_grant', 'desc', superUid, '[]']
+      );
       const req = makeReq(superUid, superPerms);
       req.body = {
         uid: normalUid, permissionKey: 'problem.create', effect: 'allow',
-        resourceType: 'problem', resourceId: 99,
+        resourceType: 'problem', resourceId: p.insertId,
       };
-      const res = await runHandler(auth.grantUserPermission, req);
-      assertEq(res.statusCode, 202, 'status 202');
-      assert(/作用域/.test(res.payload.message || ''), 'rejection mentions scope');
+      try {
+        const res = await runHandler(auth.grantUserPermission, req);
+        assertEq(res.statusCode, 202, 'status 202');
+        assert(/作用域/.test(res.payload.message || ''), 'rejection mentions scope');
+      } finally {
+        await db.query('DELETE FROM problem WHERE pid=?', [p.insertId]);
+      }
     });
 
     await test('grantUserPermission upserts scoped allow then revokeUserPermission removes it', async () => {
+      const p = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags) VALUES (?,?,?,NOW(),?)`,
+        ['_test_grant_scope', 'desc', superUid, '[]']
+      );
+      const pid = p.insertId;
       const req = makeReq(superUid, superPerms);
       req.body = {
         uid: normalUid, permissionKey: 'problem.manage.any', effect: 'allow',
-        resourceType: 'problem', resourceId: 7,
+        resourceType: 'problem', resourceId: pid,
       };
-      const res = await runHandler(auth.grantUserPermission, req);
-      assertEq(res.statusCode, 200, 'grant ok');
+      try {
+        const res = await runHandler(auth.grantUserPermission, req);
+        assertEq(res.statusCode, 200, 'grant ok');
 
-      policy.invalidate(normalUid);
-      const p1 = await policy.loadEffectivePermissions(normalUid);
-      assert(p1.scoped.get('problem.manage.any')?.has('problem:7'), 'scoped grant active');
+        policy.invalidate(normalUid);
+        const p1 = await policy.loadEffectivePermissions(normalUid);
+        assert(p1.scoped.get('problem.manage.any')?.has(`problem:${pid}`), 'scoped grant active');
 
-      const req2 = makeReq(superUid, superPerms);
-      req2.body = { ...req.body, expiresAt: new Date(Date.now() + 60_000).toISOString() };
-      const res2 = await runHandler(auth.grantUserPermission, req2);
-      assertEq(res2.statusCode, 200, 'upsert ok');
-      const cnt = await db.one(
-        `SELECT COUNT(*) c FROM user_permissions up JOIN permissions p ON p.id=up.permission_id
-         WHERE up.uid=? AND p.\`key\`='problem.manage.any' AND up.resource_type='problem' AND up.resource_id=7`,
-        [normalUid]
-      );
-      assertEq(cnt.c, 1, 'exactly one row (upserted)');
+        const req2 = makeReq(superUid, superPerms);
+        req2.body = { ...req.body, expiresAt: new Date(Date.now() + 60_000).toISOString() };
+        const res2 = await runHandler(auth.grantUserPermission, req2);
+        assertEq(res2.statusCode, 200, 'upsert ok');
+        const cnt = await db.one(
+          `SELECT COUNT(*) c FROM user_permissions up JOIN permissions p ON p.id=up.permission_id
+           WHERE up.uid=? AND p.\`key\`='problem.manage.any' AND up.resource_type='problem' AND up.resource_id=?`,
+          [normalUid, pid]
+        );
+        assertEq(cnt.c, 1, 'exactly one row (upserted)');
 
-      const row = await db.one(
-        `SELECT up.id FROM user_permissions up JOIN permissions p ON p.id=up.permission_id
-         WHERE up.uid=? AND p.\`key\`='problem.manage.any' AND up.resource_type='problem' AND up.resource_id=7`,
-        [normalUid]
-      );
-      const req3 = makeReq(superUid, superPerms);
-      req3.body = { id: row.id };
-      const res3 = await runHandler(auth.revokeUserPermission, req3);
-      assertEq(res3.statusCode, 200, 'revoke ok');
+        const row = await db.one(
+          `SELECT up.id FROM user_permissions up JOIN permissions p ON p.id=up.permission_id
+           WHERE up.uid=? AND p.\`key\`='problem.manage.any' AND up.resource_type='problem' AND up.resource_id=?`,
+          [normalUid, pid]
+        );
+        const req3 = makeReq(superUid, superPerms);
+        req3.body = { id: row.id };
+        const res3 = await runHandler(auth.revokeUserPermission, req3);
+        assertEq(res3.statusCode, 200, 'revoke ok');
 
-      policy.invalidate(normalUid);
-      const p2 = await policy.loadEffectivePermissions(normalUid);
-      assert(!p2.scoped.get('problem.manage.any')?.has('problem:7'), 'scoped grant gone');
+        policy.invalidate(normalUid);
+        const p2 = await policy.loadEffectivePermissions(normalUid);
+        assert(!p2.scoped.get('problem.manage.any')?.has(`problem:${pid}`), 'scoped grant gone');
+      } finally {
+        await db.query('DELETE FROM user_permissions WHERE resource_type=? AND resource_id=?', ['problem', pid]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+      }
     });
 
     await test('listUserGrants returns roles + permissions', async () => {
@@ -589,6 +692,19 @@ const cleanupSandbox = async () => {
         await db.query('DELETE FROM user_permissions WHERE resource_type=? AND resource_id=?', ['problem', pid]);
         await db.query('DELETE FROM problem WHERE pid=?', [pid]);
       }
+    });
+
+    await test('scoped grants reject missing resources even for super_admin', async () => {
+      const req = makeReq(superUid, superPerms);
+      req.body = {
+        uid: normalUid,
+        permissionKey: 'problem.view.any',
+        effect: 'allow',
+        resourceType: 'problem',
+        resourceId: 999999999,
+      };
+      const res = await runHandler(auth.grantUserPermission, req);
+      assertEq(res.statusCode, 403, 'missing resource rejected');
     });
 
     await test('listResourceGrants returns all grants on a resource for the owner', async () => {

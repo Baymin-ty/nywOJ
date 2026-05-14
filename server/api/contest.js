@@ -34,6 +34,35 @@ const contestStatus = (info) => {
 const isReg = (uid, cid) =>
   db.exists('SELECT 1 FROM contestPlayer WHERE uid=? AND cid=? LIMIT 1', [uid, cid]);
 
+const scopedContestIds = (req) => {
+  const ids = new Set();
+  const bucket = req.perms?.scoped?.get('contest.manage.any');
+  if (!bucket) return [];
+  for (const tag of bucket) {
+    const m = /^contest:(\d+)$/.exec(tag);
+    if (m) ids.add(Number(m[1]));
+  }
+  return [...ids];
+};
+
+const contestListVisibility = (req) => {
+  if (req.can('contest.manage.any')) return { where: '', params: [] };
+  const parts = ['c.isPublic=1'];
+  const params = [];
+  if (req.session.uid) {
+    parts.push('c.host=?');
+    params.push(req.session.uid);
+    parts.push('EXISTS (SELECT 1 FROM contestPlayer cpv WHERE cpv.cid=c.cid AND cpv.uid=?)');
+    params.push(req.session.uid);
+  }
+  const scopedCids = scopedContestIds(req);
+  if (scopedCids.length) {
+    parts.push(`c.cid IN (${scopedCids.map(() => '?').join(',')})`);
+    params.push(...scopedCids);
+  }
+  return { where: `WHERE (${parts.join(' OR ')})`, params };
+};
+
 const playerCnt = async (cid) => {
   const r = await db.one('SELECT COUNT(*) as cnt FROM contestPlayer WHERE cid=?', [cid]);
   return r.cnt;
@@ -114,10 +143,11 @@ exports.updateContestInfo = [
 
 exports.getContestList = handler(async (req, res) => {
   const { offset, limit } = paginate(req);
+  const visibility = contestListVisibility(req);
   const list = await db.query(
     'SELECT c.cid,c.title,c.start,c.length,c.isPublic,c.type,c.host,c.done,u.name as hostName ' +
-    'FROM contest c INNER JOIN userInfo u ON u.uid = c.host ORDER BY c.start DESC LIMIT ?,?',
-    [offset, limit]
+    `FROM contest c INNER JOIN userInfo u ON u.uid = c.host ${visibility.where} ORDER BY c.start DESC LIMIT ?,?`,
+    [...visibility.params, offset, limit]
   );
   for (const c of list) {
     c.type = ctype[c.type];
@@ -125,7 +155,7 @@ exports.getContestList = handler(async (req, res) => {
     c.start = Format(c.start);
     c.playerCnt = await playerCnt(c.cid);
   }
-  const cnt = await db.one('SELECT COUNT(*) as total FROM contest');
+  const cnt = await db.one(`SELECT COUNT(*) as total FROM contest c ${visibility.where}`, visibility.params);
   return ok(res, { total: cnt.total, data: list });
 });
 

@@ -2,35 +2,72 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const yauzl = require('yauzl');
-const { setFile } = require('../file');
 const compressing = require('compressing');
 const { problemAuth } = require('./problem');
 
 const CASE_MAX_TOTAL_SIZE = 200 * 1024 * 1024; // 200MB limit
+const DATA_ROOT = path.resolve(__dirname, '..', 'data');
+const CASE_TMP_DIR = path.resolve(__dirname, '..', 'tmp', 'caseUpload');
 
-// Check zip file size before extraction. `unlimited=true` skips the cap (super-admin equivalent).
-const checkZipSize = (zipPath, unlimited, maxTotalSize) => {
+const removeIfExists = (target) => {
+  if (target && fs.existsSync(target)) {
+    fs.rmSync(target, { recursive: true, force: true });
+  }
+};
+
+const randomSuffix = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+const parsePid = (value) => {
+  const raw = String(value == null ? '' : value).trim();
+  if (!/^\d+$/.test(raw)) return null;
+  const pid = Number(raw);
+  return Number.isSafeInteger(pid) && pid > 0 ? pid : null;
+};
+
+const hasUnsafeZipEntry = (fileName) => {
+  const normalized = path.posix.normalize(String(fileName || '').replace(/\\/g, '/'));
+  return normalized === '..' || normalized.startsWith('../') || path.posix.isAbsolute(normalized);
+};
+
+const isZipSymlink = (entry) => {
+  const mode = (entry.externalFileAttributes >>> 16) & 0o170000;
+  return mode === 0o120000;
+};
+
+// Validate zip paths and total extracted size before extraction.
+// `unlimited=true` skips the size cap (super-admin equivalent), but never path safety.
+const validateZip = (zipPath, unlimited, maxTotalSize) => {
   return new Promise((resolve, reject) => {
-    if (unlimited) {
-      resolve(true);
-      return;
-    }
-
+    let settled = false;
     let totalSize = 0;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+
     yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
-      if (err) reject(err);
+      if (err) return reject(err);
 
       zipfile.on('entry', (entry) => {
-        totalSize += entry.uncompressedSize;
-        if (totalSize > maxTotalSize) {
+        if (hasUnsafeZipEntry(entry.fileName)) {
           zipfile.close();
-          resolve(false);
+          return finish({ ok: false, err: 'ZIP包含非法路径' });
+        }
+        if (isZipSymlink(entry)) {
+          zipfile.close();
+          return finish({ ok: false, err: 'ZIP包含符号链接' });
+        }
+        totalSize += entry.uncompressedSize;
+        if (!unlimited && totalSize > maxTotalSize) {
+          zipfile.close();
+          return finish({ ok: false, err: 'Total uncompressed size exceeds 200MB limit' });
         }
         zipfile.readEntry();
       });
 
       zipfile.on('end', () => {
-        resolve(true);
+        finish({ ok: true });
       });
 
       zipfile.on('error', (err) => {
@@ -49,15 +86,11 @@ const caseUpload = () => {
     },
     storage: multer.diskStorage({
       destination: (req, file, cb) => {
-        const dir = "./data/" + req.body.pid;
-        if (fs.existsSync(dir)) {
-          fs.rmSync(dir, { recursive: true });
-        }
-        fs.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
+        fs.mkdirSync(CASE_TMP_DIR, { recursive: true });
+        cb(null, CASE_TMP_DIR);
       },
       filename: (req, file, cb) => {
-        cb(null, 'data.zip');
+        cb(null, `${randomSuffix()}.zip`);
       }
     })
   });
@@ -89,41 +122,68 @@ const processUploadedFiles = async (files, destination) => {
 };
 
 const handleCaseUpload = async (req, res) => {
+  let workDir = null;
   try {
-    if (!(await problemAuth(req, req.body.pid)).manage) {
+    const pid = parsePid(req.body.pid);
+    if (!pid) {
+      removeIfExists(req.file && req.file.path);
+      return res.status(202).send({ err: '非法pid参数' });
+    }
+    if (!req.file || !req.file.path) {
+      return res.status(202).send({ err: '未上传文件' });
+    }
+    if (!(await problemAuth(req, pid)).manage) {
+      removeIfExists(req.file.path);
       return res.status(403).end('403 Forbidden');
     }
 
-    const isSizeValid = await checkZipSize(req.file.path, req.can('problem.manage.any'), CASE_MAX_TOTAL_SIZE);
-    if (!isSizeValid) {
-      fs.unlinkSync(req.file.path); // delete
-      return res.status(202).send({
-        err: "Total uncompressed size exceeds 200MB limit"
-      });
+    const validation = await validateZip(req.file.path, req.can('problem.manage.any'), CASE_MAX_TOTAL_SIZE);
+    if (!validation.ok) {
+      removeIfExists(req.file.path);
+      return res.status(202).send({ err: validation.err });
     }
 
-    await compressing.zip.uncompress(req.file.path, req.file.destination);
+    workDir = path.join(CASE_TMP_DIR, `extract-${randomSuffix()}`);
+    fs.mkdirSync(workDir, { recursive: true });
+    await compressing.zip.uncompress(req.file.path, workDir);
+    removeIfExists(req.file.path);
 
-    fs.readdir(req.file.destination, async (err, files) => {
-      if (err)
-        return res.status(202).send({ err: err });
-      const uniqueCases = await processUploadedFiles(files, req.file.destination);
-      const config = {
-        cases: uniqueCases,
-        subtask: [{
-          index: 1,
-          score: 100,
-          option: 0,
-          skip: false
-        }]
-      };
-      await setFile(`${req.file.destination}/config.json`, JSON.stringify(config));
-      res.json({ file: req.file });
-    });
+    const files = await fs.promises.readdir(workDir);
+    const uniqueCases = await processUploadedFiles(files, workDir);
+    const config = {
+      cases: uniqueCases,
+      subtask: [{
+        index: 1,
+        score: 100,
+        option: 0,
+        skip: false
+      }]
+    };
+    await fs.promises.writeFile(path.join(workDir, 'config.json'), JSON.stringify(config));
+
+    fs.mkdirSync(DATA_ROOT, { recursive: true });
+    const destination = path.join(DATA_ROOT, String(pid));
+    const backupDir = fs.existsSync(destination)
+      ? path.join(DATA_ROOT, `.${pid}.backup-${randomSuffix()}`)
+      : null;
+    if (backupDir) fs.renameSync(destination, backupDir);
+    try {
+      fs.renameSync(workDir, destination);
+      workDir = null;
+      removeIfExists(backupDir);
+    } catch (err) {
+      if (backupDir && fs.existsSync(backupDir) && !fs.existsSync(destination)) {
+        fs.renameSync(backupDir, destination);
+      }
+      throw err;
+    }
+
+    res.json({ file: { ...req.file, destination: `./data/${pid}` } });
   } catch (error) {
     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+      removeIfExists(req.file.path);
     }
+    removeIfExists(workDir);
     res.status(202).send({ err: error.message });
   }
 };
