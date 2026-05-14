@@ -367,7 +367,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('updateRole rejects builtin role for non-root', async () => {
-      // sandbox superUid has user.role.assign but is not uid=1
+      // sandbox superUid has user.role.admin but is not uid=1
       const req = makeReq(superUid, superPerms);
       req.body = { key: 'super_admin', name: 'pwn' };
       const res = await runHandler(auth.updateRole, req);
@@ -376,12 +376,12 @@ const cleanupSandbox = async () => {
     });
 
     await test('updateRole accepts builtin role for root (uid=1)', async () => {
-      // Only run if uid=1 actually exists and has user.role.assign
+      // Only run if uid=1 actually exists and has user.role.admin
       const root = await db.exists('SELECT 1 FROM userInfo WHERE uid=1');
       if (!root) return ok('skip (uid=1 absent)');
       const rootPerms = await policy.loadEffectivePermissions(1);
-      if (!rootPerms.global.has('user.role.assign'))
-        return ok('skip (uid=1 has no user.role.assign)');
+      if (!rootPerms.global.has('user.role.admin'))
+        return ok('skip (uid=1 has no user.role.admin)');
       // Read current super_admin metadata so we can restore identical values.
       const before = await db.one("SELECT name, description FROM roles WHERE `key`='super_admin'");
       const linkRows = await db.query(
@@ -624,7 +624,7 @@ const cleanupSandbox = async () => {
     // -------- 8. requirePermission middleware --------
     await test('requirePermission middleware blocks insufficient perms', async () => {
       const { requirePermission } = require('./middleware');
-      const mw = requirePermission('user.role.assign');
+      const mw = requirePermission('user.role.admin');
       // Strip every role + grant from normalUid first.
       await db.query('DELETE FROM user_roles WHERE uid=?', [normalUid]);
       await db.query('DELETE FROM user_permissions WHERE uid=?', [normalUid]);
@@ -642,7 +642,7 @@ const cleanupSandbox = async () => {
 
     await test('requirePermission middleware lets super_admin through', async () => {
       const { requirePermission } = require('./middleware');
-      const mw = requirePermission('user.role.assign');
+      const mw = requirePermission('user.role.admin');
       const req = makeReq(superUid, superPerms);
       const res = fakeRes();
       let nextCalled = false;
@@ -814,6 +814,18 @@ const cleanupSandbox = async () => {
       assertSetEq(RESOURCE_GRANTABLE.problem,
         ['problem.manage.any', 'problem.view.any'],
         'problem grantable list');
+    });
+
+    await test('solution_admin role grants problem.solmanage without paste.edit.any', async () => {
+      const role = await db.one('SELECT id FROM roles WHERE `key`=?', ['solution_admin']);
+      const links = await db.query(
+        `SELECT p.\`key\` AS k FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id=?`,
+        [role.id]
+      );
+      const keys = new Set(links.map((l) => l.k));
+      assert(keys.has('problem.solmanage'), 'solution_admin has problem.solmanage');
+      assert(!keys.has('paste.edit.any'), 'solution_admin does not get paste.edit.any');
+      assert(!keys.has('problem.manage.any'), 'solution_admin does not get problem.manage.any');
     });
 
     // -------- 10. New contest permission model (manage.any / manage.self) --------
@@ -1071,7 +1083,272 @@ const cleanupSandbox = async () => {
       }
     });
 
-    // -------- 12. searchUsers is now open to any logged-in user --------
+    // -------- 12. Solution binding permissions --------
+    await test('solution_admin can bind and unbind public paste on a viewable problem without problem manage', async () => {
+      const problemApi = require('../api/problem');
+      const solutionUid = await mkUser(['solution_admin']);
+      const ownerUid = await mkUser([]);
+      const mark = `_test_sol_pub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,1)`,
+        ['_test_solution_public_problem', 'desc', ownerUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        await db.query(
+          'INSERT INTO pastes(mark,title,content,uid,time,isPublic) VALUES (?,?,?,?,NOW(),1)',
+          [mark, '_test public sol', 'content', ownerUid]
+        );
+        policy.invalidate(solutionUid);
+        const req = makeReq(solutionUid, await policy.loadEffectivePermissions(solutionUid));
+        req.body = { pid, mark };
+        const bindRes = await runHandler(problemApi.bindPaste2Problem, req);
+        assertEq(bindRes.statusCode, 200, 'solution_admin can bind public paste');
+
+        const link = await db.one('SELECT id, `show` FROM problemSolution WHERE pid=? AND mark=?', [pid, mark]);
+        assert(link && link.show === 1, 'problemSolution link created');
+
+        req.body = { pid };
+        const authRes = await runHandler(problemApi.getProblemAuth, req);
+        assertEq(authRes.payload.data.manage, false, 'solution_admin still cannot manage problem');
+        assertEq(authRes.payload.data.solutionManage, true, 'solution_admin can manage solutions for viewable problem');
+
+        req.body = { id: link.id };
+        const unbindRes = await runHandler(problemApi.unbindSol, req);
+        assertEq(unbindRes.statusCode, 200, 'solution_admin can unbind solution');
+        const after = await db.one('SELECT `show` FROM problemSolution WHERE id=?', [link.id]);
+        assertEq(after.show, 0, 'problemSolution link hidden after unbind');
+      } finally {
+        await db.query('DELETE FROM problemSolution WHERE mark=?', [mark]);
+        await db.query('DELETE FROM pastes WHERE mark=?', [mark]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+        policy.invalidate(solutionUid);
+      }
+    });
+
+    await test('solution_admin cannot bind another user private paste', async () => {
+      const problemApi = require('../api/problem');
+      const solutionUid = await mkUser(['solution_admin']);
+      const ownerUid = await mkUser([]);
+      const mark = `_test_sol_private_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,1)`,
+        ['_test_solution_private_problem', 'desc', ownerUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        await db.query(
+          'INSERT INTO pastes(mark,title,content,uid,time,isPublic) VALUES (?,?,?,?,NOW(),0)',
+          [mark, '_test private sol', 'content', ownerUid]
+        );
+        policy.invalidate(solutionUid);
+        const req = makeReq(solutionUid, await policy.loadEffectivePermissions(solutionUid));
+        req.body = { pid, mark };
+        const res = await runHandler(problemApi.bindPaste2Problem, req);
+        assertEq(res.statusCode, 202, 'private paste bind rejected');
+        assert(/有权查看/.test(res.payload.message || ''), 'message explains paste visibility');
+        const linked = await db.exists('SELECT 1 FROM problemSolution WHERE pid=? AND mark=?', [pid, mark]);
+        assert(!linked, 'private paste was not linked');
+      } finally {
+        await db.query('DELETE FROM problemSolution WHERE mark=?', [mark]);
+        await db.query('DELETE FROM pastes WHERE mark=?', [mark]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+        policy.invalidate(solutionUid);
+      }
+    });
+
+    await test('bindPaste2Problem rejects duplicate active binding', async () => {
+      const problemApi = require('../api/problem');
+      const solutionUid = await mkUser(['solution_admin']);
+      const ownerUid = await mkUser([]);
+      const mark = `_test_sol_duplicate_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,1)`,
+        ['_test_solution_duplicate_problem', 'desc', ownerUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        await db.query(
+          'INSERT INTO pastes(mark,title,content,uid,time,isPublic) VALUES (?,?,?,?,NOW(),1)',
+          [mark, '_test duplicate sol', 'content', ownerUid]
+        );
+        policy.invalidate(solutionUid);
+        const req = makeReq(solutionUid, await policy.loadEffectivePermissions(solutionUid));
+        req.body = { pid, mark };
+        const first = await runHandler(problemApi.bindPaste2Problem, req);
+        assertEq(first.statusCode, 200, 'first bind succeeds');
+        const second = await runHandler(problemApi.bindPaste2Problem, req);
+        assertEq(second.statusCode, 202, 'second bind rejected');
+        assert(/已绑定/.test(second.payload.message || ''), 'duplicate message explains binding exists');
+        const cnt = await db.one('SELECT COUNT(*) AS cnt FROM problemSolution WHERE pid=? AND mark=? AND `show`=1', [pid, mark]);
+        assertEq(cnt.cnt, 1, 'only one active binding remains');
+      } finally {
+        await db.query('DELETE FROM problemSolution WHERE mark=?', [mark]);
+        await db.query('DELETE FROM pastes WHERE mark=?', [mark]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+      }
+    });
+
+    await test('getProblemSol deduplicates legacy duplicate rows and unbind hides all copies', async () => {
+      const problemApi = require('../api/problem');
+      const solutionUid = await mkUser(['solution_admin']);
+      const ownerUid = await mkUser([]);
+      const mark = `_test_sol_legacy_dup_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,1)`,
+        ['_test_solution_legacy_duplicate_problem', 'desc', ownerUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        await db.query(
+          'INSERT INTO pastes(mark,title,content,uid,time,isPublic) VALUES (?,?,?,?,NOW(),1)',
+          [mark, '_test legacy duplicate sol', 'content', ownerUid]
+        );
+        await db.query('INSERT INTO problemSolution(pid,mark) VALUES (?,?),(?,?)', [pid, mark, pid, mark]);
+        const req = makeReq(solutionUid, await policy.loadEffectivePermissions(solutionUid));
+        req.body = { pid };
+        const listRes = await runHandler(problemApi.getProblemSol, req);
+        assertEq(listRes.statusCode, 200, 'solution list succeeds with duplicates');
+        const rows = listRes.payload.data.filter((row) => row.mark === mark);
+        assertEq(rows.length, 1, 'legacy duplicate rows are displayed once');
+
+        req.body = { id: rows[0].id };
+        const unbindRes = await runHandler(problemApi.unbindSol, req);
+        assertEq(unbindRes.statusCode, 200, 'unbind succeeds');
+        const active = await db.one('SELECT COUNT(*) AS cnt FROM problemSolution WHERE pid=? AND mark=? AND `show`=1', [pid, mark]);
+        assertEq(active.cnt, 0, 'all duplicate active rows hidden');
+      } finally {
+        await db.query('DELETE FROM problemSolution WHERE mark=?', [mark]);
+        await db.query('DELETE FROM pastes WHERE mark=?', [mark]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+      }
+    });
+
+    await test('solution_admin cannot bind on a private problem they cannot view', async () => {
+      const problemApi = require('../api/problem');
+      const solutionUid = await mkUser(['solution_admin']);
+      const ownerUid = await mkUser([]);
+      const mark = `_test_sol_private_problem_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
+        ['_test_solution_private_unviewable_problem', 'desc', ownerUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        await db.query(
+          'INSERT INTO pastes(mark,title,content,uid,time,isPublic) VALUES (?,?,?,?,NOW(),1)',
+          [mark, '_test public sol private problem', 'content', ownerUid]
+        );
+        policy.invalidate(solutionUid);
+        const req = makeReq(solutionUid, await policy.loadEffectivePermissions(solutionUid));
+        req.body = { pid, mark };
+        const res = await runHandler(problemApi.bindPaste2Problem, req);
+        assertEq(res.statusCode, 202, 'unviewable problem bind rejected');
+        const linked = await db.exists('SELECT 1 FROM problemSolution WHERE pid=? AND mark=?', [pid, mark]);
+        assert(!linked, 'solution was not linked to unviewable problem');
+      } finally {
+        await db.query('DELETE FROM problemSolution WHERE mark=?', [mark]);
+        await db.query('DELETE FROM pastes WHERE mark=?', [mark]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+        policy.invalidate(solutionUid);
+      }
+    });
+
+    await test('solution_admin cannot edit another user paste', async () => {
+      const commonApi = require('../api/common');
+      const solutionUid = await mkUser(['solution_admin']);
+      const ownerUid = await mkUser([]);
+      const mark = `_test_sol_no_edit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      try {
+        await db.query(
+          'INSERT INTO pastes(mark,title,content,uid,time,isPublic) VALUES (?,?,?,?,NOW(),1)',
+          [mark, '_test original title', 'content', ownerUid]
+        );
+        policy.invalidate(solutionUid);
+        const req = makeReq(solutionUid, await policy.loadEffectivePermissions(solutionUid));
+        req.body = {
+          paste: {
+            mark,
+            title: '_test changed title',
+            content: 'changed',
+            isPublic: 1,
+          },
+        };
+        const res = await runHandler(commonApi.updatePaste, req);
+        assertEq(res.statusCode, 202, 'solution_admin paste edit rejected');
+        const paste = await db.one('SELECT title FROM pastes WHERE mark=?', [mark]);
+        assertEq(paste.title, '_test original title', 'paste title unchanged');
+      } finally {
+        await db.query('DELETE FROM pastes WHERE mark=?', [mark]);
+        policy.invalidate(solutionUid);
+      }
+    });
+
+    await test('getProblemSol hides private paste metadata from users who cannot view that paste', async () => {
+      const problemApi = require('../api/problem');
+      const pasteOwnerUid = await mkUser([]);
+      const viewerUid = await mkUser([]);
+      const mark = `_test_sol_hidden_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const r = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,1)`,
+        ['_test_solution_hidden_problem', 'desc', pasteOwnerUid, '[]']
+      );
+      const pid = r.insertId;
+      try {
+        await db.query(
+          'INSERT INTO pastes(mark,title,content,uid,time,isPublic) VALUES (?,?,?,?,NOW(),0)',
+          [mark, '_test hidden sol', 'content', pasteOwnerUid]
+        );
+        await db.query('INSERT INTO problemSolution(pid,mark) VALUES (?,?)', [pid, mark]);
+
+        const viewerReq = makeReq(viewerUid, await policy.loadEffectivePermissions(viewerUid));
+        viewerReq.body = { pid };
+        const viewerRes = await runHandler(problemApi.getProblemSol, viewerReq);
+        assertEq(viewerRes.statusCode, 200, 'viewer can list solutions');
+        assert(!viewerRes.payload.data.some((row) => row.mark === mark), 'private paste metadata hidden from viewer');
+
+        const ownerReq = makeReq(pasteOwnerUid, await policy.loadEffectivePermissions(pasteOwnerUid));
+        ownerReq.body = { pid };
+        const ownerRes = await runHandler(problemApi.getProblemSol, ownerReq);
+        assert(ownerRes.payload.data.some((row) => row.mark === mark), 'paste owner still sees private solution row');
+      } finally {
+        await db.query('DELETE FROM problemSolution WHERE mark=?', [mark]);
+        await db.query('DELETE FROM pastes WHERE mark=?', [mark]);
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]);
+      }
+    });
+
+    // -------- 13. Personal audit filters --------
+    await test('listAudits filters current user audit rows by eventType and keyword', async () => {
+      const userApi = require('../api/user');
+      const marker = `_self_audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      try {
+        await db.query(
+          `INSERT INTO userAudit(uid, event, ip, iploc, time, browser, os, detail)
+           VALUES (?, 5, '127.0.0.1', '本地', NOW(), 'test-browser', 'test-os', ?)`,
+          [normalUid, JSON.stringify({ marker })]
+        );
+        await db.query(
+          `INSERT INTO userAudit(uid, event, ip, iploc, time, browser, os, detail)
+           VALUES (?, 4, '127.0.0.1', '本地', NOW(), 'test-browser', 'test-os', ?)`,
+          [normalUid, JSON.stringify({ marker: marker + '_other' })]
+        );
+        const req = makeReq(normalUid, await policy.loadEffectivePermissions(normalUid));
+        req.body = { filter: { eventType: 5, q: marker } };
+        const res = await runHandler(userApi.listAudits, req);
+        assertEq(res.statusCode, 200, 'status 200');
+        assert(res.payload.data.length >= 1, 'filtered self audit rows returned');
+        assert(Array.isArray(res.payload.eventList), 'event catalog returned');
+        for (const r of res.payload.data) {
+          assertEq(r.event, 'auth.changePassword', 'self audit rows match eventType');
+          assert(String(r.detail || '').includes(marker), 'self audit rows match keyword marker');
+        }
+      } finally {
+        await db.query('DELETE FROM userAudit WHERE detail LIKE ?', [`%${marker}%`]);
+      }
+    });
+
+    // -------- 14. searchUsers is now open to any logged-in user --------
     await test('searchUsers: any logged-in user can search (was: only role/grant holders)', async () => {
       // normalUid currently has no roles/perms (cleaned in earlier tests).
       policy.invalidate(normalUid);

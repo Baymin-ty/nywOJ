@@ -170,6 +170,8 @@ const PERMISSION_RENAMES = [
   ['user.ban',              'user.manage'],
   ['user.role.assign',      'user.role.admin'],
   ['user.permission.grant', 'user.role.admin'],
+  // 2026-05: early draft key for solution binding management.
+  ['solution.manage',       'problem.solmanage'],
 ];
 
 // Permission keys that are deleted outright (no successor). All

@@ -11,6 +11,7 @@ const PERMISSIONS = {
   // its submission list, and submission details — but NOT manage it.
   // Granted globally (e.g. problem_setter role), it covers every problem.
   'problem.view.any':     { group: 'problem', name: '查看所有题目', description: '查看题目（含非公开）及其非比赛提交。可被全局或单题授予', scopable: true },
+  'problem.solmanage':    { group: 'problem', name: '管理题解绑定', description: '绑定/解绑自己可查看题目的题解，不包含编辑他人 paste' },
 
   'contest.create':                { group: 'contest', name: '创建比赛' },
   'contest.manage.any':            { group: 'contest', name: '管理任意比赛', description: '编辑/管理选手/查看提交/重测提交 任意比赛', scopable: true },
@@ -60,6 +61,10 @@ const JUDGE_ADMIN_PERMS = [
   'submission.rejudge.any',
 ];
 
+const SOLUTION_ADMIN_PERMS = [
+  'problem.solmanage',
+];
+
 const MODERATOR_PERMS = Array.from(new Set([
   ...PROBLEM_SETTER_PERMS,
   ...CONTEST_MANAGER_PERMS,
@@ -79,6 +84,7 @@ const BUILTIN_ROLES = {
   problem_setter:  { name: '出题人',       legacy_gid: null, description: '可创建/编辑题目并管理数据', permissions: PROBLEM_SETTER_PERMS },
   contest_manager: { name: '比赛管理员',   legacy_gid: null, description: '可创建并管理比赛', permissions: CONTEST_MANAGER_PERMS },
   judge_admin:     { name: '判题管理员',   legacy_gid: null, description: '可重测并查看所有提交', permissions: JUDGE_ADMIN_PERMS },
+  solution_admin:  { name: '题解管理员',   legacy_gid: null, description: '可管理自己可查看题目的题解绑定', permissions: SOLUTION_ADMIN_PERMS },
   moderator:       { name: '管理员',       legacy_gid: 2, description: '出题/办赛/判题三合一（兼容 gid=2）', permissions: MODERATOR_PERMS },
   super_admin:     { name: '超级管理员',   legacy_gid: 3, description: '拥有全部权限（兼容 gid=3）', permissions: SUPER_ADMIN_PERMS },
 };

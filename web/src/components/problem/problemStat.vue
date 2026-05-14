@@ -15,7 +15,7 @@
         <template #header>
           <div class="card-header">
             题解
-            <el-button-group v-if="$can('problem.manage.any')">
+            <el-button-group v-if="canManageSolutions">
               <el-button type="success" :disabled="!bindMark.length" @click="bindPaste2Problem">
                 <el-icon class="el-icon--left">
                   <Plus />
@@ -47,7 +47,7 @@
             </template>
           </el-table-column>
           <el-table-column prop="time" label="更新时间" min-width="20%" />
-          <el-table-column v-if="$can('problem.manage.any')" label="操作" min-width="15%">
+          <el-table-column v-if="canManageSolutions" label="操作" min-width="15%">
             <template #default="scope">
               <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认解绑?"
                 @confirm="unbindSol(scope.row.id)">
@@ -106,11 +106,17 @@ import { resColor } from '@/assets/common'
 
 export default {
   name: "problemStat",
+  computed: {
+    canManageSolutions() {
+      return !!(this.auth && this.auth.solutionManage);
+    },
+  },
   data() {
     return {
       pid: 0,
       submissionList: [],
       solList: [],
+      auth: { view: false, manage: false, solutionManage: false },
       bindMark: '',
       submissionOption: {
         tooltip: {
@@ -222,6 +228,13 @@ export default {
         }
       });
     },
+    getAuth() {
+      axios.post('/api/problem/getProblemAuth', { pid: this.pid }).then(res => {
+        if (res.status === 200) {
+          this.auth = res.data.data || { view: false, manage: false, solutionManage: false };
+        }
+      });
+    },
     bindPaste2Problem() {
       axios.post('/api/problem/bindPaste2Problem', {
         pid: this.pid,
@@ -263,6 +276,7 @@ export default {
   },
   mounted() {
     this.pid = this.$route.params.pid;
+    this.getAuth();
     this.getSubmissionBar();
     this.getFastestSubmission();
     this.getSol();

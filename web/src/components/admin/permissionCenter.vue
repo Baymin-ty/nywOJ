@@ -315,6 +315,19 @@
             <el-button size="small" plain :icon="Refresh" @click="loadAuditLog">刷新</el-button>
           </div>
         </div>
+        <div class="toolbar audit-toolbar">
+          <el-input v-model="auditFilter.actorUid" clearable placeholder="UID" style="width: 100px;"
+            @keyup.enter="onAuditFilterChange" @clear="onAuditFilterChange" />
+          <el-select v-model="auditFilter.eventType" placeholder="全部事件" clearable filterable style="width: 210px;" @change="onAuditFilterChange">
+            <el-option v-for="e in auditEventOptions" :key="e.id" :label="e.name" :value="e.id" />
+          </el-select>
+          <el-input v-model="auditFilter.q" clearable placeholder="搜索用户 / IP / 设备 / 事件 / 详情" style="width: 280px;"
+            @keyup.enter="onAuditFilterChange" @clear="onAuditFilterChange" />
+          <el-date-picker v-model="auditFilter.timeRange" type="datetimerange" start-placeholder="开始时间" end-placeholder="结束时间"
+            value-format="YYYY-MM-DD HH:mm:ss" style="width: 360px;" @change="onAuditFilterChange" />
+          <el-button size="small" type="primary" plain @click="onAuditFilterChange">筛选</el-button>
+          <el-button size="small" plain @click="resetAuditFilter">重置</el-button>
+        </div>
         <div class="user-table-wrap">
           <table class="user-table" v-loading="auditLoading">
             <thead>
@@ -632,6 +645,9 @@ export default {
       auditTotal: 0,
       auditPage: 1,
       auditLoading: false,
+      auditFilter: { actorUid: '', eventType: '', q: '', timeRange: [] },
+      auditEventKeys: [],
+      auditEventNames: [],
       // edit drawer
       editDrawerVisible: false,
       editingUser: null,
@@ -658,15 +674,24 @@ export default {
   computed: {
     canAssignRoles() { return can('user.role.admin'); },
     canGrantPerm() { return can('user.role.admin'); },
+    canAuditView() { return can('audit.view'); },
     isRoot() { return this.$store.state.isRoot; },
     sidebarItems() {
-      return [
+      const items = [
         { id: 'users', label: '用户列表', icon: 'User', badge: this.total || null },
         { id: 'matrix', label: '角色权限矩阵', icon: 'Grid', badge: this.roles.length || null },
         { id: 'roles', label: '角色管理', icon: 'Lock' },
         { id: 'catalog', label: '权限目录', icon: 'Document', badge: this.permissions.length || null },
-        { id: 'audit', label: '审计日志', icon: 'List' },
+        this.canAuditView ? { id: 'audit', label: '审计日志', icon: 'List' } : null,
       ];
+      return items.filter(Boolean);
+    },
+    auditEventOptions() {
+      return (this.auditEventKeys || []).map((key, id) => ({
+        id,
+        key,
+        name: `${this.auditEventNames[id] || key} · ${key}`,
+      }));
     },
     statItems() {
       if (!this.stats) return [];
@@ -736,6 +761,10 @@ export default {
   },
   watch: {
     activeTab(tab) {
+      if (tab === 'audit' && !this.canAuditView) {
+        this.activeTab = 'users';
+        return;
+      }
       if (tab === 'audit' && this.auditList.length === 0) this.loadAuditLog();
     },
     editTab(tab) {
@@ -744,7 +773,7 @@ export default {
   },
   async mounted() {
     const q = this.$route.query || {};
-    if (q.tab) this.activeTab = q.tab;
+    if (q.tab && this.sidebarItems.some((item) => item.id === q.tab)) this.activeTab = q.tab;
     await this.reloadAll();
     this.loadUsers();
     this.loadStats();
@@ -988,13 +1017,40 @@ export default {
     },
 
     // ---- Audit log ----
+    auditRequestFilter() {
+      const filter = {};
+      if (this.auditFilter.actorUid && String(this.auditFilter.actorUid).trim()) {
+        filter.actorUid = String(this.auditFilter.actorUid).trim();
+      }
+      if (this.auditFilter.eventType !== '' && this.auditFilter.eventType != null) filter.eventType = this.auditFilter.eventType;
+      if (this.auditFilter.q && this.auditFilter.q.trim()) filter.q = this.auditFilter.q.trim();
+      if (this.auditFilter.timeRange && this.auditFilter.timeRange.length === 2) {
+        filter.startTime = this.auditFilter.timeRange[0];
+        filter.endTime = this.auditFilter.timeRange[1];
+      }
+      return filter;
+    },
+    onAuditFilterChange() {
+      this.auditPage = 1;
+      this.loadAuditLog();
+    },
+    resetAuditFilter() {
+      this.auditFilter = { actorUid: '', eventType: '', q: '', timeRange: [] };
+      this.onAuditFilterChange();
+    },
     async loadAuditLog() {
+      if (!this.canAuditView) return;
       this.auditLoading = true;
       try {
-        const res = await axios.post('/api/admin/listAuditLog', { pageId: this.auditPage });
+        const res = await axios.post('/api/admin/listAuditLog', {
+          pageId: this.auditPage,
+          filter: this.auditRequestFilter(),
+        });
         if (res.status === 200) {
           this.auditList = res.data.list || [];
           this.auditTotal = res.data.total || 0;
+          this.auditEventKeys = res.data.eventList || this.auditEventKeys;
+          this.auditEventNames = res.data.eventExp || this.auditEventNames;
         }
       } catch (e) {
         ElMessage.error(e.message || '加载失败');

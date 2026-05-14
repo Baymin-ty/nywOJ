@@ -9,24 +9,33 @@ const { briefFormat, Format, bFormat, recordEvent, kbFormat } = require('../stat
 const { judgeRes, ptype } = require('../db/format');
 
 // ---- shared helpers ----
-// view   = public OR owner OR problem.view.any (global or scoped to this pid) OR canManage
-// manage = (owner AND problem.manage.self) OR problem.manage.any (scoped or global)
+// view           = public OR owner OR problem.view.any (global or scoped to this pid) OR canManage
+// manage         = (owner AND problem.manage.self) OR problem.manage.any (scoped or global)
+// solutionManage = manage OR (view AND problem.solmanage)
 //   problem.manage.self lets a user edit their own problems; without it, even
 //   the original creator can no longer manage the problem after creation.
 //   problem.view.any can now be granted scoped to a single pid as a
 //   "view-only collaborator" perm — see RESOURCE_GRANTABLE.problem.
+//   problem.solmanage is deliberately separate: it only manages problemSolution
+//   bindings and does not grant paste.edit.any or any problem editing rights.
 const problemAuth = async (req, pid) => {
   const row = await db.one('SELECT isPublic,publisher FROM problem WHERE pid=?', [pid]);
-  if (!row) return { view: false, manage: false };
+  if (!row) return { view: false, manage: false, solutionManage: false };
   const scope = { type: 'problem', id: Number(pid) };
   const isOwner = row.publisher === req.session.uid;
   const canManage = (isOwner && req.can('problem.manage.self')) || req.can('problem.manage.any', scope);
+  const canView = !!row.isPublic || isOwner || req.can('problem.view.any', scope) || canManage;
   return {
-    view: !!row.isPublic || isOwner || req.can('problem.view.any', scope) || canManage,
+    view: canView,
     manage: canManage,
+    solutionManage: canManage || (canView && req.can('problem.solmanage')),
   };
 };
 exports.problemAuth = problemAuth;
+
+const canViewPaste = (req, paste) => {
+  return !!paste.isPublic || paste.uid === (req.session && req.session.uid) || req.can('paste.edit.any');
+};
 
 const getProblemLang = async (pid) => {
   const row = await db.one('SELECT lang FROM problem WHERE pid=?', [pid]);
@@ -410,10 +419,19 @@ exports.getProblemFastestSubmission = handler(async (req, res) => {
 exports.bindPaste2Problem = handler(async (req, res) => {
   const { pid, mark } = req.body;
   if (!pid || !mark) return fail(res, 'expect pid && mark');
-  if (!(await problemAuth(req, pid)).manage) return fail(res, '权限不足');
+  if (!(await problemAuth(req, pid)).solutionManage) return fail(res, '权限不足');
 
-  const exists = await db.exists('SELECT 1 FROM pastes WHERE mark=?', [mark]);
-  if (!exists) return fail(res, `未找到mark为${mark}的剪贴板`);
+  const paste = await db.one('SELECT uid,isPublic FROM pastes WHERE mark=?', [mark]);
+  if (!paste) return fail(res, `未找到mark为${mark}的剪贴板`);
+  if (!canViewPaste(req, paste)) return fail(res, '只能绑定你有权查看的剪贴板');
+  const active = await db.exists('SELECT 1 FROM problemSolution WHERE pid=? AND mark=? AND `show`=1', [pid, mark]);
+  if (active) return fail(res, '该题解已绑定');
+  const hidden = await db.one('SELECT id FROM problemSolution WHERE pid=? AND mark=? ORDER BY id DESC LIMIT 1', [pid, mark]);
+  if (hidden) {
+    await db.query('UPDATE problemSolution SET `show`=0 WHERE pid=? AND mark=?', [pid, mark]);
+    await db.query('UPDATE problemSolution SET `show`=1 WHERE id=?', [hidden.id]);
+    return ok(res);
+  }
   await db.query('INSERT INTO problemSolution(pid,mark) VALUES (?,?)', [pid, mark]);
   return ok(res);
 });
@@ -423,11 +441,15 @@ exports.getProblemSol = handler(async (req, res) => {
   if (!pid) return fail(res, 'expect pid');
   if (!(await problemAuth(req, pid)).view) return fail(res, '权限不足');
 
+  const params = [pid];
+  const pasteVisibleCond = req.can('paste.edit.any') ? '' : ' AND (p.isPublic=1 OR p.uid=?)';
+  if (pasteVisibleCond) params.push(req.session.uid || 0);
   const data = await db.query(
     'SELECT s.id,s.mark,p.uid,p.title,u.name,p.time,p.isPublic ' +
-      'FROM problemSolution s INNER JOIN pastes p ON s.mark=p.mark INNER JOIN userInfo u ON p.uid=u.uid ' +
-      'WHERE s.show=1 AND s.pid=? ORDER BY p.time',
-    [pid]
+      'FROM problemSolution s INNER JOIN (SELECT MIN(id) AS id FROM problemSolution WHERE `show`=1 AND pid=? GROUP BY mark) one ON one.id=s.id ' +
+      'INNER JOIN pastes p ON s.mark=p.mark INNER JOIN userInfo u ON p.uid=u.uid ' +
+      `WHERE s.show=1${pasteVisibleCond} ORDER BY p.time`,
+    params
   );
   for (const r of data) r.time = briefFormat(r.time);
   return ok(res, { data });
@@ -435,10 +457,10 @@ exports.getProblemSol = handler(async (req, res) => {
 
 exports.unbindSol = handler(async (req, res) => {
   const { id } = req.body;
-  const sol = await db.one('SELECT pid FROM problemSolution WHERE id=?', [id]);
+  const sol = await db.one('SELECT pid,mark FROM problemSolution WHERE id=?', [id]);
   if (!sol) return fail(res, '记录不存在');
-  if (!(await problemAuth(req, sol.pid)).manage) return fail(res, '权限不足');
-  await db.query('UPDATE problemSolution SET `show`=0 WHERE id=?', [id]);
+  if (!(await problemAuth(req, sol.pid)).solutionManage) return fail(res, '权限不足');
+  await db.query('UPDATE problemSolution SET `show`=0 WHERE pid=? AND mark=?', [sol.pid, sol.mark]);
   return ok(res);
 });
 

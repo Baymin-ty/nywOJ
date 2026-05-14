@@ -148,19 +148,31 @@ exports.listAuditLog = [
     const { offset, limit } = paginate(req, 30);
     const filter = req.body.filter || {};
 
-    let where = '';
-    const params = [];
-
-    const conditions = [];
-    if (filter.actorUid) {
-      conditions.push('a.uid=?');
-      params.push(Number(filter.actorUid));
-    }
-    if (filter.eventType != null && filter.eventType !== '') {
-      conditions.push('a.event=?');
-      params.push(Number(filter.eventType));
-    }
-    if (conditions.length) where = ' WHERE ' + conditions.join(' AND ');
+    const q = (filter.q || '').trim();
+    const qLike = q ? `%${q}%` : null;
+    const actorUid = filter.actorUid === '' || filter.actorUid == null ? null : Number(filter.actorUid);
+    const eventType = filter.eventType === '' || filter.eventType == null ? null : Number(filter.eventType);
+    const startTime = filter.startTime ? new Date(filter.startTime) : null;
+    const endTime = filter.endTime ? new Date(filter.endTime) : null;
+    const eventIds = q
+      ? eventList
+        .map((key, id) => ({ id, key, name: eventExp[id] || '' }))
+        .filter((e) => e.key.includes(q) || e.name.includes(q))
+        .map((e) => e.id)
+      : [];
+    const qClause = eventIds.length
+      ? `(a.event IN (${eventIds.map(() => '?').join(',')}) OR u.name LIKE ? OR a.ip LIKE ? OR a.iploc LIKE ? OR a.browser LIKE ? OR a.os LIKE ? OR a.detail LIKE ?)`
+      : '(u.name LIKE ? OR a.ip LIKE ? OR a.iploc LIKE ? OR a.browser LIKE ? OR a.os LIKE ? OR a.detail LIKE ?)';
+    const qValues = eventIds.length
+      ? [...eventIds, qLike, qLike, qLike, qLike, qLike, qLike]
+      : [qLike, qLike, qLike, qLike, qLike, qLike];
+    const { where, params } = buildWhere([
+      Number.isNaN(actorUid) ? null : ['a.uid=?', actorUid],
+      Number.isNaN(eventType) ? null : ['a.event=?', eventType],
+      startTime && !Number.isNaN(startTime.getTime()) ? ['a.time>=?', startTime] : null,
+      endTime && !Number.isNaN(endTime.getTime()) ? ['a.time<=?', endTime] : null,
+      q ? [qClause, ...qValues] : null,
+    ]);
 
     const list = await db.query(
       `SELECT a.uid, u.name AS actorName, a.event, a.ip, a.iploc, a.time, a.browser, a.os, a.detail
@@ -169,7 +181,7 @@ exports.listAuditLog = [
       [...params, offset, limit]
     );
     const cnt = await db.one(
-      `SELECT COUNT(*) AS total FROM userAudit a${where}`,
+      `SELECT COUNT(*) AS total FROM userAudit a LEFT JOIN userInfo u ON u.uid = a.uid${where}`,
       params
     );
     for (const r of list) {

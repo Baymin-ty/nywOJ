@@ -44,6 +44,7 @@
 | `problem_setter` | 出题人 | `problem.create` / `problem.manage.self` / `problem.view.any` |
 | `contest_manager` | 比赛管理员 | `contest.create` / `contest.manage.self` |
 | `judge_admin` | 判题管理员 | `submission.view.any` / `submission.rejudge.any` |
+| `solution_admin` | 题解管理员 | `problem.solmanage`，可绑定/解绑自己可查看题目的题解，不含 `paste.edit.any` |
 | `moderator` | 管理员 | 出题 + 办赛 + 判题三合一，加 `*.manage.any` 与用户相关权限 |
 | `super_admin` | 超级管理员 | 所有权限（兼容历史 `gid=3`） |
 
@@ -65,6 +66,7 @@ role_permissions / user_roles / user_permissions`。前端权限管理中心位�
 - 测试点管理：上传 zip / 在线编辑 / 下载（仅题目发布者或管理员）
 - 子任务系统：等分 / 自定义分值，支持遇 TLE 止测与子任务依赖
 - 题解绑定（paste 系统）
+  - 题解绑定由 `problem.solmanage` 或题目管理权控制；绑定前会校验 paste 对当前用户可见
 - 统计信息：提交次数、AC 次数、分数分布图、最快通过榜
 
 ### 比赛系统

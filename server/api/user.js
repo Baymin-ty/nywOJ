@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const mail = require('nodemailer');
 const db = require('../db');
-const { handler, fail, ok, paginate } = require('../db/util');
+const { handler, fail, ok, paginate, buildWhere } = require('../db/util');
 const { Format, ip2loc, msFormat, recordEvent, eventList, eventExp, briefFormat } = require('../static');
 const config = require('../config.json');
 const { listGlobalKeys } = require('../auth/policy');
@@ -271,18 +271,42 @@ exports.updateUserPublicInfo = handler(async (req, res) => {
 
 exports.listAudits = handler(async (req, res) => {
   const { offset, limit } = paginate(req, 10);
+  const filter = req.body.filter || {};
+  const q = (filter.q || '').trim();
+  const qLike = q ? `%${q}%` : null;
+  const eventType = filter.eventType === '' || filter.eventType == null ? null : Number(filter.eventType);
+  const startTime = filter.startTime ? new Date(filter.startTime) : null;
+  const endTime = filter.endTime ? new Date(filter.endTime) : null;
+  const eventIds = q
+    ? eventList
+      .map((key, id) => ({ id, key, name: eventExp[id] || '' }))
+      .filter((e) => e.key.includes(q) || e.name.includes(q))
+      .map((e) => e.id)
+    : [];
+  const qClause = eventIds.length
+    ? `(a.event IN (${eventIds.map(() => '?').join(',')}) OR a.ip LIKE ? OR a.iploc LIKE ? OR a.browser LIKE ? OR a.os LIKE ? OR a.detail LIKE ?)`
+    : '(a.ip LIKE ? OR a.iploc LIKE ? OR a.browser LIKE ? OR a.os LIKE ? OR a.detail LIKE ?)';
+  const qValues = eventIds.length
+    ? [...eventIds, qLike, qLike, qLike, qLike, qLike]
+    : [qLike, qLike, qLike, qLike, qLike];
+  const { where, params } = buildWhere([
+    ['a.uid=?', req.session.uid],
+    Number.isNaN(eventType) ? null : ['a.event=?', eventType],
+    startTime && !Number.isNaN(startTime.getTime()) ? ['a.time>=?', startTime] : null,
+    endTime && !Number.isNaN(endTime.getTime()) ? ['a.time<=?', endTime] : null,
+    q ? [qClause, ...qValues] : null,
+  ]);
   const list = await db.query(
-    'SELECT * FROM userAudit WHERE uid=? ORDER BY id DESC LIMIT ?,?',
-    [req.session.uid, offset, limit]
+    `SELECT a.* FROM userAudit a${where} ORDER BY a.id DESC LIMIT ?,?`,
+    [...params, offset, limit]
   );
   for (const r of list) {
-    delete r.id;
     r.eventExp = eventExp[r.event];
     r.event = eventList[r.event];
     r.time = Format(r.time);
   }
-  const cnt = await db.one('SELECT COUNT(*) as cnt FROM userAudit WHERE uid=?', [req.session.uid]);
-  return ok(res, { data: list, total: cnt.cnt });
+  const cnt = await db.one(`SELECT COUNT(*) as cnt FROM userAudit a${where}`, params);
+  return ok(res, { data: list, total: cnt.cnt, eventList, eventExp });
 });
 
 exports.modifyPassword = handler(async (req, res) => {

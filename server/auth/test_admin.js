@@ -322,6 +322,28 @@ const cleanupSandbox = async () => {
       for (const r of res.payload.list) assertEq(r.uid, superUid, 'all rows match actorUid');
     });
 
+    await test('listAuditLog: filter by eventType and keyword', async () => {
+      const marker = `_audit_marker_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      try {
+        await db.query(
+          `INSERT INTO userAudit(uid, event, ip, iploc, time, browser, os, detail)
+           VALUES (?, 5, '127.0.0.1', '本地', NOW(), 'test-browser', 'test-os', ?)`,
+          [superUid, JSON.stringify({ marker })]
+        );
+        const req = makeReq(superUid, superPerms);
+        req.body = { filter: { eventType: 5, q: marker } };
+        const res = await runHandler(admin.listAuditLog, req);
+        assertEq(res.statusCode, 200, 'status 200');
+        assert(res.payload.list.length >= 1, 'filtered audit rows returned');
+        for (const r of res.payload.list) {
+          assertEq(r.eventKey, 'auth.changePassword', 'all rows match eventType');
+          assert(JSON.stringify(r.detail || '').includes(marker), 'all rows match keyword marker');
+        }
+      } finally {
+        await db.query('DELETE FROM userAudit WHERE detail LIKE ?', [`%${marker}%`]);
+      }
+    });
+
     // ============================================================
     //   3. getUserLoginLog
     // ============================================================
