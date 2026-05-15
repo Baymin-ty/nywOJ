@@ -196,23 +196,24 @@ exports.listAuditLog = [
   }),
 ];
 
-exports.getUserLoginLog = handler(async (req, res) => {
-  const uid = parseInt(req.body.uid, 10);
-  if (!uid) return fail(res, '请确认信息完善');
-  if (!req.can('user.manage') && !req.can('user.role.admin'))
-    return res.status(403).end('403 Forbidden');
-  const list = await db.query(
-    `SELECT token, browser, os, loginIp, loginLoc, time, lastact
-     FROM userSession WHERE uid=? ORDER BY time DESC LIMIT 20`,
-    [uid]
-  );
-  for (const r of list) {
-    delete r.token;
-    if (r.time) r.time = Format(r.time);
-    if (r.lastact) r.lastact = Format(r.lastact);
-  }
-  return ok(res, { list });
-});
+exports.getUserLoginLog = [
+  requirePermission(['user.manage', 'user.role.admin']),
+  handler(async (req, res) => {
+    const uid = parseInt(req.body.uid, 10);
+    if (!uid) return fail(res, '请确认信息完善');
+    const list = await db.query(
+      `SELECT token, browser, os, loginIp, loginLoc, time, lastact
+       FROM userSession WHERE uid=? ORDER BY time DESC LIMIT 20`,
+      [uid]
+    );
+    for (const r of list) {
+      delete r.token;
+      if (r.time) r.time = Format(r.time);
+      if (r.lastact) r.lastact = Format(r.lastact);
+    }
+    return ok(res, { list });
+  }),
+];
 
 exports.resetPassword = [
   requirePermission('user.manage'),

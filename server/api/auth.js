@@ -149,6 +149,8 @@ exports.setUserRoles = handler(async (req, res) => {
   const uid = parseInt(req.body.uid, 10);
   const roleKeys = Array.isArray(req.body.roleKeys) ? req.body.roleKeys : null;
   if (!uid || !roleKeys) return fail(res, '请确认信息完善');
+  // uid=1 在 policy 中被硬编码为 root；允许剥夺它的角色只会让 UI 显示成「无角色」而不影响实权，反而让审计混乱。
+  if (uid === 1) return fail(res, '不可修改根账号角色');
 
   const target = await db.exists('SELECT 1 FROM userInfo WHERE uid=?', [uid]);
   if (!target) return fail(res, '用户不存在');

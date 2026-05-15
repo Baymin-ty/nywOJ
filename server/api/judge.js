@@ -769,8 +769,13 @@ exports.getAnswerFile = handler(async (req, res) => {
     if (!hit) return fail(res, '测试点不存在');
     name = hit.input ? hit.input.replace(/\.in$/, '') : String(hit.index);
   }
+  // config.json 的 input 字段是题目所有者可控的，必须把 name 当成不可信输入再校验一遍。
+  if (/[\/\\]/.test(name) || name === '..' || name === '.' || name.includes('\0'))
+    return fail(res, '参数非法');
 
-  const filePath = path.join(__dirname, '..', ANSWER_SUBMIT_DIR, String(sid), `${name}.out`);
+  const baseDir = path.resolve(__dirname, '..', ANSWER_SUBMIT_DIR, String(sid));
+  const filePath = path.resolve(baseDir, `${name}.out`);
+  if (filePath !== path.join(baseDir, `${name}.out`)) return fail(res, '参数非法');
   if (!fs.existsSync(filePath)) return ok(res, { name, content: '', missing: true, size: 0 });
   const stat = fs.statSync(filePath);
   const MAX = 256 * 1024;
