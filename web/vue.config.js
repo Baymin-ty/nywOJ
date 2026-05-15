@@ -1,5 +1,4 @@
 const { defineConfig } = require('@vue/cli-service')
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin')
 module.exports = defineConfig({
   publicPath: process.env.NODE_ENV === 'production'
@@ -7,6 +6,11 @@ module.exports = defineConfig({
     : '/',
   transpileDependencies: true,
   productionSourceMap: false,
+  css: {
+    extract: {
+      ignoreOrder: true,
+    },
+  },
   devServer: {
     proxy: {
       '/api': {
@@ -19,16 +23,47 @@ module.exports = defineConfig({
   chainWebpack(config) {
     if (process.env.NODE_ENV === 'production') {
       config.optimization.splitChunks({
+        chunks: 'all',
+        maxInitialRequests: 12,
+        maxAsyncRequests: 20,
         cacheGroups: {
+          elementPlus: {
+            test: /[\\/]node_modules[\\/]element-plus[\\/]/,
+            name: 'element-plus',
+            chunks: 'all',
+            priority: 40,
+          },
           monacoEditor: {
             test: /[\\/]node_modules[\\/]monaco-editor[\\/]/,
             name: 'monaco-editor',
+            chunks: 'async',
+            priority: 35,
+          },
+          markdown: {
+            test: /[\\/]node_modules[\\/](@kangc[\\/]v-md-editor|codemirror|highlight.js|markdown-it|xss)[\\/]/,
+            name: 'markdown',
+            chunks: 'async',
+            priority: 30,
+          },
+          echarts: {
+            test: /[\\/]node_modules[\\/]echarts[\\/]/,
+            name: 'echarts',
+            chunks: 'async',
+            priority: 25,
+          },
+          vendors: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
             chunks: 'all',
-            priority: 20,
+            priority: -10,
           },
           common: {
-            name: 'ty',
+            minChunks: 2,
+            minSize: 30 * 1024,
+            name: 'common',
             chunks: 'all',
+            priority: -20,
+            reuseExistingChunk: true,
           },
         }
       })
@@ -36,8 +71,41 @@ module.exports = defineConfig({
   },
   configureWebpack: {
     plugins: [
-      // new BundleAnalyzerPlugin(),
-      new MonacoWebpackPlugin({ languages: ['cpp'] })
+      new MonacoWebpackPlugin({
+        languages: ['cpp'],
+        features: [
+          '!accessibilityHelp',
+          '!anchorSelect',
+          '!codeAction',
+          '!codelens',
+          '!colorPicker',
+          '!documentSymbols',
+          '!dropIntoEditor',
+          '!fontZoom',
+          '!format',
+          '!gotoError',
+          '!gotoLine',
+          '!gotoSymbol',
+          '!inlayHints',
+          '!inlineCompletions',
+          '!inlineProgress',
+          '!inspectTokens',
+          '!linkedEditing',
+          '!parameterHints',
+          '!quickCommand',
+          '!quickHelp',
+          '!quickOutline',
+          '!referenceSearch',
+          '!rename',
+          '!semanticTokens',
+          '!stickyScroll',
+          '!suggest',
+          '!toggleHighContrast',
+          '!toggleTabFocusMode',
+          '!unicodeHighlighter',
+          '!unusualLineTerminators',
+        ],
+      })
     ]
   }
 });

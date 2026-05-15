@@ -1,37 +1,40 @@
 import { createRouter, createWebHistory } from "vue-router";
 
-import indexPage from '@/components/indexPage.vue'
-import NotFound from '@/components/NotFoundPage.vue'
-
-import AnnouncementView from '@/components/announcement/announcementView.vue'
-import AnnouncementEdit from '@/components/announcement/announcementEdit.vue'
-import pasteView from "@/components/paste/pasteView.vue";
-import pasteEdit from "@/components/paste/pasteEdit.vue";
-import pasteList from "@/components/paste/pasteList.vue"
-
-import cuteRabbit from '@/components/rabbit/cuteRabbit.vue'
-import userLogin from "@/components/user/userLogin.vue"
-import userReg from "@/components/user/userReg.vue"
-import userForgotPassword from "@/components/user/userForgotPassword.vue"
-import userInfo from '@/components/user/userInfo.vue'
-import problemList from '@/components/problem/problemList.vue'
-import problemView from '@/components/problem/problemView.vue'
-import problemEdit from '@/components/problem/problemEdit.vue'
-import problemStat from "@/components/problem/problemStat.vue";
-import caseManage from '@/components/problem/caseManage.vue'
-import submissionList from '@/components/submission/submissionList.vue'
-import submissionView from '@/components/submission/submissionView.vue'
-import contestList from '@/components/contest/contestList.vue'
-import contestMain from '@/components/contest/contestMain.vue'
-import contestPlayer from '@/components/contest/contestPlayer.vue'
-import contestProblem from '@/components/contest/contestProblem.vue'
-import userEdit from '@/components/user/edit/userEdit.vue'
-
-import userManage from "@/components/admin/userManage"
-import permissionCenter from "@/components/admin/permissionCenter"
-
 import { refreshUserInfo } from '@/assets/common'
 import store from '@/sto/store';
+
+const indexPage = () => import(/* webpackChunkName: "page-home" */ '@/components/indexPage.vue')
+const NotFound = () => import(/* webpackChunkName: "page-base" */ '@/components/NotFoundPage.vue')
+
+const AnnouncementView = () => import(/* webpackChunkName: "page-announcement" */ '@/components/announcement/announcementView.vue')
+const AnnouncementEdit = () => import(/* webpackChunkName: "page-announcement-edit" */ '@/components/announcement/announcementEdit.vue')
+const pasteView = () => import(/* webpackChunkName: "page-paste" */ "@/components/paste/pasteView.vue");
+const pasteEdit = () => import(/* webpackChunkName: "page-paste-edit" */ "@/components/paste/pasteEdit.vue");
+const pasteList = () => import(/* webpackChunkName: "page-paste-list" */ "@/components/paste/pasteList.vue")
+
+const cuteRabbit = () => import(/* webpackChunkName: "page-rabbit" */ '@/components/rabbit/cuteRabbit.vue')
+const userLogin = () => import(/* webpackChunkName: "page-user-auth" */ "@/components/user/userLogin.vue")
+const userReg = () => import(/* webpackChunkName: "page-user-auth" */ "@/components/user/userReg.vue")
+const userForgotPassword = () => import(/* webpackChunkName: "page-user-auth" */ "@/components/user/userForgotPassword.vue")
+const userInfo = () => import(/* webpackChunkName: "page-user-info" */ '@/components/user/userInfo.vue')
+const userEdit = () => import(/* webpackChunkName: "page-user-edit" */ '@/components/user/edit/userEdit.vue')
+
+const problemList = () => import(/* webpackChunkName: "page-problem-list" */ '@/components/problem/problemList.vue')
+const problemView = () => import(/* webpackChunkName: "page-problem-view" */ '@/components/problem/problemView.vue')
+const problemEdit = () => import(/* webpackChunkName: "page-problem-edit" */ '@/components/problem/problemEdit.vue')
+const problemStat = () => import(/* webpackChunkName: "page-problem-stat" */ "@/components/problem/problemStat.vue");
+const caseManage = () => import(/* webpackChunkName: "page-problem-case" */ '@/components/problem/caseManage.vue')
+
+const submissionList = () => import(/* webpackChunkName: "page-submission-list" */ '@/components/submission/submissionList.vue')
+const submissionView = () => import(/* webpackChunkName: "page-submission-view" */ '@/components/submission/submissionView.vue')
+
+const contestList = () => import(/* webpackChunkName: "page-contest-list" */ '@/components/contest/contestList.vue')
+const contestMain = () => import(/* webpackChunkName: "page-contest-main" */ '@/components/contest/contestMain.vue')
+const contestPlayer = () => import(/* webpackChunkName: "page-contest-player" */ '@/components/contest/contestPlayer.vue')
+const contestProblem = () => import(/* webpackChunkName: "page-contest-problem" */ '@/components/contest/contestProblem.vue')
+
+const userManage = () => import(/* webpackChunkName: "page-admin-users" */ "@/components/admin/userManage")
+const permissionCenter = () => import(/* webpackChunkName: "page-admin-permissions" */ "@/components/admin/permissionCenter")
 
 // Permission-gated routes: route -> [required permission keys, any-of].
 const perPermissions = {

@@ -43,7 +43,7 @@ export default defineComponent({
     let monacoEditor, editor;
 
     onMounted(async () => {
-      monacoEditor = await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor');
+      monacoEditor = await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor/esm/vs/editor/editor.api');
       editor = monacoEditor.editor.create(editorContainer.value, {
         value: props.value,
         language: props.language,
