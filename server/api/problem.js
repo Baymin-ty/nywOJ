@@ -396,6 +396,28 @@ exports.downloadCase = [
   }),
 ];
 
+// Answer-submission problems (type ∈ {2,3}): the input (.in) files ARE the
+// problem — solvers need them to compute the answers they upload. So unlike
+// downloadCase (manage-only), this is gated on view and serves only inputs.
+exports.downloadAnswerInputs = [
+  handler(async (req, res) => {
+    const { pid } = req.query;
+    const problem = await db.one('SELECT type FROM problem WHERE pid=?', [pid]);
+    if (!problem || !fs.existsSync(`./data/${pid}/config.json`)) return fail(res, 'Not Found Error');
+    if (problem.type !== 2 && problem.type !== 3) return fail(res, '该题不是提交答案题');
+    if (!(await problemAuth(req, pid)).view) return fail(res, '权限不足');
+
+    const { cases } = JSON.parse(await getFile(`./data/${pid}/config.json`));
+    const files = [];
+    for (const i in cases) {
+      if (cases[i].input)
+        files.push({ path: `./data/${pid}/${cases[i].input}`, name: cases[i].input });
+    }
+    if (req.session.uid) recordEvent(req, 'problem.downloadAnswerInputs', { pid });
+    return res.zip(files, `nywoj_Inputs_#${pid}.zip`);
+  }),
+];
+
 exports.getProblemTags = handler(async (req, res) => {
   const data = await db.query(
     `SELECT DISTINCT JSON_UNQUOTE(value) AS tag

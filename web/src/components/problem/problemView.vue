@@ -33,6 +33,14 @@
           </div>
         </div>
         <div v-if="isSubmit && isAnswerProblem" class="answer-submit">
+          <div style="margin-bottom: 12px; text-align: center;">
+            <el-button type="success" plain :disabled="answerCases.length === 0" @click="downloadInputs">
+              <el-icon class="el-icon--left">
+                <Download />
+              </el-icon>
+              下载输入数据
+            </el-button>
+          </div>
           <el-upload drag :auto-upload="false" :limit="1" :on-change="onZipPicked"
             :on-remove="onZipRemoved" accept=".zip" class="answer-upload">
             <el-icon class="el-icon--upload"><upload-filled /></el-icon>
@@ -82,8 +90,8 @@
           </div>
         </template>
         <el-descriptions direction="vertical" :column="1" border>
-          <el-descriptions-item label="时间限制"> {{ problemInfo.timeLimit }} ms</el-descriptions-item>
-          <el-descriptions-item label="空间限制"> {{ problemInfo.memoryLimit }} MB</el-descriptions-item>
+          <el-descriptions-item v-if="!isAnswerProblem" label="时间限制"> {{ problemInfo.timeLimit }} ms</el-descriptions-item>
+          <el-descriptions-item v-if="!isAnswerProblem" label="空间限制"> {{ problemInfo.memoryLimit }} MB</el-descriptions-item>
           <el-descriptions-item label="比对方式"> {{ problemInfo.type }} </el-descriptions-item>
           <el-descriptions-item label="题目标签">
             <el-tag type="info" v-for="tag in problemInfo.tags" :key="tag" :color="getTagColor(tag)"
@@ -139,7 +147,7 @@
 
 <script>
 import axios from 'axios';
-import { UploadFilled } from '@element-plus/icons-vue';
+import { UploadFilled, Download } from '@element-plus/icons-vue';
 import monacoEditor from '@/components/monacoEditor.vue'
 
 export default {
@@ -210,7 +218,8 @@ export default {
   },
   components: {
     monacoEditor,
-    UploadFilled
+    UploadFilled,
+    Download
   },
   methods: {
     submit() {
@@ -238,6 +247,9 @@ export default {
       } catch (e) {
         this.$message.error('加载测试点列表失败');
       }
+    },
+    downloadInputs() {
+      window.location.href = '/api/problem/downloadAnswerInputs?pid=' + this.pid;
     },
     onZipPicked(file) {
       // el-upload :auto-upload="false" — we hold the raw File until submit.

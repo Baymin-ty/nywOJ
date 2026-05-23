@@ -69,6 +69,7 @@ router.post('/api/problem/updateSubtaskId', problem.updateSubtaskId);
 router.post('/api/problem/getCase', problem.getCase);
 router.post('/api/problem/updateCase', problem.updateCase);
 router.get('/api/problem/downloadCase', problem.downloadCase);
+router.get('/api/problem/downloadAnswerInputs', problem.downloadAnswerInputs);
 router.post('/api/problem/getProblemTags', problem.getProblemTags);
 router.post('/api/problem/getProblemPublishers', problem.getProblemPublishers);
 router.post('/api/problem/getProblemStat', problem.getProblemStat);

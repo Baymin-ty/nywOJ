@@ -81,6 +81,7 @@ exports.eventList = [
   'auth.sendPasswordResetCode',
   'auth.resetPasswordByEmail',
   'auth.sendLoginEmailCode',
+  'problem.downloadAnswerInputs',
 ];
 
 exports.eventExp = [
@@ -107,6 +108,7 @@ exports.eventExp = [
   '发送找回密码验证码',
   '邮箱找回密码',
   '发送邮箱登录验证码',
+  '下载提交答案题输入数据',
 ]
 
 
