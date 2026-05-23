@@ -53,6 +53,7 @@ const PROBLEM_SETTER_PERMS = [
 
 const CONTEST_MANAGER_PERMS = [
   'contest.create',
+  'contest.manage.any',
   'contest.manage.self',
 ];
 
@@ -65,16 +66,22 @@ const SOLUTION_ADMIN_PERMS = [
   'problem.solmanage',
 ];
 
+// 管理员 = 全部能力的并集，但有意排除三项：用户授权管理(user.role.admin)、
+// 重测自己的提交(submission.rejudge.self)、查看非比赛提交(submission.view.notcontest)。
 const MODERATOR_PERMS = Array.from(new Set([
   ...PROBLEM_SETTER_PERMS,
   ...CONTEST_MANAGER_PERMS,
   ...JUDGE_ADMIN_PERMS,
-  'user.manage',
-  'user.role.admin',
-  // Moderators escalate to *.manage.any over every problem/contest
-  // (the *_setter / *_manager roles only get manage.self).
+  ...SOLUTION_ADMIN_PERMS,
+  // 题/赛升级到 manage.any（子角色只有 manage.self）
   'problem.manage.any',
   'contest.manage.any',
+  // 用户管理（不含 user.role.admin）
+  'user.manage',
+  // 系统
+  'announcement.manage',
+  'audit.view',
+  'paste.edit.any',
 ]));
 
 const SUPER_ADMIN_PERMS = Object.keys(PERMISSIONS);

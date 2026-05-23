@@ -152,7 +152,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p
 -- contest_manager
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r JOIN permissions p
-  ON p.`key` IN ('contest.create', 'contest.manage.self')
+  ON p.`key` IN ('contest.create', 'contest.manage.any', 'contest.manage.self')
   WHERE r.`key` = 'contest_manager';
 
 -- judge_admin
@@ -167,16 +167,17 @@ SELECT r.id, p.id FROM roles r JOIN permissions p
   ON p.`key` = 'problem.solmanage'
   WHERE r.`key` = 'solution_admin';
 
--- moderator = problem_setter ∪ contest_manager ∪ judge_admin
---             ∪ {user.manage, user.role.admin, problem.manage.any, contest.manage.any}
+-- moderator = 全部 17 项里排除 {user.role.admin, submission.rejudge.self,
+--             submission.view.notcontest}，共 14 项。
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r JOIN permissions p
   ON p.`key` IN (
-    'problem.create', 'problem.manage.self', 'problem.view.any',
-    'contest.create', 'contest.manage.self',
+    'problem.create', 'problem.manage.any', 'problem.manage.self',
+    'problem.solmanage', 'problem.view.any',
+    'contest.create', 'contest.manage.any', 'contest.manage.self',
     'submission.view.any', 'submission.rejudge.any',
-    'user.manage', 'user.role.admin',
-    'problem.manage.any', 'contest.manage.any'
+    'user.manage',
+    'announcement.manage', 'audit.view', 'paste.edit.any'
   )
   WHERE r.`key` = 'moderator';
 
