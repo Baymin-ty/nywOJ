@@ -1,7 +1,19 @@
 const db = require('../db');
 const { handler, fail, ok, paginate, buildWhere } = require('../db/util');
 const { requirePermission } = require('../auth/middleware');
+const { loadEffectivePermissions, can } = require('../auth/policy');
 const { Format, ip2loc, eventList, eventExp } = require('../static');
+
+// 越权防护：仅持有 user.manage 的账号（如 moderator）不能对其他管理员
+// （拥有 user.manage 或 user.role.admin 的目标）改密码 / 封禁。拥有
+// user.role.admin 的人（super_admin / root）不受此限。返回错误消息或 null。
+const guardPrivilegedTarget = async (req, targetUid) => {
+  if (req.can('user.role.admin')) return null;
+  const targetPerms = await loadEffectivePermissions(targetUid);
+  if (can(targetPerms, 'user.manage') || can(targetPerms, 'user.role.admin'))
+    return '无权操作该管理员账号';
+  return null;
+};
 
 // Read-only listing: useful both to user.manage (edit/ban flow) and to
 // user.role.admin (role/grant flow), so accept either. Modifying endpoints
@@ -95,6 +107,8 @@ exports.setBlock = [
   handler(async (req, res) => {
     const { uid, status } = req.body;
     if (uid == null || status == null) return fail(res, '请确认信息完善');
+    const denied = await guardPrivilegedTarget(req, uid);
+    if (denied) return fail(res, denied);
     const r = await db.query('UPDATE userInfo SET inUse=? WHERE uid=?', [status, uid]);
     if (!r.affectedRows) return fail(res, 'failed');
     return ok(res);
@@ -221,6 +235,8 @@ exports.resetPassword = [
     const bcrypt = require('bcryptjs');
     const uid = parseInt(req.body.uid, 10);
     if (!uid) return fail(res, '请确认信息完善');
+    const denied = await guardPrivilegedTarget(req, uid);
+    if (denied) return fail(res, denied);
     const newPwd = Math.random().toString(36).slice(2, 10);
     const hash = bcrypt.hashSync(newPwd, 12);
     const r = await db.query('UPDATE userInfo SET pwd=? WHERE uid=?', [hash, uid]);
