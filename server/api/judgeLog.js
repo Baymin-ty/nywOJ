@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const LOG_DIR = path.join(__dirname, '../judge_logs');
-const MAX_FIELD = 8192;
+const MAX_FIELD = 256;
 
 const ensureDir = () => {
   if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
