@@ -185,6 +185,30 @@ const runSPJ = (fileId, inputFile, usrOutput, outputFile) =>
     },
   });
 
+// Runs the SPJ for one case, tolerating a stale cached binary. If the cached
+// fileId was evicted by the sandbox (go-judge restart, etc.), runSPJ throws —
+// in that case we drop the cache, recompile the checker once, and retry instead
+// of failing the whole submission with a System Error. `spjState` is mutated in
+// place ({ fileId, fromCache }) so subsequent cases reuse the recompiled binary.
+// A failure on a freshly compiled binary is a genuine SPJ runtime error and is
+// propagated unchanged.
+const runSPJCase = async (sid, pid, spjState, inputFile, usrOutput, outputFile) => {
+  try {
+    const spjRun = await runSPJ(spjState.fileId, inputFile, usrOutput, outputFile);
+    return (spjRun.files && spjRun.files.stderr) || '';
+  } catch (err) {
+    if (!spjState.fromCache) throw err; // already fresh — recompiling won't help
+    await logEvent(sid, 'spj.run.staleCache', { pid, error: summarizeAxiosError(err) });
+    spjCache.invalidate(pid);
+    const spj = await ensureSPJ(sid, pid); // cache cleared → forces a recompile
+    if (spj.error) throw new Error(spj.error);
+    spjState.fileId = spj.fileId;
+    spjState.fromCache = false;
+    const spjRun = await runSPJ(spjState.fileId, inputFile, usrOutput, outputFile);
+    return (spjRun.files && spjRun.files.stderr) || '';
+  }
+};
+
 // ---- compare (default checker) ----
 const compareDefault = async (sid, usrOutput, outputFile) => {
   const fileSuf = `./comparer/tmp/${sid}-${++jid}_`;
@@ -297,7 +321,7 @@ const judgeAnswer = async (sid, sinfo, pinfo, isRejudge) => {
     if (!conf.JUDGE.ISSERVER) await updateData(pid);
 
     // SPJ binary (cached) — only when type=3
-    let spjFileId = '';
+    const spjState = { fileId: '', fromCache: false };
     if (pinfo.type === 3) {
       const spj = await ensureSPJ(sid, pid);
       if (spj.error) {
@@ -306,7 +330,8 @@ const judgeAnswer = async (sid, sinfo, pinfo, isRejudge) => {
         await updateProblemStat(pid);
         return;
       }
-      spjFileId = spj.fileId;
+      spjState.fileId = spj.fileId;
+      spjState.fromCache = !!spj.fromCache;
     }
 
     const config = JSON.parse(await getFile(`./data/${pid}/config.json`));
@@ -337,14 +362,13 @@ const judgeAnswer = async (sid, sinfo, pinfo, isRejudge) => {
         if (pinfo.type === 2) {
           compareRes = await compareDefault(sid, usrOutput, outputFile);
         } else {
-          const spjRun = await runSPJ(spjFileId, inputFile, usrOutput, outputFile);
-          compareRes = (spjRun.files && spjRun.files.stderr) || '';
+          compareRes = await runSPJCase(sid, pid, spjState, inputFile, usrOutput, outputFile);
         }
       } catch (err) {
         await logEvent(sid, 'case.error', { caseId: c.index, error: summarizeAxiosError(err) });
-        // SPJ runtime is the only thing here that can fail loud — propagate so
-        // the outer catch records a System Error.
-        if (pinfo.type === 3) spjCache.invalidate(pid);
+        // A stale SPJ cache is already retried inside runSPJCase; reaching here
+        // means a genuine failure — propagate so the outer catch records a
+        // System Error.
         throw err;
       }
 
@@ -444,7 +468,7 @@ const judgeCode = async (sid, isRejudge) => {
     const userFileId = compileResult.fileIds[lang.binary];
 
     // 2) ensure SPJ (cached)
-    let spjFileId = '';
+    const spjState = { fileId: '', fromCache: false };
     if (pinfo.type === 1) {
       const spj = await ensureSPJ(sid, pid);
       if (spj.error) {
@@ -453,7 +477,8 @@ const judgeCode = async (sid, isRejudge) => {
         await updateProblemStat(pid);
         return;
       }
-      spjFileId = spj.fileId;
+      spjState.fileId = spj.fileId;
+      spjState.fromCache = !!spj.fromCache;
     }
 
     // 3) run cases
@@ -523,16 +548,9 @@ const judgeCode = async (sid, isRejudge) => {
       if (pinfo.type === 0) {
         compareRes = await compareDefault(sid, usrOutput, outputFile);
       } else if (pinfo.type === 1) {
-        try {
-          const spjRun = await runSPJ(spjFileId, inputFile, usrOutput, outputFile);
-          compareRes = (spjRun.files && spjRun.files.stderr) || '';
-        } catch (err) {
-          // Cached SPJ fileId may be stale (sandbox restart). Drop the entry
-          // so the next submission recompiles, then propagate.
-          await logEvent(sid, 'spj.run.error', { caseId: c.index, error: summarizeAxiosError(err) });
-          spjCache.invalidate(pid);
-          throw err;
-        }
+        // Stale cached SPJ binaries are recompiled-and-retried inside runSPJCase;
+        // only a genuine SPJ runtime failure propagates here.
+        compareRes = await runSPJCase(sid, pid, spjState, inputFile, usrOutput, outputFile);
       }
 
       const ok = compareRes.substring(0, 2) === 'ok';
