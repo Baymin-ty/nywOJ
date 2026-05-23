@@ -893,22 +893,28 @@ export default {
     async saveEdit() {
       this.saving = true;
       try {
-        const promises = [];
         if (this.editForm.name !== this.editingUser.name || this.editForm.email !== this.editingUser.email) {
-          promises.push(axios.post('/api/admin/updateUserInfo', {
+          const res = await axios.post('/api/admin/updateUserInfo', {
             info: { uid: this.editingUser.uid, name: this.editForm.name, email: this.editForm.email },
-          }));
+          });
+          if (res.status !== 200) {
+            ElMessage.error(res.data && res.data.message || '保存失败');
+            return;
+          }
         }
         const a = [...this.editRoleKeys].sort();
         const b = [...this.originalRoleKeys].sort();
         const rolesDirty = a.length !== b.length || a.some((k, i) => k !== b[i]);
         if (rolesDirty) {
-          promises.push(axios.post('/api/auth/setUserRoles', {
+          const res = await axios.post('/api/auth/setUserRoles', {
             uid: this.editingUser.uid,
             roleKeys: this.editRoleKeys,
-          }));
+          });
+          if (res.status !== 200) {
+            ElMessage.error(res.data && res.data.message || '保存失败');
+            return;
+          }
         }
-        await Promise.all(promises);
         ElMessage.success('已保存');
         this.editingUser.name = this.editForm.name;
         this.editingUser.email = this.editForm.email;
@@ -926,7 +932,11 @@ export default {
     async setBlock(uid, newInUse) {
       const status = newInUse ? 1 : 0;
       try {
-        await axios.post('/api/admin/setBlock', { uid, status });
+        const res = await axios.post('/api/admin/setBlock', { uid, status });
+        if (res.status !== 200) {
+          ElMessage.error(res.data && res.data.message || '操作失败');
+          return;
+        }
         ElMessage.success('操作成功');
         this.loadUsers();
         if (this.editingUser && this.editingUser.uid === uid) {
@@ -944,6 +954,8 @@ export default {
         const res = await axios.post('/api/admin/resetPassword', { uid: u.uid });
         if (res.status === 200 && res.data.newPassword) {
           ElMessageBox.alert(`新密码: ${res.data.newPassword}`, '密码已重置', { type: 'success' });
+        } else {
+          ElMessage.error(res.data && res.data.message || '重置失败');
         }
       } catch (e) {
         ElMessage.error(e.message || '重置失败');

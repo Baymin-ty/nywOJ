@@ -181,6 +181,8 @@ export default {
         if (res.status === 200) {
           this.all();
           this.$message.success('操作成功');
+        } else {
+          this.$message.error(res.data && res.data.message || '操作失败');
         }
       }).catch(err => this.$message.error(err.message));
     },

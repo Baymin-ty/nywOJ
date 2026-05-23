@@ -121,6 +121,8 @@ exports.updateUserInfo = [
     const info = req.body.info || {};
     const { uid, name, email } = info;
     if (!uid || !name) return fail(res, '请确认信息完善');
+    const denied = await guardPrivilegedTarget(req, uid);
+    if (denied) return fail(res, denied);
     const r = await db.query(
       'UPDATE userInfo SET name=?,email=? WHERE uid=?',
       [name, email, uid]
