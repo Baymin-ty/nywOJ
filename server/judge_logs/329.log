@@ -1,3 +1,0 @@
-{"ts":"2026-05-09T07:05:39.111Z","event":"start","meta":{"sid":"329","pid":30,"lang":1,"isRejudge":true,"worker":"ty's MBP","timeLimit":1000,"memoryLimit":128}}
-{"ts":"2026-05-09T07:05:39.118Z","event":"compile.start","data":{"args":["g++-9","-O2","-std=c++14","-DONLINE_JUDGE","main.cpp","-o","main"]}}
-{"ts":"2026-05-09T07:05:39.171Z","event":"compile.result","data":{"status":"Nonzero Exit Status","exitStatus":1,"time":8907000,"memory":11911168,"runTime":9565250,"files":{"stderr":"main.cpp:1:1: error: expected unqualified-id before numeric constant\n    1 | 123123123123\n      | ^~~~~~~~~~~~\n","stdout":""},"fileError":[{"name":"main","type":"CopyOutOpen","message":"open main: no such file or directory"}]}}

@@ -1,3 +1,0 @@
-{"ts":"2026-05-09T06:49:05.198Z","event":"start","meta":{"sid":"318","pid":2,"lang":1,"isRejudge":true,"worker":"ty's MBP","timeLimit":10000,"memoryLimit":128}}
-{"ts":"2026-05-09T06:49:05.206Z","event":"compile.start","data":{"args":["g++-9","-O2","-std=c++14","-DONLINE_JUDGE","main.cpp","-o","main"]}}
-{"ts":"2026-05-09T06:49:05.973Z","event":"compile.result","data":{"status":"Accepted","exitStatus":0,"time":737879000,"memory":196476928,"runTime":741359167,"files":{"stderr":"","stdout":""},"fileIds":{"main":"PVOQSQ22"}}}

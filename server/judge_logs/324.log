@@ -1,3 +1,0 @@
-{"ts":"2026-05-09T06:49:11.659Z","event":"start","meta":{"sid":"324","pid":2,"lang":1,"isRejudge":true,"worker":"ty's MBP","timeLimit":10000,"memoryLimit":128}}
-{"ts":"2026-05-09T06:49:11.670Z","event":"compile.start","data":{"args":["g++-9","-O2","-std=c++14","-DONLINE_JUDGE","main.cpp","-o","main"]}}
-{"ts":"2026-05-09T06:49:12.274Z","event":"compile.result","data":{"status":"Accepted","exitStatus":0,"time":581529000,"memory":182743040,"runTime":582583167,"files":{"stderr":"","stdout":""},"fileIds":{"main":"QPCMFRIA"}}}
