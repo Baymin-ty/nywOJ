@@ -1,5 +1,5 @@
 <template>
-  <el-container style="min-width: 992px;">
+  <el-container style="min-width: 992px; min-height: 100vh;">
     <el-header>
       <myHeader />
     </el-header>
@@ -43,7 +43,7 @@ export default {
 <style>
 li,
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, "Cascadia Code", "Cascadia Mono", Consolas, "Liberation Mono", monospace, Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0 auto;
@@ -70,7 +70,7 @@ li,
 }
 
 body {
-  margin-top: 0;
+  margin: 0;
   padding-right: 0 !important;
   overflow-y: overlay;
 }
@@ -129,6 +129,7 @@ blockquote {
 #footer {
   text-align: center;
   font-family: 'Courier New', Courier, monospace;
+  margin-bottom: 5px;
 }
 
 #footer>div {

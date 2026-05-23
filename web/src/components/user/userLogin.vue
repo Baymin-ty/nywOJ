@@ -1,6 +1,6 @@
 <template>
   <div class="login">
-    <el-card class="box-card" shadow="hover">
+    <el-card class="box-card" shadow="hover" :body-style="{ paddingTop: '5px' }">
       <template #header>
         <div class="card-header">
           登录

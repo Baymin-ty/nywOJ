@@ -42,7 +42,7 @@
         </router-link>
       </template>
     </el-table-column>
-    <el-table-column prop="judgeResult" label="评测状态" min-width="12%">
+    <el-table-column prop="judgeResult" label="评测状态" min-width="15%">
       <template #default="scope">
         <span style="cursor: pointer;"
           @click="this.$router.push({ path: '/submission/' + scope.row.sid, query: { isContest: true } })">
@@ -65,13 +65,13 @@
         <span> {{ scope.row.memory }} </span>
       </template>
     </el-table-column>
-    <el-table-column prop="codeLength" label="语言 / 代码长度" min-width="12%">
+    <el-table-column prop="codeLength" label="语言 / 代码长度" min-width="15%">
       <template #default="scope">
         <span v-if="scope.row.lang == null">答案 / {{ scope.row.codeLength }} B</span>
         <span v-else>{{ $store.state.langList[scope.row.lang].des }} / {{ scope.row.codeLength }} B </span>
       </template>
     </el-table-column>
-    <el-table-column prop="submitTime" label="提交时间" min-width="12%" />
+    <el-table-column prop="submitTime" label="提交时间" min-width="16%" />
     <el-table-column prop="machine" label="评测机" min-width="10%" />
   </el-table>
 </template>

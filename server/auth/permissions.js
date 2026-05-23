@@ -80,14 +80,17 @@ const MODERATOR_PERMS = Array.from(new Set([
 const SUPER_ADMIN_PERMS = Object.keys(PERMISSIONS);
 
 const BUILTIN_ROLES = {
-  user: { name: '普通用户', legacyLevel: 1, description: '默认角色，无额外权限', permissions: [] },
-  problem_setter: { name: '出题人', legacyLevel: null, description: '可创建/编辑题目并管理数据', permissions: PROBLEM_SETTER_PERMS },
-  contest_manager: { name: '比赛管理员', legacyLevel: null, description: '可创建并管理比赛', permissions: CONTEST_MANAGER_PERMS },
-  judge_admin: { name: '判题管理员', legacyLevel: null, description: '可重测并查看所有提交', permissions: JUDGE_ADMIN_PERMS },
-  solution_admin: { name: '题解管理员', legacyLevel: null, description: '可管理自己可查看题目的题解绑定', permissions: SOLUTION_ADMIN_PERMS },
-  moderator: { name: '管理员', legacyLevel: 2, description: '出题/办赛/判题三合一', permissions: MODERATOR_PERMS },
-  super_admin: { name: '超级管理员', legacyLevel: 3, description: '拥有全部权限', permissions: SUPER_ADMIN_PERMS },
+  user: { name: '普通用户', description: '默认角色，无额外权限', permissions: [] },
+  problem_setter: { name: '出题人', description: '可创建/编辑题目并管理数据', permissions: PROBLEM_SETTER_PERMS },
+  contest_manager: { name: '比赛管理员', description: '可创建并管理比赛', permissions: CONTEST_MANAGER_PERMS },
+  judge_admin: { name: '判题管理员', description: '可重测并查看所有提交', permissions: JUDGE_ADMIN_PERMS },
+  solution_admin: { name: '题解管理员', description: '可管理自己可查看题目的题解绑定', permissions: SOLUTION_ADMIN_PERMS },
+  moderator: { name: '管理员', description: '出题/办赛/判题三合一', permissions: MODERATOR_PERMS },
+  super_admin: { name: '超级管理员', description: '拥有全部权限', permissions: SUPER_ADMIN_PERMS },
 };
+
+// 一次性回填用：旧 userInfo.gid → 内置角色 key。userInfo.gid 删除后即失效。
+const LEGACY_GID_ROLE = { 1: 'user', 2: 'moderator', 3: 'super_admin' };
 
 const RESOURCE_TYPES = ['problem', 'contest'];
 
@@ -111,6 +114,7 @@ const RESOURCE_GRANTABLE = {
 module.exports = {
   PERMISSIONS,
   BUILTIN_ROLES,
+  LEGACY_GID_ROLE,
   RESOURCE_TYPES,
   RESOURCE_GRANTABLE,
 };

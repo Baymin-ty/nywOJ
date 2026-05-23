@@ -75,7 +75,7 @@
               </router-link>
             </template>
           </el-table-column>
-          <el-table-column prop="codeLength" label="语言 / 代码长度" width="150px">
+          <el-table-column prop="codeLength" label="语言 / 代码长度" width="175px">
             <template #default="scope">
               <span v-if="scope.row.lang == null">答案 / {{ scope.row.codeLength }} B</span>
               <span v-else>{{ $store.state.langList[scope.row.lang].des }} / {{ scope.row.codeLength }} B </span>

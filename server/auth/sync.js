@@ -1,5 +1,5 @@
 const db = require('../db');
-const { PERMISSIONS, BUILTIN_ROLES } = require('./permissions');
+const { PERMISSIONS, BUILTIN_ROLES, LEGACY_GID_ROLE } = require('./permissions');
 
 const ensureSchema = async () => {
   await db.query(`
@@ -18,8 +18,7 @@ const ensureSchema = async () => {
       \`key\`        VARCHAR(64)  NOT NULL UNIQUE,
       name         VARCHAR(64)  NOT NULL,
       description  VARCHAR(255) NULL,
-      builtin      TINYINT      NOT NULL DEFAULT 0,
-      legacy_gid   TINYINT      NULL UNIQUE
+      builtin      TINYINT      NOT NULL DEFAULT 0
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
   await db.query(`
@@ -79,11 +78,11 @@ const syncBuiltinRoles = async () => {
 
   for (const [key, meta] of Object.entries(BUILTIN_ROLES)) {
     await db.query(
-      `INSERT INTO roles (\`key\`, name, description, builtin, legacy_gid)
-       VALUES (?,?,?,1,?)
+      `INSERT INTO roles (\`key\`, name, description, builtin)
+       VALUES (?,?,?,1)
        ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description),
-                               builtin=1, legacy_gid=VALUES(legacy_gid)`,
-      [key, meta.name, meta.description || null, meta.legacyLevel]
+                               builtin=1`,
+      [key, meta.name, meta.description || null]
     );
     const role = await db.one('SELECT id FROM roles WHERE `key`=?', [key]);
 
@@ -113,17 +112,18 @@ const columnExists = async (table, column) => {
 };
 
 // One-time backfill: assign builtin role to existing users based on their
-// legacy level.
+// legacy gid, using the LEGACY_GID_ROLE map (no persisted legacy_gid column).
 // Idempotent (PRIMARY KEY (uid, role_id) prevents duplicates) and conditional
 // on the old userInfo column still existing — once dropped, this is a no-op.
 const backfillUserRoles = async () => {
   if (!(await columnExists('userInfo', 'gid'))) return;
-  const roleByLevel = await db.query('SELECT id, legacy_gid AS legacyLevel FROM roles WHERE legacy_gid IS NOT NULL');
-  for (const r of roleByLevel) {
+  for (const [gid, roleKey] of Object.entries(LEGACY_GID_ROLE)) {
+    const role = await db.one('SELECT id FROM roles WHERE `key`=?', [roleKey]);
+    if (!role) continue;
     await db.query(
       `INSERT IGNORE INTO user_roles (uid, role_id, granted_by)
        SELECT uid, ?, NULL FROM userInfo WHERE gid=?`,
-      [r.id, r.legacyLevel]
+      [role.id, Number(gid)]
     );
   }
 };

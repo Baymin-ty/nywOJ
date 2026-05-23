@@ -90,7 +90,7 @@
             </router-link>
           </template>
         </el-table-column>
-        <el-table-column prop="judgeResult" label="评测状态" width="160px">
+        <el-table-column prop="judgeResult" label="评测状态" width="180px">
           <template #default="scope">
             <span style="cursor: pointer;" @click="go2s(scope)">
               {{ scope.row.judgeResult }}
@@ -112,13 +112,13 @@
             <span> {{ scope.row.memory }} </span>
           </template>
         </el-table-column>
-        <el-table-column prop="codeLength" label="语言 / 代码长度" width="150px">
+        <el-table-column prop="codeLength" label="语言 / 代码长度" width="175px">
           <template #default="scope">
             <span v-if="scope.row.lang == null">答案 / {{ scope.row.codeLength }} B</span>
             <span v-else>{{ $store.state.langList[scope.row.lang].des }} / {{ scope.row.codeLength }} B </span>
           </template>
         </el-table-column>
-        <el-table-column prop="submitTime" label="提交时间" fixed="right" width="160px" />
+        <el-table-column prop="submitTime" label="提交时间" fixed="right" width="185px" />
         <el-table-column prop="machine" label="评测机" fixed="right" min-width="100px" />
       </el-table>
     </el-card>

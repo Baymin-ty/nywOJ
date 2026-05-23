@@ -15,11 +15,13 @@ import {
   DocumentAdd,
   Edit,
   Files,
+  Grid,
   Guide,
   Hide,
   Histogram,
   InfoFilled,
   Key,
+  List,
   Lock,
   Lollipop,
   Operation,
@@ -37,6 +39,7 @@ import {
   UploadFilled,
   User,
   UserFilled,
+  Warning,
 } from '@element-plus/icons-vue'
 import App from './App.vue'
 // import axios from 'axios'
@@ -100,11 +103,13 @@ const icons = {
   DocumentAdd,
   Edit,
   Files,
+  Grid,
   Guide,
   Hide,
   Histogram,
   InfoFilled,
   Key,
+  List,
   Lock,
   Lollipop,
   Operation,
@@ -122,6 +127,7 @@ const icons = {
   UploadFilled,
   User,
   UserFilled,
+  Warning,
 }
 Object.entries(icons).forEach(([key, component]) => app.component(key, component))
 

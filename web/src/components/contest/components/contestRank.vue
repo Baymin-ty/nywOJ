@@ -59,7 +59,7 @@
           </router-link>
         </template>
       </el-table-column>
-      <el-table-column prop="judgeResult" label="评测状态" min-width="15%">
+      <el-table-column prop="judgeResult" label="评测状态" min-width="17%">
         <template #default="scope">
           <span style="cursor: pointer;"
             @click="this.$router.push({ path: '/submission/' + scope.row.sid, query: { isContest: true } })">

@@ -5,8 +5,8 @@
         <div class="profile-side">
           <el-avatar shape="square" :size="230" :src="avatarAddress" />
           <div id="name">{{ info.name }}</div>
-          <el-button v-if="$store.state.uid === Number(uid)" type="info" plain
-            @click="$router.push('/user/edit')" id="modify">修改资料</el-button>
+          <el-button v-if="$store.state.uid === Number(uid)" type="info" plain @click="$router.push('/user/edit')"
+            id="modify">修改资料</el-button>
           <div v-if="info.email" class="infos">
             <span class="subtitle">邮箱</span>
             <span class="info-val">{{ info.email }}</span>
@@ -131,7 +131,9 @@ export default {
     renderSubmissionHeat() {
       const el = document.getElementById("submissionHeat");
       if (!el) return;
-      const data = (this.submissionStats.heatmap || []).map((i) => [i.date, i.cnt]);
+      const rawData = this.submissionStats.heatmap || [];
+      if (!rawData.length) return;
+      const data = rawData.map((i) => [i.date, i.cnt]);
       const max = Math.max(1, ...data.map((i) => i[1]));
       this.charts.heat = this.charts.heat || chart.init(el);
       this.charts.heat.setOption({
@@ -167,7 +169,9 @@ export default {
     renderResultStat() {
       const el = document.getElementById("resultStat");
       if (!el) return;
-      const data = (this.submissionStats.results || []).map((i) => ({
+      const rawResults = this.submissionStats.results || [];
+      if (!rawResults.length) return;
+      const data = rawResults.map((i) => ({
         name: i.result,
         value: i.cnt,
         itemStyle: { color: resColor[i.result] || '#909399' },
@@ -203,6 +207,7 @@ export default {
     renderClickChart() {
       const el = document.getElementById("clickCnt");
       if (!el) return;
+      if (!this.date.length) return;
       this.charts.click = this.charts.click || chart.init(el);
       this.charts.click.setOption({
         grid: { left: 8, top: 40, right: 8, bottom: 24, containLabel: true },
