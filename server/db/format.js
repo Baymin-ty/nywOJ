@@ -16,6 +16,8 @@ const judgeRes = [
   'System Error',
   'Canceled',
   'Skipped',
+  'Partially Correct',
+  'Judgement Failed',
 ];
 
 const ptype = ['传统文本比较', 'Special Judge', '提交答案', '提交答案 (SPJ)'];

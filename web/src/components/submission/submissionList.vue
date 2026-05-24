@@ -155,6 +155,9 @@ export default {
         value: 4,
         label: 'Accepted',
       }, {
+        value: 15,
+        label: 'Partially Correct',
+      }, {
         value: 5,
         label: 'Wrong Answer',
       }, {
@@ -190,6 +193,9 @@ export default {
       }, {
         value: 12,
         label: 'System Error',
+      }, {
+        value: 16,
+        label: 'Judgement Failed',
       }, {
         value: 13,
         label: 'Canceled',

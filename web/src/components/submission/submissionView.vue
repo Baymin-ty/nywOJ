@@ -117,7 +117,7 @@
           <div v-if="isLive" class="live-strip"><span></span></div>
         </template>
         <el-table
-          v-if="submissionInfo.judgeResult !== 'Compilation Error' && submissionInfo.judgeResult !== 'System Error' && !submissionInfo.done"
+          v-if="!isErrorReport && !submissionInfo.done"
           :data="submissionInfo.singleCaseResult" height="auto" :row-class-name="tableRowClassName"
           :cell-style="cellStyle" :header-cell-style="{ textAlign: 'center' }">
           <el-table-column prop="caseId" label="#" min-width="10%" />
@@ -139,10 +139,10 @@
           </el-table-column>
         </el-table>
         <caseDisplay
-          v-if="submissionInfo.judgeResult !== 'Compilation Error' && submissionInfo.judgeResult !== 'System Error' && submissionInfo.subtaskInfo"
+          v-if="!isErrorReport && submissionInfo.subtaskInfo"
           :subtaskInfo="submissionInfo.subtaskInfo" />
         <v-md-preview
-          v-show="submissionInfo.judgeResult === 'Compilation Error' || submissionInfo.judgeResult === 'System Error'"
+          v-show="isErrorReport"
           :text="submissionInfo.compileResult" />
       </el-card>
     </el-col>
@@ -262,6 +262,13 @@ export default {
     isLive() {
       return LIVE_STATES.has(this.submissionInfo.judgeResult);
     },
+    // Results that have no per-case table — the body is a plain message stored
+    // in compileResult. Judgement Failed (bad data / broken SPJ) joins the
+    // compile-error and system-error cases here.
+    isErrorReport() {
+      const r = this.submissionInfo.judgeResult;
+      return r === 'Compilation Error' || r === 'System Error' || r === 'Judgement Failed';
+    },
     isAnswerSubmission() {
       // submission.lang is NULL only for answer-submission problems
       // (type ∈ {2,3}). Server preserves null through the JSON payload.
@@ -346,10 +353,18 @@ export default {
             g.type = 'danger';
             g.summaryClass = 'is-bad';
           } else if (compare && compare.data) {
-            const ok = compare.data.result === 'ok';
-            parts.push(ok ? '通过' : '答案错误');
-            g.type = ok ? 'success' : 'danger';
-            g.summaryClass = ok ? 'is-ok' : 'is-bad';
+            const result = compare.data.result;
+            if (result === 'partial') {
+              const pct = Math.round((compare.data.ratio || 0) * 100);
+              parts.push(`部分正确${pct ? ' ' + pct + '%' : ''}`);
+              g.type = 'warning';
+              g.summaryClass = 'is-partial';
+            } else {
+              const ok = result === 'ok';
+              parts.push(ok ? '通过' : '答案错误');
+              g.type = ok ? 'success' : 'danger';
+              g.summaryClass = ok ? 'is-ok' : 'is-bad';
+            }
           }
           g.summary = parts.join(' · ');
           g.ts = g.entries[0] && g.entries[0].ts;
@@ -1019,6 +1034,11 @@ export default {
 
 .log-group-summary.is-bad {
   color: #b91c1c;
+  font-weight: 600;
+}
+
+.log-group-summary.is-partial {
+  color: #0c8043;
   font-weight: 600;
 }
 

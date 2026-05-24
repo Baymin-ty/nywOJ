@@ -62,6 +62,9 @@ role_permissions / user_roles / user_permissions`。前端权限管理中心位�
 - 难度分级（0–5）、最多 5 个标签（单标签 ≤ 10 字符）
 - 时间限制（≤ 10000 ms）、内存限制（≤ 512 MB）
 - 评测类型：传统文本比较 / Special Judge（自定义 checker.cpp，基于 testlib）
+  - SPJ 支持部分分：checker 用 testlib `quitp(points[, msg])`（exit 7）或
+    `partially correct (P)` 返回单点得分比例（≤1 视为比例，>1 视为百分比），
+    评测结果显示为 **Partially Correct**（深绿色）
 - 多语言支持（按位掩码控制，题目与比赛双重限制）
 - 测试点管理：上传 zip / 在线编辑 / 下载（仅题目发布者或管理员）
 - 子任务系统：等分 / 自定义分值，支持遇 TLE 止测与子任务依赖
@@ -88,7 +91,9 @@ role_permissions / user_roles / user_permissions`。前端权限管理中心位�
 - SPJ checker 跨提交缓存（按 pid + 源码 sha256 命中），sandbox `fileId` 持久化到
   [server/judge_cache/spj.json](server/api/spjCache.js)，编辑 `checker.cpp` 自动失效
 - 分布式评测：支持将任务分发到远程评测机（通过 HTTP `/api/judge/receiveTask`）
-- 评测结果：Waiting / Pending / Rejudging / CE / AC / WA / TLE / MLE / RE / Segfault / OLE / 危险系统调用 / SE / Canceled / Skipped
+- 评测结果：Waiting / Pending / Rejudging / CE / AC / **Partially Correct** / WA / TLE / MLE / RE / Segfault / OLE / 危险系统调用 / SE / **Judgement Failed** / Canceled / Skipped
+  - **System Error**：后端 / 评测机代码层面的故障（沙箱不可用、网络、判题代码异常）
+  - **Judgement Failed**：题目配置层面（缺失 / 非法的 config 或测试数据）或 SPJ 层面（缺失 / 编译失败 / 运行 FAIL 的 checker）的问题
 - 评测完成后自动更新题目统计
 
 ### Paste（剪贴板）

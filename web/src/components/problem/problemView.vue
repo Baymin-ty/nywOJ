@@ -33,14 +33,6 @@
           </div>
         </div>
         <div v-if="isSubmit && isAnswerProblem" class="answer-submit">
-          <div style="margin-bottom: 12px; text-align: center;">
-            <el-button type="success" plain :disabled="answerCases.length === 0" @click="downloadInputs">
-              <el-icon class="el-icon--left">
-                <Download />
-              </el-icon>
-              下载输入数据
-            </el-button>
-          </div>
           <el-upload drag :auto-upload="false" :limit="1" :on-change="onZipPicked"
             :on-remove="onZipRemoved" accept=".zip" class="answer-upload">
             <el-icon class="el-icon--upload"><upload-filled /></el-icon>
@@ -92,7 +84,16 @@
         <el-descriptions direction="vertical" :column="1" border>
           <el-descriptions-item v-if="!isAnswerProblem" label="时间限制"> {{ problemInfo.timeLimit }} ms</el-descriptions-item>
           <el-descriptions-item v-if="!isAnswerProblem" label="空间限制"> {{ problemInfo.memoryLimit }} MB</el-descriptions-item>
-          <el-descriptions-item label="比对方式"> {{ problemInfo.type }} </el-descriptions-item>
+          <el-descriptions-item label="比对方式">
+            {{ problemInfo.type }}
+            <el-button v-if="isAnswerProblem" type="success" link :disabled="answerCases.length === 0"
+              @click="downloadInputs">
+              <el-icon class="el-icon--left">
+                <Download />
+              </el-icon>
+              下载输入数据
+            </el-button>
+          </el-descriptions-item>
           <el-descriptions-item label="题目标签">
             <el-tag type="info" v-for="tag in problemInfo.tags" :key="tag" :color="getTagColor(tag)"
               @click="this.$router.push({ path: '/problem', query: { tags: JSON.stringify([tag]) } })">

@@ -30,7 +30,9 @@ export const resColor = {
   'Dangerous System Call': '#607D8B',
   'System Error': '#607D8B',
   'Canceled': '#606266',
-  'Skipped': '#606266'
+  'Skipped': '#606266',
+  'Partially Correct': '#0c8043',
+  'Judgement Failed': '#8d6e63'
 };
 
 export const scoreColor = [

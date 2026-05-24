@@ -60,6 +60,78 @@ const RES = {
   'Internal Error': 12,
 };
 
+// Named result codes used across this file (must match db/format.js judgeRes).
+const AC = 4;
+const WA = 5;
+const SYSTEM_ERROR = 12;
+const PARTIALLY_CORRECT = 15;
+const JUDGEMENT_FAILED = 16;
+
+// Distinguishes the two failure classes the outer catch must tell apart:
+//   'system'    → backend / judge-machine fault (sandbox down, bug, network)
+//                 → System Error (12)
+//   'judgement' → problem-configuration fault (missing/invalid data) or a
+//                 checker (SPJ) fault → Judgement Failed (16)
+// Anything thrown that is NOT a JudgeError is treated as a System Error.
+class JudgeError extends Error {
+  constructor(kind, message) {
+    super(message);
+    this.name = 'JudgeError';
+    this.kind = kind;
+  }
+}
+
+const clamp01 = (x) => (Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0);
+
+// Interpret a testlib checker's verdict for one case from its stderr (+ exit
+// code). testlib writes a human-readable line to stderr (no ANSI colours when
+// stderr isn't a TTY, which is always the case inside the sandbox) and exits
+// with a code: ok=0 wa=1 pe=2 fail=3 dirt=4 points(quitp)=7 unexpected_eof=8.
+//   - quitp(p [, msg])          → "points <p> ..."  (exit 7); <p> read as the
+//     case ratio. Values >1 are treated as a percentage (quitp(50) ⇒ 0.5).
+//   - quitf(_pc(x) [, msg])     → "partially correct (x) ..."; x read as a %.
+//   - quitf(_ok/_wa/_fail, ...) → "ok ..."/"wrong answer ..."/"FAIL ...".
+// Returns { kind: 'ok'|'partial'|'wa'|'fail', ratio } where ratio ∈ [0,1].
+// `exitStatus` may be undefined for the built-in comparer (run via exec, which
+// only ever reports ok/wrong answer) — in that case an unrecognised line is
+// treated as WA to preserve legacy behaviour rather than as a checker fault.
+const parseChecker = (stderr, exitStatus) => {
+  const raw = String(stderr || '').replace(/^\s+/, '');
+  const head = raw.toLowerCase();
+  if (head.startsWith('ok')) return { kind: 'ok', ratio: 1 };
+  if (head.startsWith('points')) {
+    const m = raw.match(/points\s+(-?\d+(?:\.\d+)?)/i);
+    const p = m ? parseFloat(m[1]) : 0;
+    const ratio = clamp01(p > 1 ? p / 100 : p);
+    if (ratio >= 1) return { kind: 'ok', ratio: 1 };
+    if (ratio <= 0) return { kind: 'wa', ratio: 0 };
+    return { kind: 'partial', ratio };
+  }
+  if (head.startsWith('partially correct')) {
+    const m = raw.match(/partially correct\s*\((\d+)\)/i);
+    const ratio = clamp01((m ? parseInt(m[1], 10) : 0) / 100);
+    if (ratio >= 1) return { kind: 'ok', ratio: 1 };
+    if (ratio <= 0) return { kind: 'wa', ratio: 0 };
+    return { kind: 'partial', ratio };
+  }
+  if (head.startsWith('wrong answer') || head.startsWith('wrong output format')
+      || head.startsWith('unexpected eof')) {
+    return { kind: 'wa', ratio: 0 };
+  }
+  if (head.startsWith('fail')) return { kind: 'fail', ratio: 0 };
+  // Unrecognised text → fall back to the exit code (SPJ path only).
+  if (exitStatus === undefined || exitStatus === null) return { kind: 'wa', ratio: 0 };
+  switch (exitStatus) {
+    case 0: return { kind: 'ok', ratio: 1 };
+    case 1: case 2: case 4: case 7: case 8: return { kind: 'wa', ratio: 0 };
+    default: return { kind: 'fail', ratio: 0 }; // 3 (FAIL) and anything unexpected
+  }
+};
+
+// Map a parsed checker verdict to a per-case judgeResult enum.
+const verdictToRes = (kind) =>
+  kind === 'ok' ? AC : kind === 'partial' ? PARTIALLY_CORRECT : WA;
+
 // `comparer` writes scratch files under ./comparer/tmp/. Tag with submission +
 // counter so concurrent workers don't collide on the same path.
 let jid = 1;
@@ -192,21 +264,46 @@ const runSPJ = (fileId, inputFile, usrOutput, outputFile) =>
 // place ({ fileId, fromCache }) so subsequent cases reuse the recompiled binary.
 // A failure on a freshly compiled binary is a genuine SPJ runtime error and is
 // propagated unchanged.
+const summarizeSPJRun = (spjRun) => ({
+  stderr: (spjRun.files && spjRun.files.stderr) || '',
+  exitStatus: spjRun.exitStatus,
+  status: spjRun.status,
+});
+
 const runSPJCase = async (sid, pid, spjState, inputFile, usrOutput, outputFile) => {
   try {
-    const spjRun = await runSPJ(spjState.fileId, inputFile, usrOutput, outputFile);
-    return (spjRun.files && spjRun.files.stderr) || '';
+    return summarizeSPJRun(await runSPJ(spjState.fileId, inputFile, usrOutput, outputFile));
   } catch (err) {
     if (!spjState.fromCache) throw err; // already fresh — recompiling won't help
     await logEvent(sid, 'spj.run.staleCache', { pid, error: summarizeAxiosError(err) });
     spjCache.invalidate(pid);
     const spj = await ensureSPJ(sid, pid); // cache cleared → forces a recompile
-    if (spj.error) throw new Error(spj.error);
+    if (spj.error) throw new JudgeError('judgement', spj.error); // checker won't compile
     spjState.fileId = spj.fileId;
     spjState.fromCache = false;
-    const spjRun = await runSPJ(spjState.fileId, inputFile, usrOutput, outputFile);
-    return (spjRun.files && spjRun.files.stderr) || '';
+    return summarizeSPJRun(await runSPJ(spjState.fileId, inputFile, usrOutput, outputFile));
   }
+};
+
+// Shared by judgeCode/judgeAnswer: run the SPJ for one case and turn its raw
+// sandbox result into a { kind, ratio, raw } verdict. A checker that crashes,
+// times out, or returns FAIL is a problem/SPJ fault → JudgeError('judgement');
+// a sandbox Internal Error is a judge fault → JudgeError('system').
+const judgeWithSPJ = async (sid, pid, spjState, inputFile, usrOutput, outputFile) => {
+  const out = await runSPJCase(sid, pid, spjState, inputFile, usrOutput, outputFile);
+  if (out.status === 'Internal Error') {
+    throw new JudgeError('system', 'SPJ sandbox internal error');
+  }
+  // The checker itself misbehaved (TLE/MLE/Signalled/OLE/...). 'Accepted' and
+  // 'Nonzero Exit Status' are the only statuses where testlib actually ran to a
+  // verdict; everything else means the checker is broken.
+  const verdict = (out.status === 'Accepted' || out.status === 'Nonzero Exit Status')
+    ? parseChecker(out.stderr, out.exitStatus)
+    : { kind: 'fail', ratio: 0 };
+  if (verdict.kind === 'fail') {
+    throw new JudgeError('judgement', 'SPJ Error\n' + truncateText(out.stderr || `checker status: ${out.status}`, 4096));
+  }
+  return { ...verdict, raw: out.stderr };
 };
 
 // ---- compare (default checker) ----
@@ -227,6 +324,16 @@ const compareDefault = async (sid, usrOutput, outputFile) => {
 // `dependencies` (subtask fails if any dep didn't AC). `skip` is an
 // optimization: if a subtask is marked skip and a TLE shows up mid-run,
 // remaining cases in that subtask are short-circuited as result=14 (Skipped).
+// `judgeResult` entries carry an optional `ratio` ∈ [0,1] (SPJ partial credit);
+// when absent we derive a binary ratio from judgeResult (AC ⇒ 1, else 0), so
+// non-SPJ problems score exactly as before. SENTINEL marks "no failing case
+// recorded yet" — it must sort *above* every real verdict so a subtask whose
+// only non-AC cases are Partially Correct (15) keeps res=15 instead of being
+// pinned to the old 12 sentinel.
+const SENTINEL = 99;
+const ratioOf = (cr) =>
+  typeof cr.ratio === 'number' ? clamp01(cr.ratio) : (cr.judgeResult === AC ? 1 : 0);
+
 const aggregate = (subtasks, judgeResult) => {
   const info = {};
   for (const s of subtasks) {
@@ -234,7 +341,7 @@ const aggregate = (subtasks, judgeResult) => {
       subtaskStatus: [],
       time: 0,
       memory: 0,
-      res: 12,
+      res: SENTINEL,
       score: 0,
       fullScore: s.score,
       option: s.option,
@@ -245,24 +352,32 @@ const aggregate = (subtasks, judgeResult) => {
 
   for (const i of Object.keys(info)) {
     const sub = info[i];
-    let acNum = 0, totalNum = 0;
+    let acNum = 0, totalNum = 0, sumRatio = 0, minRatio = 1;
     for (const cr of sub.subtaskStatus) {
       totalNum++;
       sub.time += cr.time;
       sub.memory = Math.max(sub.memory, cr.memory);
-      if (cr.judgeResult === 4) acNum++;
+      const ratio = ratioOf(cr);
+      sumRatio += ratio;
+      minRatio = Math.min(minRatio, ratio);
+      if (cr.judgeResult === AC) acNum++;
       else sub.res = Math.min(sub.res, cr.judgeResult);
     }
-    if (totalNum > 0 && !sub.option) {
-      sub.score = Math.ceil((sub.fullScore * acNum) / totalNum);
+    if (totalNum > 0) {
+      // option 0 = 等分 (proportional over cases); option 1 = 捆绑/min (the
+      // weakest case caps the subtask, IOI-style). Both collapse to the legacy
+      // all-or-nothing / proportional behaviour when ratios are binary.
+      sub.score = sub.option
+        ? Math.round(sub.fullScore * minRatio)
+        : Math.ceil((sub.fullScore * sumRatio) / totalNum);
     }
     if (totalNum > 0 && acNum === totalNum) {
-      sub.res = 4;
+      sub.res = AC;
       sub.score = sub.fullScore;
     }
     if (sub.dependencies) {
       for (const id of sub.dependencies) {
-        if (info[id] && info[id].res !== 4) {
+        if (info[id] && info[id].res !== AC) {
           sub.res = info[id].res;
           sub.score = 0;
           break;
@@ -271,8 +386,8 @@ const aggregate = (subtasks, judgeResult) => {
     }
   }
 
-  let finalRes = 12, totalTime = 0, maxMemory = 0, totalScore = 0;
-  let acSub = 0, totalSub = 0;
+  let totalTime = 0, maxMemory = 0, totalScore = 0;
+  let acSub = 0, totalSub = 0, worst = SENTINEL;
   const subtaskList = [];
   for (const i of Object.keys(info)) {
     const sub = info[i];
@@ -280,19 +395,29 @@ const aggregate = (subtasks, judgeResult) => {
     totalTime += sub.time;
     maxMemory = Math.max(maxMemory, sub.memory);
     totalScore += sub.score;
+    const subRes = sub.res === SENTINEL ? AC : sub.res; // no failing case ⇒ AC
     subtaskList.push({
       index: i,
       time: sub.time, memory: sub.memory,
-      res: sub.res, score: sub.score, fullScore: sub.fullScore,
+      res: subRes, score: sub.score, fullScore: sub.fullScore,
       option: sub.option,
       dependencies: sub.dependencies || [],
     });
-    if (sub.res === 4) acSub++;
-    else finalRes = Math.min(finalRes, sub.res);
+    if (subRes === AC) acSub++;
+    else worst = Math.min(worst, subRes);
   }
+
+  // Final verdict follows the same priority rule as a subtask: the
+  // highest-priority (lowest-numbered) non-AC subtask result wins; all subtasks
+  // AC ⇒ Accepted. Partially Correct (15) therefore surfaces only when the worst
+  // subtask is itself partial (all-partial, or partial+AC) — a harder failure
+  // like WA/TLE on another subtask outranks it, exactly as before this feature.
+  let finalRes;
   if (totalSub > 0 && acSub === totalSub) {
-    finalRes = 4;
+    finalRes = AC;
     totalScore = 100;
+  } else {
+    finalRes = worst === SENTINEL ? AC : worst;
   }
   return { finalRes, totalTime, maxMemory, totalScore, acSub, totalSub, subtaskList };
 };
@@ -320,12 +445,13 @@ const judgeAnswer = async (sid, sinfo, pinfo, isRejudge) => {
 
     if (!conf.JUDGE.ISSERVER) await updateData(pid);
 
-    // SPJ binary (cached) — only when type=3
+    // SPJ binary (cached) — only when type=3. A missing/uncompilable checker is
+    // a problem-configuration fault → Judgement Failed (16), not System Error.
     const spjState = { fileId: '', fromCache: false };
     if (pinfo.type === 3) {
       const spj = await ensureSPJ(sid, pid);
       if (spj.error) {
-        await db.query('UPDATE submission SET judgeResult=12,compileResult=? WHERE sid=?', [spj.error, sid]);
+        await db.query('UPDATE submission SET judgeResult=?,compileResult=? WHERE sid=?', [JUDGEMENT_FAILED, spj.error, sid]);
         await updateProblemSubmitInfo(pid);
         await updateProblemStat(pid);
         return;
@@ -334,8 +460,9 @@ const judgeAnswer = async (sid, sinfo, pinfo, isRejudge) => {
       spjState.fromCache = !!spj.fromCache;
     }
 
-    const config = JSON.parse(await getFile(`./data/${pid}/config.json`));
-    if (!config || !config.cases) throw new Error('CASE ERROR: config.cases is null or undefined');
+    const configRaw = await getFile(`./data/${pid}/config.json`);
+    const config = configRaw ? JSON.parse(configRaw) : null;
+    if (!config || !config.cases) throw new JudgeError('judgement', 'CASE ERROR: config.cases is null or undefined');
     const cases = config.cases;
     const subtasks = config.subtask;
 
@@ -350,6 +477,9 @@ const judgeAnswer = async (sid, sinfo, pinfo, isRejudge) => {
         : '';
       const inputFile = await getFile(`./data/${pid}/${c.input}`);
       const outputFile = await getFile(`./data/${pid}/${c.output}`);
+      if (inputFile === null || outputFile === null) {
+        throw new JudgeError('judgement', `DATA ERROR: missing ${inputFile === null ? c.input : c.output}`);
+      }
 
       await logEvent(sid, 'case.start', {
         caseId: c.index,
@@ -357,25 +487,28 @@ const judgeAnswer = async (sid, sinfo, pinfo, isRejudge) => {
         input: truncateText(inputFile, 1024),
       });
 
-      let compareRes = '';
+      let verdict, compareRes = '';
       try {
         if (pinfo.type === 2) {
           compareRes = await compareDefault(sid, usrOutput, outputFile);
+          verdict = parseChecker(compareRes);
         } else {
-          compareRes = await runSPJCase(sid, pid, spjState, inputFile, usrOutput, outputFile);
+          verdict = await judgeWithSPJ(sid, pid, spjState, inputFile, usrOutput, outputFile);
+          compareRes = verdict.raw || '';
         }
       } catch (err) {
         await logEvent(sid, 'case.error', { caseId: c.index, error: summarizeAxiosError(err) });
-        // A stale SPJ cache is already retried inside runSPJCase; reaching here
-        // means a genuine failure — propagate so the outer catch records a
-        // System Error.
+        // Stale SPJ caches are retried inside runSPJCase; reaching here means a
+        // genuine failure (JudgeError from judgeWithSPJ, or a sandbox/network
+        // fault) — propagate so the outer catch records JF vs System Error.
         throw err;
       }
 
-      const ok = compareRes.substring(0, 2) === 'ok';
+      const caseRes = verdictToRes(verdict.kind);
       await logEvent(sid, 'case.compare', {
         caseId: c.index,
-        result: ok ? 'ok' : 'wa',
+        result: verdict.kind === 'ok' ? 'ok' : verdict.kind === 'partial' ? 'partial' : 'wa',
+        ratio: verdict.ratio,
         detail: truncateText(compareRes, 4096),
       });
       // time/memory are not meaningful for answer-submission — keep 1ms/1KB
@@ -386,9 +519,9 @@ const judgeAnswer = async (sid, sinfo, pinfo, isRejudge) => {
         sid, c.index,
         inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
         usrOutput.substring(0, 255) + (usrOutput.length > 255 ? '......\n' : ''),
-        t, mem, ok ? 4 : 5, compareRes, c.subtaskId,
+        t, mem, caseRes, compareRes, c.subtaskId,
       );
-      judgeResult.push({ time: t, memory: mem, subtaskId: c.subtaskId, judgeResult: ok ? 4 : 5 });
+      judgeResult.push({ time: t, memory: mem, subtaskId: c.subtaskId, judgeResult: caseRes, ratio: verdict.ratio });
     }
 
     const agg = aggregate(subtasks, judgeResult);
@@ -410,10 +543,12 @@ const judgeAnswer = async (sid, sinfo, pinfo, isRejudge) => {
   } catch (err) {
     console.log(err);
     await logEvent(sid, 'error', {
+      kind: err && err.kind === 'judgement' ? 'judgement' : 'system',
       message: err && err.message ? err.message : String(err),
       stack: truncateText(err && err.stack ? err.stack : ''),
     });
-    await setSubmission(sid, 12, 0, 0, 0, String(err), null, conf.JUDGE.NAME);
+    const finalRes = err && err.kind === 'judgement' ? JUDGEMENT_FAILED : SYSTEM_ERROR;
+    await setSubmission(sid, finalRes, 0, 0, 0, String(err && err.message ? err.message : err), null, conf.JUDGE.NAME);
     await updateProblemSubmitInfo(pid);
     await updateProblemStat(pid);
   }
@@ -467,12 +602,13 @@ const judgeCode = async (sid, isRejudge) => {
 
     const userFileId = compileResult.fileIds[lang.binary];
 
-    // 2) ensure SPJ (cached)
+    // 2) ensure SPJ (cached). A missing/uncompilable checker is a
+    // problem-configuration fault → Judgement Failed (16), not System Error.
     const spjState = { fileId: '', fromCache: false };
     if (pinfo.type === 1) {
       const spj = await ensureSPJ(sid, pid);
       if (spj.error) {
-        await db.query('UPDATE submission SET judgeResult=12,compileResult=? WHERE sid=?', [spj.error, sid]);
+        await db.query('UPDATE submission SET judgeResult=?,compileResult=? WHERE sid=?', [JUDGEMENT_FAILED, spj.error, sid]);
         await updateProblemSubmitInfo(pid);
         await updateProblemStat(pid);
         return;
@@ -482,8 +618,9 @@ const judgeCode = async (sid, isRejudge) => {
     }
 
     // 3) run cases
-    const config = JSON.parse(await getFile(`./data/${pid}/config.json`));
-    if (!config || !config.cases) throw new Error('CASE ERROR: config.cases is null or undefined');
+    const configRaw = await getFile(`./data/${pid}/config.json`);
+    const config = configRaw ? JSON.parse(configRaw) : null;
+    if (!config || !config.cases) throw new JudgeError('judgement', 'CASE ERROR: config.cases is null or undefined');
     const cases = config.cases;
     const subtasks = config.subtask;
 
@@ -503,6 +640,9 @@ const judgeCode = async (sid, isRejudge) => {
 
       const inputFile = await getFile(`./data/${pid}/${c.input}`);
       const outputFile = await getFile(`./data/${pid}/${c.output}`);
+      if (inputFile === null || outputFile === null) {
+        throw new JudgeError('judgement', `DATA ERROR: missing ${inputFile === null ? c.input : c.output}`);
+      }
       await logEvent(sid, 'case.start', {
         caseId: c.index,
         subtaskId: c.subtaskId,
@@ -544,28 +684,32 @@ const judgeCode = async (sid, isRejudge) => {
       }
 
       const usrOutput = (runResult.files && runResult.files.stdout) || '';
-      let compareRes = '';
+      let verdict, compareRes = '';
       if (pinfo.type === 0) {
         compareRes = await compareDefault(sid, usrOutput, outputFile);
-      } else if (pinfo.type === 1) {
-        // Stale cached SPJ binaries are recompiled-and-retried inside runSPJCase;
-        // only a genuine SPJ runtime failure propagates here.
-        compareRes = await runSPJCase(sid, pid, spjState, inputFile, usrOutput, outputFile);
+        verdict = parseChecker(compareRes);
+      } else {
+        // type 1 (SPJ). Stale cached SPJ binaries are recompiled-and-retried
+        // inside runSPJCase; a checker FAIL/crash surfaces as a JudgeError
+        // ('judgement') from judgeWithSPJ and propagates to the outer catch.
+        verdict = await judgeWithSPJ(sid, pid, spjState, inputFile, usrOutput, outputFile);
+        compareRes = verdict.raw || '';
       }
 
-      const ok = compareRes.substring(0, 2) === 'ok';
+      const caseRes = verdictToRes(verdict.kind);
       await logEvent(sid, 'case.compare', {
         caseId: c.index,
-        result: ok ? 'ok' : 'wa',
+        result: verdict.kind === 'ok' ? 'ok' : verdict.kind === 'partial' ? 'partial' : 'wa',
+        ratio: verdict.ratio,
         detail: truncateText(compareRes, 4096),
       });
       await updateSubmissionDetail(
         sid, c.index,
         inputFile.substring(0, 255) + (inputFile.length > 255 ? '......\n' : ''),
         usrOutput.substring(0, 255) + (usrOutput.length > 255 ? '......\n' : ''),
-        t, mem, ok ? 4 : 5, compareRes, c.subtaskId,
+        t, mem, caseRes, compareRes, c.subtaskId,
       );
-      judgeResult.push({ time: t, memory: mem, subtaskId: c.subtaskId, judgeResult: ok ? 4 : 5 });
+      judgeResult.push({ time: t, memory: mem, subtaskId: c.subtaskId, judgeResult: caseRes, ratio: verdict.ratio });
     }
 
     // 4) aggregate
@@ -589,10 +733,12 @@ const judgeCode = async (sid, isRejudge) => {
   } catch (err) {
     console.log(err);
     await logEvent(sid, 'error', {
+      kind: err && err.kind === 'judgement' ? 'judgement' : 'system',
       message: err && err.message ? err.message : String(err),
       stack: truncateText(err && err.stack ? err.stack : ''),
     });
-    await setSubmission(sid, 12, 0, 0, 0, String(err), null, conf.JUDGE.NAME);
+    const finalRes = err && err.kind === 'judgement' ? JUDGEMENT_FAILED : SYSTEM_ERROR;
+    await setSubmission(sid, finalRes, 0, 0, 0, String(err && err.message ? err.message : err), null, conf.JUDGE.NAME);
     await updateProblemSubmitInfo(pid);
     await updateProblemStat(pid);
   }
