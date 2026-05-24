@@ -33,6 +33,63 @@ const extendXss = (component) => {
   });
 };
 
+// The copy-code plugin copies on click but gives no feedback. This companion
+// plugin briefly swaps the button's copy icon for a green check-mark (~1s) so a
+// successful copy is visible. It mirrors copy-code's own preview-plugin pattern
+// (a mixin that delegates clicks on the preview element) so it applies to every
+// <v-md-preview>/<v-md-editor> with no per-call wiring.
+const COPIED_CHECK_HTML =
+  '<i style="color:#52c41a"><svg viewBox="64 64 896 896" focusable="false" data-icon="check" '
+  + 'width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M912 190h-69.9c-9.8 '
+  + '0-19.1 4.5-25.1 12.2L404.7 724.5 207 474a32 32 0 00-25.1-12.2H112c-6.7 0-10.4 7.7-6.3 12.9l273.9 '
+  + '347c12.8 16.2 37.4 16.2 50.3 0l488.4-618.9c4.1-5.1.4-12.8-6.3-12.8z"></path></svg></i>';
+
+const getMarkdownPreviewEl = (el) => {
+  const cls = 'v-md-editor-preview';
+  if (!el || !el.classList) return null;
+  return el.classList.contains(cls) ? el : el.querySelector('.' + cls);
+};
+
+const findCopyCodeBtn = (el) => {
+  let node = el;
+  while (node && node.classList) {
+    if (node.classList.contains('v-md-copy-code-btn')) return node;
+    node = node.parentNode;
+  }
+  return null;
+};
+
+const createCopyFeedbackPlugin = () => ({
+  install(VMd) {
+    if (!VMd.mixins) VMd.mixins = [];
+    VMd.mixins.push({
+      mounted() {
+        this.$nextTick(() => {
+          const previewEl = getMarkdownPreviewEl(this.$el);
+          if (previewEl) previewEl.addEventListener('click', this.handleCopyCodeFeedback);
+        });
+      },
+      beforeUnmount() {
+        const previewEl = getMarkdownPreviewEl(this.$el);
+        if (previewEl) previewEl.removeEventListener('click', this.handleCopyCodeFeedback);
+      },
+      methods: {
+        handleCopyCodeFeedback(e) {
+          const btn = findCopyCodeBtn(e.target);
+          if (!btn || btn.dataset.copied) return; // ignore while feedback is showing
+          const original = btn.innerHTML;
+          btn.dataset.copied = '1';
+          btn.innerHTML = COPIED_CHECK_HTML;
+          setTimeout(() => {
+            btn.innerHTML = original;
+            delete btn.dataset.copied;
+          }, 1000);
+        },
+      },
+    });
+  },
+});
+
 const loadPreview = () => {
   if (!previewPromise) {
     previewPromise = (async () => {
@@ -57,7 +114,8 @@ const loadPreview = () => {
       VMdPreview
         .use(unwrap(themeMod), { Hljs: hljs })
         .use(unwrap(katexMod)())
-        .use(unwrap(copyCodeMod)());
+        .use(unwrap(copyCodeMod)())
+        .use(createCopyFeedbackPlugin());
       return VMdPreview;
     })();
   }
@@ -104,7 +162,8 @@ const loadEditor = () => {
       VMdEditor
         .use(unwrap(themeMod), { Hljs: hljs })
         .use(unwrap(katexMod)())
-        .use(unwrap(copyCodeMod)());
+        .use(unwrap(copyCodeMod)())
+        .use(createCopyFeedbackPlugin());
       return VMdEditor;
     })();
   }
