@@ -788,6 +788,9 @@ exports.getProblemCasePreview = [
       }
       await setFile(`./data/${pid}/preview.json`, JSON.stringify(previewList));
     }
+    // pretest 标记不进 preview.json 缓存，响应时从 config 合并（避免缓存过期问题）
+    const pretestSet = new Set(Array.isArray(data.pretests) ? data.pretests.map(Number) : []);
+    for (const row of previewList) row.pretest = pretestSet.has(Number(row.index));
     return ok(res, { data: previewList, spj, subtask: data.subtask, typeId });
   }),
 ];
@@ -1067,6 +1070,7 @@ exports.updateSubtaskId = [
 
     const newCases = [];
     const subtaskVis = new Map();
+    const pretests = []; // CF 赛制 pretest 标记（case index 列表），judgeScope='pretest' 时只跑这些
     for (const i in cases) {
       const c = cases[i];
       const inName = normalizeRelPath(c.inName);
@@ -1083,6 +1087,7 @@ exports.updateSubtaskId = [
         output: outName,
         subtaskId: Number(c.subtaskId),
       });
+      if (normalizeBool(c.pretest)) pretests.push(Number(i) + 1);
       subtaskVis.set(Number(c.subtaskId), true);
     }
     for (const s of normalizedSubtask) {
@@ -1090,7 +1095,9 @@ exports.updateSubtaskId = [
     }
     newCases.sort((a, b) => a.index - b.index);
 
-    await setFile(`./data/${pid}/config.json`, JSON.stringify({ cases: newCases, subtask: normalizedSubtask }));
+    const configPayload = { cases: newCases, subtask: normalizedSubtask };
+    if (pretests.length) configPayload.pretests = pretests;
+    await setFile(`./data/${pid}/config.json`, JSON.stringify(configPayload));
     recordEvent(req, 'problem.updateConfig', { pid });
     if (fs.existsSync(`./data/${pid}/preview.json`)) {
       fs.rmSync(`./data/${pid}/preview.json`);

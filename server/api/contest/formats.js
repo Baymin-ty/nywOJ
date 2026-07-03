@@ -43,6 +43,25 @@ const FORMATS = {
       penalty: { wrongTryMinutes: 20 },
     }),
   },
+  cf: {
+    label: 'Codeforces',
+    legacyType: 0,
+    preset: () => ({
+      scoreboard: { duringContest: 'full', afterEnd: 'public', freeze: { enabled: false, offsetMinutes: 60, revealed: false } },
+      submission: { resultVisibility: 'full' },
+      // weight 即题目初始分（如 500/1000/...）。得分随过题时刻线性衰减到
+      // minRatio，每次错误提交 −wrongPenalty；hack 成功/失败 ±reward/penalty。
+      cf: {
+        pretestEnabled: true,
+        hackEnabled: true,
+        decayPerMinuteRatio: 1 / 250, // 每分钟衰减 初始分/250（对齐 CF）
+        minRatio: 0.3,
+        wrongPenalty: 50,
+        hackReward: 100,
+        hackFailPenalty: 50,
+      },
+    }),
+  },
 };
 
 const FORMAT_IDS = Object.keys(FORMATS);
@@ -116,8 +135,31 @@ const validateConfigPatch = (format, patch) => {
       check(Number.isInteger(v) && v >= 0 && v <= 1000, 'penalty.wrongTryMinutes 必须是 0-1000 的整数');
     }
   }
+  const cf = patch.cf;
+  if (cf !== undefined) {
+    check(isPlainObject(cf), 'cf 必须是对象');
+    if (isPlainObject(cf)) {
+      for (const b of ['pretestEnabled', 'hackEnabled']) {
+        if (cf[b] !== undefined) check(typeof cf[b] === 'boolean', `cf.${b} 必须是布尔`);
+      }
+      if (cf.decayPerMinuteRatio !== undefined) {
+        const v = Number(cf.decayPerMinuteRatio);
+        check(Number.isFinite(v) && v >= 0 && v <= 1, 'cf.decayPerMinuteRatio 必须在 [0,1]');
+      }
+      if (cf.minRatio !== undefined) {
+        const v = Number(cf.minRatio);
+        check(Number.isFinite(v) && v >= 0 && v <= 1, 'cf.minRatio 必须在 [0,1]');
+      }
+      for (const n of ['wrongPenalty', 'hackReward', 'hackFailPenalty']) {
+        if (cf[n] !== undefined) {
+          const v = Number(cf[n]);
+          check(Number.isInteger(v) && v >= 0 && v <= 100000, `cf.${n} 必须是非负整数`);
+        }
+      }
+    }
+  }
   for (const key of Object.keys(patch)) {
-    if (!['scoreboard', 'submission', 'penalty'].includes(key)) errors.push(`未知配置项 ${key}`);
+    if (!['scoreboard', 'submission', 'penalty', 'cf'].includes(key)) errors.push(`未知配置项 ${key}`);
   }
   return errors;
 };

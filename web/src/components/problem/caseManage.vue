@@ -193,6 +193,8 @@
                   v-text="i.edit ? (i.edit === 1 ? '取消' : '保存') : '编辑'" :disabled="!auth.manage" />
                 <el-button style="vertical-align: middle; margin-left: 8px;" plain size="small" v-text="'下载'"
                   @click="downloadCase(i.index)" :disabled="!auth.manage" />
+                <el-checkbox v-model="i.pretest" style="margin-left: 12px; vertical-align: middle;"
+                  :disabled="!auth.manage" label="pretest" title="CF 赛制赛中只评 pretest 测试点（保存配置生效）" />
                 <div class="subtask">
                   <el-input v-model="i.subtaskId">
                     <template #prepend>

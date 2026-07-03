@@ -47,6 +47,14 @@ const loadContext = async (cid) => {
        FROM submission WHERE cid=? ORDER BY submitTime ASC,sid ASC`,
     [cid]
   );
+  // 已判定的 hack（CF）：成功的 hack 让目标提交在 hack 时刻起视为失败；
+  // hacker 按成败得/扣分。judgedTime 换算为相对秒。
+  const hackRows = contest.format === 'cf' ? await db.query(
+    `SELECT hackId,pid,hackerUid,targetSid,status,judgedTime
+       FROM contestHack WHERE cid=? AND status IN ('success','fail') AND judgedTime IS NOT NULL
+      ORDER BY judgedTime ASC,hackId ASC`,
+    [cid]
+  ).catch(() => []) : [];
 
   const pidToIdx = new Map();
   const weights = new Map();
@@ -75,7 +83,19 @@ const loadContext = async (cid) => {
     });
   }
 
-  const ctx = { contest, cfg, startMs, durationSec, problemInfo, weights, players, events };
+  const hacks = [];
+  for (const h of hackRows) {
+    hacks.push({
+      hackId: h.hackId,
+      hackerUid: Number(h.hackerUid),
+      targetSid: Number(h.targetSid),
+      idx: pidToIdx.get(Number(h.pid)),
+      success: h.status === 'success',
+      at: Math.max(0, Math.floor((new Date(h.judgedTime).getTime() - startMs) / 1000)),
+    });
+  }
+
+  const ctx = { contest, cfg, startMs, durationSec, problemInfo, weights, players, events, hacks };
   cache.set(key, { at: Date.now(), ctx });
   return ctx;
 };
@@ -167,6 +187,79 @@ const reduceAcm = (ctx, events, { maskAfter }) => {
   return rows;
 };
 
+// cf: 得分 = max(初始分×minRatio, 初始分 − 初始分×decay×过题分钟 − wrongPenalty×先前错误)
+// 被成功 hack 的 AC 从 hack 时刻起视为一次错误（可重新提交翻盘）；hacker ±hack 分。
+// 单元格 { ac, points, time(过题秒), tries, pending, masked, hacked }
+const reduceCf = (ctx, events, { maskAfter, tLimit }) => {
+  const rows = new Map();
+  for (const u of ctx.players.values()) rows.set(Number(u.uid), newRow(u));
+  const cf = ctx.cfg.cf || {};
+  const decay = Number(cf.decayPerMinuteRatio) || 0;
+  const minRatio = Number(cf.minRatio) || 0;
+  const wrongPenalty = Number(cf.wrongPenalty) || 0;
+  const horizon = tLimit == null ? Infinity : tLimit;
+
+  // 成功 hack（已生效、未被掩码）：targetSid -> hack 相对秒
+  const hackedAt = new Map();
+  for (const h of ctx.hacks) {
+    if (!h.success || h.at > horizon) continue;
+    if (maskAfter != null && h.at >= maskAfter) continue;
+    if (!hackedAt.has(h.targetSid)) hackedAt.set(h.targetSid, h.at);
+  }
+
+  for (const e of events) {
+    const row = rows.get(e.uid);
+    if (!row) continue;
+    let cell = row.detail[e.idx];
+    if (!cell) cell = row.detail[e.idx] = { ac: false, points: 0, time: 0, tries: 0, pending: 0, masked: 0, hacked: false };
+    if (cell.ac) continue; // 过题后（未被 hack）的提交忽略
+    if (maskAfter != null && e.at >= maskAfter) { cell.masked++; continue; }
+    row.submitted = true;
+    if (e.pending) { cell.pending++; continue; }
+    if (e.result === AC_RESULT) {
+      const hackTime = hackedAt.get(e.sid);
+      if (hackTime != null) {
+        // 被 hack：该次 AC 视为一次错误尝试（自 hack 时刻起）
+        cell.tries++;
+        cell.hacked = true;
+      } else {
+        cell.ac = true;
+        cell.time = e.at;
+        cell.hacked = false;
+      }
+    } else if (!NO_PENALTY_RESULTS.has(e.result)) {
+      cell.tries++;
+    }
+  }
+
+  for (const row of rows.values()) {
+    for (const idx of Object.keys(row.detail)) {
+      const cell = row.detail[idx];
+      if (!cell.ac) continue;
+      const init = Number(ctx.weights.get(Number(idx)) || 0);
+      const minutes = Math.floor(cell.time / 60);
+      const raw = init - init * decay * minutes - wrongPenalty * cell.tries;
+      cell.points = Math.max(Math.round(init * minRatio), Math.round(raw));
+      row.totalScore += cell.points;
+      row.solved++;
+    }
+    // hacker 得分
+    let hackScore = 0, hackOk = 0, hackFail = 0;
+    for (const h of ctx.hacks) {
+      if (h.hackerUid !== row.user.uid || h.at > horizon) continue;
+      if (maskAfter != null && h.at >= maskAfter) continue;
+      if (h.success) { hackScore += Number(cf.hackReward) || 0; hackOk++; }
+      else { hackScore -= Number(cf.hackFailPenalty) || 0; hackFail++; }
+    }
+    row.hackScore = hackScore;
+    row.hackOk = hackOk;
+    row.hackFail = hackFail;
+    row.totalScore += hackScore;
+    if (hackOk || hackFail) row.submitted = true;
+  }
+  return rows;
+};
+
 const comparators = {
   score: (a, b) => {
     if (a.totalScore !== b.totalScore) return b.totalScore - a.totalScore;
@@ -180,28 +273,41 @@ const comparators = {
     if (a.submitted !== b.submitted) return b.submitted - a.submitted;
     return a.user.uid - b.user.uid;
   },
+  cf: (a, b) => {
+    if (a.totalScore !== b.totalScore) return b.totalScore - a.totalScore;
+    if (a.submitted !== b.submitted) return b.submitted - a.submitted;
+    return a.user.uid - b.user.uid;
+  },
 };
 
 const sameStanding = (a, b) =>
   a.totalScore === b.totalScore && a.usedTime === b.usedTime && a.submitted === b.submitted;
 
+const sameOf = (format) => {
+  if (format === 'acm') return (a, b) => a.solved === b.solved && a.penalty === b.penalty && a.submitted === b.submitted;
+  if (format === 'cf') return (a, b) => a.totalScore === b.totalScore && a.submitted === b.submitted;
+  return sameStanding;
+};
+
 const reducerOf = (format) => {
   if (format === 'acm') return { reduce: reduceAcm, compare: comparators.acm };
+  if (format === 'cf') return { reduce: reduceCf, compare: comparators.cf };
   if (format === 'ioi') return { reduce: (c, e, o) => reduceScoreFormats(c, e, { ...o, takeMax: true }), compare: comparators.score };
   return { reduce: (c, e, o) => reduceScoreFormats(c, e, { ...o, takeMax: false }), compare: comparators.score };
 };
 
 // 一血标记：每题最早 AC（acm）/ 最早满分（oi/ioi）的未掩码提交
 const markFirstBlood = (ctx, events, rows, format, maskAfter) => {
+  const acBased = format === 'acm' || format === 'cf';
   const seen = new Set();
   for (const e of events) {
     if (seen.has(e.idx) || e.pending) continue;
     if (maskAfter != null && e.at >= maskAfter) continue;
-    const full = format === 'acm' ? e.result === AC_RESULT : e.score === 100;
+    const full = acBased ? e.result === AC_RESULT : e.score === 100;
     if (!full) continue;
     const row = rows.get(e.uid);
     const cell = row && row.detail[e.idx];
-    if (cell && (format === 'acm' ? cell.ac : cell.rawScore === 100)) {
+    if (cell && (acBased ? cell.ac : cell.rawScore === 100)) {
       cell.firstBlood = true;
       seen.add(e.idx);
     }
@@ -225,15 +331,13 @@ const computeStandings = async (cid, options = {}) => {
 
   const visible = ctx.events.filter((e) => e.at <= atSec);
   const { reduce, compare } = reducerOf(format);
-  const rows = reduce(ctx, visible, { maskAfter });
+  const rows = reduce(ctx, visible, { maskAfter, tLimit: atSec });
   markFirstBlood(ctx, visible, rows, format, maskAfter);
 
   const rank = [...rows.values()];
   rank.sort(compare);
   let displayedRank = 0;
-  const same = format === 'acm'
-    ? (a, b) => a.solved === b.solved && a.penalty === b.penalty && a.submitted === b.submitted
-    : sameStanding;
+  const same = sameOf(format);
   for (let i = 0; i < rank.length; i++) {
     if (i === 0 || !same(rank[i - 1], rank[i])) displayedRank = i + 1;
     rank[i].rank = displayedRank;
@@ -268,16 +372,16 @@ const participantTimeline = async (cid, uid, options = {}) => {
 
   const { reduce, compare } = reducerOf(format);
   const points = [];
-  const times = [...new Set(ctx.events.filter((e) => e.at <= horizon && !e.pending).map((e) => e.at))].sort((a, b) => a - b);
+  const sampleTimes = ctx.events.filter((e) => e.at <= horizon && !e.pending).map((e) => e.at)
+    .concat(ctx.hacks.filter((h) => h.at <= horizon).map((h) => h.at));
+  const times = [...new Set(sampleTimes)].sort((a, b) => a - b);
+  const same = sameOf(format);
   for (const t of times) {
     const visible = ctx.events.filter((e) => e.at <= t);
-    const rows = reduce(ctx, visible, { maskAfter: null });
+    const rows = reduce(ctx, visible, { maskAfter: null, tLimit: t });
     const rank = [...rows.values()].sort(compare);
     let displayedRank = 0;
     let mine = null;
-    const same = format === 'acm'
-      ? (a, b) => a.solved === b.solved && a.penalty === b.penalty && a.submitted === b.submitted
-      : sameStanding;
     for (let i = 0; i < rank.length; i++) {
       if (i === 0 || !same(rank[i - 1], rank[i])) displayedRank = i + 1;
       if (rank[i].user.uid === target) { mine = { row: rank[i], rank: displayedRank }; break; }

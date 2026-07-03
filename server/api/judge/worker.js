@@ -412,6 +412,49 @@ const aggregate = (subtasks, judgeResult) => {
 // the same way as code submissions so the result UI is identical.
 //
 // `opts` comes from the answer-mode profile and selects the checker.
+// hack 测试点用 `hack:` 前缀标记（storage 层拒绝 ..，不能用相对路径逃出题目目录），
+// caseFilePath 统一翻译真实存储键。
+const caseFilePath = (pid, name) =>
+  String(name).startsWith('hack:') ? `./data/hacks/${String(name).slice(5)}` : `./data/${pid}/${name}`;
+
+// 按提交的评测范围选择测试点（CF 赛制）：
+// - judgeScope='pretest'：只跑 config.pretests 标记的测试点（未标记则全跑），
+//   并裁掉没有保留测试点的子任务；
+// - 全量评测且为比赛内提交：追加该场该题的成功 hack 数据（0 分附加子任务，
+//   option=1 捆绑 —— 挂了只翻裁决不改分）。
+const selectJudgeCases = async (config, sinfo) => {
+  let cases = config.cases;
+  let subtasks = config.subtask || [];
+  if (sinfo && sinfo.judgeScope === 'pretest') {
+    const marks = new Set(Array.isArray(config.pretests) ? config.pretests.map(Number) : []);
+    if (marks.size) {
+      cases = cases.filter((c) => marks.has(Number(c.index)));
+      if (!cases.length) throw new JudgeError('judgement', 'CASE ERROR: pretests 标记不含任何有效测试点');
+      const keep = new Set(cases.map((c) => c.subtaskId));
+      subtasks = subtasks.filter((s) => keep.has(s.index));
+    }
+    return { cases, subtasks };
+  }
+  if (sinfo && sinfo.cid) {
+    const hacks = await db.query(
+      "SELECT hackId FROM contestHack WHERE cid=? AND pid=? AND status='success' ORDER BY hackId",
+      [sinfo.cid, sinfo.pid]
+    ).catch(() => []);
+    if (hacks.length) {
+      const maxIdx = Math.max(0, ...cases.map((c) => Number(c.index) || 0));
+      const maxSub = Math.max(0, ...subtasks.map((s) => Number(s.index) || 0));
+      cases = cases.concat(hacks.map((h, i) => ({
+        index: maxIdx + 1 + i,
+        input: `hack:${sinfo.cid}/${h.hackId}.in`,
+        output: `hack:${sinfo.cid}/${h.hackId}.ans`,
+        subtaskId: maxSub + 1,
+      })));
+      subtasks = subtasks.concat([{ index: maxSub + 1, score: 0, option: 1 }]);
+    }
+  }
+  return { cases, subtasks };
+};
+
 const judgeAnswer = async (sid, sinfo, pinfo, isRejudge, opts = null) => {
   const pid = pinfo.pid;
   const useSpj = opts ? !!opts.useSpj : false;
@@ -450,8 +493,7 @@ const judgeAnswer = async (sid, sinfo, pinfo, isRejudge, opts = null) => {
     const configRaw = await getFile(`./data/${pid}/config.json`);
     const config = configRaw ? JSON.parse(configRaw) : null;
     if (!config || !config.cases) throw new JudgeError('judgement', 'CASE ERROR: config.cases is null or undefined');
-    const cases = config.cases;
-    const subtasks = config.subtask;
+    const { cases, subtasks } = await selectJudgeCases(config, sinfo);
 
     const judgeResult = [];
     const answerDir = path.join(__dirname, '..', '..', 'answerSubmissions', String(sid));
@@ -469,8 +511,8 @@ const judgeAnswer = async (sid, sinfo, pinfo, isRejudge, opts = null) => {
       const usrOutput = fs.existsSync(userAnswerPath)
         ? fs.readFileSync(userAnswerPath, 'utf-8')
         : '';
-      const inputFile = await getFile(`./data/${pid}/${c.input}`);
-      const outputFile = await getFile(`./data/${pid}/${c.output}`);
+      const inputFile = await getFile(caseFilePath(pid, c.input));
+      const outputFile = await getFile(caseFilePath(pid, c.output));
       if (inputFile === null || outputFile === null) {
         throw new JudgeError('judgement', `DATA ERROR: missing ${inputFile === null ? c.input : c.output}`);
       }
@@ -860,7 +902,7 @@ const judgeByProfile = async (sid, sinfo, pinfo, profile, isRejudge) => {
     const configRaw = await getFile(`./data/${pid}/config.json`);
     const config = configRaw ? JSON.parse(configRaw) : null;
     if (!config || !config.cases) throw new JudgeError('judgement', 'CASE ERROR: config.cases is null or undefined');
-    const { cases, subtask: subtasks } = config;
+    const { cases, subtasks } = await selectJudgeCases(config, sinfo);
 
     const skipFlag = {};
     for (const s of subtasks) if (s.skip) skipFlag[s.index] = 1;
@@ -872,8 +914,8 @@ const judgeByProfile = async (sid, sinfo, pinfo, profile, isRejudge) => {
         judgeResult.push({ time: 0, memory: 0, subtaskId: c.subtaskId, judgeResult: 14 });
         continue;
       }
-      const inputFile = await getFile(`./data/${pid}/${c.input}`);
-      const outputFile = await getFile(`./data/${pid}/${c.output}`);
+      const inputFile = await getFile(caseFilePath(pid, c.input));
+      const outputFile = await getFile(caseFilePath(pid, c.output));
       if (inputFile === null || outputFile === null) {
         throw new JudgeError('judgement', `DATA ERROR: missing ${inputFile === null ? c.input : c.output}`);
       }

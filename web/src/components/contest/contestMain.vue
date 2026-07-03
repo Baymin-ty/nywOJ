@@ -73,6 +73,15 @@
               </template>
               <contestRank ref="rank" :can-manage="canManage" />
             </el-tab-pane>
+            <el-tab-pane name="hack" v-if="contestInfo.format === 'cf' && (hackAuth || viewHacksAuth)">
+              <template #label>
+                <el-icon style="margin: 4px;">
+                  <Aim />
+                </el-icon>
+                Hack
+              </template>
+              <hackPanel ref="hack" :can-hack="hackAuth" />
+            </el-tab-pane>
             <el-tab-pane name="manageC" v-if="canManage">
               <template #label>
                 <el-icon style="margin: 4px;">
@@ -126,6 +135,18 @@
                         结束前分钟数
                       </span>
                     </el-form-item>
+                    <template v-if="tmpInfo.format === 'cf'">
+                      <el-form-item label="Pretest 终测">
+                        <el-switch v-model="rules.pretestEnabled" size="large" active-text="开启" inactive-text="关闭"
+                          :disabled="tmpInfo.done" />
+                        <span class="rules-hint" style="margin: 0 0 0 8px;">赛中只评 pretest，终测统一重评</span>
+                      </el-form-item>
+                      <el-form-item label="允许 Hack">
+                        <el-switch v-model="rules.hackEnabled" size="large" active-text="开启" inactive-text="关闭"
+                          :disabled="tmpInfo.done" />
+                        <span class="rules-hint" style="margin: 0 0 0 8px;">需要题目配 std/validator 资产</span>
+                      </el-form-item>
+                    </template>
                     <el-divider class="rules-divider" />
                     <el-form-item label="是否公开">
                       <el-switch v-model="tmpInfo.isPublic" size="large" active-text="公开" inactive-text="私有"
@@ -149,6 +170,17 @@
                         @click="previewContestRating">
                         预览 Rating
                       </el-button>
+                      <el-button type="success" plain :loading="healthLoading" @click="checkContest">
+                        检查比赛
+                      </el-button>
+                      <el-popconfirm v-if="contestInfo.format === 'cf'" confirm-button-text="确认" cancel-button-text="取消"
+                        title="确认启动终测? pretest 通过的提交将按全量数据+hack 数据重测" @confirm="startSystest">
+                        <template #reference>
+                          <el-button type="warning" :disabled="contestInfo.phase > 0">
+                            {{ contestInfo.phase === 2 ? '终测已完成' : contestInfo.phase === 1 ? '终测进行中' : '启动终测' }}
+                          </el-button>
+                        </template>
+                      </el-popconfirm>
                       <el-popconfirm confirm-button-text="确认" cancel-button-text="取消"
                         :title="rejudgeContestConfirmTitle"
                         @confirm="reJudgeContest">
@@ -206,6 +238,25 @@
         </el-card>
       </el-col>
     </el-row>
+    <el-dialog v-model="healthVisible" title="比赛体检" width="760px" destroy-on-close>
+      <div class="health-summary">
+        <el-tag type="danger" v-if="healthSummary.error">错误 {{ healthSummary.error }}</el-tag>
+        <el-tag type="warning" v-if="healthSummary.warn">警告 {{ healthSummary.warn }}</el-tag>
+        <el-tag type="success">正常 {{ healthSummary.ok || 0 }}</el-tag>
+        <span v-if="!healthSummary.error" class="health-pass">未发现阻塞问题，可以开赛</span>
+      </div>
+      <el-table :data="healthChecks" max-height="520" v-loading="healthLoading">
+        <el-table-column label="级别" width="90">
+          <template #default="scope">
+            <el-tag :type="{ error: 'danger', warn: 'warning', ok: 'success' }[scope.row.level] || 'info'" effect="dark">
+              {{ { error: '错误', warn: '警告', ok: '正常' }[scope.row.level] || scope.row.level }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="title" label="检查项" min-width="220" />
+        <el-table-column prop="detail" label="说明" min-width="260" show-overflow-tooltip />
+      </el-table>
+    </el-dialog>
     <el-dialog v-model="ratingPreviewVisible" title="Rating 预览" width="760px" destroy-on-close>
       <div class="rating-preview-meta">
         <el-tag :type="ratingPreviewTagType()">
@@ -272,6 +323,7 @@ import contestSubmission from './components/contestSubmission.vue'
 import contestRank from './components/contestRank.vue'
 import contestProblemList from './components/contestProblemList.vue'
 import problemManage from './components/problemManage.vue'
+import hackPanel from './components/hackPanel.vue'
 import CollaboratorPanel from '@/components/permission/CollaboratorPanel.vue'
 
 export default {
@@ -281,6 +333,7 @@ export default {
     contestRank,
     contestProblemList,
     problemManage,
+    hackPanel,
     CollaboratorPanel,
   },
   computed: {
@@ -316,27 +369,35 @@ export default {
       percentage: 0,
       joinAuth: false,
       viewAuth: false,
+      hackAuth: false,
+      viewHacksAuth: false,
+      healthVisible: false,
+      healthLoading: false,
+      healthChecks: [],
+      healthSummary: {},
       tagType: {
         '未开始': '',
         '正在进行': 'danger',
         '等待测评': 'success',
         '已结束': 'info',
       },
-      needUpdate: ['problemList', 'submission', 'rank', 'manageP'],
+      needUpdate: ['problemList', 'submission', 'rank', 'manageP', 'hack'],
       avalangList: [],
-      // 已解锁赛制；cf/homework 随后续里程碑加入
+      // 已解锁赛制；homework 随 M5 加入
       formatOptions: [
         { id: 'oi', label: 'OI' },
         { id: 'ioi', label: 'IOI' },
         { id: 'acm', label: 'ACM' },
+        { id: 'cf', label: 'Codeforces' },
       ],
       // 赛制预设默认（与 server/api/contest/formats.js 保持一致）
       formatPresets: {
-        oi: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60 },
-        ioi: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60 },
-        acm: { liveScoreboard: true, liveResults: true, freezeEnabled: true, freezeMinutes: 60 },
+        oi: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false },
+        ioi: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false },
+        acm: { liveScoreboard: true, liveResults: true, freezeEnabled: true, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false },
+        cf: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: true, hackEnabled: true },
       },
-      rules: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60 },
+      rules: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false },
       ratingPreviewVisible: false,
       ratingPreviewLoading: false,
       ratingPreviewRows: [],
@@ -496,6 +557,7 @@ export default {
     initRulesFromConfig(config) {
       const preset = this.formatPresets[this.contestInfo.format] || this.formatPresets.oi;
       const freeze = config && config.scoreboard && config.scoreboard.freeze;
+      const cf = config && config.cf;
       this.rules = {
         liveScoreboard: config && config.scoreboard
           ? config.scoreboard.duringContest === 'full' : preset.liveScoreboard,
@@ -503,6 +565,8 @@ export default {
           ? config.submission.resultVisibility === 'full' : preset.liveResults,
         freezeEnabled: freeze ? !!freeze.enabled : preset.freezeEnabled,
         freezeMinutes: freeze && freeze.offsetMinutes != null ? freeze.offsetMinutes : preset.freezeMinutes,
+        pretestEnabled: cf && cf.pretestEnabled !== undefined ? !!cf.pretestEnabled : preset.pretestEnabled,
+        hackEnabled: cf && cf.hackEnabled !== undefined ? !!cf.hackEnabled : preset.hackEnabled,
       };
     },
     // 只保存与预设不同的键；与预设完全一致则清空覆盖（config=null）
@@ -527,7 +591,31 @@ export default {
       if (this.rules.liveResults !== preset.liveResults) {
         patch.submission = { resultVisibility: this.rules.liveResults ? 'full' : 'none' };
       }
+      if (this.tmpInfo.format === 'cf') {
+        const cfPatch = {};
+        if (this.rules.pretestEnabled !== preset.pretestEnabled) cfPatch.pretestEnabled = this.rules.pretestEnabled;
+        if (this.rules.hackEnabled !== preset.hackEnabled) cfPatch.hackEnabled = this.rules.hackEnabled;
+        if (Object.keys(cfPatch).length) patch.cf = cfPatch;
+      }
       return Object.keys(patch).length ? patch : null;
+    },
+    checkContest() {
+      this.healthVisible = true;
+      this.healthLoading = true;
+      axios.post('/api/contest/checkContest', { cid: this.cid }).then(res => {
+        this.healthChecks = res.data.data.checks || [];
+        this.healthSummary = res.data.data.summary || {};
+      }).catch(err => {
+        this.$message.error(this.apiErrorMessage(err, '体检失败'));
+      }).finally(() => { this.healthLoading = false; });
+    },
+    startSystest() {
+      axios.post('/api/contest/startSystest', { cid: this.cid }).then(res => {
+        this.$message.success(`终测已启动，重测 ${res.data.total} 个提交`);
+        this.all();
+      }).catch(err => {
+        this.$message.error(this.apiErrorMessage(err, '终测启动失败'));
+      });
     },
     updateContest() {
       if (!this.avalangList.length) {
@@ -582,6 +670,8 @@ export default {
           this.contestInfo.ratingEnabled = !!res.data.data.ratingEnabled;
           this.joinAuth = res.data.data.auth.join;
           this.viewAuth = res.data.data.auth.view;
+          this.hackAuth = !!res.data.data.auth.hack;
+          this.viewHacksAuth = !!res.data.data.auth.viewHacks;
           this.tmpInfo = JSON.parse(JSON.stringify(this.contestInfo));
           this.initRulesFromConfig(this.contestInfo.config);
           this.frushPercentage();
@@ -758,6 +848,18 @@ export default {
   color: #909399;
   font-size: 12px;
   margin-bottom: 8px;
+}
+
+.health-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.health-pass {
+  color: #67c23a;
+  font-size: 13px;
 }
 
 :deep(.contest-action-row .el-form-item__content) {

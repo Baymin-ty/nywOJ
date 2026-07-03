@@ -35,11 +35,17 @@
         <span class="player-name" @click.stop="openPlayerChart(scope.row)">{{ scope.row.user.name }}</span>
       </template>
     </el-table-column>
-    <el-table-column :label="isAcm ? '过题数' : '总分'" fixed="left" max-width="10%" min-width="100px">
+    <el-table-column :label="isAcm ? '过题数' : isCf ? '得分' : '总分'" fixed="left" max-width="10%" min-width="100px">
       <template #default="scope">
         <template v-if="isAcm">
           <div class="totScore" v-show="scope.row.submitted">{{ scope.row.solved }}</div>
           <div class="attach" v-show="scope.row.submitted">({{ fmtPenalty(scope.row.penalty) }})</div>
+        </template>
+        <template v-else-if="isCf">
+          <div class="totScore" v-show="scope.row.submitted">{{ scope.row.totalScore }}</div>
+          <div class="attach" v-show="scope.row.submitted && (scope.row.hackOk || scope.row.hackFail)">
+            hack +{{ scope.row.hackOk || 0 }}/-{{ scope.row.hackFail || 0 }}
+          </div>
         </template>
         <template v-else>
           <div class="totScore" v-show="scope.row.submitted">{{ scope.row.totalScore }}</div>
@@ -62,6 +68,22 @@
               <div class="attach">{{ Math.floor(cellOf(scope.row, idx).time / 60) }}</div>
             </template>
             <template v-else-if="cellOf(scope.row, idx).pending">?</template>
+            <template v-else-if="cellOf(scope.row, idx).tries">-{{ cellOf(scope.row, idx).tries }}</template>
+            <template v-else>/</template>
+          </div>
+          <span v-else>/</span>
+        </template>
+        <template v-else-if="isCf">
+          <div v-if="cellOf(scope.row, idx)" :class="acmCellClass(cellOf(scope.row, idx))">
+            <template v-if="cellOf(scope.row, idx).masked">?{{ cellOf(scope.row, idx).masked }}</template>
+            <template v-else-if="cellOf(scope.row, idx).ac">
+              {{ cellOf(scope.row, idx).points }}
+              <div class="attach">{{ Math.floor(cellOf(scope.row, idx).time / 60) }}′{{ cellOf(scope.row, idx).tries ? ' / -' + cellOf(scope.row, idx).tries : '' }}</div>
+            </template>
+            <template v-else-if="cellOf(scope.row, idx).pending">?</template>
+            <template v-else-if="cellOf(scope.row, idx).hacked">
+              ⚡-{{ cellOf(scope.row, idx).tries }}
+            </template>
             <template v-else-if="cellOf(scope.row, idx).tries">-{{ cellOf(scope.row, idx).tries }}</template>
             <template v-else>/</template>
           </div>
@@ -236,6 +258,9 @@ export default {
   computed: {
     isAcm() {
       return this.meta.format === 'acm';
+    },
+    isCf() {
+      return this.meta.format === 'cf';
     },
     sliderMarks() {
       const marks = {};

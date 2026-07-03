@@ -39,12 +39,13 @@ const {
 
 const ptype = ['传统文本比较', 'Special Judge'];
 
-// 已解锁的赛制；cf/homework 随后续里程碑逐个加入。
-const EDITABLE_FORMATS = ['oi', 'ioi', 'acm'];
+// 已解锁的赛制；homework 随 M5 加入。
+const EDITABLE_FORMATS = ['oi', 'ioi', 'acm', 'cf'];
 
 exports.canManageContest = canManageContest;
 
 // 提交行遮蔽：OI 式比赛未结束时非管理员看不到结果（分数/结果/时间/内存清零）。
+// CF 赛制 pretest 范围的 AC 显示为 "Pretests Passed"（终测/重测后 scope 清空恢复）。
 const formatContestSubmissionRow = async (r, ctx) => {
   r.idx = await getIdxByPid(ctx.cid, r.pid);
   r.pid = null;
@@ -52,7 +53,8 @@ const formatContestSubmissionRow = async (r, ctx) => {
   if (ctx.caps.scrubSubmissionRow) {
     r.score = r.judgeResult = r.time = r.memory = 0;
   }
-  r.judgeResult = judgeRes[r.judgeResult];
+  const pretestPassed = ctx.format === 'cf' && r.judgeScope === 'pretest' && r.judgeResult === 4;
+  r.judgeResult = pretestPassed ? 'Pretests Passed' : judgeRes[r.judgeResult];
   r.memory = kbFormat(r.memory);
   return r;
 };
@@ -160,6 +162,7 @@ exports.getContestInfo = handler(async (req, res) => {
   const { caps, status } = v;
   contest.isReg = v.isReged;
   if (!caps.canEnter) return fail(res, '比赛私有，请联系管理员报名');
+  contest.phase = await advanceSystestPhase(contest);
 
   contest.playerCnt = await playerCnt(contest.cid);
   contest.end = Format(new Date(new Date(contest.start).getTime() + contest.length * 1000 * 60));
@@ -168,6 +171,8 @@ exports.getContestInfo = handler(async (req, res) => {
     join: caps.canJoin,
     view: caps.canViewScoreboard,
     manage: caps.manage,
+    hack: caps.canHack,
+    viewHacks: caps.canViewHacks,
   };
   contest.format = normalizeFormat(contest.format);
   contest.type = formatLabel(contest.format);
@@ -400,10 +405,15 @@ exports.submit = handler(async (req, res) => {
     return res.status(202).send({ refresh: true, message: '题目列表已更新，请重新查看题目列表提交' });
   }
 
+  // CF 赛制进行中：只评 pretest（终测由 systest 统一重测）
+  const cfg = resolveConfig(contest);
+  const judgeScope =
+    contest.format === 'cf' && cfg.cf && cfg.cf.pretestEnabled ? 'pretest' : null;
+
   const insertId = await db.tx(async (tx) => {
     const r = await tx.query(
-      'INSERT INTO submission(pid,uid,code,codelength,submitTime,cid,lang) VALUES (?,?,?,?,?,?,?)',
-      [pinfo.pid, uid, code, code.length, new Date(), cid, lang]
+      'INSERT INTO submission(pid,uid,code,codelength,submitTime,cid,lang,judgeScope) VALUES (?,?,?,?,?,?,?,?)',
+      [pinfo.pid, uid, code, code.length, new Date(), cid, lang, judgeScope]
     );
     if (!r.affectedRows) throw new Error('insert failed');
     await tx.query('UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?', [pinfo.pid]);
@@ -439,12 +449,12 @@ exports.getSubmissionList = handler(async (req, res) => {
     params.push(req.body.uid);
   }
   const list = await db.query(
-    'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
+    'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.judgeScope,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
     'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ' +
     `WHERE cid=?${extra} ORDER BY s.sid DESC LIMIT ?,?`,
     [...params, offset, limit]
   );
-  const ctx = { cid, caps: v.caps };
+  const ctx = { cid, caps: v.caps, format: v.contest.format };
   for (const r of list) await formatContestSubmissionRow(r, ctx);
 
   const cnt = await db.one(
@@ -462,7 +472,7 @@ exports.getLastSubmissionList = handler(async (req, res) => {
   if (!v.caps.canViewSubmissionList) return res.status(403).end('403 Forbidden');
 
   const list = await db.query(
-    `SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title
+    `SELECT s.sid,s.uid,s.pid,s.judgeResult,s.judgeScope,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title
        FROM contestLastSubmission cls
        INNER JOIN submission s ON s.sid=cls.sid AND s.cid=cls.cid AND s.uid=cls.uid AND s.pid=cls.pid
        INNER JOIN userInfo u ON u.uid=s.uid
@@ -479,7 +489,7 @@ exports.getLastSubmissionList = handler(async (req, res) => {
       WHERE cls.cid=?`,
     [cid]
   );
-  const ctx = { cid, caps: v.caps };
+  const ctx = { cid, caps: v.caps, format: v.contest.format };
   for (const r of list) await formatContestSubmissionRow(r, ctx);
   return ok(res, { data: list, total: Number(cnt && cnt.cnt || 0) });
 });
@@ -488,7 +498,7 @@ exports.getLastSubmissionList = handler(async (req, res) => {
 // getSubmissionInfo handler and the SSE streamSubmissionInfo bridge.
 const loadContestSubmissionInfo = async (req, sid) => {
   const row = await db.one(
-    'SELECT s.sid,s.uid,s.cid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,s.machine,s.lang,u.name,p.title,p.judgeProfile AS problemJudgeProfile ' +
+    'SELECT s.sid,s.uid,s.cid,s.pid,s.judgeResult,s.judgeScope,s.time,s.memory,s.score,s.code,s.codeLength,s.submitTime,s.compileResult,s.caseResult,s.machine,s.lang,u.name,p.title,p.judgeProfile AS problemJudgeProfile ' +
     'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid WHERE sid=?',
     [sid]
   );
@@ -558,7 +568,9 @@ const loadContestSubmissionInfo = async (req, sid) => {
   }
   row.idx = await getIdxByPid(row.cid, row.pid);
   delete row.pid;
+  const pretestPassed = v.contest.format === 'cf' && row.judgeScope === 'pretest' && row.judgeResult === 4;
   formatSubmissionRow(row);
+  if (pretestPassed) row.judgeResult = 'Pretests Passed';
   return { data: row };
 };
 
@@ -694,6 +706,47 @@ exports.getParticipantTimeline = handler(async (req, res) => {
   return ok(res, result);
 });
 
+// 启动终测（CF）：pretest 通过的提交按全量数据 + 成功 hack 数据重测
+exports.startSystest = handler(async (req, res) => {
+  const { cid } = req.body;
+  const contest = await getContest(cid);
+  if (!contest) return fail(res, '无此比赛');
+  if (!(await canManageContest(req, cid))) return res.status(403).end('403 Forbidden');
+  if (contest.format !== 'cf') return fail(res, '仅 CF 赛制支持终测');
+  if (contestStatus(contest) < 2) return fail(res, '比赛还未到截止时间');
+  if (Number(contest.phase) >= 1) return fail(res, '终测已启动');
+
+  const sids = await db.column(
+    'SELECT sid FROM submission WHERE cid=? AND judgeResult=4', [cid], 'sid'
+  );
+  await db.query('UPDATE contest SET phase=1 WHERE cid=?', [cid]);
+  await db.query('UPDATE submission SET judgeScope=NULL WHERE cid=?', [cid]);
+  // 与 judge/core.js reJudgeContest 相同的重置+入队方式
+  for (const sid of sids) {
+    await db.query(
+      'UPDATE submission SET judgeResult=13,time=0,memory=0,score=0,compileResult=NULL,caseResult=NULL WHERE sid=?',
+      [sid]
+    );
+    pushSidIntoQueue(sid, true);
+  }
+  invalidateStandings(cid);
+  return ok(res, { total: sids.length });
+});
+
+// 终测收尾：phase=1 且场内无待评测提交时推进到 phase=2（getContestInfo 顺带调用）
+const advanceSystestPhase = async (contest) => {
+  if (contest.format !== 'cf' || Number(contest.phase) !== 1) return contest.phase;
+  const pending = await db.one(
+    'SELECT COUNT(*) AS cnt FROM submission WHERE cid=? AND judgeResult IN (0,1,2,13)',
+    [contest.cid]
+  );
+  if (Number(pending && pending.cnt || 0) === 0) {
+    await db.query('UPDATE contest SET phase=2 WHERE cid=? AND phase=1', [contest.cid]);
+    return 2;
+  }
+  return 1;
+};
+
 // 手动解榜/重新封榜（管理员）：写入 config 覆盖 scoreboard.freeze.revealed
 exports.setScoreboardReveal = handler(async (req, res) => {
   const { cid } = req.body;
@@ -717,7 +770,7 @@ exports.getSingleUserLastSubmission = handler(async (req, res) => {
   if (!v.caps.canViewSubmissionList) return res.status(403).end('403 Forbidden');
 
   const list = await db.query(
-    `SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title
+    `SELECT s.sid,s.uid,s.pid,s.judgeResult,s.judgeScope,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title
        FROM contestLastSubmission cls
        INNER JOIN submission s ON s.sid=cls.sid AND s.cid=cls.cid AND s.uid=cls.uid AND s.pid=cls.pid
        INNER JOIN userInfo u ON u.uid=s.uid
@@ -727,7 +780,7 @@ exports.getSingleUserLastSubmission = handler(async (req, res) => {
     [cid, uid]
   );
   if (!list.length) return ok(res, { data: [], total: 0 });
-  const ctx = { cid, caps: v.caps };
+  const ctx = { cid, caps: v.caps, format: v.contest.format };
   for (const r of list) await formatContestSubmissionRow(r, ctx);
   return ok(res, { data: list });
 });
@@ -742,7 +795,7 @@ exports.getSingleUserProblemSubmission = handler(async (req, res) => {
   if (!pinfo) return fail(res, '无此题目');
 
   const list = await db.query(
-    'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
+    'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.judgeScope,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
     'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ' +
     'WHERE s.cid=? AND s.uid=? AND s.pid=? ORDER BY s.sid DESC',
     [cid, uid, pinfo.pid]

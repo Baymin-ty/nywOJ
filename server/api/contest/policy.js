@@ -104,6 +104,13 @@ const capabilities = (contest, cfg, status, viewer) => {
     fullSubmissionView: isManager || viewer.canViewAnySubmission || ended,
     // 重测：比赛管理者或全局重测权（submission.rejudge.self 不适用于比赛内提交）
     canRejudge: isManager || viewer.canRejudgeAny,
+    // hack（CF）：开启 hack、比赛进行中、终测未开始、已报名选手
+    canHack:
+      contest.format === 'cf' && !!(cfg.cf && cfg.cf.hackEnabled) &&
+      status === 1 && Number(contest.phase || 0) === 0 && isReged,
+    // hack 记录列表：选手赛中可见（自己的+统计），管理员/赛后全量
+    canViewHacks:
+      contest.format === 'cf' && ((isReged && status > 0) || isManager || (ended && publicOrReged)),
     manage: isManager,
   };
 };
