@@ -102,11 +102,22 @@
                       </div>
                     </el-form-item>
                     <el-form-item label="比赛类型">
-                      <el-select v-model="tmpInfo.type" class="m-2" :disabled="tmpInfo.done">
-                        <el-option label="OI" value="OI" />
-                        <el-option label="IOI" value="IOI" />
+                      <el-select v-model="tmpInfo.format" class="m-2" :disabled="tmpInfo.done"
+                        @change="applyFormatPreset">
+                        <el-option v-for="f in formatOptions" :key="f.id" :label="f.label" :value="f.id" />
                       </el-select>
                     </el-form-item>
+                    <el-divider content-position="left" class="rules-divider">赛制与规则</el-divider>
+                    <div class="rules-hint">默认值随赛制预设变化，可自由覆盖单项开关</div>
+                    <el-form-item label="进行中可看排行榜">
+                      <el-switch v-model="rules.liveScoreboard" size="large" active-text="开放" inactive-text="隐藏"
+                        :disabled="tmpInfo.done" />
+                    </el-form-item>
+                    <el-form-item label="进行中可看评测结果">
+                      <el-switch v-model="rules.liveResults" size="large" active-text="真实分数" inactive-text="全部隐藏"
+                        :disabled="tmpInfo.done" />
+                    </el-form-item>
+                    <el-divider class="rules-divider" />
                     <el-form-item label="是否公开">
                       <el-switch v-model="tmpInfo.isPublic" size="large" active-text="公开" inactive-text="私有"
                         :disabled="tmpInfo.done" />
@@ -124,7 +135,7 @@
                     <el-form-item class="contest-action-row">
                       <el-button type="danger" @click="updateContest" :disabled="tmpInfo.done">更新比赛</el-button>
                       <el-button type="primary" :disabled="tmpInfo.done"
-                        @click="this.tmpInfo = JSON.parse(JSON.stringify(this.contestInfo));">重新设置</el-button>
+                        @click="resetTmpInfo">重新设置</el-button>
                       <el-button type="info" :disabled="!contestInfo.ratingEnabled" :loading="ratingPreviewLoading"
                         @click="previewContestRating">
                         预览 Rating
@@ -304,6 +315,17 @@ export default {
       },
       needUpdate: ['problemList', 'submission', 'rank', 'manageP'],
       avalangList: [],
+      // M1 开放 oi/ioi；acm/cf/homework 随后续里程碑加入
+      formatOptions: [
+        { id: 'oi', label: 'OI' },
+        { id: 'ioi', label: 'IOI' },
+      ],
+      // 赛制预设默认（与 server/api/contest/formats.js 保持一致）
+      formatPresets: {
+        oi: { liveScoreboard: false, liveResults: false },
+        ioi: { liveScoreboard: true, liveResults: true },
+      },
+      rules: { liveScoreboard: false, liveResults: false },
       ratingPreviewVisible: false,
       ratingPreviewLoading: false,
       ratingPreviewRows: [],
@@ -450,6 +472,37 @@ export default {
         this.ratingPreviewLoading = false;
       });
     },
+    resetTmpInfo() {
+      this.tmpInfo = JSON.parse(JSON.stringify(this.contestInfo));
+      this.initRulesFromConfig(this.contestInfo.config);
+    },
+    // 切换赛制：规则开关重置为该预设默认值
+    applyFormatPreset(format) {
+      const preset = this.formatPresets[format];
+      if (preset) this.rules = { ...preset };
+    },
+    // 从生效配置（服务端 resolveConfig 结果）初始化规则开关
+    initRulesFromConfig(config) {
+      const preset = this.formatPresets[this.contestInfo.format] || this.formatPresets.oi;
+      this.rules = {
+        liveScoreboard: config && config.scoreboard
+          ? config.scoreboard.duringContest === 'full' : preset.liveScoreboard,
+        liveResults: config && config.submission
+          ? config.submission.resultVisibility === 'full' : preset.liveResults,
+      };
+    },
+    // 只保存与预设不同的键；与预设完全一致则清空覆盖（config=null）
+    buildConfigPatch() {
+      const preset = this.formatPresets[this.tmpInfo.format] || this.formatPresets.oi;
+      const patch = {};
+      if (this.rules.liveScoreboard !== preset.liveScoreboard) {
+        patch.scoreboard = { duringContest: this.rules.liveScoreboard ? 'full' : 'none' };
+      }
+      if (this.rules.liveResults !== preset.liveResults) {
+        patch.submission = { resultVisibility: this.rules.liveResults ? 'full' : 'none' };
+      }
+      return Object.keys(patch).length ? patch : null;
+    },
     updateContest() {
       if (!this.avalangList.length) {
         this.$message.error('请选择至少一个支持语言');
@@ -463,6 +516,7 @@ export default {
         this.$message.error('比赛时长错误');
         return;
       }
+      this.tmpInfo.config = this.buildConfigPatch();
       axios.post('/api/contest/updateContestInfo', {
         cid: this.cid,
         info: this.tmpInfo
@@ -503,6 +557,7 @@ export default {
           this.joinAuth = res.data.data.auth.join;
           this.viewAuth = res.data.data.auth.view;
           this.tmpInfo = JSON.parse(JSON.stringify(this.contestInfo));
+          this.initRulesFromConfig(this.contestInfo.config);
           this.frushPercentage();
           this.timer = setInterval(() => {
             this.frushPercentage();
@@ -667,6 +722,16 @@ export default {
 
 .contest-action-row {
   height: auto;
+}
+
+.rules-divider {
+  margin: 12px 0;
+}
+
+.rules-hint {
+  color: #909399;
+  font-size: 12px;
+  margin-bottom: 8px;
 }
 
 :deep(.contest-action-row .el-form-item__content) {
