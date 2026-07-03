@@ -4,6 +4,9 @@
     :multiple="multiple"
     :placeholder="placeholder"
     :clearable="clearable"
+    :collapse-tags="collapseTags"
+    :collapse-tags-tooltip="collapseTagsTooltip"
+    :max-collapse-tags="maxCollapseTags"
     filterable
     style="width: 100%;"
     @change="onChange"
@@ -37,6 +40,9 @@ export default {
     multiple: { type: Boolean, default: false },
     scopableOnly: { type: Boolean, default: false },
     clearable: { type: Boolean, default: true },
+    collapseTags: { type: Boolean, default: false },
+    collapseTagsTooltip: { type: Boolean, default: false },
+    maxCollapseTags: { type: Number, default: 1 },
     placeholder: { type: String, default: '选择权限' },
     // hideKey suppresses the "(permission.key)" suffix in the option label.
     // Used by the resource-collaborator picker, where end users shouldn't see

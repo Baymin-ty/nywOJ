@@ -32,6 +32,7 @@ const PERMISSIONS = {
   // resolved at runtime, not via a scopable submission.rejudge permission.
   'submission.rejudge.any': { group: 'judge', name: '重测任意提交', description: '重测任意提交（含比赛与非比赛）' },
   'submission.rejudge.self': { group: 'judge', name: '重测自己的提交', description: '重测自己提交的非比赛代码' },
+  'submission.manage.any': { group: 'judge', name: '管理任意提交', description: '设置提交公开性 / 删除提交' },
 
   // User admin:
   //   user.manage      — user list/edit/ban (merged from user.{list,edit,ban})
@@ -39,9 +40,13 @@ const PERMISSIONS = {
   //                      user.role.assign + user.permission.grant)
   'user.manage': { group: 'user', name: '用户管理', description: '查看用户列表 / 编辑用户资料 / 封禁与解封用户' },
   'user.role.admin': { group: 'user', name: '用户授权管理', description: '分配用户角色 / 单点授权' },
+  'group.manage': { group: 'user', name: '用户组管理', description: '创建用户组、管理成员和组权限' },
 
   'announcement.manage': { group: 'system', name: '管理公告' },
   'paste.edit.any': { group: 'system', name: '编辑他人 paste' },
+  'discussion.view.any': { group: 'system', name: '查看讨论', description: '查看隐藏讨论' },
+  'discussion.reply.any': { group: 'system', name: '回复讨论', description: '回复隐藏讨论' },
+  'discussion.manage': { group: 'system', name: '管理讨论', description: '编辑/隐藏/删除讨论与回复' },
   'audit.view': { group: 'system', name: '查看审计日志' },
 };
 
@@ -53,13 +58,13 @@ const PROBLEM_SETTER_PERMS = [
 
 const CONTEST_MANAGER_PERMS = [
   'contest.create',
-  'contest.manage.any',
   'contest.manage.self',
 ];
 
 const JUDGE_ADMIN_PERMS = [
   'submission.view.any',
   'submission.rejudge.any',
+  'submission.manage.any',
 ];
 
 const SOLUTION_ADMIN_PERMS = [
@@ -78,10 +83,12 @@ const MODERATOR_PERMS = Array.from(new Set([
   'contest.manage.any',
   // 用户管理（不含 user.role.admin）
   'user.manage',
+  'group.manage',
   // 系统
   'announcement.manage',
   'audit.view',
   'paste.edit.any',
+  'discussion.manage',
 ]));
 
 const SUPER_ADMIN_PERMS = Object.keys(PERMISSIONS);
@@ -107,8 +114,8 @@ const RESOURCE_TYPES = ['problem', 'contest'];
 // (without holding the global user.permission.grant). The owner-as-grantor
 // path also ignores collaborator-derived manage.any: a collaborator who got
 // manage.any scoped to one problem/contest cannot then add or remove other
-// collaborators — only the actual owner can. See canManageResourceCollab in
-// api/auth.js for the runtime check.
+// collaborators - only the actual owner can. See canManageResourceCollab in
+// server/api/account/roles.js for the runtime check.
 // On problems, owners may add either a "manage" collaborator (problem.manage.any)
 // or a "view" collaborator (problem.view.any). The view scope is read-only and
 // also unlocks submission viewing for that pid; see problemAuth + the submission

@@ -1,5 +1,5 @@
 <template>
-  <div style="text-align: center; margin: 0 auto; max-width: 1200px">
+  <div class="contest-page">
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
@@ -37,6 +37,9 @@
             </router-link>
             <el-tag style="margin-left: 10px;" size="small" :type="tagType[scope.row.status]">
               {{ scope.row.status }}
+            </el-tag>
+            <el-tag class="state-tag" size="small" :type="ratingStatusType(scope.row)" effect="plain">
+              {{ ratingStatusText(scope.row) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -104,12 +107,18 @@ export default {
   methods: {
     all() {
       this.finished = false;
+      let url = location.pathname;
+      if (this.currentPage > 1) url += '?pageId=' + this.currentPage;
+      history.state.current = url;
+      history.replaceState(history.state, null, url);
       axios.post('/api/contest/getContestList', {
         pageId: this.currentPage
       }).then(res => {
         this.contestList = res.data.data;
-        for (let i = 0; i < this.contestList.length; i++)
+        for (let i = 0; i < this.contestList.length; i++) {
           this.contestList[i].isPublic = !!this.contestList[i].isPublic;
+          this.contestList[i].ratingEnabled = !!this.contestList[i].ratingEnabled;
+        }
         this.total = res.data.total;
         this.finished = true;
       }).catch(err => {
@@ -119,6 +128,15 @@ export default {
     handleCurrentChange(val) {
       this.currentPage = val;
       this.all();
+    },
+    ratingStatusText(row) {
+      if (row && row.ratingStatus && row.ratingStatus.label) return row.ratingStatus.label;
+      return row && row.ratingEnabled ? 'Rated' : 'Unrated';
+    },
+    ratingStatusType(row) {
+      return row && row.ratingStatus && row.ratingStatus.type
+        ? row.ratingStatus.type
+        : (row && row.ratingEnabled ? 'warning' : 'info');
     },
     addContest() {
       axios.post('/api/contest/createContest').then(res => {
@@ -134,6 +152,8 @@ export default {
     },
   },
   async mounted() {
+    const pageId = parseInt(this.$route.query.pageId, 10);
+    if (Number.isInteger(pageId) && pageId > 1) this.currentPage = pageId;
     this.all();
   }
 }
@@ -145,6 +165,12 @@ export default {
   margin: 10px;
 }
 
+.contest-page {
+  text-align: center;
+  margin: 0 auto;
+  max-width: 1200px;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -154,5 +180,23 @@ export default {
 
 #picon {
   vertical-align: -2px;
+}
+
+.state-tag {
+  margin-left: 8px;
+}
+
+@media (max-width: 768px) {
+  .contest-page {
+    width: 100%;
+  }
+
+  .box-card {
+    margin: 0;
+  }
+
+  .card-header {
+    justify-content: center;
+  }
 }
 </style>

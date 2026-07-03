@@ -1,5 +1,5 @@
-# Build the comparer used by judgeWorker.js for type=0 problems.
-# The binary is platform-specific and intentionally git-ignored — run
+# Build the comparer used by server/api/judge/worker.js for type=0 problems.
+# The binary is platform-specific and intentionally git-ignored; run
 # `make` here once on every new judge machine.
 
 CXX      ?= g++

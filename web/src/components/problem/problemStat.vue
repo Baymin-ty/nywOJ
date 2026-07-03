@@ -1,5 +1,5 @@
 <template>
-  <el-row style="margin: auto;max-width: 1400px;min-width: 600px;">
+  <el-row class="stat-page">
     <el-col :xs="24" :sm="24" :md="12">
       <el-card class="box-card" shadow="hover">
         <template #header>
@@ -15,18 +15,33 @@
         <template #header>
           <div class="card-header">
             题解
-            <el-button-group v-if="canManageSolutions">
-              <el-button type="success" :disabled="!bindMark.length" @click="bindPaste2Problem">
-                <el-icon class="el-icon--left">
-                  <Plus />
-                </el-icon>
-                绑定
-              </el-button>
-              <el-input v-model="bindMark" style="width: 150px;" placeholder="绑定剪贴板mark"
-                @keyup.enter="bindPaste2Problem" />
-            </el-button-group>
+            <div v-if="canWriteSolution || canManageSolutions" class="solution-actions">
+              <el-select v-if="canManageSolutions" v-model="solVisible" size="small" class="sol-visible-select"
+                title="题解可见性" @change="setSolVisible">
+                <el-option :value="0" label="所有人可见" />
+                <el-option :value="1" label="通过后可见" />
+              </el-select>
+              <el-button-group>
+                <el-button v-if="canWriteSolution" type="primary" plain @click="createSolutionDraft">
+                  <el-icon class="el-icon--left">
+                    <DocumentAdd />
+                  </el-icon>
+                  写题解
+                </el-button>
+                <el-button v-if="canManageSolutions" type="success" :disabled="!bindMark.length" @click="bindPaste2Problem">
+                  <el-icon class="el-icon--left">
+                    <Plus />
+                  </el-icon>
+                  绑定
+                </el-button>
+                <el-input v-if="canManageSolutions" v-model="bindMark" style="width: 150px;" placeholder="绑定剪贴板mark"
+                  @keyup.enter="bindPaste2Problem" />
+              </el-button-group>
+            </div>
           </div>
         </template>
+        <el-alert v-if="solutionLocked" title="通过本题后可查看题解" type="info" show-icon :closable="false"
+          style="margin-bottom: 8px;" />
         <el-table :data="solList" max-height="200px" :header-cell-style="{ textAlign: 'center' }"
           :cell-style="{ textAlign: 'center' }">
           <el-table-column prop="title" label="标题" min-width="40%">
@@ -118,6 +133,10 @@ export default {
       submissionList: [],
       solList: [],
       auth: { view: false, manage: false, solutionManage: false },
+      solutionLocked: false,
+      canWriteSolution: false,
+      accepted: false,
+      solVisible: 0,
       bindMark: '',
       submissionOption: {
         tooltip: {
@@ -255,9 +274,39 @@ export default {
       axios.post('/api/problem/getProblemSol', { pid: this.pid }).then(res => {
         if (res.status === 200) {
           this.solList = res.data.data;
+          this.solutionLocked = !!res.data.locked;
+          this.canWriteSolution = !!res.data.canWrite;
+          this.accepted = !!res.data.accepted;
+          this.solVisible = res.data.solVisible || 0;
         } else {
           this.$message.error(res.data.message);
         }
+      });
+    },
+    setSolVisible(mode) {
+      axios.post('/api/problem/setSolutionVisibility', { pid: this.pid, mode }).then(res => {
+        if (res.status === 200) {
+          this.$message.success(mode ? '题解已设为「通过后可见」' : '题解已设为「所有人可见」');
+          this.getSol();
+        } else {
+          this.solVisible = mode ? 0 : 1;
+          this.$message.error(res.data.message || '设置失败');
+        }
+      }).catch(err => {
+        this.solVisible = mode ? 0 : 1;
+        this.$message.error('设置失败' + err.message);
+      });
+    },
+    createSolutionDraft() {
+      axios.post('/api/problem/createSolutionDraft', { pid: this.pid }).then(res => {
+        if (res.status === 200 && res.data.mark) {
+          this.$message.success('题解草稿已创建');
+          this.$router.push('/paste/edit/' + res.data.mark);
+        } else {
+          this.$message.error(res.data.message || '创建题解草稿失败');
+        }
+      }).catch(err => {
+        this.$message.error('创建题解草稿失败' + err.message);
       });
     },
     unbindSol(id) {
@@ -291,6 +340,12 @@ export default {
   text-align: left;
 }
 
+.stat-page {
+  margin: auto;
+  max-width: 1400px;
+  min-width: 0;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -300,5 +355,30 @@ export default {
 
 :deep(.el-card__body) {
   padding-top: 8px;
+}
+
+.solution-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sol-visible-select {
+  width: 124px;
+}
+
+@media (max-width: 768px) {
+  .box-card {
+    margin: 0 0 10px;
+  }
+
+  .card-header {
+    justify-content: flex-start;
+  }
+
+  .solution-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 </style>

@@ -15,6 +15,12 @@
       </el-icon>
       题库
     </el-menu-item>
+    <el-menu-item index="/ide">
+      <el-icon>
+        <Monitor />
+      </el-icon>
+      在线IDE
+    </el-menu-item>
     <el-menu-item index="/contest">
       <el-icon>
         <Trophy />
@@ -26,6 +32,18 @@
         <DataAnalysis />
       </el-icon>
       提交记录
+    </el-menu-item>
+    <el-menu-item index="/users">
+      <el-icon>
+        <UserFilled />
+      </el-icon>
+      用户榜
+    </el-menu-item>
+    <el-menu-item index="/discussion">
+      <el-icon>
+        <Document />
+      </el-icon>
+      讨论
     </el-menu-item>
     <el-menu-item v-if="!this.$store.state.uid" index="/user/login">
       <el-icon>
@@ -56,6 +74,12 @@
         </el-icon>
         编辑资料
       </el-menu-item>
+      <el-menu-item v-if="$canAny('user.manage','user.role.admin','submission.rejudge.any','problem.manage.any','announcement.manage')" index="/system">
+        <el-icon>
+          <Setting />
+        </el-icon>
+        系统管理
+      </el-menu-item>
       <el-menu-item v-if="$canAny('user.manage','user.role.admin')" index="/admin/permissions">
         <el-icon>
           <Lock />
@@ -66,7 +90,7 @@
         <el-icon>
           <Document />
         </el-icon>
-        剪贴板板
+        剪贴板
       </el-menu-item>
       <span @click="logout">
         <el-menu-item>
@@ -139,5 +163,29 @@ export default {
 
 .el-menu {
   justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .el-menu {
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+
+  .el-menu::-webkit-scrollbar {
+    display: none;
+  }
+
+  .el-menu--horizontal > .el-menu-item,
+  .el-menu--horizontal > .el-sub-menu .el-sub-menu__title {
+    padding: 0 10px;
+  }
+
+  .icon {
+    width: 34px;
+    height: 34px;
+  }
 }
 </style>

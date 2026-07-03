@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>教学沙箱 · Linux Sandbox Lab</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="logo">🧪</span>
+    <div>
+      <h1>教学沙箱 <span class="sub">Linux Sandbox Lab</span></h1>
+      <div class="tagline">namespaces · cgroups v2 · seccomp · rlimits · pivot_root</div>
+    </div>
+  </div>
+  <div class="badges">
+    <span id="judge" class="badge judge hidden"></span>
+    <span id="verdict" class="badge verdict idle">待运行</span>
+  </div>
+</header>
+
+<main>
+  <!-- ===== 左：编辑与控制 ===== -->
+  <section class="left">
+    <div class="row two">
+      <label class="field">语言
+        <select id="language">
+          <option value="c">C (gcc)</option>
+          <option value="cpp">C++ (g++)</option>
+          <option value="python">Python 3</option>
+          <option value="shell">Shell (sh)</option>
+        </select>
+      </label>
+      <label class="field">载入示例
+        <select id="example">
+          <option value="">— 选择演示 —</option>
+          <option value="hello">hello · 正常 (OK)</option>
+          <option value="aplusb">a+b · 判题 (AC)</option>
+          <option value="loop">loop · 死循环 (TO)</option>
+          <option value="memhog">memhog · 吃内存 (MLE)</option>
+          <option value="forkbomb">forkbomb · 进程炸弹</option>
+          <option value="escape">escape · 读 /etc/shadow</option>
+          <option value="netcall">netcall · 联网</option>
+          <option value="badsyscall">badsyscall · 危险 syscall</option>
+          <option value="shellprobe">shell · 探查隔离</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="editor">
+      <div class="gutter" id="gutter"></div>
+      <textarea id="source" spellcheck="false" wrap="off" autocomplete="off"></textarea>
+    </div>
+
+    <details class="card io">
+      <summary>输入 / 判题 <span class="muted">stdin、预期输出</span></summary>
+      <label class="field">标准输入 (stdin)
+        <textarea id="stdin" rows="2" spellcheck="false" placeholder="喂给程序的 stdin（可空）"></textarea>
+      </label>
+      <label class="field">预期输出 (留空则不判题 → 只看运行结果)
+        <textarea id="expected" rows="2" spellcheck="false" placeholder="填了就和程序 stdout 比对，给 AC/WA"></textarea>
+      </label>
+    </details>
+
+    <details class="card limits" open>
+      <summary>资源限制 &amp; 机制开关</summary>
+      <div class="grid">
+        <label class="field">墙钟 (ms)<input id="wall_time_ms" type="number" value="5000" /></label>
+        <label class="field">CPU (ms)<input id="cpu_time_ms" type="number" value="2000" /></label>
+        <label class="field">内存 (KiB)<input id="mem_kib" type="number" value="262144" /></label>
+        <label class="field">栈 (KiB)<input id="stack_kib" type="number" value="65536" /></label>
+        <label class="field">最大进程数<input id="max_procs" type="number" value="16" /></label>
+        <label class="field">seccomp 动作
+          <select id="seccomp">
+            <option value="errno">errno (EPERM)</option>
+            <option value="kill">kill (杀进程)</option>
+            <option value="off">off</option>
+          </select>
+        </label>
+      </div>
+      <div class="toggles">
+        <label class="tg"><input id="use_namespaces" type="checkbox" checked /><span>命名空间隔离</span></label>
+        <label class="tg"><input id="use_cgroup" type="checkbox" checked /><span>cgroup 限额</span></label>
+        <label class="tg"><input id="seccomp_allowlist" type="checkbox" /><span>seccomp 白名单</span></label>
+        <label class="tg"><input id="use_user_ns" type="checkbox" /><span>user ns (rootless)</span></label>
+        <label class="tg"><input id="share_net" type="checkbox" /><span>共享网络</span></label>
+        <label class="tg"><input id="trace" type="checkbox" /><span>syscall 追踪</span></label>
+      </div>
+    </details>
+
+    <button id="run">▶ 运行</button>
+
+    <div class="verdict-card" id="verdict-card"></div>
+
+    <div class="card output">
+      <div class="card-head">程序输出 <span class="muted">stdout / stderr</span></div>
+      <pre id="output"></pre>
+    </div>
+  </section>
+
+  <!-- ===== 右：可视化 ===== -->
+  <section class="right">
+    <nav class="tabs">
+      <button class="tab active" data-tab="timeline">① 搭建步骤</button>
+      <button class="tab" data-tab="syscalls">② 系统调用</button>
+      <button class="tab" data-tab="resources">③ 资源监控</button>
+      <button class="tab" data-tab="fs">④ 隔离视图</button>
+    </nav>
+
+    <!-- 时间线 -->
+    <div class="panel active" id="panel-timeline">
+      <div class="legend" id="legend"></div>
+      <ol id="timeline"></ol>
+    </div>
+
+    <!-- syscalls -->
+    <div class="panel" id="panel-syscalls">
+      <p class="hint">仅「syscall 追踪」开启时有数据。下表按 syscall 聚合计数；红色 = 危险（被策略关注）。</p>
+      <input id="sc-filter" class="filter" placeholder="过滤 syscall 名…" />
+      <div class="sc-wrap">
+        <table class="sc-table"><thead><tr><th>syscall</th><th>nr</th><th>次数</th><th>状态</th></tr></thead>
+          <tbody id="sc-tbody"></tbody></table>
+      </div>
+      <details class="card"><summary>原始调用流</summary><div id="sc-stream" class="sc-stream"></div></details>
+    </div>
+
+    <!-- 资源 -->
+    <div class="panel" id="panel-resources">
+      <div class="gauges">
+        <div class="gauge"><span class="g-label">内存峰值</span><b id="g-mem">0</b><span class="g-sub" id="g-mem-sub">/ — KiB</span><div class="bar"><i id="g-mem-bar"></i></div></div>
+        <div class="gauge"><span class="g-label">CPU 时间</span><b id="g-cpu">0</b><span class="g-sub" id="g-cpu-sub">/ — ms</span><div class="bar"><i id="g-cpu-bar"></i></div></div>
+        <div class="gauge"><span class="g-label">进程数</span><b id="g-procs">0</b><span class="g-sub" id="g-procs-sub">/ —</span><div class="bar"><i id="g-procs-bar"></i></div></div>
+      </div>
+      <canvas id="chart" width="680" height="260"></canvas>
+      <p class="hint"><span class="dot mem"></span>内存（占限额%） <span class="dot cpu"></span>CPU（占限额%） — 来自 supervisor 周期读 cgroup。</p>
+    </div>
+
+    <!-- 隔离视图 -->
+    <div class="panel" id="panel-fs">
+      <p class="hint">下面是被测程序 <b>真实看到</b> 的世界（execve 前从沙箱内采集）。</p>
+      <div id="fs-empty" class="empty">运行一次（开启命名空间隔离）后显示。</div>
+      <div id="fs-body" class="hidden">
+        <div class="fs-meta" id="fs-meta"></div>
+        <div class="fs-grid">
+          <div class="fs-box">
+            <h4>沙箱根 <code>ls /</code></h4>
+            <ul class="tree box" id="fs-root"></ul>
+          </div>
+          <div class="fs-box">
+            <h4>挂载点 <code>/proc/self/mountinfo</code></h4>
+            <ul class="mounts" id="fs-mounts"></ul>
+          </div>
+        </div>
+        <div class="fs-grid">
+          <div class="fs-box">
+            <h4>可见网卡</h4>
+            <ul class="ifaces" id="fs-net"></ul>
+          </div>
+          <div class="fs-box">
+            <h4>宿主上已"消失"的路径</h4>
+            <ul class="gone" id="fs-gone"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>

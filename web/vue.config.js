@@ -12,11 +12,14 @@ module.exports = defineConfig({
     },
   },
   devServer: {
+    historyApiFallback: true,
     proxy: {
       '/api': {
         target: "http://127.0.0.1:1234",
         ws: true,
-        changeOrigin: true
+        changeOrigin: true,
+        proxyTimeout: 10 * 60 * 1000,
+        timeout: 10 * 60 * 1000
       }
     }
   },
@@ -72,7 +75,7 @@ module.exports = defineConfig({
   configureWebpack: {
     plugins: [
       new MonacoWebpackPlugin({
-        languages: ['cpp'],
+        languages: ['cpp', 'python'],
         features: [
           '!accessibilityHelp',
           '!anchorSelect',

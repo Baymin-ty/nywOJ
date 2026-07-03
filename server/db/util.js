@@ -1,10 +1,13 @@
+const eventReporter = require('../eventReporter');
+
 const handler = (fn) => async (req, res, next) => {
   try {
     await fn(req, res, next);
   } catch (err) {
-    if (res.headersSent) return;
     const message = err && err.sqlMessage ? err.sqlMessage : err && err.message ? err.message : String(err);
     console.error('handler error:', err && err.stack ? err.stack : err);
+    eventReporter.reportError(err, req, 'API handler caught an exception.').catch(() => {});
+    if (res.headersSent) return;
     res.status(202).send({ message });
   }
 };

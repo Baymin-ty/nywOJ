@@ -1,0 +1,7 @@
+target/
+**/target/
+.git/
+*.md
+docs/
+examples/
+.gitignore

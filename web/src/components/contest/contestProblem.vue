@@ -27,7 +27,7 @@
             </el-button>
           </div>
         </div>
-        <v-md-preview v-show="!isSubmit" :text="problemInfo.description"> </v-md-preview>
+        <ProblemStatement v-show="!isSubmit" :description="problemInfo.description" :samples="samples" />
       </el-card>
     </el-col>
     <el-col :xs="24" :sm="24" :md="7">
@@ -88,6 +88,7 @@
 <script>
 import axios from 'axios';
 import monacoEditor from '@/components/monacoEditor.vue'
+import ProblemStatement from '@/components/problem/ProblemStatement.vue'
 
 export default {
   name: "contestProblemView",
@@ -103,7 +104,13 @@ export default {
     };
   },
   components: {
-    monacoEditor
+    monacoEditor,
+    ProblemStatement
+  },
+  computed: {
+    samples() {
+      return Array.isArray(this.problemInfo.samples) ? this.problemInfo.samples : [];
+    },
   },
   methods: {
     submit() {
@@ -143,14 +150,8 @@ export default {
             this.langList.push(this.$store.state.langList[l]);
             if (!this.submitLang)
               this.submitLang = lid;
-            if (lid === this.$store.state.preferenceLang)
-              this.submitLang = lid;
           }
         }
-        if (!this.$store.state.preferenceLang)
-          this.$message.info('可在编辑资料--个人信息中设置您的偏好语言');
-        else if (this.submitLang !== this.$store.state.preferenceLang)
-          this.$message.warning('本题无法用您的偏好语言提交');
       }
       else {
         this.$router.push({

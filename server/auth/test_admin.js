@@ -11,7 +11,7 @@ const db = require('../db');
 const policy = require('./policy');
 const { syncPermissionCatalog } = require('./sync');
 
-const admin = require('../api/admin');
+const admin = require('../api/system/admin');
 
 let pass = 0, fail = 0;
 const results = [];

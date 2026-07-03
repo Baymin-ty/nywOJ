@@ -55,7 +55,7 @@
         </el-select>
       </el-form-item>
       <template v-if="!fixedScope && form.resourceType">
-        <el-form-item :label="form.resourceType === 'contest' ? '比赛' : '题目'">
+        <el-form-item :label="resourceLabel(form.resourceType)">
           <ResourcePicker v-model="form.resourceId" :resource-type="form.resourceType" style="width: 260px;" />
         </el-form-item>
       </template>
@@ -114,6 +114,10 @@ export default {
       if (!p || !p.scopable) return null;
       if (p.group === 'problem' || p.group === 'contest') return p.group;
       return null;
+    },
+    resourceLabel(type) {
+      if (type === 'contest') return '比赛';
+      return '题目';
     },
     syncScopeFromPermission() {
       if (this.fixedScope) return;

@@ -1,5 +1,5 @@
 <template>
-  <div style="text-align: center; margin: 0 auto; max-width: 1400px">
+  <div class="submission-page">
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
@@ -30,7 +30,7 @@
           </el-button-group>
         </div>
       </template>
-      <div style="display: inline-flex;">
+      <div class="filter-row">
         <el-form :inline="true" :model="filter">
           <el-form-item>
             <el-input v-model="filter.pid" type="text" placeholder="题目编号" style="width: 100px;" @keyup.enter="all" />
@@ -55,7 +55,7 @@
             <el-input v-model="filter.cid" type="text" placeholder="比赛id" style="width: 80px;" @keyup.enter="all" />
           </el-form-item>
         </el-form>
-        <span v-if="$can('submission.view.any')" style="font-size: 14px; font-weight: 600; margin:0 20px 0 10px;">
+        <span v-if="$can('submission.view.any')" class="contest-toggle">
           比赛提交：
           <el-switch v-model="queryAll" class="mb-2" active-text="显示" inactive-text="隐藏" @change="all" />
         </span>
@@ -78,9 +78,12 @@
             <router-link class="rlink" :to="'/problem/' + scope.row.pid">
               {{ scope.row.title }}
             </router-link>
-            <el-icon id="hidden" v-if="!scope.row.isPublic">
+            <el-icon id="hidden" v-if="!scope.row.problemPublic">
               <Hide />
             </el-icon>
+            <el-tag v-if="!scope.row.isPublic" class="visibility-tag" type="danger" size="small">
+              私有提交
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="name" label="提交者" width="150px">
@@ -323,6 +326,30 @@ export default {
   margin: 10px;
 }
 
+.submission-page {
+  text-align: center;
+  margin: 0 auto;
+  max-width: 1400px;
+}
+
+.filter-row {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.contest-toggle {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 20px 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -332,5 +359,35 @@ export default {
 
 .el-form--inline .el-form-item {
   margin-right: 15px;
+}
+
+.visibility-tag {
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+
+@media (max-width: 768px) {
+  .submission-page {
+    width: 100%;
+  }
+
+  .box-card {
+    margin: 0;
+  }
+
+  .card-header {
+    justify-content: center;
+  }
+
+  .filter-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .contest-toggle {
+    margin: 0;
+    justify-content: center;
+  }
 }
 </style>

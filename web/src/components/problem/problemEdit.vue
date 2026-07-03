@@ -1,5 +1,5 @@
 <template>
-  <el-row style="margin: auto;max-width: 1500px;min-width: 800px;">
+  <el-row class="problem-edit-page">
     <el-col :xs="24" :sm="24" :md="17">
       <el-card class="box-card" shadow="hover">
         <template #header>
@@ -8,7 +8,7 @@
               <span style="vertical-align: -3px;">#{{ problemInfo.pid }}、</span>
               <el-input size="large" v-model="problemInfo.title" style="width: 200px;" />
               <el-switch v-model="problemInfo.isPublic" style="margin-left: 10px;" size="large" active-text="公开"
-                inactive-text="隐藏" />
+                inactive-text="隐藏" :disabled="!auth.manage" @change="setProblemPublic" />
             </p>
           </div>
         </template>
@@ -41,10 +41,16 @@
           <el-descriptions-item label="空间限制">
             <el-input v-model="problemInfo.memoryLimit" style="width: 80px;" /> MB
           </el-descriptions-item>
-          <el-descriptions-item label="比对方式">
-            <el-select v-model="problemInfo.type" placeholder="比对方式" style="width: 150px;">
-              <el-option v-for="item in ptype" :key="item.value" :label="item.label" :value="item.value" />
-            </el-select>
+          <el-descriptions-item label="评测方式">
+            <div class="judge-method">{{ problemInfo.judgeSummary?.label || '—' }}<span
+                v-if="problemInfo.judgeSummary?.compare" class="judge-compare"> · {{ problemInfo.judgeSummary.compare
+                }}</span></div>
+            <el-button type="primary" link size="small" @click="this.$router.push('/problem/case/' + problemInfo.pid)">
+              <el-icon class="el-icon--left">
+                <SetUp />
+              </el-icon>
+              在「管理数据 → 评测流程」中配置
+            </el-button>
           </el-descriptions-item>
           <el-descriptions-item label="题目标签">
             <el-tag type="info" v-for="tag in problemInfo.tags" :key="tag" closable @close="removeTag(tag)"
@@ -70,8 +76,8 @@
           </el-descriptions-item>
         </el-descriptions>
         <el-divider style="margin-top: 20px; margin-bottom: 20px;" />
-        <div style="text-align: center;">
-          <el-button type="primary" @click="this.$router.push('/problem/' + problemInfo.pid)">
+        <div class="edit-actions">
+          <el-button type="primary" @click="this.$router.push(problemPath)">
             <el-icon class="el-icon--left">
               <Back />
             </el-icon>
@@ -89,6 +95,18 @@
             </el-icon>
             管理数据
           </el-button>
+          <el-button type="warning" plain @click="this.$router.push('/problem/ai/' + problemInfo.pid)" :disabled="!auth.manage">
+            <el-icon class="el-icon--left">
+              <DataAnalysis />
+            </el-icon>
+            LLM 助手
+          </el-button>
+          <el-button type="danger" plain @click="deleteProblem" :disabled="!auth.manage">
+            <el-icon class="el-icon--left">
+              <Delete />
+            </el-icon>
+            删除题目
+          </el-button>
         </div>
       </el-card>
     </el-col>
@@ -105,6 +123,7 @@
 
 <script>
 import axios from 'axios';
+import { ElMessageBox } from 'element-plus';
 import CollaboratorPanel from '@/components/permission/CollaboratorPanel.vue';
 
 export default {
@@ -124,6 +143,9 @@ export default {
       const t = this.problemInfo.type;
       return t === 2 || t === 3 || t === '提交答案' || t === '提交答案 (SPJ)';
     },
+    problemPath() {
+      return `/problem/${this.problemInfo.pid}`;
+    },
   },
   data() {
     return {
@@ -131,12 +153,6 @@ export default {
       newTag: '',
       avalangList: [],
       inputVisible: false,
-      ptype: [
-        { value: 0, label: '传统文本比较' },
-        { value: 1, label: 'Special Judge' },
-        { value: 2, label: '提交答案' },
-        { value: 3, label: '提交答案 (SPJ)' }
-      ],
       auth: {},
       levels: [
         {
@@ -178,6 +194,12 @@ export default {
     }
   },
   methods: {
+    apiOk(res) {
+      return res.status === 200 && !(res.data && res.data.error);
+    },
+    apiMessage(res, fallback) {
+      return (res.data && (res.data.message || res.data.error)) || fallback;
+    },
     updateProblem() {
       if (!this.isAnswerProblem && !this.avalangList.length) {
         this.$message.error('请选择至少一个支持语言');
@@ -198,6 +220,41 @@ export default {
         }
         this.all();
       })
+    },
+    setProblemPublic(value) {
+      axios.post('/api/problem/setProblemPublic', {
+        pid: this.problemInfo.pid,
+        isPublic: value,
+      }).then(res => {
+        if (this.apiOk(res)) {
+          this.problemInfo.isPublic = !!res.data.isPublic;
+          this.$message.success(this.problemInfo.isPublic ? '题目已公开' : '题目已隐藏');
+        } else {
+          this.problemInfo.isPublic = !value;
+          this.$message.error(this.apiMessage(res, '更新公开状态失败'));
+        }
+      }).catch(err => {
+        this.problemInfo.isPublic = !value;
+        this.$message.error(err.message || '更新公开状态失败');
+      });
+    },
+    async deleteProblem() {
+      try {
+        await ElMessageBox.confirm(
+          `确认删除题目 #${this.problemInfo.pid || this.pid}？题面、测试数据、提交记录和题解绑定都会被删除。`,
+          '删除题目',
+          { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+        );
+        const res = await axios.post('/api/problem/deleteProblem', { pid: this.problemInfo.pid });
+        if (this.apiOk(res)) {
+          this.$message.success('题目已删除');
+          this.$router.push('/problem');
+        } else {
+          this.$message.error(this.apiMessage(res, '删除题目失败'));
+        }
+      } catch (err) {
+        if (err !== 'cancel' && err !== 'close') this.$message.error(err.message || '删除题目失败');
+      }
     },
     showInput() {
       this.inputVisible = true;
@@ -265,6 +322,12 @@ export default {
   text-align: left;
 }
 
+.problem-edit-page {
+  margin: auto;
+  max-width: 1500px;
+  min-width: 0;
+}
+
 
 .card-header {
   display: flex;
@@ -320,5 +383,50 @@ export default {
   color: white;
   font-weight: 600;
   font-size: 14px;
+}
+
+.judge-method {
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 2px;
+}
+
+.judge-compare {
+  font-weight: 400;
+  color: #909399;
+}
+
+.edit-actions {
+  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.edit-actions .el-button {
+  margin-left: 0;
+}
+
+@media (max-width: 768px) {
+  .box-card {
+    margin: 0 0 10px;
+  }
+
+  .title {
+    font-size: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .title .el-input {
+    width: min(100%, 220px) !important;
+  }
+
+  .stat-number {
+    font-size: 22px;
+  }
 }
 </style>

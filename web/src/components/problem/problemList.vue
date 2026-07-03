@@ -1,5 +1,5 @@
 <template>
-  <div style="text-align: center; margin: 0 auto; max-width: 1300px">
+  <div class="list-page">
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
@@ -27,7 +27,7 @@
           </el-button-group>
         </div>
       </template>
-      <div style="display: inline-flex;">
+      <div class="filter-row">
         <el-form :inline="true" :model="filter">
           <el-form-item>
             <el-input v-model="pid" type="text" placeholder="pid跳转" style="width: 70px;"
@@ -58,7 +58,7 @@
             </el-select>
           </el-form-item>
         </el-form>
-        <el-button-group>
+        <el-button-group class="filter-actions">
           <el-button type="primary" @click="all">
             筛选记录
           </el-button>
@@ -193,6 +193,7 @@ export default {
         '#ed4014'
       ],
       tagList: [],
+      tagColorMap: {},
       tagVisible: true,
       publisherList: []
     }
@@ -254,7 +255,7 @@ export default {
       return t;
     },
     getTagColor(tag) {
-      return this.tagColorList[this.hash(tag) % this.tagColorList.length];
+      return this.tagColorMap[tag] || this.tagColorList[this.hash(tag) % this.tagColorList.length];
     },
     queryTag(tag) {
       let list = this.filter.tags;
@@ -274,12 +275,34 @@ export default {
   mounted() {
     if (localStorage.getItem('tagVisible') !== null)
       this.tagVisible = localStorage.getItem('tagVisible') === 'true';
-    axios.post('/api/problem/getProblemTags').then(res => {
+    let query = this.$route.query;
+    if (query.name) this.filter.name = query.name;
+    if (query.level) this.filter.level = parseInt(query.level);
+    if (query.tags) this.filter.tags = JSON.parse(query.tags);
+    if (query.publisherUid) this.filter.publisherUid = parseInt(query.publisherUid);
+    if (query.pageId) this.currentPage = parseInt(query.pageId);
+    const tagIds = String(query.tagIds || '')
+      .split(',')
+      .map((item) => Number(item))
+      .filter((item) => Number.isSafeInteger(item) && item > 0);
+    axios.post('/api/problem/getProblemTags', { detail: true }).then(res => {
       if (res.status === 200) {
-        this.tagList = res.data;
+        const tags = res.data.tags || [];
+        this.tagColorMap = {};
+        for (const item of tags) {
+          if (item.color) this.tagColorMap[item.name] = item.color;
+        }
+        this.tagList = tags.map((item) => item.name);
         this.tagList = this.tagList.sort((a, b) => {
-          return this.hash(a) % this.tagColorList.length - this.hash(b) % this.tagColorList.length;
+          const ac = this.getTagColor(a);
+          const bc = this.getTagColor(b);
+          return ac === bc ? a.localeCompare(b, 'zh-CN') : ac.localeCompare(bc);
         });
+        if (tagIds.length) {
+          const wanted = new Set(tagIds);
+          this.filter.tags = tags.filter((item) => wanted.has(Number(item.id))).map((item) => item.name);
+          this.all();
+        }
       } else {
         this.$message.error('获取题目标签失败' + res.data.message);
       }
@@ -291,13 +314,7 @@ export default {
         this.$message.error('获取出题人失败' + res.data.message);
       }
     });
-    let query = this.$route.query;
-    if (query.name) this.filter.name = query.name;
-    if (query.level) this.filter.level = parseInt(query.level);
-    if (query.tags) this.filter.tags = JSON.parse(query.tags);
-    if (query.publisherUid) this.filter.publisherUid = parseInt(query.publisherUid);
-    if (query.pageId) this.currentPage = parseInt(query.pageId);
-    this.all();
+    if (!tagIds.length) this.all();
   }
 }
 </script>
@@ -307,6 +324,21 @@ export default {
 .box-card {
   height: auto;
   margin: 10px;
+}
+
+.list-page {
+  text-align: center;
+  margin: 0 auto;
+  max-width: 1300px;
+}
+
+.filter-row {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
 }
 
 .card-header {
@@ -346,5 +378,42 @@ export default {
 
 .el-form--inline .el-form-item {
   margin-right: 15px;
+}
+
+@media (max-width: 768px) {
+  .list-page {
+    width: 100%;
+  }
+
+  .box-card {
+    margin: 0;
+  }
+
+  .card-header {
+    justify-content: center;
+  }
+
+  .filter-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .filter-actions {
+    justify-content: center;
+  }
+
+  .title-container {
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .title-left {
+    min-width: 0;
+  }
+
+  .tags-right {
+    justify-content: flex-start;
+  }
 }
 </style>

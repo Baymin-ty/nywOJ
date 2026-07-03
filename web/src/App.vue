@@ -1,5 +1,5 @@
 <template>
-  <el-container style="min-width: 992px; min-height: 100vh;">
+  <el-container class="app-shell">
     <el-header>
       <myHeader />
     </el-header>
@@ -34,6 +34,8 @@ export default {
       if (res.status === 200) {
         this.$store.state.langList = res.data.data
       }
+    }).catch(() => {
+      this.$store.state.langList = {};
     });
 
   },
@@ -48,6 +50,11 @@ li,
   -moz-osx-font-smoothing: grayscale;
   margin: 0 auto;
   color: #2c3e50;
+}
+
+.app-shell {
+  min-height: 100vh;
+  min-width: 0;
 }
 
 .el-table .success {
@@ -144,5 +151,95 @@ blockquote {
 
 .el-message {
   margin-top: 50px;
+}
+
+@media (max-width: 768px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .el-main {
+    padding: 8px !important;
+  }
+
+  .el-card__header {
+    padding: 12px !important;
+  }
+
+  .el-card__body {
+    padding: 12px !important;
+  }
+
+  .card-header {
+    height: auto !important;
+    min-height: 28px;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .el-row {
+    min-width: 0 !important;
+  }
+
+  .el-col {
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+
+  /* 仅清零路由内容区里的行内 min-width（多为页面根容器的 min-width: 600/800px），
+     避免移动端横向滚动。限定在 .el-main 内，不波及顶栏 / 底栏 / 弹窗等全局元素。 */
+  .el-main [style*="min-width"] {
+    min-width: 0 !important;
+  }
+
+  .el-form--inline {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .el-form--inline .el-form-item {
+    display: block;
+    margin-right: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  .el-form--inline .el-form-item__content,
+  .el-form--inline .el-input,
+  .el-form--inline .el-select {
+    width: 100% !important;
+  }
+
+  .el-button-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .el-button-group > .el-button {
+    border-radius: 4px !important;
+    margin-left: 0 !important;
+  }
+
+  .el-pagination {
+    max-width: 100%;
+    white-space: normal;
+    justify-content: center;
+  }
+
+  .el-table {
+    font-size: 12px;
+  }
+
+  .el-dialog {
+    width: calc(100vw - 20px) !important;
+    margin-top: 5vh !important;
+  }
+
+  #footer {
+    font-size: 12px;
+    padding: 0 8px;
+  }
 }
 </style>

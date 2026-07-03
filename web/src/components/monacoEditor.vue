@@ -3,7 +3,7 @@
 </template>
 
 <script>
-import { defineComponent, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { defineComponent, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 
 export default defineComponent({
   name: 'monacoEditor',
@@ -40,11 +40,17 @@ export default defineComponent({
 
   setup(props, { emit }) {
     const editorContainer = ref(null);
-    let monacoEditor, editor;
+    let monacoEditor, editor, contentDisposable;
+    let disposed = false;
 
     onMounted(async () => {
+      await nextTick();
+      if (disposed || !editorContainer.value || !editorContainer.value.isConnected) return;
       monacoEditor = await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor/esm/vs/editor/editor.api');
-      editor = monacoEditor.editor.create(editorContainer.value, {
+      await nextTick();
+      const container = editorContainer.value;
+      if (disposed || !container || !container.isConnected) return;
+      editor = monacoEditor.editor.create(container, {
         value: props.value,
         language: props.language,
         theme: props.theme,
@@ -54,39 +60,47 @@ export default defineComponent({
       });
 
       // 监听编辑器内容变化
-      editor.onDidChangeModelContent(() => {
+      contentDisposable = editor.onDidChangeModelContent(() => {
+        if (!editor) return;
         const newValue = editor.getValue();
         emit('update:value', newValue);
       });
     });
 
     watch(() => props.value, (newValue) => {
-      if (editor && newValue !== editor.getValue()) {
-        monacoEditor.editor.setValue(newValue);
+      if (editor && !disposed && newValue !== editor.getValue()) {
+        // setValue lives on the editor instance, not the module namespace.
+        editor.setValue(newValue);
       }
     });
 
     watch(() => props.language, (newLanguage) => {
-      if (editor) {
+      if (monacoEditor && editor && editor.getModel()) {
         monacoEditor.editor.setModelLanguage(editor.getModel(), newLanguage);
       }
     });
 
     watch(() => props.readOnly, (newReadOnly) => {
       if (editor) {
-        monacoEditor.editor.updateOptions({ readOnly: newReadOnly });
+        editor.updateOptions({ readOnly: newReadOnly });
       }
     });
 
     watch(() => props.fontSize, (newSize) => {
       if (editor) {
-        monacoEditor.editor.updateOptions({ fontSize: newSize });
+        editor.updateOptions({ fontSize: newSize });
       }
     });
 
     onBeforeUnmount(() => {
+      disposed = true;
+      if (contentDisposable) {
+        contentDisposable.dispose();
+        contentDisposable = null;
+      }
       if (editor) {
         editor.dispose();
+        editor = null;
       }
     });
 

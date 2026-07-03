@@ -12,7 +12,11 @@
       </el-steps>
       <el-form :model="emailInfo" v-show="!active">
         <el-form-item label="邮箱" prop="name" style="margin-left: 27px">
-          <el-input v-model="userInfo.email" type="text" placeholder="请先输入邮箱，再进行人机验证" />
+          <el-input v-model="userInfo.email" type="text" placeholder="请先输入邮箱，再进行人机验证"
+            @blur="checkEmailAvailability(false)" />
+          <div v-if="availability.email.text" :class="['availability', availability.email.type]">
+            {{ availability.email.text }}
+          </div>
         </el-form-item>
         <el-form-item label="人机验证" prop="pass">
           <el-button type="info" plain v-show="!recap" @click="recaptcha">发送验证码</el-button>
@@ -26,7 +30,11 @@
 
       <el-form :model="userInfo" v-show="active">
         <el-form-item label="用户名" prop="name" style="margin-left: 15px">
-          <el-input v-model="userInfo.name" type="text" placeholder="由字母或数字组成,长度在 3~15 之间" />
+          <el-input v-model="userInfo.name" type="text" placeholder="3~24 位，可包含字母、数字和 -_.#$"
+            @blur="checkUsernameAvailability(false)" />
+          <div v-if="availability.username.text" :class="['availability', availability.username.type]">
+            {{ availability.username.text }}
+          </div>
         </el-form-item>
         <el-form-item label="密码" prop="pass" style="margin-left: 28px">
           <el-input v-model="userInfo.pwd" type="password" placeholder="长度在 6~31 之间" />
@@ -60,10 +68,55 @@ export default {
         email: "",
         verifyCode: "",
       },
+      availability: {
+        email: { type: '', text: '' },
+        username: { type: '', text: '' },
+      },
     }
   },
   methods: {
-    sendVerifyCode(retoken) {
+    async checkEmailAvailability(showMessage) {
+      const email = String(this.userInfo.email || '').trim();
+      this.availability.email = { type: '', text: '' };
+      if (!email) {
+        if (showMessage) this.$message.error('请先填写邮箱');
+        return false;
+      }
+      try {
+        const res = await axios.post('/api/user/checkAvailability', { email });
+        if (res.data.emailAvailable) {
+          this.availability.email = { type: 'ok', text: '邮箱可用' };
+          return true;
+        }
+        this.availability.email = { type: 'error', text: '邮箱格式错误或已被使用' };
+        if (showMessage) this.$message.error(this.availability.email.text);
+      } catch (err) {
+        if (showMessage) this.$message.error(err.message);
+      }
+      return false;
+    },
+    async checkUsernameAvailability(showMessage) {
+      const username = String(this.userInfo.name || '').trim();
+      this.availability.username = { type: '', text: '' };
+      if (!username) {
+        if (showMessage) this.$message.error('请先填写用户名');
+        return false;
+      }
+      try {
+        const res = await axios.post('/api/user/checkAvailability', { username });
+        if (res.data.usernameAvailable) {
+          this.availability.username = { type: 'ok', text: '用户名可用' };
+          return true;
+        }
+        this.availability.username = { type: 'error', text: '用户名格式错误或已被注册' };
+        if (showMessage) this.$message.error(this.availability.username.text);
+      } catch (err) {
+        if (showMessage) this.$message.error(err.message);
+      }
+      return false;
+    },
+    async sendVerifyCode(retoken) {
+      if (!(await this.checkEmailAvailability(true))) return;
       axios.post('/api/user/sendEmailVerifyCode', {
         email: this.userInfo.email,
         retoken: retoken,
@@ -93,7 +146,8 @@ export default {
         this.$message.error(err.message);
       });
     },
-    reg() {
+    async reg() {
+      if (!(await this.checkUsernameAvailability(true))) return;
       axios.post('/api/user/reg', {
         name: this.userInfo.name,
         pwd: this.userInfo.pwd,
@@ -140,5 +194,20 @@ export default {
 .card-header {
   font-weight: bold;
   font-size: 20px;
+}
+
+.availability {
+  margin-top: 4px;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.availability.ok {
+  color: #67c23a;
+}
+
+.availability.error {
+  color: #f56c6c;
 }
 </style>

@@ -12,9 +12,12 @@ const db = require('../db');
 const policy = require('./policy');
 const { syncPermissionCatalog } = require('./sync');
 const { PERMISSIONS, BUILTIN_ROLES, RESOURCE_GRANTABLE } = require('./permissions');
+const { ensureGroupSchema } = require('../groupSchema');
 
-const auth = require('../api/auth');
-const contestApi = require('../api/contest');
+const auth = require('../api/account/roles');
+const contestApi = require('../api/contest/contest');
+const groupApi = require('../api/account/group');
+const ideProfileRunApi = require('../api/judge/ideProfileRun');
 
 let pass = 0, fail = 0;
 const results = [];
@@ -74,6 +77,7 @@ const runHandler = async (handler, req) => {
 
 // ----- sandbox helpers -----
 let createdUids = [];
+let createdGids = [];
 
 const mkUser = async (roleKeys = []) => {
   const r = await db.query(
@@ -92,8 +96,36 @@ const mkUser = async (roleKeys = []) => {
   return r.insertId;
 };
 
+const mkGroup = async () => {
+  await ensureGroupSchema();
+  const name = '_test_group_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  const r = await db.query(
+    'INSERT INTO user_groups(name, memberCnt, createTime) VALUES (?,?,?)',
+    [name, 0, new Date()]
+  );
+  createdGids.push(r.insertId);
+  return r.insertId;
+};
+
+const addGroupMember = async (gid, uid, isAdmin = 0) => {
+  await ensureGroupSchema();
+  await db.query(
+    'INSERT INTO group_members(gid, uid, isAdmin, joinTime) VALUES (?,?,?,?)',
+    [gid, uid, isAdmin ? 1 : 0, new Date()]
+  );
+  await db.query('UPDATE user_groups SET memberCnt=memberCnt+1 WHERE gid=?', [gid]);
+};
+
 const cleanupSandbox = async () => {
+  if (createdGids.length) {
+    await db.query('DELETE FROM group_permissions WHERE gid IN (?)', [createdGids]).catch(() => {});
+    await db.query('DELETE FROM group_members WHERE gid IN (?)', [createdGids]).catch(() => {});
+    await db.query('DELETE FROM user_groups WHERE gid IN (?)', [createdGids]).catch(() => {});
+  }
   if (createdUids.length) {
+    await db.query('DELETE FROM user_roles WHERE uid IN (?)', [createdUids]).catch(() => {});
+    await db.query('DELETE FROM user_permissions WHERE uid IN (?)', [createdUids]).catch(() => {});
+    await db.query('DELETE FROM group_members WHERE uid IN (?)', [createdUids]).catch(() => {});
     await db.query('DELETE FROM userInfo WHERE uid IN (?)', [createdUids]);
   }
   await db.query("DELETE FROM roles WHERE `key` LIKE 'test\\_%' ESCAPE '\\\\'");
@@ -251,6 +283,108 @@ const cleanupSandbox = async () => {
       assert(p1 !== p3, 'invalidate forces a fresh load');
     });
 
+    // -------- 6. Group-derived permissions --------
+    await test('group permissions feed effective allow/scoped/deny state', async () => {
+      const groupUid = await mkUser([]);
+      const gid = await mkGroup();
+      const problem = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
+        ['_test_group_scoped_private_problem', 'desc', superUid, '[]']
+      );
+      const pid = problem.insertId;
+      try {
+        await addGroupMember(gid, groupUid);
+        const permRows = await db.query(
+          'SELECT id, `key` FROM permissions WHERE `key` IN (?)',
+          [['announcement.manage', 'problem.view.any', 'contest.create', 'audit.view']]
+        );
+        const permId = new Map(permRows.map((row) => [row.key, row.id]));
+        await db.query(
+          `INSERT INTO group_permissions(gid, permission_id, effect, resource_type, resource_id, granted_by, expires_at)
+           VALUES ?`,
+          [[
+            [gid, permId.get('announcement.manage'), 'allow', null, null, superUid, null],
+            [gid, permId.get('problem.view.any'), 'allow', 'problem', pid, superUid, null],
+            [gid, permId.get('contest.create'), 'deny', null, null, superUid, null],
+            [gid, permId.get('audit.view'), 'allow', null, null, superUid, new Date(Date.now() - 60_000)],
+          ]]
+        );
+        await db.query(
+          'INSERT INTO user_permissions(uid, permission_id, effect) VALUES (?,?,?)',
+          [groupUid, permId.get('contest.create'), 'allow']
+        );
+
+        policy.invalidate(groupUid);
+        const p = await policy.loadEffectivePermissions(groupUid);
+        assert(p.groupIds.has(gid), 'effective permissions include group id');
+        assert(p.global.has('announcement.manage'), 'group global allow is inherited');
+        assert(!p.global.has('audit.view'), 'expired group allow is ignored');
+        assert(p.scoped.get('problem.view.any')?.has(`problem:${pid}`), 'group scoped allow is inherited');
+        assert(policy.can(p, 'problem.view.any', { type: 'problem', id: pid }), 'group scoped allow authorizes matching problem');
+        assert(!policy.can(p, 'problem.view.any', { type: 'problem', id: pid + 1 }), 'group scoped allow does not leak to another problem');
+        assert(!policy.can(p, 'contest.create'), 'group deny overrides direct user allow');
+      } finally {
+        await db.query('DELETE FROM user_permissions WHERE uid=?', [groupUid]).catch(() => {});
+        await db.query('DELETE FROM group_permissions WHERE gid=?', [gid]).catch(() => {});
+        await db.query('DELETE FROM group_members WHERE gid=?', [gid]).catch(() => {});
+        await db.query('DELETE FROM user_groups WHERE gid=?', [gid]).catch(() => {});
+        await db.query('DELETE FROM problem WHERE pid=?', [pid]).catch(() => {});
+        policy.invalidate(groupUid);
+      }
+    });
+
+    await test('group grant endpoints require group.manage and invalidate members', async () => {
+      const memberUid = await mkUser([]);
+      const grantorUid = await mkUser([]);
+      const gid = await mkGroup();
+      try {
+        await addGroupMember(gid, memberUid);
+
+        const blocked = makeReq(memberUid, await policy.loadEffectivePermissions(memberUid));
+        blocked.body = { gid, permissionKey: 'announcement.manage', effect: 'allow' };
+        const blockedRes = await runHandler(groupApi.grantGroupPermission, blocked);
+        assertEq(blockedRes.statusCode, 403, 'plain member cannot grant group permission');
+
+        const managePerm = await db.one("SELECT id FROM permissions WHERE `key`='group.manage'");
+        await db.query(
+          'INSERT INTO user_permissions(uid, permission_id, effect) VALUES (?,?,?)',
+          [grantorUid, managePerm.id, 'allow']
+        );
+        policy.invalidate(grantorUid);
+
+        const grant = makeReq(grantorUid, await policy.loadEffectivePermissions(grantorUid));
+        grant.body = { gid, permissionKey: 'announcement.manage', effect: 'allow' };
+        const grantRes = await runHandler(groupApi.grantGroupPermission, grant);
+        assertEq(grantRes.statusCode, 200, 'group.manage user can grant group permission');
+
+        policy.invalidate(memberUid);
+        const memberPerms = await policy.loadEffectivePermissions(memberUid);
+        assert(policy.can(memberPerms, 'announcement.manage'), 'member gained group permission after grant');
+
+        const row = await db.one(
+          `SELECT gp.id FROM group_permissions gp
+           JOIN permissions p ON p.id=gp.permission_id
+           WHERE gp.gid=? AND p.\`key\`='announcement.manage'`,
+          [gid]
+        );
+        const revoke = makeReq(grantorUid, await policy.loadEffectivePermissions(grantorUid));
+        revoke.body = { id: row.id };
+        const revokeRes = await runHandler(groupApi.revokeGroupPermission, revoke);
+        assertEq(revokeRes.statusCode, 200, 'group.manage user can revoke group permission');
+
+        policy.invalidate(memberUid);
+        const after = await policy.loadEffectivePermissions(memberUid);
+        assert(!policy.can(after, 'announcement.manage'), 'member permission removed after revoke');
+      } finally {
+        await db.query('DELETE FROM user_permissions WHERE uid IN (?)', [[memberUid, grantorUid]]).catch(() => {});
+        await db.query('DELETE FROM group_permissions WHERE gid=?', [gid]).catch(() => {});
+        await db.query('DELETE FROM group_members WHERE gid=?', [gid]).catch(() => {});
+        await db.query('DELETE FROM user_groups WHERE gid=?', [gid]).catch(() => {});
+        policy.invalidate(memberUid);
+        policy.invalidate(grantorUid);
+      }
+    });
+
     // -------- 6. /api/auth handlers --------
     const superPerms = await policy.loadEffectivePermissions(superUid);
     const normalPerms = () => policy.loadEffectivePermissions(normalUid);
@@ -271,6 +405,15 @@ const cleanupSandbox = async () => {
       const create = res.payload.permissions.find((p) => p.key === 'problem.create');
       assert(create && create.endpoints.some((e) => e.includes('/api/problem/createProblem')),
         'problem.create endpoint registry includes createProblem');
+    });
+
+    await test('endpoint registry only references known permission keys', async () => {
+      const { buildEndpointMap } = require('./endpoints');
+      const epMap = buildEndpointMap();
+      assert(epMap.size > 0, 'endpoint map is not empty');
+      for (const key of epMap.keys()) {
+        if (!PERMISSIONS[key]) throw new Error(`endpoint registry references unknown permission: ${key}`);
+      }
     });
 
     await test('searchProblems / searchContests are open to any logged-in user', async () => {
@@ -522,6 +665,37 @@ const cleanupSandbox = async () => {
       assert(!p.global.has('problem.create'), 'problem.create dropped');
       // the contest.create grant from the direct user_permissions allow earlier still applies
       assert(p.global.has('contest.create'), 'direct user_permissions allow survives role clear');
+    });
+
+    await test('setUserRolesBatch supports add/remove/set and skips root/invalid users', async () => {
+      const a = await mkUser([]);
+      const b = await mkUser([]);
+
+      const add = makeReq(superUid, superPerms);
+      add.body = { mode: 'add', uids: [a, b, 1, 999999999], roleKeys: ['problem_setter'] };
+      const addRes = await runHandler(auth.setUserRolesBatch, add);
+      assertEq(addRes.statusCode, 200, 'batch add status 200');
+      assertEq(addRes.payload.success, 2, 'batch add touched two valid non-root users');
+      policy.invalidate(a);
+      policy.invalidate(b);
+      assert(policy.can(await policy.loadEffectivePermissions(a), 'problem.create'), 'user A gained problem_setter');
+      assert(policy.can(await policy.loadEffectivePermissions(b), 'problem.create'), 'user B gained problem_setter');
+
+      const remove = makeReq(superUid, superPerms);
+      remove.body = { mode: 'remove', uids: [a], roleKeys: ['problem_setter'] };
+      const removeRes = await runHandler(auth.setUserRolesBatch, remove);
+      assertEq(removeRes.statusCode, 200, 'batch remove status 200');
+      policy.invalidate(a);
+      policy.invalidate(b);
+      assert(!policy.can(await policy.loadEffectivePermissions(a), 'problem.create'), 'user A lost problem_setter');
+      assert(policy.can(await policy.loadEffectivePermissions(b), 'problem.create'), 'user B kept problem_setter');
+
+      const clear = makeReq(superUid, superPerms);
+      clear.body = { mode: 'set', uids: [b], roleKeys: [] };
+      const clearRes = await runHandler(auth.setUserRolesBatch, clear);
+      assertEq(clearRes.statusCode, 200, 'batch set empty status 200');
+      policy.invalidate(b);
+      assert(!policy.can(await policy.loadEffectivePermissions(b), 'problem.create'), 'user B role set cleared');
     });
 
     await test('deleteRole succeeds for unused custom role', async () => {
@@ -802,9 +976,30 @@ const cleanupSandbox = async () => {
       assertEq(res2.statusCode, 403, 'status 403');
     });
 
+    await test('requirePermission any-of passes when the user has one listed key', async () => {
+      const { requirePermission } = require('./middleware');
+      const anyOfUid = await mkUser([]);
+      const perm = await db.one("SELECT id FROM permissions WHERE `key`='user.manage'");
+      await db.query(
+        'INSERT INTO user_permissions(uid, permission_id, effect) VALUES (?,?,?)',
+        [anyOfUid, perm.id, 'allow']
+      );
+      policy.invalidate(anyOfUid);
+
+      const mw = requirePermission(['user.role.admin', 'user.manage']);
+      const req = makeReq(anyOfUid, await policy.loadEffectivePermissions(anyOfUid));
+      const res = fakeRes();
+      let nextCalled = false;
+      await new Promise((resolve) => {
+        const r = mw(req, res, () => { nextCalled = true; resolve(); });
+        if (r && typeof r.then === 'function') r.then(() => resolve());
+      });
+      assert(nextCalled, 'next() called for any-of user.manage');
+    });
+
     // -------- 9. New problem permission model (manage.any / manage.self / view.any) --------
     await test('problemAuth: owner with manage.self can manage own problem', async () => {
-      const { problemAuth } = require('../api/problem');
+      const { problemAuth } = require('../api/problem/core');
       const r = await db.query(
         `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
         ['_test_p_msself', 'desc', normalUid, '[]']
@@ -833,7 +1028,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('problemAuth: owner WITHOUT manage.self cannot manage', async () => {
-      const { problemAuth } = require('../api/problem');
+      const { problemAuth } = require('../api/problem/core');
       const r = await db.query(
         `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
         ['_test_p_owneronly', 'desc', normalUid, '[]']
@@ -853,7 +1048,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('problemAuth: non-owner with manage.any (scoped) can manage', async () => {
-      const { problemAuth } = require('../api/problem');
+      const { problemAuth } = require('../api/problem/core');
       const r = await db.query(
         `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
         ['_test_p_scoped', 'desc', superUid, '[]']
@@ -877,7 +1072,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('problemAuth: non-owner without view.any cannot view a private problem', async () => {
-      const { problemAuth } = require('../api/problem');
+      const { problemAuth } = require('../api/problem/core');
       const r = await db.query(
         `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
         ['_test_p_private', 'desc', superUid, '[]']
@@ -984,7 +1179,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('canManageContest: host with manage.self can manage own contest', async () => {
-      const { canManageContest } = require('../api/contest');
+      const { canManageContest } = require('../api/contest/contest');
       const c = await db.query(
         `INSERT INTO contest(title, host, start, length, type, isPublic) VALUES (?,?,?,?,?,?)`,
         ['_test_c_self', normalUid, new Date(), 60, 0, 0]
@@ -1010,7 +1205,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('canManageContest: host WITHOUT manage.self cannot manage', async () => {
-      const { canManageContest } = require('../api/contest');
+      const { canManageContest } = require('../api/contest/contest');
       const c = await db.query(
         `INSERT INTO contest(title, host, start, length, type, isPublic) VALUES (?,?,?,?,?,?)`,
         ['_test_c_owneronly', normalUid, new Date(), 60, 0, 0]
@@ -1026,7 +1221,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('canManageContest: scoped manage.any grants management to non-host', async () => {
-      const { canManageContest } = require('../api/contest');
+      const { canManageContest } = require('../api/contest/contest');
       const c = await db.query(
         `INSERT INTO contest(title, host, start, length, type, isPublic) VALUES (?,?,?,?,?,?)`,
         ['_test_c_collab', superUid, new Date(), 60, 0, 0]
@@ -1086,7 +1281,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('regression: collaborator (scoped manage.any) can fetch a private problem via getProblemInfo', async () => {
-      const problemApi = require('../api/problem');
+      const problemApi = require('../api/problem/core');
       // superUid creates a private problem; normalUid gets manage.any scoped to it.
       const r = await db.query(
         `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
@@ -1118,7 +1313,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('regression: collaborator (scoped manage.any) sees the private problem in getProblemList', async () => {
-      const problemApi = require('../api/problem');
+      const problemApi = require('../api/problem/core');
       const r = await db.query(
         `INSERT INTO problem(title, description, publisher, time, tags, isPublic) VALUES (?,?,?,NOW(),?,0)`,
         ['_test_p_collab_list_unique_marker', 'desc', superUid, '[]']
@@ -1158,7 +1353,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('regression: anonymous (no session) reading getProblemList does not crash', async () => {
-      const problemApi = require('../api/problem');
+      const problemApi = require('../api/problem/core');
       const req = {
         body: { pageSize: 5 },
         session: {},
@@ -1200,7 +1395,7 @@ const cleanupSandbox = async () => {
 
     // -------- 12. Solution binding permissions --------
     await test('solution_admin can bind and unbind public paste on a viewable problem without problem manage', async () => {
-      const problemApi = require('../api/problem');
+      const problemApi = require('../api/problem/core');
       const solutionUid = await mkUser(['solution_admin']);
       const ownerUid = await mkUser([]);
       const mark = `_test_sol_pub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -1242,7 +1437,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('solution_admin cannot bind another user private paste', async () => {
-      const problemApi = require('../api/problem');
+      const problemApi = require('../api/problem/core');
       const solutionUid = await mkUser(['solution_admin']);
       const ownerUid = await mkUser([]);
       const mark = `_test_sol_private_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -1273,7 +1468,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('bindPaste2Problem rejects duplicate active binding', async () => {
-      const problemApi = require('../api/problem');
+      const problemApi = require('../api/problem/core');
       const solutionUid = await mkUser(['solution_admin']);
       const ownerUid = await mkUser([]);
       const mark = `_test_sol_duplicate_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -1305,7 +1500,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('getProblemSol deduplicates legacy duplicate rows and unbind hides all copies', async () => {
-      const problemApi = require('../api/problem');
+      const problemApi = require('../api/problem/core');
       const solutionUid = await mkUser(['solution_admin']);
       const ownerUid = await mkUser([]);
       const mark = `_test_sol_legacy_dup_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -1340,7 +1535,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('solution_admin cannot bind on a private problem they cannot view', async () => {
-      const problemApi = require('../api/problem');
+      const problemApi = require('../api/problem/core');
       const solutionUid = await mkUser(['solution_admin']);
       const ownerUid = await mkUser([]);
       const mark = `_test_sol_private_problem_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -1370,7 +1565,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('solution_admin cannot edit another user paste', async () => {
-      const commonApi = require('../api/common');
+      const commonApi = require('../api/content/common');
       const solutionUid = await mkUser(['solution_admin']);
       const ownerUid = await mkUser([]);
       const mark = `_test_sol_no_edit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -1400,7 +1595,7 @@ const cleanupSandbox = async () => {
     });
 
     await test('getProblemSol hides private paste metadata from users who cannot view that paste', async () => {
-      const problemApi = require('../api/problem');
+      const problemApi = require('../api/problem/core');
       const pasteOwnerUid = await mkUser([]);
       const viewerUid = await mkUser([]);
       const mark = `_test_sol_hidden_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -1435,7 +1630,7 @@ const cleanupSandbox = async () => {
 
     // -------- 13. Personal audit filters --------
     await test('listAudits filters current user audit rows by eventType and keyword', async () => {
-      const userApi = require('../api/user');
+      const userApi = require('../api/account/user');
       const marker = `_self_audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       try {
         await db.query(
@@ -1482,6 +1677,47 @@ const cleanupSandbox = async () => {
       };
       const res = await runHandler(auth.searchUsers, req);
       assertEq(res.statusCode, 403, 'anonymous user rejected');
+    });
+
+    // -------- 15. Online IDE endpoint boundaries --------
+    await test('IDE problemContext visibility and profileRun login guard', async () => {
+      const { profileForType } = require('../api/problem/judgeProfile');
+      const profile = JSON.stringify(profileForType(0));
+      const pub = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic, type, judgeProfile)
+         VALUES (?,?,?,NOW(),?,1,0,?)`,
+        ['_test_ide_public_problem', 'desc', superUid, '[]', profile]
+      );
+      const priv = await db.query(
+        `INSERT INTO problem(title, description, publisher, time, tags, isPublic, type, judgeProfile)
+         VALUES (?,?,?,NOW(),?,0,0,?)`,
+        ['_test_ide_private_problem', 'desc', superUid, '[]', profile]
+      );
+      try {
+        const anonReq = (pid) => ({
+          body: { pid },
+          session: {},
+          perms: undefined,
+          useragent: { browser: { name: 'test', version: '0' }, os: { name: 'test', version: '0' } },
+          can: () => false,
+        });
+
+        const publicCtx = await runHandler(ideProfileRunApi.problemContext, anonReq(pub.insertId));
+        assertEq(publicCtx.statusCode, 200, 'anonymous can load public IDE problem context');
+        assertEq(publicCtx.payload.data.pid, pub.insertId, 'public context pid matches');
+
+        const privateCtx = await runHandler(ideProfileRunApi.problemContext, anonReq(priv.insertId));
+        assertEq(privateCtx.statusCode, 202, 'anonymous private problem context rejected');
+        assert(/权限不足/.test(privateCtx.payload.message || ''), 'private context message mentions permission');
+
+        const runReq = anonReq(pub.insertId);
+        runReq.body = { pid: pub.insertId, lang: 1, files: ['int main(){return 0;}'] };
+        const runRes = await runHandler(ideProfileRunApi.profileRun, runReq);
+        assertEq(runRes.statusCode, 202, 'anonymous profileRun rejected');
+        assert(/请先登录/.test(runRes.payload.message || ''), 'profileRun requires login');
+      } finally {
+        await db.query('DELETE FROM problem WHERE pid IN (?)', [[pub.insertId, priv.insertId]]).catch(() => {});
+      }
     });
   } catch (err) {
     console.error('FATAL:', err && err.stack ? err.stack : err);

@@ -17,9 +17,119 @@
   "SESSION": {
     "expire": "604800000"
   },
+  "SECURITY": {
+    "maintainceKey": "<change-this-cron-secret>"
+  },
+  "preference": {
+    "security": {
+      "recaptchaEnabled": false,
+      "recaptchaKey": "",
+      "requireEmailVerification": true,
+      "allowUserChangeUsername": true,
+      "allowEveryoneCreateProblem": true,
+      "allowNonPrivilegedUserEditPublicProblem": true,
+      "allowOwnerManageProblemPermission": false,
+      "allowOwnerDeleteProblem": true,
+      "allowEveryoneCreateDiscussion": true,
+      "discussionDefaultPublic": true,
+      "discussionReplyDefaultPublic": true
+    },
+    "pagination": {
+      "homepageUserList": 10,
+      "homepageProblemList": 10,
+      "problemSet": 50,
+      "searchProblemsPreview": 7,
+      "submissions": 10,
+      "submissionStatistics": 10,
+      "userList": 30,
+      "userAuditLogs": 10,
+      "discussions": 10,
+      "searchDiscussionsPreview": 7,
+      "discussionReplies": 40,
+      "discussionRepliesHead": 20,
+      "discussionRepliesMore": 20
+    },
+    "misc": {
+      "appLogo": "default",
+      "appLogoForTheme": {
+        "pure": "original",
+        "far": "inverted"
+      },
+      "googleAnalyticsId": null,
+      "plausibleApiEndpoint": null,
+      "gravatarCdn": "https://gravatar.com",
+      "redirectOldUrls": true,
+      "contestsEntryUrl": null,
+      "homepageUserListOnMainView": true,
+      "sortUserByRating": false,
+      "renderMarkdownInUserBio": false,
+      "discussionReactionEmojis": ["👍", "👎", "😄", "😕", "❤️", "🤔", "🤣", "🌿", "🍋", "🕊️"],
+      "discussionReactionAllowCustomEmojis": true
+    }
+  },
+  "queryLimit": {
+    "problemSet": 100,
+    "submissions": 10,
+    "submissionStatistics": 10,
+    "searchUser": 10,
+    "searchGroup": 10,
+    "userList": 100,
+    "userAuditLogs": 20,
+    "discussions": 20,
+    "discussionReplies": 50
+  },
+  "CORS": {
+    "enabled": false,
+    "whiteList": ["https://example.com"]
+  },
+  "METRICS": {
+    "enabled": false,
+    "hostname": "127.0.0.1",
+    "port": 9100,
+    "allowedIps": ["127.0.0.1", "::1"]
+  },
+  "EVENT_REPORT": {
+    "enabled": false,
+    "siteName": "nywOJ",
+    "telegramBotToken": "",
+    "sentTo": "",
+    "telegramApiRoot": "https://api.telegram.org",
+    "proxyUrl": "",
+    "timeout": 8000,
+    "dedupeWindowMs": 60000
+  },
+  "LLM": {
+    "baseUrl": "https://api.openai.com/v1",
+    "model": "gpt-4o-mini",
+    "timeout": 120000,
+    "maxTokens": 20000
+  },
   "JUDGE": {
     "ISSERVER": true,
-    "NAME": "<judge-machine-name>"
+    "NAME": "<judge-machine-name>",
+    "CLIENT_KEY": "",
+    "CLIENT_TIMEOUT": 10000,
+    "ALLOW_REMOTE_SANDBOX_CLIENTS": false
+  },
+  "SANDBOX": {
+    "url": "http://127.0.0.1:5050",
+    "streamUrl": "ws://127.0.0.1:5050/api/stream"
+  },
+  "STORAGE": {
+    "provider": "local",
+    "localRoot": ".",
+    "problemArchivePrefix": "problem-data",
+    "SIGN_SECRET": "<change-this-storage-signing-secret>",
+    "SIGNED_URL_TTL": 900,
+    "s3": {
+      "endpoint": "https://s3.example.com",
+      "region": "us-east-1",
+      "bucket": "nywoj",
+      "prefix": "oj",
+      "accessKeyId": "<s3-access-key>",
+      "secretAccessKey": "<s3-secret-key>",
+      "forcePathStyle": true
+    }
   },
   "SYNC": {
     "remote": "root@<deploy-host>",

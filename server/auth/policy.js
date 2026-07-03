@@ -1,5 +1,6 @@
 const db = require('../db');
-const { PERMISSIONS } = require('./permissions');
+const { PERMISSIONS, RESOURCE_TYPES } = require('./permissions');
+const { ensureGroupSchema } = require('../groupSchema');
 
 // Process-wide cache: uid -> { perms, expiresAt }.
 // Invalidated explicitly by setUserRoles / grantUserPermission etc.
@@ -11,6 +12,7 @@ const buildEmpty = (uid) => ({
   global: new Set(),
   denies: new Set(),
   scoped: new Map(), // permKey -> Set<"type:id">
+  groupIds: new Set(),
 });
 
 const loadEffectivePermissions = async (uid) => {
@@ -18,6 +20,8 @@ const loadEffectivePermissions = async (uid) => {
 
   const cached = cache.get(uid);
   if (cached && cached.expiresAt > Date.now()) return cached.perms;
+
+  await ensureGroupSchema();
 
   const perms = buildEmpty(uid);
   if (perms.isRoot) {
@@ -35,6 +39,38 @@ const loadEffectivePermissions = async (uid) => {
   );
   for (const r of rolePerms) perms.global.add(r.key);
 
+  const groupRows = await db.query('SELECT gid FROM group_members WHERE uid=?', [uid]);
+  for (const g of groupRows) perms.groupIds.add(g.gid);
+  if (groupRows.length) {
+    const groupPerms = await db.query(
+      `SELECT p.\`key\` AS \`key\`, gp.effect, gp.resource_type, gp.resource_id, gp.expires_at
+       FROM group_members gm
+       JOIN group_permissions gp ON gp.gid = gm.gid
+       JOIN permissions p ON p.id = gp.permission_id
+       WHERE gm.uid = ?`,
+      [uid]
+    );
+    const now = Date.now();
+    for (const row of groupPerms) {
+      if (row.expires_at && new Date(row.expires_at).getTime() < now) continue;
+      if (row.resource_type && !RESOURCE_TYPES.includes(row.resource_type)) continue;
+      if (row.effect === 'deny') {
+        perms.denies.add(row.key);
+        continue;
+      }
+      if (row.resource_type && row.resource_id != null) {
+        let bucket = perms.scoped.get(row.key);
+        if (!bucket) {
+          bucket = new Set();
+          perms.scoped.set(row.key, bucket);
+        }
+        bucket.add(`${row.resource_type}:${row.resource_id}`);
+      } else {
+        perms.global.add(row.key);
+      }
+    }
+  }
+
   // Direct user grants and denies; honor expires_at.
   const direct = await db.query(
     `SELECT p.\`key\` AS \`key\`, up.effect, up.resource_type, up.resource_id, up.expires_at
@@ -46,6 +82,7 @@ const loadEffectivePermissions = async (uid) => {
   const now = Date.now();
   for (const row of direct) {
     if (row.expires_at && new Date(row.expires_at).getTime() < now) continue;
+    if (row.resource_type && !RESOURCE_TYPES.includes(row.resource_type)) continue;
     if (row.effect === 'deny') {
       // Denies are global by design (resource-scoped denies add complexity we don't need yet).
       perms.denies.add(row.key);
@@ -72,6 +109,17 @@ const invalidate = (uid) => {
   else cache.delete(uid);
 };
 
+const invalidateGroup = async (gid) => {
+  if (!gid) return cache.clear();
+  try {
+    await ensureGroupSchema();
+    const uids = await db.column('SELECT uid FROM group_members WHERE gid=?', [gid], 'uid');
+    for (const uid of uids) cache.delete(uid);
+  } catch (_) {
+    cache.clear();
+  }
+};
+
 // scope: { type, id } | undefined
 const can = (perms, key, scope) => {
   if (!perms) return false;
@@ -96,6 +144,7 @@ const listGlobalKeys = (perms) => {
 module.exports = {
   loadEffectivePermissions,
   invalidate,
+  invalidateGroup,
   can,
   listGlobalKeys,
 };

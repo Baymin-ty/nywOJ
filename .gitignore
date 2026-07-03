@@ -46,3 +46,10 @@ server/data_backup/
 # multer staging area for incoming ZIPs. Both are derivable runtime state.
 server/answerSubmissions/
 server/tmp/
+
+# --- Deploy: go-judge binary ---
+# The executorserver release binary (~20MB, arch-specific). build.sh downloads
+# the right one on demand; don't commit it.
+deploy/go-judge/executorserver
+deploy/go-judge/.executorserver.version
+deploy/backups/

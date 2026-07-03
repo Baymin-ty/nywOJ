@@ -1,5 +1,8 @@
 const url = require('url');
 
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+const normalizeLocalHost = (host) => (host === '[::1]' ? '::1' : host);
+
 /**
  * 创建一个检查referer的中间件
  * @param {Array<string>} whiteList - 允许的referer域名白名单
@@ -9,9 +12,9 @@ const url = require('url');
 function refererCheck(whiteList = ['localhost'], options = {}) {
   // 标准化白名单URL
   const normalizedWhiteList = whiteList.map(domain => {
-    // 处理localhost特殊情况
-    if (domain === 'localhost') {
-      return domain;
+    // 处理本地开发地址特殊情况，忽略协议和端口
+    if (LOCAL_HOSTS.has(domain)) {
+      return normalizeLocalHost(domain);
     }
     // 确保域名以https://或http://开头
     if (!domain.startsWith('http://') && !domain.startsWith('https://')) {
@@ -43,9 +46,11 @@ function refererCheck(whiteList = ['localhost'], options = {}) {
       // 解析referer URL
       const refererUrl = new URL(referer);
       const refererOrigin = refererUrl.origin;
+      const refererHost = normalizeLocalHost(refererUrl.hostname);
 
-      // 检查是否为localhost
-      if (refererUrl.hostname === 'localhost' && normalizedWhiteList.includes('localhost')) {
+      // 检查是否为本地开发地址
+      if (LOCAL_HOSTS.has(refererUrl.hostname)
+        && (normalizedWhiteList.includes(refererHost) || normalizedWhiteList.includes('localhost'))) {
         return next();
       }
 

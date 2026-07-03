@@ -1,0 +1,20 @@
+# 教学沙箱：在 Mac/Linux 上一键起一个特权容器跑沙箱引擎 + Web。
+#
+# 为什么要 privileged：沙箱要 unshare 命名空间、mount/pivot_root、写 cgroup、装 seccomp，
+# 这些都需要内核能力。教学项目优先求"能跑通、看得见"，所以直接用 privileged；
+# 真要收紧，可改成最小 cap_add（CLONE/NEWNS 需 CAP_SYS_ADMIN 等）——见 docs。
+#
+# cgroup 说明：这里用默认的 private cgroup namespace，容器把自己的 cgroup 当作根挂在
+# /sys/fs/cgroup（privileged 下可写）。引擎会在这个被委派的子树里建本次运行用的子 cgroup。
+services:
+  sandbox:
+    build: .
+    privileged: true
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    ports:
+      - "1145:1145"
+    # 开发期想热改前端，可解开下面这行把本地 frontend 挂进去（改 HTML/JS 免重建镜像）：
+    # volumes:
+    #   - ./frontend:/app/frontend:ro

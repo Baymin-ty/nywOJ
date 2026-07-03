@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["crates/sandbox-core", "crates/sandbox-web"]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+authors = ["sandbox-teaching"]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

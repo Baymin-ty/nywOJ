@@ -4,7 +4,7 @@
     filterable
     remote
     reserve-keyword
-    :placeholder="placeholder"
+    :placeholder="effectivePlaceholder"
     :remote-method="search"
     :loading="loading"
     :clearable="clearable"
@@ -28,6 +28,11 @@ const ENDPOINTS = {
   contest: { url: '/api/auth/searchContests', listKey: 'contests', idKey: 'cid' },
 };
 
+const PLACEHOLDERS = {
+  problem: '搜索题目 pid 或标题',
+  contest: '搜索比赛 cid 或标题',
+};
+
 export default {
   name: 'ResourcePicker',
   props: {
@@ -48,7 +53,7 @@ export default {
     cfg() { return ENDPOINTS[this.resourceType]; },
     effectivePlaceholder() {
       if (this.placeholder) return this.placeholder;
-      return this.resourceType === 'contest' ? '搜索比赛 cid 或标题' : '搜索题目 pid 或标题';
+      return PLACEHOLDERS[this.resourceType] || '搜索资源 ID 或标题';
     },
   },
   watch: {

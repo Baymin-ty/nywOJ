@@ -11,10 +11,17 @@
     "express-session": "^1.17.3",
     "express-zip": "^3.0.0",
     "ip2region": "^2.3.0",
+    "js-yaml": "^4.3.0",
+    "jsondiffpatch": "^0.4.1",
     "multer": "^1.4.5-lts.1",
     "mysql": "^2.18.1",
     "nodemailer": "^6.9.1",
+    "socket.io": "^4.8.3",
+    "socket.io-msgpack-parser": "^3.0.2",
+    "streamsaver": "^2.0.6",
     "ua-parser-js": "^1.0.35",
+    "ws": "^8.21.0",
+    "xdomain": "^0.8.2",
     "yauzl": "^3.2.0"
   }
 }

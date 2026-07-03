@@ -1,5 +1,5 @@
 <template>
-  <div class="perm-page">
+  <div class="perm-page" :class="{ embedded }">
     <!-- Sidebar -->
     <aside class="perm-sidebar">
       <div class="sidebar-header">
@@ -44,11 +44,11 @@
             <el-icon class="search-icon"><Search /></el-icon>
             <input v-model="filter.q" placeholder="搜索 用户名 / UID / 邮箱" class="search-input" @keyup.enter="onFilterChange" @input="onSearchInput" />
           </div>
-          <el-select v-model="filter.roleKey" placeholder="全部角色" clearable size="default" style="width: 160px;" @change="onFilterChange">
+          <el-select v-model="filter.roleKey" class="filter-select role-filter" placeholder="全部角色" clearable size="default" @change="onFilterChange">
             <el-option label="（无角色）" value="__none__" />
             <el-option v-for="r in roles" :key="r.key" :label="r.name" :value="r.key" />
           </el-select>
-          <el-select v-model="filter.inUse" placeholder="全部状态" clearable size="default" style="width: 110px;" @change="onFilterChange">
+          <el-select v-model="filter.inUse" class="filter-select status-filter" placeholder="全部状态" clearable size="default" @change="onFilterChange">
             <el-option label="正常" :value="1" />
             <el-option label="封禁" :value="0" />
           </el-select>
@@ -149,7 +149,7 @@
               :total="total"
               layout="prev, pager, next"
               small
-              @current-change="loadUsers"
+              @current-change="onPageChange"
             />
           </div>
         </div>
@@ -341,7 +341,7 @@
     </main>
 
     <!-- Edit user drawer -->
-    <el-drawer v-model="editDrawerVisible" :title="null" direction="rtl" size="800px" :with-header="false" :close-on-click-modal="true">
+    <el-drawer v-model="editDrawerVisible" class="user-edit-drawer" :title="null" direction="rtl" size="800px" :with-header="false" :close-on-click-modal="true">
       <template v-if="editingUser">
         <!-- Drawer header -->
         <div class="drawer-header">
@@ -419,7 +419,7 @@
             <el-checkbox-group v-model="editRoleKeys" class="role-checklist">
               <label v-for="r in roles" :key="r.key" class="role-check-item" :class="{ checked: editRoleKeys.includes(r.key) }">
                 <el-checkbox :label="r.key" :disabled="!canAssignRoles" />
-                <div style="flex: 1; min-width: 0; margin-left: 8px;">
+                <div class="role-check-content">
                   <div class="role-check-header">
                     <span class="role-tag" :style="roleTagStyle(r.key)">
                       <el-icon v-if="r.key === 'super_admin'" :size="11"><Lock /></el-icon>
@@ -539,6 +539,39 @@
       :permissions="permissions"
       @saved="onRoleSaved"
     />
+
+    <!-- Batch role dialog -->
+    <el-dialog v-model="batchRoleDialogVisible" title="批量修改角色" width="520px">
+      <div class="hint-box" style="margin-bottom: 14px;">
+        将对选中的 <b>{{ batchTargetCount }}</b> 个用户应用以下操作。
+        <span v-if="selected.has(1)">根账号 uid=1 会被自动跳过。</span>
+      </div>
+      <el-radio-group v-model="batchMode" style="margin-bottom: 14px;">
+        <el-radio value="add">追加角色</el-radio>
+        <el-radio value="remove">移除角色</el-radio>
+        <el-radio value="set">覆盖角色</el-radio>
+      </el-radio-group>
+      <div class="batch-mode-desc">{{ batchModeDesc }}</div>
+      <el-checkbox-group v-model="batchRoleKeys" class="role-checklist">
+        <label v-for="r in roles" :key="r.key" class="role-check-item" :class="{ checked: batchRoleKeys.includes(r.key) }">
+          <el-checkbox :label="r.key" />
+          <div class="role-check-content">
+            <div class="role-check-header">
+              <span class="role-tag" :style="roleTagStyle(r.key)">
+                <el-icon v-if="r.key === 'super_admin'" :size="11"><Lock /></el-icon>
+                {{ r.name }}
+              </span>
+              <code class="role-key-inline">{{ r.key }}</code>
+            </div>
+            <div class="role-check-desc">{{ r.description }}</div>
+          </div>
+        </label>
+      </el-checkbox-group>
+      <template #footer>
+        <el-button @click="batchRoleDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="batchSaving" @click="submitBatchRole">应用</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -585,6 +618,12 @@ const AUDIT_KIND_MAP = {
 export default {
   name: 'PermissionCenter',
   components: { UserPicker, GrantTable, RoleEditor, Search, Refresh, Plus, EditPen, Key, Lock, Check, Close },
+  props: {
+    embedded: {
+      type: Boolean,
+      default: false,
+    },
+  },
   data() {
     return {
       activeTab: 'users',
@@ -628,6 +667,12 @@ export default {
       // role editor
       roleEditorVisible: false,
       editingRole: null,
+      // batch role dialog
+      batchRoleDialogVisible: false,
+      batchRoleKeys: [],
+      batchMode: 'add',
+      batchSaving: false,
+      syncingRoute: false,
       // icons
       Search: markRaw(Search),
       Refresh: markRaw(Refresh),
@@ -668,6 +713,17 @@ export default {
     },
     allSelected() {
       return this.userList.length > 0 && this.userList.every(u => this.selected.has(u.uid));
+    },
+    // uid=1 (root) is skipped server-side; exclude it from the displayed count.
+    batchTargetCount() {
+      return [...this.selected].filter(u => u !== 1).length;
+    },
+    batchModeDesc() {
+      return {
+        add: '在各用户现有角色基础上，并入所选角色。',
+        remove: '从各用户现有角色中，移除所选角色。',
+        set: '将各用户的角色替换为所选角色（不选则清空全部角色）。',
+      }[this.batchMode] || '';
     },
     permGroups() {
       const groups = ['problem', 'contest', 'judge', 'user', 'system'];
@@ -730,16 +786,30 @@ export default {
         return;
       }
       if (tab === 'audit' && this.auditList.length === 0) this.loadAuditLog();
+      if (this._applyingRoute) return;
+      // Persist the active section in the URL so refresh / share keeps it.
+      if (tab === 'users') this.syncUserQuery();
+      else this.replaceQuery({ ...this.$route.query, tab });
     },
     editTab(tab) {
       if (tab === 'log' && this.loginLog.length === 0) this.loadLoginLog();
     },
+    '$route.query'(query) {
+      if (this.syncingRoute) return;
+      const before = this.userRouteSignature();
+      this.applyRouteQuery(query || {});
+      const after = this.userRouteSignature();
+      if (this.activeTab === 'users' && before !== after) {
+        this.selected.clear();
+        this.loadUsers();
+      }
+    },
   },
   async mounted() {
     const q = this.$route.query || {};
-    if (q.tab && this.sidebarItems.some((item) => item.id === q.tab)) this.activeTab = q.tab;
+    this.applyRouteQuery(q);
     await this.reloadAll();
-    this.loadUsers();
+    await this.loadUsers();
     this.loadStats();
     if (q.uid) {
       const uid = parseInt(q.uid, 10);
@@ -748,6 +818,94 @@ export default {
     }
   },
   methods: {
+    firstQueryValue(value) {
+      return Array.isArray(value) ? value[0] : value;
+    },
+    cleanQuery(query) {
+      const clean = {};
+      Object.keys(query || {}).forEach((key) => {
+        const value = this.firstQueryValue(query[key]);
+        if (value === undefined || value === null || value === '') return;
+        clean[key] = String(value);
+      });
+      return clean;
+    },
+    sameQuery(a, b) {
+      const ca = this.cleanQuery(a);
+      const cb = this.cleanQuery(b);
+      const ak = Object.keys(ca).sort();
+      const bk = Object.keys(cb).sort();
+      if (ak.length !== bk.length) return false;
+      return ak.every((key, i) => key === bk[i] && ca[key] === cb[key]);
+    },
+    replaceQuery(query) {
+      const clean = this.cleanQuery(query);
+      if (this.sameQuery(this.$route.query, clean)) return;
+      this.syncingRoute = true;
+      this.$router.replace({ query: clean })
+        .catch(() => {})
+        .finally(() => { this.syncingRoute = false; });
+    },
+    parsePositivePage(value) {
+      const n = parseInt(this.firstQueryValue(value), 10);
+      return Number.isSafeInteger(n) && n > 0 ? n : 1;
+    },
+    parseStatusQuery(value) {
+      const raw = this.firstQueryValue(value);
+      if (raw === 1 || raw === '1' || raw === true || raw === 'true' || raw === 'normal') return 1;
+      if (raw === 0 || raw === '0' || raw === false || raw === 'false' || raw === 'banned') return 0;
+      return '';
+    },
+    applyRouteQuery(query = {}) {
+      this._applyingRoute = true;
+      const tab = this.firstQueryValue(query.tab) || 'users';
+      this.activeTab = this.sidebarItems.some((item) => item.id === tab) ? tab : 'users';
+      const sortKey = this.firstQueryValue(query.sort || query.sortKey);
+      const allowedSortKeys = ['uid', 'name', 'solved', 'lastLogin'];
+      this.filter = {
+        q: String(this.firstQueryValue(query.q) || ''),
+        roleKey: String(this.firstQueryValue(query.role || query.roleKey) || ''),
+        inUse: this.parseStatusQuery(query.status != null ? query.status : query.inUse),
+      };
+      this.currentPage = this.parsePositivePage(query.page || query.pageId);
+      this.sort = {
+        key: allowedSortKeys.includes(sortKey) ? sortKey : 'uid',
+        dir: this.firstQueryValue(query.dir) === 'desc' ? 'desc' : 'asc',
+      };
+      this.$nextTick(() => { this._applyingRoute = false; });
+    },
+    userQueryParams() {
+      const params = {};
+      const q = this.filter.q.trim();
+      if (q) params.q = q;
+      if (this.filter.roleKey) params.role = this.filter.roleKey;
+      if (this.filter.inUse !== '' && this.filter.inUse != null) {
+        params.status = Number(this.filter.inUse) === 1 ? 'normal' : 'banned';
+      }
+      if (this.currentPage > 1) params.page = String(this.currentPage);
+      if (this.sort.key !== 'uid' || this.sort.dir !== 'asc') {
+        params.sort = this.sort.key;
+        params.dir = this.sort.dir;
+      }
+      return params;
+    },
+    userRouteSignature() {
+      return JSON.stringify({
+        tab: this.activeTab,
+        page: this.currentPage,
+        filter: this.filter,
+        sort: this.sort,
+      });
+    },
+    syncUserQuery() {
+      const query = { ...this.$route.query };
+      ['q', 'role', 'roleKey', 'status', 'inUse', 'page', 'pageId', 'sort', 'sortKey', 'dir'].forEach((key) => {
+        delete query[key];
+      });
+      query.tab = this.activeTab;
+      Object.assign(query, this.userQueryParams());
+      this.replaceQuery(query);
+    },
     async reloadAll() {
       try {
         const [pr, rr] = await Promise.all([
@@ -798,6 +956,8 @@ export default {
     // down to 8 rows ⇒ page 5 is empty).
     onFilterChange() {
       this.currentPage = 1;
+      this.selected.clear();
+      this.syncUserQuery();
       this.loadUsers();
     },
     // Debounce live search to avoid spamming the server on every keystroke.
@@ -811,6 +971,12 @@ export default {
       } else {
         this.sort = { key, dir: 'asc' };
       }
+      this.currentPage = 1;
+      this.syncUserQuery();
+      this.loadUsers();
+    },
+    onPageChange() {
+      this.syncUserQuery();
       this.loadUsers();
     },
     sortArrow(key) {
@@ -961,8 +1127,77 @@ export default {
         ElMessage.error(e.message || '重置失败');
       }
     },
-    batchChangeRole() { ElMessage.info('批量修改角色 — 待实现'); },
-    batchBan() { ElMessage.info('批量封禁 — 待实现'); },
+    async batchBan() {
+      // 根账号 uid=1 服务端会跳过封禁，这里同样先剔除，保证确认弹窗与计数一致。
+      const uids = [...this.selected].filter(u => u !== 1);
+      if (!uids.length) {
+        ElMessage.warning('没有可操作的用户（根账号 uid=1 不可封禁）');
+        return;
+      }
+      try {
+        await ElMessageBox.confirm(
+          `确认封禁选中的 ${uids.length} 个用户？被封禁用户将无法登录。`,
+          '批量封禁',
+          { type: 'warning', confirmButtonText: '封禁', cancelButtonText: '取消' }
+        );
+      } catch (_) { return; }
+      try {
+        const res = await axios.post('/api/admin/setBlockBatch', { uids, status: 0 });
+        if (res.status !== 200) {
+          ElMessage.error(res.data && res.data.message || '操作失败');
+          return;
+        }
+        const { success = 0, skipped = 0 } = res.data || {};
+        if (skipped) ElMessage.warning(`已封禁 ${success} 个用户，${skipped} 个因权限不足被跳过`);
+        else ElMessage.success(`已封禁 ${success} 个用户`);
+        this.selected.clear();
+        this.loadUsers();
+      } catch (e) {
+        ElMessage.error(e.message || '操作失败');
+      }
+    },
+    batchChangeRole() {
+      if (!this.canAssignRoles) {
+        ElMessage.error('需要 user.role.admin 权限');
+        return;
+      }
+      this.batchRoleKeys = [];
+      this.batchMode = 'add';
+      this.batchRoleDialogVisible = true;
+    },
+    async submitBatchRole() {
+      const uids = [...this.selected].filter(u => u !== 1);
+      if (!uids.length) {
+        ElMessage.warning('没有可操作的用户（根账号 uid=1 不可批量改角色）');
+        return;
+      }
+      if (this.batchMode !== 'set' && !this.batchRoleKeys.length) {
+        ElMessage.warning('请至少选择一个角色');
+        return;
+      }
+      this.batchSaving = true;
+      try {
+        const res = await axios.post('/api/auth/setUserRolesBatch', {
+          uids,
+          roleKeys: this.batchRoleKeys,
+          mode: this.batchMode,
+        });
+        if (res.status !== 200) {
+          ElMessage.error(res.data && res.data.message || '操作失败');
+          return;
+        }
+        const { success = 0, skipped = 0 } = res.data || {};
+        if (skipped) ElMessage.warning(`已更新 ${success} 个用户，${skipped} 个被跳过`);
+        else ElMessage.success(`已更新 ${success} 个用户的角色`);
+        this.batchRoleDialogVisible = false;
+        this.selected.clear();
+        this.loadUsers();
+      } catch (e) {
+        ElMessage.error(e.message || '操作失败');
+      } finally {
+        this.batchSaving = false;
+      }
+    },
 
     // ---- Role permission matrix maintenance ----
     openCreateRole() {
@@ -1039,55 +1274,98 @@ export default {
 
 <style scoped>
 .perm-page {
-  display: flex;
+  --admin-bg: #eef2f6;
+  --admin-surface: #ffffff;
+  --admin-border: #dfe5ef;
+  --admin-muted: #748094;
+  --admin-text: #1f2a3d;
+  --admin-accent: #2f7de1;
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  gap: 14px;
   align-items: stretch;
-  background: #f0f2f5;
+  background:
+    linear-gradient(180deg, rgba(47, 125, 225, 0.07), rgba(47, 125, 225, 0) 220px),
+    var(--admin-bg);
   height: calc(100vh - 60px);
-  min-height: 0;
+  min-height: 640px;
   overflow: hidden;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.perm-page.embedded {
+  height: calc(100vh - 84px);
+  min-height: 560px;
+  background: transparent;
+  gap: 12px;
 }
 
 /* Sidebar */
 .perm-sidebar {
-  width: 220px;
-  flex-shrink: 0;
-  background: #fff;
-  border-right: 1px solid #ebeef5;
-  padding: 18px 0;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  padding: 14px;
+  overflow: auto;
+  box-shadow: 0 12px 28px rgba(31, 42, 61, 0.07);
 }
-.sidebar-header { padding: 0 18px 14px 18px; }
+
+.perm-page.embedded .perm-sidebar {
+  width: 200px;
+  border: 1px solid #dfe5ef;
+  border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(31, 42, 61, 0.045);
+}
+.sidebar-header {
+  padding: 2px 4px 14px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #edf1f6;
+}
 .sidebar-label {
   font-size: 11px;
-  color: #909399;
+  color: var(--admin-muted);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0;
   font-weight: 700;
   margin-bottom: 4px;
   font-family: 'Courier New', monospace;
 }
-.sidebar-title { font-size: 18px; font-weight: 800; color: #3f3f3f; }
+.sidebar-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--admin-text);
+  line-height: 1.2;
+}
 .sidebar-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 18px;
+  margin: 6px 0;
+  padding: 11px 12px;
   font-size: 13px;
-  font-weight: 500;
-  color: #303133;
-  border-left: 3px solid transparent;
+  font-weight: 700;
+  color: #3b4658;
+  border: 1px solid transparent;
+  border-radius: 8px;
   cursor: pointer;
   user-select: none;
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
 }
-.sidebar-item:hover { background: #f5f7fa; }
+.sidebar-item:hover {
+  background: #f8fafc;
+  border-color: #e7edf6;
+  transform: translateX(1px);
+}
 .sidebar-item.active {
-  color: #409EFF;
-  font-weight: 600;
-  background: linear-gradient(90deg, rgba(64,158,255,0.08), rgba(64,158,255,0));
-  border-left-color: #409EFF;
+  color: var(--admin-accent);
+  background: #edf5ff;
+  border-color: #c9ddf7;
+  box-shadow: inset 3px 0 0 var(--admin-accent);
 }
-.sidebar-item .el-icon { color: #909399; }
-.sidebar-item.active .el-icon { color: #409EFF; }
+.sidebar-item .el-icon { color: var(--admin-muted); }
+.sidebar-item.active .el-icon { color: var(--admin-accent); }
 .sidebar-item-label { flex: 1; }
 .sidebar-badge {
   font-size: 11px;
@@ -1100,15 +1378,19 @@ export default {
   min-width: 22px;
   text-align: center;
 }
-.sidebar-badge.active { color: #409EFF; background: #ecf5ff; }
+.sidebar-badge.active { color: var(--admin-accent); background: #ecf5ff; }
 /* Main */
 .perm-main {
-  flex: 1;
-  padding: 12px;
+  padding: 0;
   box-sizing: border-box;
   min-width: 0;
   min-height: 0;
   overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.perm-page.embedded .perm-main {
+  padding: 0;
 }
 
 .tab-layout {
@@ -1131,6 +1413,23 @@ export default {
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 10px;
+}
+
+.perm-page.embedded .stat-strip,
+.stat-strip,
+.toolbar,
+.user-table-wrap,
+.section-header,
+.matrix-wrap,
+.catalog-group,
+.perm-page.embedded .toolbar,
+.perm-page.embedded .user-table-wrap,
+.perm-page.embedded .section-header,
+.perm-page.embedded .matrix-wrap,
+.perm-page.embedded .catalog-group {
+  border-color: var(--admin-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(31, 42, 61, 0.045);
 }
 .stat-item {
   padding: 10px 16px;
@@ -1162,10 +1461,22 @@ export default {
   align-items: center;
   flex-wrap: wrap;
 }
-.search-box { position: relative; flex: 0 0 280px; }
-.search-icon { position: absolute; left: 10px; top: 8px; color: #c0c4cc; }
+.search-box {
+  position: relative;
+  flex: 0 0 280px;
+  height: 32px;
+}
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  color: #c0c4cc;
+  transform: translateY(-50%);
+}
 .search-input {
   width: 100%;
+  height: 32px;
+  box-sizing: border-box;
   padding: 6px 10px 6px 30px;
   font-size: 13px;
   border: 1px solid #dcdfe6;
@@ -1174,6 +1485,14 @@ export default {
   font-family: inherit;
 }
 .search-input:focus { border-color: #409EFF; }
+.filter-select { flex: 0 0 auto; }
+.role-filter { width: 160px; }
+.status-filter { width: 110px; }
+.toolbar :deep(.el-select__wrapper),
+.toolbar :deep(.el-input__wrapper) {
+  min-height: 32px;
+  box-sizing: border-box;
+}
 .batch-bar {
   display: flex;
   align-items: center;
@@ -1488,16 +1807,32 @@ export default {
 }
 
 /* Drawer */
+.user-edit-drawer :deep(.el-drawer__body) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
 .drawer-header {
   padding: 18px 22px;
   border-bottom: 1px solid #ebeef5;
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
-.drawer-user-title { display: flex; align-items: center; gap: 8px; }
+.drawer-user-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .drawer-user-name { font-size: 17px; font-weight: 800; color: #3f3f3f; }
-.drawer-tabs { padding: 0 22px; }
+.drawer-tabs {
+  padding: 0 22px;
+  flex-shrink: 0;
+}
 .drawer-body { padding: 14px 22px 20px; overflow: auto; flex: 1; }
 .drawer-footer {
   padding: 14px 22px;
@@ -1544,10 +1879,37 @@ export default {
   transition: all 0.15s;
 }
 .role-check-item.checked { background: #f5fbff; border-color: #b3d8ff; }
-.role-check-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+/* The checkbox carries no text label here — the rich content sits in the
+   sibling block, so strip the empty label slot's reserved padding/height. */
+.role-check-item :deep(.el-checkbox) {
+  height: auto;
+  margin-right: 0;
+  padding-top: 2px;
+  flex-shrink: 0;
+}
+.role-check-item :deep(.el-checkbox__label) { display: none; }
+.role-check-content {
+  flex: 1;
+  min-width: 0;
+  margin-left: 8px;
+}
+.role-check-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
 .role-key-inline { font-size: 11px; color: #909399; font-family: 'Courier New', monospace; }
-.role-check-desc { font-size: 12px; color: #606266; margin-bottom: 4px; }
+.role-check-desc {
+  font-size: 12px;
+  color: #606266;
+  margin-bottom: 4px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
 .role-check-count { font-size: 11px; color: #909399; }
+.batch-mode-desc { font-size: 12px; color: #909399; margin-bottom: 12px; line-height: 1.5; }
 .empty-grants { padding: 40px; text-align: center; color: #c0c4cc; font-size: 13px; background: #fafbfc; border-radius: 4px; border: 1px dashed #ebeef5; }
 
 /* Effective */
@@ -1592,4 +1954,46 @@ export default {
 .effective-indicator.allowed { background: #19be6b; }
 
 .tab-badge { margin-left: 4px; }
+
+@media (max-width: 768px) {
+  .perm-page {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100vh - 60px);
+    padding: 10px;
+    overflow: visible;
+  }
+
+  .perm-sidebar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px;
+    overflow-x: auto;
+  }
+
+  .sidebar-header {
+    flex: 0 0 auto;
+    min-width: 150px;
+    margin-bottom: 0;
+    padding: 0 10px 0 4px;
+    border-bottom: none;
+    border-right: 1px solid #edf1f6;
+  }
+
+  .sidebar-title {
+    font-size: 18px;
+  }
+
+  .sidebar-item {
+    flex: 0 0 auto;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .perm-main {
+    overflow: visible;
+  }
+}
 </style>

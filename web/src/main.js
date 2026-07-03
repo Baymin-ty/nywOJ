@@ -3,6 +3,7 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import {
   Back,
+  Bottom,
   Check,
   CircleCheck,
   CirclePlus,
@@ -11,6 +12,7 @@ import {
   DataAnalysis,
   DataLine,
   Delete,
+  Download,
   Document,
   DocumentAdd,
   Edit,
@@ -24,6 +26,7 @@ import {
   List,
   Lock,
   Lollipop,
+  Monitor,
   Operation,
   Place,
   Plus,
@@ -34,11 +37,13 @@ import {
   Setting,
   SetUp,
   SwitchButton,
+  Top,
   Trophy,
   Upload,
   UploadFilled,
   User,
   UserFilled,
+  View,
   Warning,
 } from '@element-plus/icons-vue'
 import App from './App.vue'
@@ -54,9 +59,6 @@ import { registerMarkdownComponents } from './plugins/markdown'
 // bubbling phase before our app code loads, so a bubble-phase listener here
 // would fire too late to block it. Listening in the capture phase guarantees
 // we run first regardless of registration order.
-//
-// Belt-and-suspenders: also debounce ResizeObserver callbacks to one per
-// animation frame, which prevents the loop from firing in the first place.
 const RESIZE_OBSERVER_LOOP_MSG = 'ResizeObserver loop';
 const swallow = (e) => {
   const msg = e && (e.message || (e.reason && (e.reason.message || String(e.reason))));
@@ -68,29 +70,10 @@ const swallow = (e) => {
 window.addEventListener('error', swallow, true);
 window.addEventListener('unhandledrejection', swallow, true);
 
-if (typeof window.ResizeObserver === 'function') {
-  const RawRO = window.ResizeObserver;
-  window.ResizeObserver = class DebouncedRO extends RawRO {
-    constructor(cb) {
-      let frame = 0;
-      const wrapped = (entries, obs) => {
-        if (frame) cancelAnimationFrame(frame);
-        frame = requestAnimationFrame(() => {
-          frame = 0;
-          try { cb(entries, obs); } catch (err) {
-            const msg = err && err.message;
-            if (!msg || !msg.includes(RESIZE_OBSERVER_LOOP_MSG)) throw err;
-          }
-        });
-      };
-      super(wrapped);
-    }
-  };
-}
-
 const app = createApp(App)
 const icons = {
   Back,
+  Bottom,
   Check,
   CircleCheck,
   CirclePlus,
@@ -99,6 +82,7 @@ const icons = {
   DataAnalysis,
   DataLine,
   Delete,
+  Download,
   Document,
   DocumentAdd,
   Edit,
@@ -112,6 +96,7 @@ const icons = {
   List,
   Lock,
   Lollipop,
+  Monitor,
   Operation,
   Place,
   Plus,
@@ -122,11 +107,13 @@ const icons = {
   Setting,
   SetUp,
   SwitchButton,
+  Top,
   Trophy,
   Upload,
   UploadFilled,
   User,
   UserFilled,
+  View,
   Warning,
 }
 Object.entries(icons).forEach(([key, component]) => app.component(key, component))

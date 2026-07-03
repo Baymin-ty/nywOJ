@@ -1,32 +1,20 @@
-const fs = require('fs');
-
-const { promisify } = require('util');
-const path = require('path');
-
-const readFile = promisify(fs.readFile)
-const writeFile = promisify(fs.writeFile)
+const storage = require('./storage');
 
 const getFile = async (loc) => {
-  const filePath = path.join(__dirname, loc)
-  if (!fs.existsSync(filePath)) {
-    return null;
-  }
-  const data = await readFile(filePath, 'utf-8')
-  return data;
+  return storage.getText(loc, 'utf-8');
 }
 
 const setFile = async (loc, data) => {
-  const filePath = path.join(__dirname, loc)
-  await writeFile(filePath, data);
+  await storage.putText(loc, data);
 }
 
 const delFile = async (loc) => {
-  const filePath = path.join(__dirname, loc)
-  await fs.unlinkSync(filePath);
+  await storage.deleteObject(loc);
 }
 
 module.exports = {
   getFile,
   setFile,
-  delFile
+  delFile,
+  storage,
 }

@@ -10,7 +10,7 @@
             '/contest/' + scope.row.cid + '/problem/' + scope.row.idx">
             {{ scope.row.title }}
           </router-link>
-          <el-icon id="hidden" v-if="!scope.row.isPublic && !isContest">
+          <el-icon id="hidden" v-if="!scope.row.problemPublic && !isContest">
             <Hide />
           </el-icon>
         </template>
@@ -60,16 +60,44 @@
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class=" card-header">
-            <span>{{ isAnswerSubmission ? '答案文件' : '代码' }}</span>
+            <span class="code-title">
+              {{ isAnswerSubmission ? '答案文件' : '代码' }}
+              <el-tag v-if="hasTaken && !isContest" :type="submissionInfo.isPublic ? 'success' : 'danger'" size="small">
+                {{ submissionInfo.isPublic ? '公开提交' : '私有提交' }}
+              </el-tag>
+            </span>
             <el-button-group>
-              <el-popconfirm v-if="canRejudge" confirm-button-text="确认" cancel-button-text="取消" title="确认取消成绩?"
+              <el-button v-if="submissionInfo.canDownload" type="primary" @click="downloadSubmissionFile">
+                <el-icon class="el-icon--left">
+                  <Download />
+                </el-icon>
+                下载
+              </el-button>
+              <el-popconfirm
+                v-if="submissionInfo.canSetPublic"
+                confirm-button-text="确认"
+                cancel-button-text="取消"
+                :title="submissionInfo.isPublic ? '确认设为私有提交?' : '确认公开提交?'"
+                @confirm="toggleSubmissionPublic"
+              >
+                <template #reference>
+                  <el-button :type="submissionInfo.isPublic ? 'info' : 'success'">
+                    <el-icon class="el-icon--left">
+                      <Hide v-if="submissionInfo.isPublic" />
+                      <View v-else />
+                    </el-icon>
+                    {{ submissionInfo.isPublic ? '设为私有' : '公开提交' }}
+                  </el-button>
+                </template>
+              </el-popconfirm>
+              <el-popconfirm v-if="canRejudge" confirm-button-text="确认" cancel-button-text="取消" title="确认取消评测?"
                 @confirm="cancelSubmission">
                 <template #reference>
                   <el-button type="warning">
                     <el-icon class="el-icon--left">
                       <CloseBold />
                     </el-icon>
-                    取消成绩
+                    取消评测
                   </el-button>
                 </template>
               </el-popconfirm>
@@ -84,10 +112,44 @@
                   </el-button>
                 </template>
               </el-popconfirm>
+              <el-popconfirm v-if="submissionInfo.canDelete" confirm-button-text="确认" cancel-button-text="取消" title="确认删除提交? 此操作不可撤销。"
+                @confirm="deleteSubmission">
+                <template #reference>
+                  <el-button type="danger">
+                    <el-icon class="el-icon--left">
+                      <Delete />
+                    </el-icon>
+                    删除
+                  </el-button>
+                </template>
+              </el-popconfirm>
             </el-button-group>
           </div>
         </template>
-        <monacoEditor v-if="hasTaken && !isAnswerSubmission" :value="code"  :language="$store.state.langList[submissionInfo.lang].lang" @update:value="code = $event" :readOnly="true" />
+        <div v-if="hasTaken && !isAnswerSubmission" class="source-files">
+          <monacoEditor
+            v-if="!hasMultipleSourceFiles"
+            :value="code"
+            :language="sourceLanguage(sourceFiles[0])"
+            @update:value="code = $event"
+            :readOnly="true"
+          />
+          <el-tabs v-else v-model="sourceActiveName" class="source-tabs">
+            <el-tab-pane
+              v-for="(file, index) in sourceFiles"
+              :key="sourceFileKey(file, index)"
+              :label="sourceTabLabel(file, index)"
+              :name="sourceFileKey(file, index)"
+            >
+              <monacoEditor
+                :value="file.content || ''"
+                :language="sourceLanguage(file)"
+                :height="420"
+                :readOnly="true"
+              />
+            </el-tab-pane>
+          </el-tabs>
+        </div>
         <div v-else-if="hasTaken && isAnswerSubmission" class="answer-files">
           <el-collapse v-if="answerFiles.length" v-model="openAnswerFiles" @change="onAnswerFilesOpen">
             <el-collapse-item v-for="f in answerFiles" :key="f.caseId" :name="f.caseId"
@@ -147,6 +209,89 @@
       </el-card>
     </el-col>
   </el-row>
+  <el-row v-if="judgeFlow" style="text-align: center; margin: 0 auto; max-width: 1250px; min-width: 600px;">
+    <el-col :span="24" style="min-width: 400px">
+      <el-card class="box-card flow-card" shadow="hover">
+        <template #header>
+          <div class="card-header">
+            <span>评测流程</span>
+            <div class="interaction-tags">
+              <el-tag size="small" effect="plain">{{ presetLabel(profileSummary.preset) }}</el-tag>
+              <el-tag v-if="profileSummary.submitMode === 'answer'" size="small" type="warning" effect="plain">只交答案，不运行代码</el-tag>
+            </div>
+          </div>
+        </template>
+
+        <div class="flow-line">
+          <!-- ① 提交 -->
+          <div class="flow-stage">
+            <div class="flow-stage-title">① 提交</div>
+            <div v-if="!judgeFlow.submit.length" class="flow-node">
+              <span class="flow-node-main">{{ profileSummary.submitMode === 'answer' ? '各测试点答案文件' : '你的代码' }}</span>
+            </div>
+            <div v-for="(f, i) in judgeFlow.submit" :key="'sf' + i" class="flow-node">
+              <span class="flow-node-main">{{ f.label }}</span>
+              <span v-if="f.name" class="flow-node-sub">{{ f.name }}</span>
+            </div>
+          </div>
+          <div class="flow-arrow">→</div>
+
+          <!-- ② 编译 -->
+          <template v-if="judgeFlow.compile.length">
+            <div class="flow-stage">
+              <div class="flow-stage-title">② 编译</div>
+              <div v-for="c in judgeFlow.compile" :key="'c' + c.id" class="flow-node node-compile">
+                <span class="flow-node-main">{{ c.id }}</span>
+                <span class="flow-node-sub">{{ c.auto ? '选手代码 · 按语言自动编译' : ('由 ' + c.inputs.join(' + ') + ' 编译') }}</span>
+              </div>
+            </div>
+            <div class="flow-arrow">→</div>
+          </template>
+
+          <!-- ③ 每个测试点 -->
+          <div class="flow-stage flow-stage-percase">
+            <div class="flow-stage-title">{{ judgeFlow.compile.length ? '③' : '②' }} 每个测试点</div>
+            <div class="percase-steps">
+              <template v-for="(s, i) in judgeFlow.steps" :key="'st' + i">
+                <div class="flow-node" :class="'node-' + s.kind">
+                  <template v-if="s.kind === 'exec'">
+                    <span class="flow-node-main">▶ 运行 {{ s.exec }}</span>
+                    <span class="flow-node-sub">输入：{{ refLabel(s.stdin) }}</span>
+                  </template>
+                  <template v-else-if="s.kind === 'pipeGroup'">
+                    <span class="flow-node-main">⇄ 实时交互</span>
+                    <span class="flow-node-sub">{{ pipeGroupDesc(s) }}</span>
+                    <span class="flow-node-sub">裁决来自 {{ s.verdictFrom }} · 计时按 {{ chargeTimeLabel(s) }}</span>
+                  </template>
+                  <template v-else-if="s.kind === 'check'">
+                    <span class="flow-node-main">✓ 裁决</span>
+                    <span class="flow-node-sub">{{ checkerLabel(s.checker) }}</span>
+                  </template>
+                  <template v-else>
+                    <span class="flow-node-main">{{ s.kind }}</span>
+                  </template>
+                </div>
+                <div v-if="i < judgeFlow.steps.length - 1" class="flow-arrow flow-arrow-small">→</div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="pipeEvents.length" class="flow-pipe-results">
+          <div class="flow-pipe-title">各测试点交互结果</div>
+          <el-table :data="pipeEvents" :cell-style="{ textAlign: 'center' }" :header-cell-style="{ textAlign: 'center' }">
+            <el-table-column prop="caseId" label="测试点" width="100" />
+            <el-table-column prop="stepId" label="步骤" width="140" />
+            <el-table-column prop="resultName" label="裁决" />
+            <el-table-column prop="ratioText" label="得分率" width="110" />
+            <el-table-column prop="timeText" label="用时" width="110" />
+            <el-table-column prop="memoryText" label="内存" width="110" />
+          </el-table>
+        </div>
+        <div v-else-if="isInteractionSubmission && isLive" class="interaction-empty">交互进行中，测试点结果将实时出现</div>
+      </el-card>
+    </el-col>
+  </el-row>
   <el-row style="text-align: center; margin: 0 auto; max-width: 1250px; min-width: 600px;">
     <el-col :span="24" style="min-width: 400px">
       <el-card class="box-card log-card" shadow="hover">
@@ -161,6 +306,7 @@
               <el-radio-group v-model="logCategoryFilter" size="small" class="log-cats">
                 <el-radio-button value="all">全部</el-radio-button>
                 <el-radio-button value="case">测试点</el-radio-button>
+                <el-radio-button value="pipe">交互</el-radio-button>
                 <el-radio-button value="compile">编译</el-radio-button>
                 <el-radio-button value="error">错误</el-radio-button>
               </el-radio-group>
@@ -256,6 +402,7 @@ export default {
       answerFiles: [],
       openAnswerFiles: [],
       answerLoading: new Set(),
+      sourceActiveName: '',
     }
   },
   computed: {
@@ -274,12 +421,61 @@ export default {
       // (type ∈ {2,3}). Server preserves null through the JSON payload.
       return this.hasTaken && this.submissionInfo.lang == null;
     },
+    sourceFiles() {
+      const files = Array.isArray(this.submissionInfo.sourceFiles) ? this.submissionInfo.sourceFiles : [];
+      if (files.length) return files;
+      return [{
+        name: 'main',
+        label: '代码',
+        kind: 'source',
+        lang: this.submissionInfo.lang,
+        content: this.code || '',
+      }];
+    },
+    hasMultipleSourceFiles() {
+      return this.sourceFiles.length > 1;
+    },
     caseCount() {
       const list = this.submissionInfo.singleCaseResult;
       return Array.isArray(list) ? list.length : 0;
     },
     logEntries() {
       return Array.isArray(this.submissionInfo.judgeLog) ? this.submissionInfo.judgeLog : [];
+    },
+    profileSummary() {
+      return this.submissionInfo.judgeProfileSummary || null;
+    },
+    // Pipeline card data. Traditional problems (single auto compile + run +
+    // default check) skip the card — their flow is obvious; everything else
+    // (SPJ / function / interactive / communication / answer / custom) shows it.
+    judgeFlow() {
+      const p = this.profileSummary;
+      if (!p || !Array.isArray(p.steps) || !p.steps.length) return null;
+      if (p.preset === 'traditional') return null;
+      return {
+        submit: Array.isArray(p.submitFiles) ? p.submitFiles : [],
+        compile: (Array.isArray(p.compile) ? p.compile : []).filter((c) => c && c.id),
+        steps: p.steps,
+      };
+    },
+    isInteractionSubmission() {
+      return !!(this.profileSummary && this.profileSummary.interactive) ||
+        this.logEntries.some((e) => /^case\.pipe\./.test(e.event || ''));
+    },
+    pipeEvents() {
+      return this.logEntries
+        .filter((e) => e.event === 'case.pipe.result')
+        .map((e) => {
+          const d = e.data || {};
+          return {
+            caseId: d.caseId,
+            stepId: d.stepId || '-',
+            resultName: d.resultName || d.result || '-',
+            ratioText: d.ratio == null ? '-' : Math.round(Number(d.ratio) * 100) + '%',
+            timeText: d.time == null ? '-' : Math.floor(Number(d.time)) + ' ms',
+            memoryText: d.memory == null ? '-' : Math.floor(Number(d.memory)) + ' KB',
+          };
+        });
     },
     filteredLogEntries() {
       const cat = this.logCategoryFilter;
@@ -412,6 +608,49 @@ export default {
       }
       return style;
     },
+    presetLabel(preset) {
+      return {
+        traditional: '传统题',
+        spj: 'SPJ',
+        function: '提交函数',
+        interactive: '交互题',
+        communication: '通信题',
+        answer: '提交答案',
+        'answer-spj': '提交答案 SPJ',
+        custom: '自定义',
+      }[preset] || preset || '自定义';
+    },
+    // Human labels for profile Refs shown in the pipeline card.
+    refLabel(ref) {
+      if (ref == null || ref === '') return '-';
+      const fixed = {
+        'case.input': '测试点输入',
+        'case.answer': '标准答案',
+        'submit.answer': '选手提交的答案',
+      };
+      if (fixed[ref]) return fixed[ref];
+      const m = /^step:([A-Za-z0-9_-]+)\.(stdout|stderr)$/.exec(String(ref));
+      if (m) return `步骤 ${m[1]} 的${m[2] === 'stdout' ? '输出' : '错误输出'}`;
+      if (String(ref).startsWith('asset:')) return String(ref).slice(6);
+      return String(ref);
+    },
+    checkerLabel(checker) {
+      if (checker === 'default') return '内置文本对比';
+      const s = String(checker || '');
+      if (s.startsWith('asset:')) return `${s.slice(6)}（Special Judge）`;
+      return s ? `自定义校验程序 ${s}` : '-';
+    },
+    // "user (main) ⇄ judge (interactor)" — derived from members + pipes.
+    pipeGroupDesc(s) {
+      const members = (s.members || [])
+        .map((m) => (m.exec && m.exec !== m.id ? `${m.id}（${m.exec}）` : m.id));
+      return members.join(' ⇄ ');
+    },
+    chargeTimeLabel(s) {
+      const raw = s && s.chargeTimeTo != null ? s.chargeTimeTo : s && s.verdictFrom;
+      const list = Array.isArray(raw) ? raw : [raw];
+      return list.filter(Boolean).join(' + ') || '-';
+    },
     formatLogTime(ts) {
       if (!ts) return '';
       const d = new Date(ts);
@@ -432,6 +671,8 @@ export default {
         'spj.run.error': 'SPJ 运行错误',
         'case.start': '测试点开始',
         'case.run': '测试点运行',
+        'case.pipe.start': '管道组开始',
+        'case.pipe.result': '管道组结果',
         'case.compare': '对拍结果',
         'case.error': '测试点错误',
         finish: '评测完成',
@@ -466,6 +707,7 @@ export default {
     matchesCategory(e, cat) {
       const ev = e.event || '';
       if (cat === 'case') return /^case\./.test(ev);
+      if (cat === 'pipe') return /^case\.pipe\./.test(ev);
       if (cat === 'compile') return /compile/.test(ev);
       if (cat === 'error') return /error/i.test(ev) || ev === 'error';
       return true;
@@ -491,13 +733,21 @@ export default {
         return bits.join(' · ');
       }
       if (ev === 'compile.start' || ev === 'spj.compile.start') {
-        return Array.isArray(d.args) ? clip(d.args.join(' '), 90) : '';
+        const bits = [];
+        if (d.id) bits.push('产物 ' + d.id);
+        const command = d.command || d.args;
+        if (Array.isArray(command)) bits.push(clip(command.join(' '), 90));
+        else if (command === 'auto') bits.push('按语言自动编译');
+        return bits.join(' · ');
       }
       if (ev === 'compile.result' || ev === 'spj.compile.result') {
         const bits = [];
-        if (d.exitStatus != null) bits.push('exit=' + d.exitStatus);
-        if (d.time != null) bits.push(Math.max(1, Math.floor(d.time / 1e6)) + ' ms');
-        if (d.memory != null) bits.push(Math.max(1, Math.floor(d.memory / 1024)) + ' KB');
+        if (d.id) bits.push('产物 ' + d.id);
+        if (d.exitCode != null) bits.push('exit=' + d.exitCode);
+        const time = d.cpuTimeMs != null ? d.cpuTimeMs : d.time;
+        const memory = d.memoryKb != null ? d.memoryKb : d.memory;
+        if (time != null) bits.push(Math.max(1, Math.floor(time)) + ' ms');
+        if (memory != null) bits.push(Math.max(1, Math.floor(memory)) + ' KB');
         return bits.join(' · ');
       }
       if (ev === 'compile.error' || ev === 'spj.compile.error' || ev === 'spj.run.error' || ev === 'error') {
@@ -527,13 +777,31 @@ export default {
       if (ev === 'case.run') {
         const bits = [];
         if (d.status) bits.push(d.status);
-        if (d.time != null) bits.push(Math.max(1, Math.floor(d.time / 1e6)) + ' ms');
-        if (d.memory != null) bits.push(Math.max(1, Math.floor(d.memory / 1024)) + ' KB');
-        if (d.exitStatus != null) bits.push('exit=' + d.exitStatus);
+        const time = d.cpuTimeMs != null ? d.cpuTimeMs : d.time;
+        const memory = d.memoryKb != null ? d.memoryKb : d.memory;
+        if (time != null) bits.push(Math.max(1, Math.floor(time)) + ' ms');
+        if (memory != null) bits.push(Math.max(1, Math.floor(memory)) + ' KB');
+        if (d.exitCode != null) bits.push('exit=' + d.exitCode);
+        return bits.join(' · ');
+      }
+      if (ev === 'case.pipe.start') {
+        const members = Array.isArray(d.members) ? d.members.join(', ') : '';
+        const pipeCount = Array.isArray(d.pipes) ? d.pipes.length : 0;
+        return [members, pipeCount ? pipeCount + ' 管道' : '', d.verdictFrom ? '裁决=' + d.verdictFrom : '']
+          .filter(Boolean).join(' · ');
+      }
+      if (ev === 'case.pipe.result') {
+        const bits = [];
+        if (d.resultName) bits.push(d.resultName);
+        if (d.ratio != null) bits.push(Math.round(Number(d.ratio) * 100) + '%');
+        if (d.time != null) bits.push(Math.floor(Number(d.time)) + ' ms');
+        if (d.memory != null) bits.push(Math.floor(Number(d.memory)) + ' KB');
         return bits.join(' · ');
       }
       if (ev === 'case.compare') {
-        const r = d.result === 'ok' ? '通过' : '答案错误';
+        const r = d.result === 'ok' ? '通过'
+          : d.result === 'partial' ? `部分正确${d.ratio != null ? ' ' + Math.round(Number(d.ratio) * 100) + '%' : ''}`
+            : '答案错误';
         const detail = d.detail ? ' · ' + clip(d.detail.replace(/\n+/g, ' '), 80) : '';
         return r + detail;
       }
@@ -616,6 +884,19 @@ export default {
         if (f && !f.loaded) this.loadAnswerFile(cid);
       }
     },
+    sourceFileKey(file, index) {
+      return `${file && file.name ? file.name : 'source'}-${index}`;
+    },
+    sourceTabLabel(file, index) {
+      const name = file && (file.label || file.name);
+      const size = file && file.content ? ` · ${file.content.length} B` : '';
+      return `${name || ('文件 ' + (index + 1))}${size}`;
+    },
+    sourceLanguage(file) {
+      const langId = file && file.lang != null ? file.lang : this.submissionInfo.lang;
+      const row = (this.$store.state.langList || {})[langId];
+      return (row && row.lang) || 'cpp';
+    },
     applySubmissionInfo(info) {
       // Flag any caseIds that weren't in the previous payload — the table
       // row class hook reads `newCaseIds` and adds `.is-new` so CSS can flash
@@ -643,6 +924,14 @@ export default {
       info.compileResult = "```\n" + info.compileResult + "\n```";
       this.submissionInfo = info;
       this.code = info.code;
+      const sourceFiles = Array.isArray(info.sourceFiles) ? info.sourceFiles : [];
+      if (sourceFiles.length) {
+        this.code = sourceFiles[0].content || this.code;
+        const firstKey = this.sourceFileKey(sourceFiles[0], 0);
+        if (!this.sourceActiveName || !sourceFiles.some((file, index) => this.sourceFileKey(file, index) === this.sourceActiveName)) {
+          this.sourceActiveName = firstKey;
+        }
+      }
       this.hasTaken = true;
       this.canRejudge = !!info.canRejudge;
       this.table = [info];
@@ -702,10 +991,66 @@ export default {
     },
     cancelSubmission() {
       axios.post('/api/judge/cancelSubmission', { sid: this.sid }).then(res => {
-        if (res.status === 200) this.$message.success('取消成功');
+        if (res.status === 200 && res.data && res.data.skipped) this.$message.info('提交已结束，无需取消');
+        else if (res.status === 200) this.$message.success('取消成功');
         else this.$message.error('取消失败');
       });
-    }
+    },
+    downloadBase64File(payload) {
+      const raw = atob(payload.content || '');
+      const bytes = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+      const blob = new Blob([bytes], { type: payload.mime || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = payload.filename || ('submission-' + this.sid + '.txt');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+    downloadSubmissionFile() {
+      axios.post('/api/judge/downloadSubmissionFile', { sid: this.sid }).then(res => {
+        if (res.status === 200 && res.data) {
+          this.downloadBase64File(res.data);
+        } else {
+          this.$message.error((res.data && res.data.message) || '下载失败');
+        }
+      }).catch(err => {
+        const msg = err && err.response && err.response.data && err.response.data.message;
+        this.$message.error(msg || err.message || '下载失败');
+      });
+    },
+    toggleSubmissionPublic() {
+      const next = !this.submissionInfo.isPublic;
+      axios.post('/api/judge/setSubmissionPublic', { sid: this.sid, isPublic: next }).then(res => {
+        if (res.status === 200) {
+          this.$message.success(next ? '提交已公开' : '提交已设为私有');
+          this.submissionInfo.isPublic = next ? 1 : 0;
+          this.table = [{ ...this.submissionInfo }];
+        } else {
+          this.$message.error((res.data && res.data.message) || '设置失败');
+        }
+      }).catch(err => {
+        const msg = err && err.response && err.response.data && err.response.data.message;
+        this.$message.error(msg || err.message || '设置失败');
+      });
+    },
+    deleteSubmission() {
+      axios.post('/api/judge/deleteSubmission', { sid: this.sid }).then(res => {
+        if (res.status === 200) {
+          this.$message.success('提交已删除');
+          this.closeStream();
+          this.$router.push('/submission');
+        } else {
+          this.$message.error((res.data && res.data.message) || '删除失败');
+        }
+      }).catch(err => {
+        const msg = err && err.response && err.response.data && err.response.data.message;
+        this.$message.error(msg || err.message || '删除失败');
+      });
+    },
   },
   async mounted() {
     this.mounted = true;
@@ -731,7 +1076,15 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 20px;
+  gap: 10px;
+  min-height: 32px;
+  flex-wrap: wrap;
+}
+
+.code-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .sub {
@@ -769,6 +1122,112 @@ export default {
 
 .cases-header {
   position: relative;
+}
+
+.interaction-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.interaction-empty {
+  color: #909399;
+  text-align: center;
+  padding: 18px 0;
+}
+
+/* ---- 评测流程 pipeline ---- */
+.flow-line {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 4px 2px 8px;
+  overflow-x: auto;
+}
+
+.flow-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  min-width: 150px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f5f8fc 100%);
+}
+
+.flow-stage-percase {
+  flex: 1;
+  min-width: 320px;
+}
+
+.flow-stage-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.4px;
+  margin-bottom: 2px;
+}
+
+.percase-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.flow-node {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  text-align: left;
+}
+
+.flow-node-main {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.flow-node-sub {
+  font-size: 11.5px;
+  color: #64748b;
+  font-family: "IBM Plex Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.flow-node.node-exec { border-left: 3px solid #409eff; }
+.flow-node.node-check { border-left: 3px solid #67c23a; }
+.flow-node.node-pipeGroup { border-left: 3px solid #e6a23c; }
+.flow-node.node-compile { border-left: 3px solid #909399; }
+
+.flow-arrow {
+  align-self: center;
+  color: #94a3b8;
+  font-weight: 700;
+  font-size: 16px;
+  flex: 0 0 auto;
+}
+
+.flow-arrow-small {
+  font-size: 13px;
+}
+
+.flow-pipe-results {
+  margin-top: 6px;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 10px;
+}
+
+.flow-pipe-title {
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 6px;
 }
 
 .live-badge {
@@ -1164,6 +1623,14 @@ export default {
 .log-slide-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+.source-files {
+  padding: 0 12px 12px;
+}
+
+.source-tabs :deep(.el-tabs__header) {
+  margin-bottom: 10px;
 }
 
 .answer-files {
