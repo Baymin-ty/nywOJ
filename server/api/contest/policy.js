@@ -85,6 +85,10 @@ const capabilities = (contest, cfg, status, viewer) => {
     // 排行榜（赛后需公开赛或已报名；进行中 IOI 式对选手开放）
     canViewScoreboard:
       (ended && publicOrReged) || (isReged && liveScoreboard && status > 0) || isManager,
+    // 封榜掩码：开启且未手动解榜、比赛未 done 时，对非管理员遮蔽封榜期提交
+    scoreboardMasked:
+      !!(cfg.scoreboard.freeze && cfg.scoreboard.freeze.enabled &&
+        !cfg.scoreboard.freeze.revealed && !done && !isManager),
     // Rating 变化列表
     canViewRatingChanges: (ended && publicOrReged) || isManager,
     // 提交行/详情是否遮蔽评测结果（分数/结果/时间/内存清零）。

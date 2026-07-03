@@ -7,43 +7,79 @@
       Rating 变化
     </el-button>
   </div>
-  <el-table :data="rankList.data" height="600px" :header-cell-style="{ textAlign: 'center' }" :cell-style="CellStyle"
+
+  <!-- 时间轴：拖动查看任意时刻榜单 -->
+  <div class="timeline-bar">
+    <el-button circle size="small" color="#626aef" plain @click="all">
+      <el-icon><Refresh /></el-icon>
+    </el-button>
+    <el-slider v-model="sliderSec" class="timeline-slider" :min="0" :max="meta.horizonSec || 0"
+      :format-tooltip="fmtClock" :marks="sliderMarks" @input="onSliderInput" />
+    <span class="timeline-clock">{{ fmtClock(sliderSec) }}</span>
+    <el-tag v-if="meta.frozen" type="warning" effect="dark">封榜中</el-tag>
+    <el-button v-if="canManage && meta.frozen" size="small" type="warning" plain @click="reveal(true)">
+      解榜
+    </el-button>
+  </div>
+
+  <el-table :data="rows" :header-cell-style="{ textAlign: 'center' }" :cell-style="CellStyle"
     :row-style="{ height: '50px' }" :row-class-name="tableRowClassName" :cell-class-name="cellClassName"
     @cell-click="getExSubmission" v-loading="!finished">
-    <el-table-column fixed="left" max-width="10%" min-width="60px">
-      <template #header>
-        <el-button circle @click="all" color="#626aef" plain>
-          <el-icon>
-            <Refresh />
-          </el-icon>
-        </el-button>
-      </template>
+    <el-table-column fixed="left" max-width="10%" min-width="60px" label="#">
       <template #default="scope">
-        {{ scope.row.rank || scope.$index + 1 }}
+        {{ scope.row.rank }}
       </template>
     </el-table-column>
     <el-table-column label="用户名" fixed="left" max-width="15%" min-width="150px">
       <template #default="scope">
-        <router-link class="rlink" :to="'/user/' + scope.row.user.uid">{{ scope.row.user.name }}</router-link>
+        <span class="player-name" @click.stop="openPlayerChart(scope.row)">{{ scope.row.user.name }}</span>
       </template>
     </el-table-column>
-    <el-table-column label="总分" fixed="left" max-width="10%" min-width="100px">
+    <el-table-column :label="isAcm ? '过题数' : '总分'" fixed="left" max-width="10%" min-width="100px">
       <template #default="scope">
-        <div class="totScore" v-show="scope.row.submitted">{{ scope.row.totalScore }}</div>
-        <div class="attach" v-show="scope.row.submitted">({{ scope.row.usedTime }} ms)</div>
+        <template v-if="isAcm">
+          <div class="totScore" v-show="scope.row.submitted">{{ scope.row.solved }}</div>
+          <div class="attach" v-show="scope.row.submitted">({{ fmtPenalty(scope.row.penalty) }})</div>
+        </template>
+        <template v-else>
+          <div class="totScore" v-show="scope.row.submitted">{{ scope.row.totalScore }}</div>
+          <div class="attach" v-show="scope.row.submitted">({{ scope.row.usedTime }} ms)</div>
+        </template>
         <span v-show="!scope.row.submitted"> / </span>
       </template>
     </el-table-column>
-    <el-table-column v-for="(key, value) in rankList.problem" :key="value" max-width="10%" min-width="100px">
+    <el-table-column v-for="(weight, idx) in problems" :key="idx" max-width="10%" min-width="100px">
       <template #header>
-        <router-link class="rlink" :to="'/contest/' + cid + '/problem/' + value"> {{ value }}</router-link>
-        <div class="attach"> ({{ key }})</div>
+        <router-link class="rlink" :to="'/contest/' + cid + '/problem/' + idx"> {{ idx }}</router-link>
+        <div v-if="!isAcm" class="attach"> ({{ weight }})</div>
       </template>
       <template #default="scope">
-        <div :style="getScoreStyle(scope.row.detail[value], key)">{{ scope.row.detail[value] ?
-          scope.row.detail[value].score : '/' }}</div>
-        <div v-if="scope.row.detail[value] && scope.row.detail[value].score > 0" class="attach">
-          ({{ scope.row.detail[value].time }} ms)</div>
+        <template v-if="isAcm">
+          <div v-if="cellOf(scope.row, idx)" :class="acmCellClass(cellOf(scope.row, idx))">
+            <template v-if="cellOf(scope.row, idx).masked">?{{ cellOf(scope.row, idx).masked }}</template>
+            <template v-else-if="cellOf(scope.row, idx).ac">
+              +{{ cellOf(scope.row, idx).tries || '' }}
+              <div class="attach">{{ Math.floor(cellOf(scope.row, idx).time / 60) }}</div>
+            </template>
+            <template v-else-if="cellOf(scope.row, idx).pending">?</template>
+            <template v-else-if="cellOf(scope.row, idx).tries">-{{ cellOf(scope.row, idx).tries }}</template>
+            <template v-else>/</template>
+          </div>
+          <span v-else>/</span>
+        </template>
+        <template v-else>
+          <div v-if="cellOf(scope.row, idx) && cellOf(scope.row, idx).masked" class="acm-masked">
+            ?{{ cellOf(scope.row, idx).masked }}
+          </div>
+          <template v-else>
+            <div :style="getScoreStyle(cellOf(scope.row, idx), weight)">
+              {{ cellOf(scope.row, idx) ? cellOf(scope.row, idx).score : '/' }}
+            </div>
+            <div v-if="cellOf(scope.row, idx) && cellOf(scope.row, idx).score > 0" class="attach">
+              ({{ cellOf(scope.row, idx).time }} ms)
+            </div>
+          </template>
+        </template>
       </template>
     </el-table-column>
     <el-table-column v-if="hasRating" label="Rating" min-width="130px">
@@ -64,6 +100,16 @@
       </template>
     </el-table-column>
   </el-table>
+  <el-pagination v-if="total > pageSize" class="rank-pagination" layout="prev, pager, next, sizes, total"
+    :total="total" v-model:current-page="pageId" v-model:page-size="pageSize"
+    :page-sizes="[20, 50, 100]" @current-change="fetchRank" @size-change="fetchRank" />
+
+  <!-- 选手 分数/排名 时间曲线 -->
+  <el-dialog v-model="chartVisible" :title="chartTitle" width="900px" destroy-on-close
+    @opened="renderPlayerChart" @closed="disposePlayerChart">
+    <div ref="playerChart" style="width: 100%; height: 420px;" v-loading="chartLoading"></div>
+  </el-dialog>
+
   <el-dialog v-if="dialogVisible" v-model="dialogVisible" title="提交记录" width="1300px" center
     style="border-radius: 10px; padding-bottom: 10px;" class="pd">
     <el-divider />
@@ -107,6 +153,7 @@
       <el-table-column prop="machine" label="评测机" min-width="18%" />
     </el-table>
   </el-dialog>
+
   <el-dialog v-model="ratingChangesVisible" title="Rating 变化" width="780px" destroy-on-close>
     <div class="rating-change-meta">
       <el-tag :type="ratingChangesAlertType">{{ ratingChangesStatusText }}</el-tag>
@@ -150,12 +197,24 @@
 import axios from "axios"
 import { getRatingTier, scoreColor, resColor } from '@/assets/common'
 import store from "@/sto/store";
+import echarts from '@/chart/myChart';
 
 export default {
   name: "rankList",
+  props: {
+    canManage: { type: Boolean, default: false },
+  },
   data() {
     return {
-      rankList: [],
+      rows: [],
+      problems: {},
+      meta: {},
+      total: 0,
+      pageId: 1,
+      pageSize: 50,
+      sliderSec: 0,
+      sliderDebounce: null,
+      atLatest: true, // 滑块在最右端时刷新自动跟随最新
       subList: [],
       ratingChanges: [],
       ratingChangesMeta: {},
@@ -164,29 +223,42 @@ export default {
       ratingChangesLimit: 100,
       isProblem: false,
       dialogVisible: false,
+      chartVisible: false,
+      chartLoading: false,
+      chartTitle: '',
+      chartUid: 0,
+      chartData: null,
+      chartInstance: null,
       cid: 0,
       finished: false
     };
   },
   computed: {
+    isAcm() {
+      return this.meta.format === 'acm';
+    },
+    sliderMarks() {
+      const marks = {};
+      if (this.meta.freezeStartSec != null && this.meta.frozen) {
+        marks[this.meta.freezeStartSec] = '封榜';
+      }
+      return marks;
+    },
     ratingStatus() {
-      if (this.rankList && this.rankList.ratingStatus) return this.rankList.ratingStatus;
-      if (this.rankList && this.rankList.unrated) return { state: 'unrated', label: 'Unrated', type: 'info' };
-      if (this.rankList && this.rankList.unsettled) return { state: 'pending', label: '待结算', type: 'warning' };
+      if (this.meta && this.meta.ratingStatus) return this.meta.ratingStatus;
       return null;
     },
     hasRating() {
-      return Array.isArray(this.rankList.data) && this.rankList.data.some(row => row.ratingChange);
+      return Array.isArray(this.rows) && this.rows.some(row => row.ratingChange);
     },
     canShowRatingChanges() {
-      const status = this.ratingStatus;
-      return !!status && !['rated', 'unrated'].includes(status.state) && this.hasRating;
+      return this.meta.done && this.hasRating;
     },
     ratingAlertType() {
       return this.normalizeAlertType(this.ratingStatus && this.ratingStatus.type);
     },
     ratingNoticeTitle() {
-      return this.formatRatingNotice(this.ratingStatus, this.rankList);
+      return this.formatRatingNotice(this.ratingStatus, this.meta);
     },
     ratingChangesStatus() {
       if (this.ratingChangesMeta && this.ratingChangesMeta.ratingStatus) return this.ratingChangesMeta.ratingStatus;
@@ -208,16 +280,136 @@ export default {
     },
   },
   methods: {
+    fmtClock(sec) {
+      const s = Math.max(0, Math.floor(Number(sec) || 0));
+      const h = String(Math.floor(s / 3600)).padStart(2, '0');
+      const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+      const ss = String(s % 60).padStart(2, '0');
+      return `${h}:${m}:${ss}`;
+    },
+    fmtPenalty(sec) {
+      return Math.floor((Number(sec) || 0) / 60) + ' min';
+    },
+    cellOf(row, idx) {
+      return row.detail ? row.detail[idx] : null;
+    },
+    acmCellClass(cell) {
+      if (cell.masked) return 'acm-masked';
+      if (cell.ac) return 'acm-ac';
+      if (cell.pending) return 'acm-pending';
+      if (cell.tries) return 'acm-fail';
+      return '';
+    },
     all() {
+      this.atLatest = true;
+      this.fetchRank();
+    },
+    onSliderInput() {
+      this.atLatest = this.sliderSec >= (this.meta.horizonSec || 0);
+      clearTimeout(this.sliderDebounce);
+      this.sliderDebounce = setTimeout(() => this.fetchRank(false), 250);
+    },
+    fetchRank(followLatest = true) {
       this.finished = false;
-      axios.post("/api/contest/getRank", {
-        cid: this.cid
-      }).then(res => {
-        this.rankList = res.data;
+      const body = { cid: this.cid, pageId: this.pageId, pageSize: this.pageSize };
+      // 滑块跟随最新时不传 t（服务端取当前进度）；否则回放指定时刻
+      if (!(followLatest && this.atLatest)) body.t = this.sliderSec;
+      axios.post("/api/contest/getRankAt", body).then(res => {
+        this.rows = res.data.data || [];
+        this.problems = res.data.problem || {};
+        this.total = res.data.total || 0;
+        this.meta = res.data;
+        if (this.atLatest) this.sliderSec = res.data.atSec;
         this.finished = true;
+        this.fetchRatingMeta();
       }).catch(err => {
-        this.$message.error("获取比赛排行失败" + err.message);
+        this.finished = true;
+        this.$message.error("获取比赛排行失败" + (err.message || ''));
       });
+    },
+    // rating 状态条沿用 getRank 的 meta（仅赛后需要）
+    fetchRatingMeta() {
+      if (!this.meta.done || this.meta.ratingStatus) return;
+      axios.post("/api/contest/getRank", { cid: this.cid }).then(res => {
+        this.meta = { ...this.meta, ratingStatus: res.data.ratingStatus, unrated: res.data.unrated };
+      }).catch(() => { });
+    },
+    reveal(revealed) {
+      axios.post('/api/contest/setScoreboardReveal', { cid: this.cid, revealed }).then(() => {
+        this.$message.success(revealed ? '已解榜' : '已封榜');
+        this.all();
+      }).catch(err => {
+        this.$message.error('操作失败' + (err.message || ''));
+      });
+    },
+    openPlayerChart(row) {
+      this.chartTitle = `${row.user.name} — 分数 / 排名曲线`;
+      this.chartUid = row.user.uid;
+      this.chartVisible = true;
+      this.chartLoading = true;
+      axios.post('/api/contest/getParticipantTimeline', { cid: this.cid, uid: row.user.uid }).then(res => {
+        this.chartData = res.data;
+        this.chartLoading = false;
+        this.renderPlayerChart();
+      }).catch(err => {
+        this.chartLoading = false;
+        this.$message.error('获取选手曲线失败' + (err.message || ''));
+      });
+    },
+    renderPlayerChart() {
+      const el = this.$refs.playerChart;
+      if (!el || !this.chartData || !this.chartVisible) return;
+      // echarts 在 0 尺寸容器上 init/resize 会崩：跳过 + try/catch 兜底
+      if (!el.clientWidth || !el.clientHeight) return;
+      try {
+        if (!this.chartInstance) this.chartInstance = echarts.init(el);
+        const pts = this.chartData.points || [];
+        const playerCount = this.chartData.playerCount || 1;
+        const scoreLabel = this.chartData.format === 'acm' ? '过题数' : '分数';
+        this.chartInstance.setOption({
+          tooltip: {
+            trigger: 'axis',
+            formatter: (params) => {
+              const t = this.fmtClock(params[0].axisValue);
+              const lines = params.map(p => `${p.marker}${p.seriesName}: ${p.value[1]}`);
+              return `${t}<br/>${lines.join('<br/>')}`;
+            },
+          },
+          legend: { data: ['排名', scoreLabel] },
+          grid: { left: 60, right: 60, top: 40, bottom: 40 },
+          xAxis: {
+            type: 'value', min: 0, max: this.chartData.horizonSec || undefined,
+            axisLabel: { formatter: (v) => this.fmtClock(v) },
+            splitLine: { show: false },
+          },
+          yAxis: [
+            {
+              type: 'value', name: '排名', inverse: true, min: 1, max: playerCount,
+              minInterval: 1, position: 'left',
+            },
+            { type: 'value', name: scoreLabel, position: 'right', splitLine: { show: false } },
+          ],
+          series: [
+            {
+              name: '排名', type: 'line', step: 'end', yAxisIndex: 0, symbol: 'circle',
+              data: pts.map(p => [p.t, p.rank]), lineStyle: { width: 2 }, color: '#2f8f83',
+            },
+            {
+              name: scoreLabel, type: 'line', step: 'end', yAxisIndex: 1, symbol: 'circle',
+              data: pts.map(p => [p.t, p.score]), lineStyle: { width: 2 }, color: '#b03a2e',
+            },
+          ],
+        });
+      } catch (e) {
+        // 图表渲染失败不影响榜单
+        console.warn('player chart render failed', e);
+      }
+    },
+    disposePlayerChart() {
+      try {
+        if (this.chartInstance) { this.chartInstance.dispose(); this.chartInstance = null; }
+      } catch (e) { this.chartInstance = null; }
+      this.chartData = null;
     },
     openRatingChanges() {
       this.ratingChangesVisible = true;
@@ -258,7 +450,7 @@ export default {
       const pendingDetail = this.pendingJudgementDetailText(status, payload);
       const invalid = Number(status.invalidLastSubmissionCount || payload.invalidLastSubmissionCount || 0);
       const invalidText = invalid ? `，另有 ${invalid} 条无效最后提交未计入` : '';
-      const rows = Number(status.rowCount || payload.ratingRowCount || (Array.isArray(payload.rating) ? payload.rating.length : 0));
+      const rows = Number(status.rowCount || payload.ratingRowCount || 0);
       const min = Number(status.minParticipantCount || payload.minParticipantCount || 2);
       switch (status.state) {
         case 'settled':
@@ -319,11 +511,12 @@ export default {
     },
     CellStyle({ row, columnIndex }) {
       let style = {};
-      if (columnIndex === 2 && row.submitted || columnIndex > 2 && row['detail'][columnIndex - 2]) {
+      const idx = columnIndex - 2;
+      if (columnIndex === 2 && row.submitted || idx > 0 && row.detail && row.detail[idx]) {
         style['cursor'] = 'pointer';
       }
       style['text-align'] = 'center';
-      if (row['detail'][columnIndex - 2] && ('firstBlood' in row['detail'][columnIndex - 2])) {
+      if (idx > 0 && row.detail && row.detail[idx] && row.detail[idx].firstBlood) {
         style['background'] = '#d9ecff';
       }
       return style;
@@ -381,10 +574,13 @@ export default {
     this.cid = this.$route.params.cid;
     this.all();
   },
+  beforeUnmount() {
+    clearTimeout(this.sliderDebounce);
+    this.disposePlayerChart();
+  },
 }
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 .attach {
   line-height: 1em;
@@ -397,6 +593,61 @@ export default {
   line-height: 1.2em;
   font-size: 15px;
   font-weight: 500;
+}
+
+.timeline-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 4px 6px 12px 6px;
+}
+
+.timeline-slider {
+  flex: 1;
+}
+
+.timeline-clock {
+  font-family: 'Courier New', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: #909399;
+  min-width: 110px;
+  text-align: right;
+}
+
+.player-name {
+  cursor: pointer;
+  color: var(--el-color-primary);
+  font-weight: 500;
+}
+
+.player-name:hover {
+  text-decoration: underline;
+}
+
+.rank-pagination {
+  margin-top: 12px;
+  justify-content: center;
+}
+
+.acm-ac {
+  color: #67c23a;
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.2em;
+}
+
+.acm-fail {
+  color: #f56c6c;
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.acm-pending,
+.acm-masked {
+  color: #e6a23c;
+  font-weight: 800;
+  font-size: 15px;
 }
 
 .rank-rating-bar {

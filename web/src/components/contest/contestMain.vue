@@ -71,7 +71,7 @@
                 </el-icon>
                 排行榜
               </template>
-              <contestRank ref="rank" />
+              <contestRank ref="rank" :can-manage="canManage" />
             </el-tab-pane>
             <el-tab-pane name="manageC" v-if="canManage">
               <template #label>
@@ -116,6 +116,15 @@
                     <el-form-item label="进行中可看评测结果">
                       <el-switch v-model="rules.liveResults" size="large" active-text="真实分数" inactive-text="全部隐藏"
                         :disabled="tmpInfo.done" />
+                    </el-form-item>
+                    <el-form-item label="封榜">
+                      <el-switch v-model="rules.freezeEnabled" size="large" active-text="开启" inactive-text="关闭"
+                        :disabled="tmpInfo.done" />
+                      <el-input-number v-if="rules.freezeEnabled" v-model="rules.freezeMinutes" :min="1" :max="100000"
+                        :disabled="tmpInfo.done" size="small" style="margin-left: 12px; width: 120px;" />
+                      <span v-if="rules.freezeEnabled" class="rules-hint" style="margin: 0 0 0 8px;">
+                        结束前分钟数
+                      </span>
                     </el-form-item>
                     <el-divider class="rules-divider" />
                     <el-form-item label="是否公开">
@@ -315,17 +324,19 @@ export default {
       },
       needUpdate: ['problemList', 'submission', 'rank', 'manageP'],
       avalangList: [],
-      // M1 开放 oi/ioi；acm/cf/homework 随后续里程碑加入
+      // 已解锁赛制；cf/homework 随后续里程碑加入
       formatOptions: [
         { id: 'oi', label: 'OI' },
         { id: 'ioi', label: 'IOI' },
+        { id: 'acm', label: 'ACM' },
       ],
       // 赛制预设默认（与 server/api/contest/formats.js 保持一致）
       formatPresets: {
-        oi: { liveScoreboard: false, liveResults: false },
-        ioi: { liveScoreboard: true, liveResults: true },
+        oi: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60 },
+        ioi: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60 },
+        acm: { liveScoreboard: true, liveResults: true, freezeEnabled: true, freezeMinutes: 60 },
       },
-      rules: { liveScoreboard: false, liveResults: false },
+      rules: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60 },
       ratingPreviewVisible: false,
       ratingPreviewLoading: false,
       ratingPreviewRows: [],
@@ -484,11 +495,14 @@ export default {
     // 从生效配置（服务端 resolveConfig 结果）初始化规则开关
     initRulesFromConfig(config) {
       const preset = this.formatPresets[this.contestInfo.format] || this.formatPresets.oi;
+      const freeze = config && config.scoreboard && config.scoreboard.freeze;
       this.rules = {
         liveScoreboard: config && config.scoreboard
           ? config.scoreboard.duringContest === 'full' : preset.liveScoreboard,
         liveResults: config && config.submission
           ? config.submission.resultVisibility === 'full' : preset.liveResults,
+        freezeEnabled: freeze ? !!freeze.enabled : preset.freezeEnabled,
+        freezeMinutes: freeze && freeze.offsetMinutes != null ? freeze.offsetMinutes : preset.freezeMinutes,
       };
     },
     // 只保存与预设不同的键；与预设完全一致则清空覆盖（config=null）
@@ -497,6 +511,18 @@ export default {
       const patch = {};
       if (this.rules.liveScoreboard !== preset.liveScoreboard) {
         patch.scoreboard = { duringContest: this.rules.liveScoreboard ? 'full' : 'none' };
+      }
+      const freezePatch = {};
+      if (this.rules.freezeEnabled !== preset.freezeEnabled) freezePatch.enabled = this.rules.freezeEnabled;
+      if (this.rules.freezeEnabled && this.rules.freezeMinutes !== preset.freezeMinutes) {
+        freezePatch.offsetMinutes = this.rules.freezeMinutes;
+      }
+      // 保留已有的解榜状态（reveal 由排行榜页的解榜按钮单独写入）
+      const prevFreeze = this.contestInfo.configPatch && this.contestInfo.configPatch.scoreboard
+        && this.contestInfo.configPatch.scoreboard.freeze;
+      if (prevFreeze && prevFreeze.revealed) freezePatch.revealed = true;
+      if (Object.keys(freezePatch).length) {
+        patch.scoreboard = { ...(patch.scoreboard || {}), freeze: freezePatch };
       }
       if (this.rules.liveResults !== preset.liveResults) {
         patch.submission = { resultVisibility: this.rules.liveResults ? 'full' : 'none' };

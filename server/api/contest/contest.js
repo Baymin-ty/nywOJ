@@ -17,7 +17,11 @@ const {
 const {
   normalizeFormat, formatLabel, resolveConfig, validateConfigPatch, legacyTypeOf,
 } = require('./formats');
-const { buildContestRank } = require('./standings');
+const {
+  buildContestRank, computeStandings, participantTimeline,
+  persistFinalStandings, invalidateStandings,
+} = require('./standings');
+const { deepMerge } = require('./formats');
 const {
   ensureContestRatingSchema,
   attachContestRatingStatus,
@@ -35,8 +39,8 @@ const {
 
 const ptype = ['传统文本比较', 'Special Judge'];
 
-// M1 只开放 oi/ioi；acm/cf/homework 随后续里程碑逐个解锁。
-const EDITABLE_FORMATS = ['oi', 'ioi'];
+// 已解锁的赛制；cf/homework 随后续里程碑逐个加入。
+const EDITABLE_FORMATS = ['oi', 'ioi', 'acm'];
 
 exports.canManageContest = canManageContest;
 
@@ -251,6 +255,12 @@ exports.closeContest = [
 
     const r = await db.query('UPDATE contest SET done=1 WHERE cid=?', [cid]);
     if (!r.affectedRows) return fail(res, 'error');
+    // 固化官方最终榜（回放引擎全量、无掩码）
+    try {
+      await persistFinalStandings(cid);
+    } catch (err) {
+      console.error('persist final standings failed:', err && err.stack ? err.stack : err);
+    }
     let rating = null;
     try {
       const result = await applyContestRating(cid);
@@ -409,6 +419,7 @@ exports.submit = handler(async (req, res) => {
   });
 
   pushSidIntoQueue(insertId, false);
+  invalidateStandings(cid);
   return ok(res);
 });
 
@@ -593,7 +604,7 @@ exports.getRank = handler(async (req, res) => {
   const { contest, status } = v;
 
   const [result, ratingStatus] = await Promise.all([
-    buildContestRank(cid),
+    buildContestRank(cid, { masked: v.caps.scoreboardMasked }),
     contestRatingStatusForContest(contest, status),
   ]);
   const showRating = !!contest.done && !!contest.ratingEnabled;
@@ -619,6 +630,84 @@ exports.getRank = handler(async (req, res) => {
     ...ratingMeta,
     unrated: !showRating || ratingMeta.unrated,
   });
+});
+
+// 任意时刻榜单（时间轴回放 + 分页）。t 单位秒（相对比赛开始），缺省 = 当前进度。
+exports.getRankAt = handler(async (req, res) => {
+  const { cid } = req.body;
+  const v = await loadView(req, cid);
+  if (!v) return fail(res, '无此比赛');
+  if (!v.caps.canViewScoreboard) return res.status(403).end('403 Forbidden');
+
+  const { offset, limit, pageId, pageSize } = paginate(req, 50);
+  const t = req.body.t == null ? null : Number(req.body.t);
+  const result = await computeStandings(cid, {
+    atSec: t == null || Number.isNaN(t) ? null : t,
+    masked: v.caps.scoreboardMasked,
+  });
+  if (!result) return fail(res, '无此比赛');
+
+  // 赛后附加 rating 变化（与 getRank 一致，仅整场 join 一次）
+  const showRating = !!v.contest.done && !!v.contest.ratingEnabled;
+  if (showRating) {
+    const ratingRows = await ratingRowsForContest(cid);
+    const ratingByUid = new Map(ratingRows.map((row) => [Number(row.uid), row]));
+    for (const row of result.rank) {
+      const rating = ratingByUid.get(Number(row.user.uid));
+      if (rating) {
+        row.ratingChange = {
+          rank: Number(rating.rank),
+          oldRating: Number(rating.oldRating),
+          newRating: Number(rating.newRating),
+          delta: Number(rating.delta),
+        };
+        row.user.rating = Number(rating.newRating);
+      }
+    }
+  }
+
+  return ok(res, {
+    total: result.rank.length,
+    pageId,
+    pageSize,
+    data: result.rank.slice(offset, offset + limit),
+    problem: result.problem,
+    format: result.format,
+    atSec: result.atSec,
+    horizonSec: result.horizonSec,
+    durationSec: result.durationSec,
+    frozen: result.frozen,
+    freezeStartSec: v.caps.scoreboardMasked ? result.freezeStartSec : null,
+    done: !!v.contest.done,
+  });
+});
+
+// 单个选手（队）的分数+排名时间线（选手曲线图）
+exports.getParticipantTimeline = handler(async (req, res) => {
+  const { cid, uid } = req.body;
+  const v = await loadView(req, cid);
+  if (!v) return fail(res, '无此比赛');
+  if (!v.caps.canViewScoreboard) return res.status(403).end('403 Forbidden');
+
+  const result = await participantTimeline(cid, uid, { masked: v.caps.scoreboardMasked });
+  if (!result) return fail(res, '无此比赛');
+  return ok(res, result);
+});
+
+// 手动解榜/重新封榜（管理员）：写入 config 覆盖 scoreboard.freeze.revealed
+exports.setScoreboardReveal = handler(async (req, res) => {
+  const { cid } = req.body;
+  const contest = await getContest(cid);
+  if (!contest) return fail(res, '无此比赛');
+  if (!(await canManageContest(req, cid))) return res.status(403).end('403 Forbidden');
+
+  const revealed = !!req.body.revealed;
+  let patch = null;
+  try { patch = contest.config ? JSON.parse(contest.config) : null; } catch (_) { patch = null; }
+  patch = deepMerge(patch || {}, { scoreboard: { freeze: { revealed } } });
+  await db.query('UPDATE contest SET config=? WHERE cid=?', [JSON.stringify(patch), cid]);
+  invalidateStandings(cid);
+  return ok(res, { revealed });
 });
 
 exports.getSingleUserLastSubmission = handler(async (req, res) => {

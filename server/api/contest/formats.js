@@ -2,23 +2,27 @@
 // 对 preset 的覆盖（partial），resolveConfig 深合并出生效配置 —— 管理者可以在任何
 // 赛制下自由改「是否开放真实分数 / 封榜 / hack」等独立开关，preset 只是初始值。
 //
-// 配置语义（policy.js 消费）：
+// 配置语义（policy.js / standings.js 消费）：
 //   scoreboard.duringContest : 'none' | 'full'  比赛进行中(含等待测评)选手能否看排行榜
 //   scoreboard.afterEnd      : 'public'         结束后 公开赛任何人/私有赛选手 可见（现状）
-//   scoreboard.showRealScore : bool             进行中选手看真实分数（false=OI 式隐藏）
-//   scoreboard.freeze        : {enabled, offsetMinutes}  封榜（M2 起 acm/cf 用）
+//   scoreboard.freeze        : {enabled, offsetMinutes, revealed}
+//       封榜：任意赛制可开。最后 offsetMinutes 分钟对非管理员遮蔽（单元格只显示
+//       pending 数）；revealed=true（管理员手动解榜）或比赛 done 后解除。
 //   submission.resultVisibility : 'full'|'none' 进行中选手能否看自己提交的评测结果
-//   penalty.wrongTryMinutes  : ACM 每次错误尝试罚时（M2）
+//   penalty.wrongTryMinutes  : ACM 每次错误尝试罚时分钟数
 //   cf.*                     : CF 赛制专属（M3）
 //   team.*                   : 组队参赛（M4）
 //   late.*                   : 作业迟交（M5）
+//
+// 计分归约器在 standings.js（按 format id 分派）：oi=每题最后一次提交加权、
+// ioi=每题历史最高分加权、acm=过题数+罚时。
 
 const FORMATS = {
   oi: {
     label: 'OI',
     legacyType: 0,
     preset: () => ({
-      scoreboard: { duringContest: 'none', afterEnd: 'public', showRealScore: false, freeze: { enabled: false, offsetMinutes: 60 } },
+      scoreboard: { duringContest: 'none', afterEnd: 'public', freeze: { enabled: false, offsetMinutes: 60, revealed: false } },
       submission: { resultVisibility: 'none' },
     }),
   },
@@ -26,8 +30,17 @@ const FORMATS = {
     label: 'IOI',
     legacyType: 1,
     preset: () => ({
-      scoreboard: { duringContest: 'full', afterEnd: 'public', showRealScore: true, freeze: { enabled: false, offsetMinutes: 60 } },
+      scoreboard: { duringContest: 'full', afterEnd: 'public', freeze: { enabled: false, offsetMinutes: 60, revealed: false } },
       submission: { resultVisibility: 'full' },
+    }),
+  },
+  acm: {
+    label: 'ACM',
+    legacyType: 0,
+    preset: () => ({
+      scoreboard: { duringContest: 'full', afterEnd: 'public', freeze: { enabled: true, offsetMinutes: 60, revealed: false } },
+      submission: { resultVisibility: 'full' },
+      penalty: { wrongTryMinutes: 20 },
     }),
   },
 };
@@ -75,11 +88,11 @@ const validateConfigPatch = (format, patch) => {
     if (isPlainObject(sb)) {
       if (sb.duringContest !== undefined) check(['none', 'full'].includes(sb.duringContest), 'scoreboard.duringContest 取值非法');
       if (sb.afterEnd !== undefined) check(['public'].includes(sb.afterEnd), 'scoreboard.afterEnd 取值非法');
-      if (sb.showRealScore !== undefined) check(typeof sb.showRealScore === 'boolean', 'scoreboard.showRealScore 必须是布尔');
       if (sb.freeze !== undefined) {
         check(isPlainObject(sb.freeze), 'scoreboard.freeze 必须是对象');
         if (isPlainObject(sb.freeze)) {
           if (sb.freeze.enabled !== undefined) check(typeof sb.freeze.enabled === 'boolean', 'freeze.enabled 必须是布尔');
+          if (sb.freeze.revealed !== undefined) check(typeof sb.freeze.revealed === 'boolean', 'freeze.revealed 必须是布尔');
           if (sb.freeze.offsetMinutes !== undefined) {
             const v = Number(sb.freeze.offsetMinutes);
             check(Number.isInteger(v) && v >= 0 && v <= 100000, 'freeze.offsetMinutes 必须是非负整数');
@@ -95,8 +108,16 @@ const validateConfigPatch = (format, patch) => {
       check(['full', 'none'].includes(sub.resultVisibility), 'submission.resultVisibility 取值非法');
     }
   }
+  const pen = patch.penalty;
+  if (pen !== undefined) {
+    check(isPlainObject(pen), 'penalty 必须是对象');
+    if (isPlainObject(pen) && pen.wrongTryMinutes !== undefined) {
+      const v = Number(pen.wrongTryMinutes);
+      check(Number.isInteger(v) && v >= 0 && v <= 1000, 'penalty.wrongTryMinutes 必须是 0-1000 的整数');
+    }
+  }
   for (const key of Object.keys(patch)) {
-    if (!['scoreboard', 'submission'].includes(key)) errors.push(`未知配置项 ${key}`);
+    if (!['scoreboard', 'submission', 'penalty'].includes(key)) errors.push(`未知配置项 ${key}`);
   }
   return errors;
 };
