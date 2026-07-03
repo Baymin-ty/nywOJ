@@ -390,7 +390,17 @@ const ratingPendingJudgementSummary = async (cid) => {
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+// 组队场强制不产生 rating：rating 是个人维度，组队榜单行的 user.uid 是 teamId，
+// 绝不能流入 contestRating。所有结算/重建/预览路径都经过本函数。
+const isTeamContest = async (cid) => {
+  const contest = await getContest(cid);
+  if (!contest) return false;
+  const cfg = require('./formats').resolveConfig(contest);
+  return !!(cfg.team && cfg.team.enabled);
+};
+
 const calculateContestRatingChanges = async (cid, baseRatings = null, options = {}) => {
+  if (await isTeamContest(cid)) return [];
   const { rank } = await buildContestRank(cid);
   const ratedRank = rank.filter((row) => row.submitted);
   if (ratedRank.length < RATING_MIN_PARTICIPANTS) return [];

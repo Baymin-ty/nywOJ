@@ -37,8 +37,9 @@ const loadContext = async (cid) => {
   const durationSec = contest.length * 60;
 
   const problems = await getContestProblems(cid);
+  const teamMode = !!(cfg.team && cfg.team.enabled);
   const playerRows = await db.query(
-    `SELECT cp.uid,u.name,u.rating FROM contestPlayer cp
+    `SELECT cp.uid,cp.teamId,u.name,u.rating FROM contestPlayer cp
       INNER JOIN userInfo u ON u.uid=cp.uid WHERE cp.cid=?`,
     [cid]
   );
@@ -64,16 +65,44 @@ const loadContext = async (cid) => {
     weights.set(p.idx, p.weight);
     problemInfo[p.idx] = p.weight;
   }
-  const players = new Map(); // uid -> {uid,name,rating}
-  for (const u of playerRows) players.set(Number(u.uid), u);
+
+  // participant 抽象：个人模式 key='u<uid>'，组队模式 key='t<teamId>'。
+  // uidToKey 把每条提交/hack 的作者映射到参赛主体，榜单代码对两种模式一致。
+  const participants = new Map(); // key -> { key, uid, name, rating, teamId, members }
+  const uidToKey = new Map();
+  if (teamMode) {
+    const teamRows = await db.query('SELECT teamId,name FROM contestTeam WHERE cid=?', [cid]);
+    const teamInfo = new Map(teamRows.map((t) => [Number(t.teamId), t.name]));
+    const memberMap = new Map(); // teamId -> [{uid,name}]
+    for (const u of playerRows) {
+      if (!u.teamId) continue;
+      const tid = Number(u.teamId);
+      uidToKey.set(Number(u.uid), `t${tid}`);
+      if (!memberMap.has(tid)) memberMap.set(tid, []);
+      memberMap.get(tid).push({ uid: Number(u.uid), name: u.name });
+    }
+    for (const [tid, name] of teamInfo) {
+      participants.set(`t${tid}`, {
+        key: `t${tid}`, uid: tid, name, rating: 0, teamId: tid,
+        members: memberMap.get(tid) || [],
+      });
+    }
+  } else {
+    for (const u of playerRows) {
+      const key = `u${u.uid}`;
+      uidToKey.set(Number(u.uid), key);
+      participants.set(key, { key, uid: Number(u.uid), name: u.name, rating: u.rating, teamId: null, members: null });
+    }
+  }
 
   const events = [];
   for (const s of submissions) {
     const idx = pidToIdx.get(Number(s.pid));
-    if (!idx || !players.has(Number(s.uid))) continue;
+    const key = uidToKey.get(Number(s.uid));
+    if (!idx || !key) continue;
     events.push({
       sid: s.sid,
-      uid: Number(s.uid),
+      key,
       idx,
       at: Math.max(0, Math.floor((new Date(s.submitTime).getTime() - startMs) / 1000)),
       result: s.judgeResult,
@@ -87,7 +116,7 @@ const loadContext = async (cid) => {
   for (const h of hackRows) {
     hacks.push({
       hackId: h.hackId,
-      hackerUid: Number(h.hackerUid),
+      hackerKey: uidToKey.get(Number(h.hackerUid)) || null,
       targetSid: Number(h.targetSid),
       idx: pidToIdx.get(Number(h.pid)),
       success: h.status === 'success',
@@ -95,16 +124,18 @@ const loadContext = async (cid) => {
     });
   }
 
-  const ctx = { contest, cfg, startMs, durationSec, problemInfo, weights, players, events, hacks };
+  const ctx = { contest, cfg, startMs, durationSec, problemInfo, weights, participants, events, hacks };
   cache.set(key, { at: Date.now(), ctx });
   return ctx;
 };
 
 // ---- 赛制归约器：事件流 -> 每participant每题单元格 + 总量 ----
 
-const newRow = (user) => ({
-  key: `u${user.uid}`,
-  user: { uid: user.uid, name: user.name, rating: user.rating },
+const newRow = (p) => ({
+  key: p.key,
+  user: { uid: p.uid, name: p.name, rating: p.rating },
+  members: p.members,
+  teamId: p.teamId,
   totalScore: 0,
   usedTime: 0,
   solved: 0,
@@ -118,10 +149,10 @@ const newRow = (user) => ({
 // 单元格 { score(加权), time(运行ms), tries, pending, masked }
 const reduceScoreFormats = (ctx, events, { maskAfter, takeMax }) => {
   const rows = new Map();
-  for (const u of ctx.players.values()) rows.set(Number(u.uid), newRow(u));
+  for (const p of ctx.participants.values()) rows.set(p.key, newRow(p));
 
   for (const e of events) {
-    const row = rows.get(e.uid);
+    const row = rows.get(e.key);
     if (!row) continue;
     let cell = row.detail[e.idx];
     if (!cell) cell = row.detail[e.idx] = { score: 0, time: 0, tries: 0, pending: 0, masked: 0, rawScore: 0, counted: false };
@@ -158,11 +189,11 @@ const reduceScoreFormats = (ctx, events, { maskAfter, takeMax }) => {
 // acm: 单元格 { ac, time(过题秒), tries(AC前错误数), pending, masked }
 const reduceAcm = (ctx, events, { maskAfter }) => {
   const rows = new Map();
-  for (const u of ctx.players.values()) rows.set(Number(u.uid), newRow(u));
+  for (const p of ctx.participants.values()) rows.set(p.key, newRow(p));
   const wrongTrySec = (ctx.cfg.penalty && ctx.cfg.penalty.wrongTryMinutes || 20) * 60;
 
   for (const e of events) {
-    const row = rows.get(e.uid);
+    const row = rows.get(e.key);
     if (!row) continue;
     let cell = row.detail[e.idx];
     if (!cell) cell = row.detail[e.idx] = { ac: false, time: 0, tries: 0, pending: 0, masked: 0 };
@@ -192,7 +223,7 @@ const reduceAcm = (ctx, events, { maskAfter }) => {
 // 单元格 { ac, points, time(过题秒), tries, pending, masked, hacked }
 const reduceCf = (ctx, events, { maskAfter, tLimit }) => {
   const rows = new Map();
-  for (const u of ctx.players.values()) rows.set(Number(u.uid), newRow(u));
+  for (const p of ctx.participants.values()) rows.set(p.key, newRow(p));
   const cf = ctx.cfg.cf || {};
   const decay = Number(cf.decayPerMinuteRatio) || 0;
   const minRatio = Number(cf.minRatio) || 0;
@@ -208,7 +239,7 @@ const reduceCf = (ctx, events, { maskAfter, tLimit }) => {
   }
 
   for (const e of events) {
-    const row = rows.get(e.uid);
+    const row = rows.get(e.key);
     if (!row) continue;
     let cell = row.detail[e.idx];
     if (!cell) cell = row.detail[e.idx] = { ac: false, points: 0, time: 0, tries: 0, pending: 0, masked: 0, hacked: false };
@@ -246,7 +277,7 @@ const reduceCf = (ctx, events, { maskAfter, tLimit }) => {
     // hacker 得分
     let hackScore = 0, hackOk = 0, hackFail = 0;
     for (const h of ctx.hacks) {
-      if (h.hackerUid !== row.user.uid || h.at > horizon) continue;
+      if (h.hackerKey !== row.key || h.at > horizon) continue;
       if (maskAfter != null && h.at >= maskAfter) continue;
       if (h.success) { hackScore += Number(cf.hackReward) || 0; hackOk++; }
       else { hackScore -= Number(cf.hackFailPenalty) || 0; hackFail++; }
@@ -305,7 +336,7 @@ const markFirstBlood = (ctx, events, rows, format, maskAfter) => {
     if (maskAfter != null && e.at >= maskAfter) continue;
     const full = acBased ? e.result === AC_RESULT : e.score === 100;
     if (!full) continue;
-    const row = rows.get(e.uid);
+    const row = rows.get(e.key);
     const cell = row && row.detail[e.idx];
     if (cell && (acBased ? cell.ac : cell.rawScore === 100)) {
       cell.firstBlood = true;
@@ -356,12 +387,13 @@ const computeStandings = async (cid, options = {}) => {
 
 // ---- 选手/队 分数+排名时间线（图表用）----
 
-const participantTimeline = async (cid, uid, options = {}) => {
+// participant 可传 participantKey（'u<uid>'/'t<teamId>'）或裸 uid（个人模式向后兼容）
+const participantTimeline = async (cid, participant, options = {}) => {
   const ctx = await loadContext(cid);
   if (!ctx) return null;
   const format = ctx.contest.format || 'oi';
-  const target = Number(uid);
-  if (!ctx.players.has(target)) return { points: [] };
+  const targetKey = /^[ut]\d+$/.test(String(participant)) ? String(participant) : `u${Number(participant)}`;
+  if (!ctx.participants.has(targetKey)) return { points: [] };
 
   const elapsedSec = Math.max(0, Math.floor((Date.now() - ctx.startMs) / 1000));
   let horizon = Math.min(ctx.durationSec, elapsedSec);
@@ -384,7 +416,7 @@ const participantTimeline = async (cid, uid, options = {}) => {
     let mine = null;
     for (let i = 0; i < rank.length; i++) {
       if (i === 0 || !same(rank[i - 1], rank[i])) displayedRank = i + 1;
-      if (rank[i].user.uid === target) { mine = { row: rank[i], rank: displayedRank }; break; }
+      if (rank[i].key === targetKey) { mine = { row: rank[i], rank: displayedRank }; break; }
     }
     if (mine) {
       points.push({
@@ -395,7 +427,7 @@ const participantTimeline = async (cid, uid, options = {}) => {
       });
     }
   }
-  return { points, playerCount: ctx.players.size, durationSec: ctx.durationSec, horizonSec: horizon, format };
+  return { points, playerCount: ctx.participants.size, durationSec: ctx.durationSec, horizonSec: horizon, format };
 };
 
 // ---- 最终榜固化（closeContest 时调用）----

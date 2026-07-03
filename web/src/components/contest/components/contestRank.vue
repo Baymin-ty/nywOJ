@@ -30,9 +30,12 @@
         {{ scope.row.rank }}
       </template>
     </el-table-column>
-    <el-table-column label="用户名" fixed="left" max-width="15%" min-width="150px">
+    <el-table-column :label="meta.teamMode ? '队伍' : '用户名'" fixed="left" max-width="15%" min-width="150px">
       <template #default="scope">
         <span class="player-name" @click.stop="openPlayerChart(scope.row)">{{ scope.row.user.name }}</span>
+        <div v-if="scope.row.members && scope.row.members.length" class="attach team-members-line">
+          {{ scope.row.members.map(m => m.name).join(' / ') }}
+        </div>
       </template>
     </el-table-column>
     <el-table-column :label="isAcm ? '过题数' : isCf ? '得分' : '总分'" fixed="left" max-width="10%" min-width="100px">
@@ -372,7 +375,7 @@ export default {
       this.chartUid = row.user.uid;
       this.chartVisible = true;
       this.chartLoading = true;
-      axios.post('/api/contest/getParticipantTimeline', { cid: this.cid, uid: row.user.uid }).then(res => {
+      axios.post('/api/contest/getParticipantTimeline', { cid: this.cid, participant: row.key }).then(res => {
         this.chartData = res.data;
         this.chartLoading = false;
         this.renderPlayerChart();
@@ -547,6 +550,7 @@ export default {
       return style;
     },
     tableRowClassName(obj) {
+      if (obj.row.mine !== undefined) return obj.row.mine ? 'success' : '';
       return (obj.row.user.uid === store.state.uid ? 'success' : '');
     },
     cellClassName({ column, columnIndex }) {
@@ -554,6 +558,8 @@ export default {
     },
     getExSubmission(row, column) {
       this.isProblem = false;
+      // 组队模式：提交按 uid 存储，单元格点击弹窗暂不支持按队聚合
+      if (this.meta.teamMode) return;
       if (column.index - 2 < 0) return;
       if (column.index - 2 === 0 && row.submitted) {
         this.dialogVisible = true;
@@ -648,6 +654,10 @@ export default {
 
 .player-name:hover {
   text-decoration: underline;
+}
+
+.team-members-line {
+  margin-top: 2px;
 }
 
 .rank-pagination {

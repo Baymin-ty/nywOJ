@@ -173,6 +173,7 @@ exports.getContestInfo = handler(async (req, res) => {
     manage: caps.manage,
     hack: caps.canHack,
     viewHacks: caps.canViewHacks,
+    teamMode: caps.teamMode,
   };
   contest.format = normalizeFormat(contest.format);
   contest.type = formatLabel(contest.format);
@@ -678,6 +679,13 @@ exports.getRankAt = handler(async (req, res) => {
     }
   }
 
+  // 组队模式：标记「我的队」用于高亮（成员含当前用户）
+  const viewerUid = req.session.uid;
+  for (const row of result.rank) {
+    row.mine = row.user.uid === viewerUid ||
+      (Array.isArray(row.members) && row.members.some((m) => m.uid === viewerUid));
+  }
+
   return ok(res, {
     total: result.rank.length,
     pageId,
@@ -685,6 +693,7 @@ exports.getRankAt = handler(async (req, res) => {
     data: result.rank.slice(offset, offset + limit),
     problem: result.problem,
     format: result.format,
+    teamMode: !!(v.cfg.team && v.cfg.team.enabled),
     atSec: result.atSec,
     horizonSec: result.horizonSec,
     durationSec: result.durationSec,
@@ -694,14 +703,15 @@ exports.getRankAt = handler(async (req, res) => {
   });
 });
 
-// 单个选手（队）的分数+排名时间线（选手曲线图）
+// 单个选手（队）的分数+排名时间线（选手曲线图）。participant 可传 uid 或 't<teamId>'。
 exports.getParticipantTimeline = handler(async (req, res) => {
-  const { cid, uid } = req.body;
+  const { cid } = req.body;
+  const participant = req.body.participant != null ? req.body.participant : req.body.uid;
   const v = await loadView(req, cid);
   if (!v) return fail(res, '无此比赛');
   if (!v.caps.canViewScoreboard) return res.status(403).end('403 Forbidden');
 
-  const result = await participantTimeline(cid, uid, { masked: v.caps.scoreboardMasked });
+  const result = await participantTimeline(cid, participant, { masked: v.caps.scoreboardMasked });
   if (!result) return fail(res, '无此比赛');
   return ok(res, result);
 });

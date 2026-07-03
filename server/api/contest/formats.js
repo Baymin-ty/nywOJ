@@ -23,6 +23,7 @@ const FORMATS = {
     legacyType: 0,
     preset: () => ({
       scoreboard: { duringContest: 'none', afterEnd: 'public', freeze: { enabled: false, offsetMinutes: 60, revealed: false } },
+      team: { enabled: false, maxSize: 3, allowSelfForm: true },
       submission: { resultVisibility: 'none' },
     }),
   },
@@ -31,6 +32,7 @@ const FORMATS = {
     legacyType: 1,
     preset: () => ({
       scoreboard: { duringContest: 'full', afterEnd: 'public', freeze: { enabled: false, offsetMinutes: 60, revealed: false } },
+      team: { enabled: false, maxSize: 3, allowSelfForm: true },
       submission: { resultVisibility: 'full' },
     }),
   },
@@ -39,6 +41,7 @@ const FORMATS = {
     legacyType: 0,
     preset: () => ({
       scoreboard: { duringContest: 'full', afterEnd: 'public', freeze: { enabled: true, offsetMinutes: 60, revealed: false } },
+      team: { enabled: false, maxSize: 3, allowSelfForm: true },
       submission: { resultVisibility: 'full' },
       penalty: { wrongTryMinutes: 20 },
     }),
@@ -48,6 +51,7 @@ const FORMATS = {
     legacyType: 0,
     preset: () => ({
       scoreboard: { duringContest: 'full', afterEnd: 'public', freeze: { enabled: false, offsetMinutes: 60, revealed: false } },
+      team: { enabled: false, maxSize: 3, allowSelfForm: true },
       submission: { resultVisibility: 'full' },
       // weight 即题目初始分（如 500/1000/...）。得分随过题时刻线性衰减到
       // minRatio，每次错误提交 −wrongPenalty；hack 成功/失败 ±reward/penalty。
@@ -135,6 +139,18 @@ const validateConfigPatch = (format, patch) => {
       check(Number.isInteger(v) && v >= 0 && v <= 1000, 'penalty.wrongTryMinutes 必须是 0-1000 的整数');
     }
   }
+  const team = patch.team;
+  if (team !== undefined) {
+    check(isPlainObject(team), 'team 必须是对象');
+    if (isPlainObject(team)) {
+      if (team.enabled !== undefined) check(typeof team.enabled === 'boolean', 'team.enabled 必须是布尔');
+      if (team.allowSelfForm !== undefined) check(typeof team.allowSelfForm === 'boolean', 'team.allowSelfForm 必须是布尔');
+      if (team.maxSize !== undefined) {
+        const v = Number(team.maxSize);
+        check(Number.isInteger(v) && v >= 1 && v <= 20, 'team.maxSize 必须是 1-20 的整数');
+      }
+    }
+  }
   const cf = patch.cf;
   if (cf !== undefined) {
     check(isPlainObject(cf), 'cf 必须是对象');
@@ -159,7 +175,7 @@ const validateConfigPatch = (format, patch) => {
     }
   }
   for (const key of Object.keys(patch)) {
-    if (!['scoreboard', 'submission', 'penalty', 'cf'].includes(key)) errors.push(`未知配置项 ${key}`);
+    if (!['scoreboard', 'submission', 'penalty', 'cf', 'team'].includes(key)) errors.push(`未知配置项 ${key}`);
   }
   return errors;
 };

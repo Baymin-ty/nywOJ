@@ -67,12 +67,14 @@ const capabilities = (contest, cfg, status, viewer) => {
   const liveScoreboard = cfg.scoreboard.duringContest === 'full';
   // 进行期间选手能否看到自己提交的评测结果（OI 式 = 不能，全部遮蔽）
   const liveResults = cfg.submission.resultVisibility === 'full';
+  const teamMode = !!(cfg.team && cfg.team.enabled);
 
   return {
+    teamMode,
     // 进入比赛页（看介绍等基本信息）
     canEnter: isPublic || isReged || isManager,
-    // 报名（公开赛、未截止、未报名）
-    canRegister: status < 2 && isPublic && !isReged,
+    // 个人报名（组队模式走队伍流程，不走此按钮）
+    canRegister: status < 2 && isPublic && !isReged && !teamMode,
     // 「参加」：看题/提交入口
     canJoin: (isReged && status > 0) || isManager,
     // 查看题目（进行中限选手；结束后公开赛任何人、私有赛选手）

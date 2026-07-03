@@ -73,6 +73,15 @@
               </template>
               <contestRank ref="rank" :can-manage="canManage" />
             </el-tab-pane>
+            <el-tab-pane name="team" v-if="teamModeOn && ($store.state.uid || canManage)">
+              <template #label>
+                <el-icon style="margin: 4px;">
+                  <UserFilled />
+                </el-icon>
+                队伍
+              </template>
+              <teamPanel ref="team" :can-manage="canManage" @changed="all" />
+            </el-tab-pane>
             <el-tab-pane name="hack" v-if="contestInfo.format === 'cf' && (hackAuth || viewHacksAuth)">
               <template #label>
                 <el-icon style="margin: 4px;">
@@ -134,6 +143,17 @@
                       <span v-if="rules.freezeEnabled" class="rules-hint" style="margin: 0 0 0 8px;">
                         结束前分钟数
                       </span>
+                    </el-form-item>
+                    <el-form-item label="组队参赛">
+                      <el-switch v-model="rules.teamEnabled" size="large" active-text="开启" inactive-text="关闭"
+                        :disabled="tmpInfo.done" />
+                      <template v-if="rules.teamEnabled">
+                        <el-input-number v-model="rules.teamMaxSize" :min="1" :max="20" :disabled="tmpInfo.done"
+                          size="small" style="margin-left: 12px; width: 110px;" />
+                        <span class="rules-hint" style="margin: 0 0 0 8px;">每队上限</span>
+                        <el-checkbox v-model="rules.teamSelfForm" :disabled="tmpInfo.done"
+                          style="margin-left: 12px;">允许自由组队</el-checkbox>
+                      </template>
                     </el-form-item>
                     <template v-if="tmpInfo.format === 'cf'">
                       <el-form-item label="Pretest 终测">
@@ -324,6 +344,7 @@ import contestRank from './components/contestRank.vue'
 import contestProblemList from './components/contestProblemList.vue'
 import problemManage from './components/problemManage.vue'
 import hackPanel from './components/hackPanel.vue'
+import teamPanel from './components/teamPanel.vue'
 import CollaboratorPanel from '@/components/permission/CollaboratorPanel.vue'
 
 export default {
@@ -334,6 +355,7 @@ export default {
     contestProblemList,
     problemManage,
     hackPanel,
+    teamPanel,
     CollaboratorPanel,
   },
   computed: {
@@ -352,6 +374,9 @@ export default {
     isOwner() {
       return (this.contestInfo && this.contestInfo.host === this.$store.state.uid)
         || this.$can('user.role.admin');
+    },
+    teamModeOn() {
+      return !!(this.contestInfo.auth && this.contestInfo.auth.teamMode);
     },
     rejudgeContestConfirmTitle() {
       if (this.tmpInfo && this.tmpInfo.done) {
@@ -392,12 +417,12 @@ export default {
       ],
       // 赛制预设默认（与 server/api/contest/formats.js 保持一致）
       formatPresets: {
-        oi: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false },
-        ioi: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false },
-        acm: { liveScoreboard: true, liveResults: true, freezeEnabled: true, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false },
-        cf: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: true, hackEnabled: true },
+        oi: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true },
+        ioi: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true },
+        acm: { liveScoreboard: true, liveResults: true, freezeEnabled: true, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true },
+        cf: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: true, hackEnabled: true, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true },
       },
-      rules: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false },
+      rules: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true },
       ratingPreviewVisible: false,
       ratingPreviewLoading: false,
       ratingPreviewRows: [],
@@ -567,6 +592,9 @@ export default {
         freezeMinutes: freeze && freeze.offsetMinutes != null ? freeze.offsetMinutes : preset.freezeMinutes,
         pretestEnabled: cf && cf.pretestEnabled !== undefined ? !!cf.pretestEnabled : preset.pretestEnabled,
         hackEnabled: cf && cf.hackEnabled !== undefined ? !!cf.hackEnabled : preset.hackEnabled,
+        teamEnabled: config && config.team && config.team.enabled !== undefined ? !!config.team.enabled : preset.teamEnabled,
+        teamMaxSize: config && config.team && config.team.maxSize != null ? config.team.maxSize : preset.teamMaxSize,
+        teamSelfForm: config && config.team && config.team.allowSelfForm !== undefined ? !!config.team.allowSelfForm : preset.teamSelfForm,
       };
     },
     // 只保存与预设不同的键；与预设完全一致则清空覆盖（config=null）
@@ -597,6 +625,11 @@ export default {
         if (this.rules.hackEnabled !== preset.hackEnabled) cfPatch.hackEnabled = this.rules.hackEnabled;
         if (Object.keys(cfPatch).length) patch.cf = cfPatch;
       }
+      const teamPatch = {};
+      if (this.rules.teamEnabled !== preset.teamEnabled) teamPatch.enabled = this.rules.teamEnabled;
+      if (this.rules.teamEnabled && this.rules.teamMaxSize !== preset.teamMaxSize) teamPatch.maxSize = this.rules.teamMaxSize;
+      if (this.rules.teamEnabled && this.rules.teamSelfForm !== preset.teamSelfForm) teamPatch.allowSelfForm = this.rules.teamSelfForm;
+      if (Object.keys(teamPatch).length) patch.team = teamPatch;
       return Object.keys(patch).length ? patch : null;
     },
     checkContest() {
