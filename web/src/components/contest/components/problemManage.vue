@@ -47,6 +47,24 @@
             </el-icon>
           </template>
         </el-table-column>
+        <el-table-column label="体检" min-width="10%">
+          <template #default="scope">
+            <el-popover v-if="healthOf(scope.row)" placement="top" width="360" trigger="hover">
+              <template #reference>
+                <span class="health-dot" :class="'health-' + healthOf(scope.row).level" />
+              </template>
+              <div v-for="(item, i) in healthOf(scope.row).items" :key="i" class="health-item">
+                <el-tag size="small" :type="{ error: 'danger', warn: 'warning', ok: 'success' }[item.level]">
+                  {{ { error: '错误', warn: '警告', ok: '正常' }[item.level] }}
+                </el-tag>
+                <span class="health-title">{{ item.title }}</span>
+                <div v-if="item.detail" class="health-detail">{{ item.detail }}</div>
+              </div>
+            </el-popover>
+            <span v-else-if="scope.row.idx === undefined" class="health-unsaved">未保存</span>
+            <span v-else>/</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="weight" label="满分" min-width="20%">
           <template #default="scope">
             <el-input v-model="scope.row.weight" style="height:25px; width: 60px;" />
@@ -81,6 +99,7 @@ export default {
       cid: 0,
       currentPage: 1,
       addpid: '',
+      healthByIdx: {},
     }
   },
   methods: {
@@ -89,9 +108,27 @@ export default {
         cid: this.cid
       }).then(res => {
         this.problemList = res.data.data;
+        this.fetchHealth();
       }).catch(err => {
         this.$message.error('获取题目列表失败' + err.message);
       });
+    },
+    // 每题体检状态点：checkContest 的题目级结果按 idx 聚合，级别取最严重
+    fetchHealth() {
+      axios.post('/api/contest/checkContest', { cid: this.cid }).then(res => {
+        const byIdx = {};
+        const rank = { error: 2, warn: 1, ok: 0 };
+        for (const c of res.data.data.checks || []) {
+          if (c.scope !== 'problem' || c.idx == null) continue;
+          if (!byIdx[c.idx]) byIdx[c.idx] = { level: 'ok', items: [] };
+          byIdx[c.idx].items.push(c);
+          if (rank[c.level] > rank[byIdx[c.idx].level]) byIdx[c.idx].level = c.level;
+        }
+        this.healthByIdx = byIdx;
+      }).catch(() => { this.healthByIdx = {}; });
+    },
+    healthOf(row) {
+      return row.idx !== undefined ? this.healthByIdx[row.idx] : null;
     },
     addProblem() {
       this.addpid = parseInt(this.addpid);
@@ -173,5 +210,45 @@ export default {
 
 .chosenClass {
   background-color: #f1f1f1;
+}
+
+.health-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.health-ok {
+  background: #67c23a;
+}
+
+.health-warn {
+  background: #e6a23c;
+}
+
+.health-error {
+  background: #f56c6c;
+}
+
+.health-unsaved {
+  color: #909399;
+  font-size: 12px;
+}
+
+.health-item+.health-item {
+  margin-top: 6px;
+}
+
+.health-title {
+  margin-left: 6px;
+  font-size: 13px;
+}
+
+.health-detail {
+  color: #909399;
+  font-size: 12px;
+  margin: 2px 0 0 2px;
 }
 </style>

@@ -146,19 +146,19 @@
                         结束前分钟数
                       </span>
                     </el-form-item>
-                    <el-form-item v-if="tmpInfo.format === 'homework'" label="允许迟交">
+                    <el-form-item v-if="tmpInfo.format === 'homework'" label="允许迟交" class="auto-height-row">
                       <el-switch v-model="rules.lateEnabled" size="large" active-text="开启" inactive-text="关闭"
                         :disabled="tmpInfo.done" />
                       <template v-if="rules.lateEnabled">
                         <el-input-number v-model="rules.lateWindowMinutes" :min="1" :max="1000000"
-                          :disabled="tmpInfo.done" size="small" style="margin-left: 12px; width: 120px;" />
-                        <span class="rules-hint" style="margin: 0 0 0 8px;">截止后分钟数</span>
+                          :disabled="tmpInfo.done" size="small" style="margin-left: 12px; width: 110px;" />
+                        <span class="rules-hint" style="margin: 0 0 0 6px;">截止后分钟数</span>
                         <el-input-number v-model="rules.lateScoreRatio" :min="0" :max="1" :step="0.1"
-                          :disabled="tmpInfo.done" size="small" style="margin-left: 12px; width: 100px;" />
-                        <span class="rules-hint" style="margin: 0 0 0 8px;">得分系数</span>
+                          :disabled="tmpInfo.done" size="small" style="margin-left: 12px; width: 90px;" />
+                        <span class="rules-hint" style="margin: 0 0 0 6px;">得分系数</span>
                       </template>
                     </el-form-item>
-                    <el-form-item label="组队参赛">
+                    <el-form-item label="组队参赛" class="auto-height-row">
                       <el-switch v-model="rules.teamEnabled" size="large" active-text="开启" inactive-text="关闭"
                         :disabled="tmpInfo.done" />
                       <template v-if="rules.teamEnabled">
@@ -197,16 +197,19 @@
                       </el-select>
                     </el-form-item>
                     <el-form-item class="contest-action-row">
-                      <el-button type="danger" @click="updateContest" :disabled="tmpInfo.done">更新比赛</el-button>
-                      <el-button type="primary" :disabled="tmpInfo.done"
-                        @click="resetTmpInfo">重新设置</el-button>
+                      <el-button type="primary" @click="updateContest" :disabled="tmpInfo.done">
+                        {{ isHomework ? '更新作业' : '更新比赛' }}</el-button>
+                      <el-button :disabled="tmpInfo.done" @click="resetTmpInfo">重新设置</el-button>
                       <el-button type="info" :disabled="!contestInfo.ratingEnabled" :loading="ratingPreviewLoading"
                         @click="previewContestRating">
                         预览 Rating
                       </el-button>
                       <el-button type="success" plain :loading="healthLoading" @click="checkContest">
-                        检查比赛
+                        {{ isHomework ? '检查作业' : '检查比赛' }}
                       </el-button>
+                    </el-form-item>
+                    <el-divider content-position="left" class="rules-divider danger-divider">危险操作</el-divider>
+                    <el-form-item class="contest-action-row">
                       <el-popconfirm v-if="contestInfo.format === 'cf'" confirm-button-text="确认" cancel-button-text="取消"
                         title="确认启动终测? pretest 通过的提交将按全量数据+hack 数据重测" @confirm="startSystest">
                         <template #reference>
@@ -220,15 +223,16 @@
                         @confirm="reJudgeContest">
                         <template #reference>
                           <el-button type="warning">
-                            重测比赛
+                            {{ isHomework ? '重测作业' : '重测比赛' }}
                           </el-button>
                         </template>
                       </el-popconfirm>
-                      <el-popconfirm confirm-button-text="确认" cancel-button-text="取消" title="确认结束比赛?(结束后无法再修改比赛)"
+                      <el-popconfirm confirm-button-text="确认" cancel-button-text="取消"
+                        :title="isHomework ? '确认结束作业?(结束后无法再修改、不再接受迟交)' : '确认结束比赛?(结束后无法再修改比赛)'"
                         @confirm="closeContest">
                         <template #reference>
                           <el-button type="danger" :disabled="tmpInfo.done">
-                            结束比赛
+                            {{ isHomework ? '结束作业' : '结束比赛' }}
                           </el-button>
                         </template>
                       </el-popconfirm>
@@ -914,8 +918,13 @@ export default {
   height: 35px;
 }
 
-.contest-action-row {
+.contest-action-row,
+.auto-height-row {
   height: auto;
+}
+
+.auto-height-row :deep(.el-form-item__content) {
+  row-gap: 4px;
 }
 
 .rules-divider {
@@ -926,6 +935,10 @@ export default {
   color: #909399;
   font-size: 12px;
   margin-bottom: 8px;
+}
+
+.danger-divider :deep(.el-divider__text) {
+  color: #f56c6c;
 }
 
 .health-summary {

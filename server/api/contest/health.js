@@ -37,7 +37,21 @@ const checkContest = async (cid) => {
   else add('ok', 'contest', '支持语言已设置', null);
 
   if (!contest.length || contest.length <= 0) add('error', 'contest', '比赛时长非法', `length=${contest.length}`);
+  if (status === 1) add('warn', 'contest', '比赛正在进行', '修改赛制/题目会影响进行中的比赛。');
   if (status === 3) add('warn', 'contest', '比赛已结束', '体检结果仅供参考。');
+
+  const team = cfg.team || {};
+  if (team.enabled) {
+    const maxSizeOk = Number.isInteger(Number(team.maxSize)) && team.maxSize >= 1;
+    if (!maxSizeOk) add('error', 'contest', '队伍人数上限非法', `team.maxSize=${team.maxSize}`);
+    else add('ok', 'contest', `组队参赛（每队上限 ${team.maxSize} 人）`, null);
+    const loner = await db.one(
+      'SELECT COUNT(*) AS cnt FROM contestPlayer WHERE cid=? AND teamId IS NULL', [cid]
+    );
+    if (loner && Number(loner.cnt) > 0) {
+      add('warn', 'contest', `${loner.cnt} 名选手未加入队伍`, '组队模式下未组队选手的提交不计入榜单。');
+    }
+  }
 
   if (format === 'homework') {
     const late = cfg.late || {};
@@ -63,7 +77,7 @@ const checkContest = async (cid) => {
   }
 
   const problems = await db.query(
-    `SELECT cp.idx,cp.pid,cp.weight,p.title,p.judgeProfile,p.timeLimit,p.memoryLimit
+    `SELECT cp.idx,cp.pid,cp.weight,p.title,p.judgeProfile,p.timeLimit,p.memoryLimit,p.isPublic
        FROM contestProblem cp INNER JOIN problem p ON p.pid=cp.pid
       WHERE cp.cid=? ORDER BY cp.idx`,
     [cid]
@@ -80,6 +94,16 @@ const checkContest = async (cid) => {
   for (const p of problems) {
     const idx = p.idx;
     const tag = `#${idx} ${p.title}`;
+
+    // 泄题：比赛未结束但题目在题库公开可见
+    if (status < 3 && p.isPublic) {
+      add('warn', 'problem', `${tag}：题目已在题库公开`, '比赛结束前公开题目会泄题，建议设为私有。', idx);
+    }
+
+    // weight：分数制赛制（oi/ioi/homework）按 weight 加权，cf 以 weight 为初始分
+    if (format !== 'acm' && (!Number.isFinite(Number(p.weight)) || Number(p.weight) <= 0)) {
+      add('error', 'problem', `${tag}：满分（weight）非法`, `weight=${p.weight}，该题得分恒为 0。`, idx);
+    }
 
     // 数据与配置
     const cfgRaw = await getFile(`./data/${p.pid}/config.json`).catch(() => null);
