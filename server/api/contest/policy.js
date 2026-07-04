@@ -68,6 +68,13 @@ const capabilities = (contest, cfg, status, viewer) => {
   // 进行期间选手能否看到自己提交的评测结果（OI 式 = 不能，全部遮蔽）
   const liveResults = cfg.submission.resultVisibility === 'full';
   const teamMode = !!(cfg.team && cfg.team.enabled);
+  // 迟交窗口（作业）：deadline 后 windowMinutes 分钟内仍可提交，得分打折
+  const late = cfg.late || {};
+  const inLateWindow = (() => {
+    if (!late.enabled || status !== 2 || done) return false;
+    const deadlineMs = new Date(contest.start).getTime() + contest.length * 60 * 1000;
+    return Date.now() <= deadlineMs + (Number(late.windowMinutes) || 0) * 60 * 1000;
+  })();
 
   return {
     teamMode,
@@ -79,8 +86,10 @@ const capabilities = (contest, cfg, status, viewer) => {
     canJoin: (isReged && status > 0) || isManager,
     // 查看题目（进行中限选手；结束后公开赛任何人、私有赛选手）
     canViewProblems: (isReged && status > 0) || isManager || (publicOrReged && done),
-    // 提交（严格比赛时间窗内）
-    canSubmit: isReged && status === 1,
+    // 提交（比赛时间窗内；作业另有迟交窗口）
+    canSubmit: isReged && (status === 1 || inLateWindow),
+    // 当前处于迟交窗口（前端提示 + 提交打折标记）
+    inLateWindow,
     // 提交记录列表（进行中选手可见——OI 下行内容另行遮蔽；结束后按公开性）
     canViewSubmissionList:
       (ended && publicOrReged) || (isReged && status > 0) || isManager,

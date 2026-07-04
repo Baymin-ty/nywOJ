@@ -46,6 +46,18 @@ const FORMATS = {
       penalty: { wrongTryMinutes: 20 },
     }),
   },
+  homework: {
+    label: '作业',
+    legacyType: 1, // 旧读取方按 IOI 语义处理（即时可看结果）
+    preset: () => ({
+      scoreboard: { duringContest: 'full', afterEnd: 'public', freeze: { enabled: false, offsetMinutes: 60, revealed: false } },
+      team: { enabled: false, maxSize: 3, allowSelfForm: true },
+      submission: { resultVisibility: 'full' },
+      // 计分 = 每题最高分（IOI 式）；deadline（start+length）后进入迟交窗口，
+      // 迟交提交的得分 × scoreRatio；窗口结束后关闭提交。作业强制 unrated。
+      late: { enabled: true, windowMinutes: 1440, scoreRatio: 0.5 },
+    }),
+  },
   cf: {
     label: 'Codeforces',
     legacyType: 0,
@@ -174,8 +186,23 @@ const validateConfigPatch = (format, patch) => {
       }
     }
   }
+  const late = patch.late;
+  if (late !== undefined) {
+    check(isPlainObject(late), 'late 必须是对象');
+    if (isPlainObject(late)) {
+      if (late.enabled !== undefined) check(typeof late.enabled === 'boolean', 'late.enabled 必须是布尔');
+      if (late.windowMinutes !== undefined) {
+        const v = Number(late.windowMinutes);
+        check(Number.isInteger(v) && v >= 0 && v <= 1000000, 'late.windowMinutes 必须是非负整数');
+      }
+      if (late.scoreRatio !== undefined) {
+        const v = Number(late.scoreRatio);
+        check(Number.isFinite(v) && v >= 0 && v <= 1, 'late.scoreRatio 必须在 [0,1]');
+      }
+    }
+  }
   for (const key of Object.keys(patch)) {
-    if (!['scoreboard', 'submission', 'penalty', 'cf', 'team'].includes(key)) errors.push(`未知配置项 ${key}`);
+    if (!['scoreboard', 'submission', 'penalty', 'cf', 'team', 'late'].includes(key)) errors.push(`未知配置项 ${key}`);
   }
   return errors;
 };

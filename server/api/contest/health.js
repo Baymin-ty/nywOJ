@@ -39,6 +39,20 @@ const checkContest = async (cid) => {
   if (!contest.length || contest.length <= 0) add('error', 'contest', '比赛时长非法', `length=${contest.length}`);
   if (status === 3) add('warn', 'contest', '比赛已结束', '体检结果仅供参考。');
 
+  if (format === 'homework') {
+    const late = cfg.late || {};
+    if (late.enabled) {
+      if (!Number(late.windowMinutes)) {
+        add('warn', 'contest', '迟交窗口为 0 分钟', '开启了迟交但窗口为 0，等同不允许迟交。');
+      } else {
+        add('ok', 'contest', `迟交窗口 ${late.windowMinutes} 分钟（得分 × ${late.scoreRatio}）`, null);
+      }
+    }
+    if (contest.ratingEnabled) {
+      add('warn', 'contest', '作业不参与 Rating', '作业强制 unrated，Rating 开关将被忽略。');
+    }
+  }
+
   const freeze = cfg.scoreboard && cfg.scoreboard.freeze;
   if (freeze && freeze.enabled) {
     if ((freeze.offsetMinutes || 0) >= contest.length) {

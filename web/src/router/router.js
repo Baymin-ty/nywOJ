@@ -40,6 +40,7 @@ const discussionEdit = () => import(/* webpackChunkName: "page-discussion-edit" 
 const discussionCreateRedirect = () => import(/* webpackChunkName: "page-discussion-create" */ '@/components/discussion/discussionCreateRedirect.vue')
 
 const contestList = () => import(/* webpackChunkName: "page-contest-list" */ '@/components/contest/contestList.vue')
+const homeworkList = () => import(/* webpackChunkName: "page-homework-list" */ '@/components/contest/homeworkList.vue')
 const contestMain = () => import(/* webpackChunkName: "page-contest-main" */ '@/components/contest/contestMain.vue')
 const contestPlayer = () => import(/* webpackChunkName: "page-contest-player" */ '@/components/contest/contestPlayer.vue')
 const contestProblem = () => import(/* webpackChunkName: "page-contest-problem" */ '@/components/contest/contestProblem.vue')
@@ -539,6 +540,12 @@ const router = createRouter({
         path: '/contest', component: contestList,
     }, {
         meta: {
+            title: '作业列表',
+            activeTitle: '/homework'
+        },
+        path: '/homework', component: homeworkList,
+    }, {
+        meta: {
             title: '比赛',
             activeTitle: '/contest'
         },
@@ -631,6 +638,7 @@ router.beforeEach(async (to, from, next) => {
             /^\/p\/id\/\d+$/.test(to.path) ||
             /^\/p\/\d+$/.test(to.path) ||
             to.path === '/contest' ||
+            to.path === '/homework' ||
             to.path === '/submission' ||
             to.path === '/submissions' ||
             to.path === '/s' ||

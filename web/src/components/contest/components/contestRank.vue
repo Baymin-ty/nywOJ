@@ -50,6 +50,10 @@
             hack +{{ scope.row.hackOk || 0 }}/-{{ scope.row.hackFail || 0 }}
           </div>
         </template>
+        <template v-else-if="isHomework">
+          <div class="totScore" v-show="scope.row.submitted">{{ scope.row.totalScore }}</div>
+          <div class="attach" v-show="scope.row.submitted">完成 {{ scope.row.solved }}/{{ problemCount }}</div>
+        </template>
         <template v-else>
           <div class="totScore" v-show="scope.row.submitted">{{ scope.row.totalScore }}</div>
           <div class="attach" v-show="scope.row.submitted">({{ scope.row.usedTime }} ms)</div>
@@ -61,6 +65,9 @@
       <template #header>
         <router-link class="rlink" :to="'/contest/' + cid + '/problem/' + idx"> {{ idx }}</router-link>
         <div v-if="!isAcm" class="attach"> ({{ weight }})</div>
+        <div v-if="isHomework && problemStat(idx)" class="attach">
+          {{ problemStat(idx).accepted }}/{{ problemStat(idx).attempted }} 完成
+        </div>
       </template>
       <template #default="scope">
         <template v-if="isAcm">
@@ -99,6 +106,7 @@
           <template v-else>
             <div :style="getScoreStyle(cellOf(scope.row, idx), weight)">
               {{ cellOf(scope.row, idx) ? cellOf(scope.row, idx).score : '/' }}
+              <span v-if="cellOf(scope.row, idx) && cellOf(scope.row, idx).late" class="late-mark">迟</span>
             </div>
             <div v-if="cellOf(scope.row, idx) && cellOf(scope.row, idx).score > 0" class="attach">
               ({{ cellOf(scope.row, idx).time }} ms)
@@ -265,10 +273,20 @@ export default {
     isCf() {
       return this.meta.format === 'cf';
     },
+    isHomework() {
+      return this.meta.format === 'homework';
+    },
+    problemCount() {
+      return Object.keys(this.problems || {}).length;
+    },
     sliderMarks() {
       const marks = {};
       if (this.meta.freezeStartSec != null && this.meta.frozen) {
         marks[this.meta.freezeStartSec] = '封榜';
+      }
+      // 作业：迟交窗口在时间轴上越过 deadline，标出截止点
+      if (this.isHomework && this.meta.durationSec != null && (this.meta.horizonSec || 0) > this.meta.durationSec) {
+        marks[this.meta.durationSec] = '截止';
       }
       return marks;
     },
@@ -320,6 +338,9 @@ export default {
     },
     cellOf(row, idx) {
       return row.detail ? row.detail[idx] : null;
+    },
+    problemStat(idx) {
+      return this.meta.problemStats ? this.meta.problemStats[idx] : null;
     },
     acmCellClass(cell) {
       if (cell.masked) return 'acm-masked';
@@ -683,6 +704,17 @@ export default {
   color: #e6a23c;
   font-weight: 800;
   font-size: 15px;
+}
+
+.late-mark {
+  color: #e6a23c;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid #e6a23c;
+  border-radius: 3px;
+  padding: 0 3px;
+  margin-left: 3px;
+  vertical-align: 1px;
 }
 
 .rank-rating-bar {

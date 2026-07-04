@@ -13,19 +13,19 @@
           </template>
           <el-descriptions :column="6" size="large">
             <el-descriptions-item label="开始时间">{{ contestInfo.start }}</el-descriptions-item>
-            <el-descriptions-item label="结束时间">{{ contestInfo.end }}</el-descriptions-item>
-            <el-descriptions-item label="比赛时长">{{ contestInfo.length }} min</el-descriptions-item>
-            <el-descriptions-item label="比赛类型">{{ contestInfo.type }}</el-descriptions-item>
-            <el-descriptions-item label="比赛状态">
+            <el-descriptions-item :label="isHomework ? '截止时间' : '结束时间'">{{ contestInfo.end }}</el-descriptions-item>
+            <el-descriptions-item :label="isHomework ? '作业时长' : '比赛时长'">{{ contestInfo.length }} min</el-descriptions-item>
+            <el-descriptions-item :label="isHomework ? '类型' : '比赛类型'">{{ contestInfo.type }}</el-descriptions-item>
+            <el-descriptions-item :label="isHomework ? '状态' : '比赛状态'">
               <el-tag style="margin-left: 10px;" :type="tagType[contestInfo.status]">
-                {{ contestInfo.status }}</el-tag>
+                {{ statusDisplay(contestInfo.status) }}</el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="Rating">
+            <el-descriptions-item v-if="!isHomework" label="Rating">
               <el-tag :type="ratingStatusType(contestInfo.ratingStatus)">
                 {{ ratingStatusText(contestInfo.ratingStatus, contestInfo.ratingEnabled) }}
               </el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="参赛人数">
+            <el-descriptions-item :label="isHomework ? '参与人数' : '参赛人数'">
               <router-link class="rlink" :to="'/contest/player/' + contestInfo.cid">
                 <el-icon id="picon" size="13">
                   <UserFilled />
@@ -36,13 +36,15 @@
           </el-descriptions>
           <el-progress :text-inside="true" :stroke-width="16" :percentage="percentage" status="success"
             style="margin: 5px;" />
+          <el-alert v-if="isHomework && contestInfo.auth && contestInfo.auth.inLateWindow" type="warning" show-icon
+            :closable="false" :title="lateNoticeTitle" style="margin: 5px;" />
           <el-tabs v-model="activeName" class="demo-tabs" @tab-change="switchTab">
             <el-tab-pane name="main">
               <template #label>
                 <el-icon style="margin: 4px;">
                   <Place />
                 </el-icon>
-                比赛介绍
+                {{ isHomework ? '作业介绍' : '比赛介绍' }}
               </template>
               <v-md-preview :text="contestInfo.description" style="min-height: 600px;" />
             </el-tab-pane>
@@ -96,7 +98,7 @@
                 <el-icon style="margin: 4px;">
                   <SetUp />
                 </el-icon>
-                比赛管理
+                {{ isHomework ? '作业管理' : '比赛管理' }}
               </template>
               <el-row>
                 <el-col :xs="24" :sm="24" :md="15" style="margin-bottom: 20px;">
@@ -135,7 +137,7 @@
                       <el-switch v-model="rules.liveResults" size="large" active-text="真实分数" inactive-text="全部隐藏"
                         :disabled="tmpInfo.done" />
                     </el-form-item>
-                    <el-form-item label="封榜">
+                    <el-form-item v-if="tmpInfo.format !== 'homework'" label="封榜">
                       <el-switch v-model="rules.freezeEnabled" size="large" active-text="开启" inactive-text="关闭"
                         :disabled="tmpInfo.done" />
                       <el-input-number v-if="rules.freezeEnabled" v-model="rules.freezeMinutes" :min="1" :max="100000"
@@ -143,6 +145,18 @@
                       <span v-if="rules.freezeEnabled" class="rules-hint" style="margin: 0 0 0 8px;">
                         结束前分钟数
                       </span>
+                    </el-form-item>
+                    <el-form-item v-if="tmpInfo.format === 'homework'" label="允许迟交">
+                      <el-switch v-model="rules.lateEnabled" size="large" active-text="开启" inactive-text="关闭"
+                        :disabled="tmpInfo.done" />
+                      <template v-if="rules.lateEnabled">
+                        <el-input-number v-model="rules.lateWindowMinutes" :min="1" :max="1000000"
+                          :disabled="tmpInfo.done" size="small" style="margin-left: 12px; width: 120px;" />
+                        <span class="rules-hint" style="margin: 0 0 0 8px;">截止后分钟数</span>
+                        <el-input-number v-model="rules.lateScoreRatio" :min="0" :max="1" :step="0.1"
+                          :disabled="tmpInfo.done" size="small" style="margin-left: 12px; width: 100px;" />
+                        <span class="rules-hint" style="margin: 0 0 0 8px;">得分系数</span>
+                      </template>
                     </el-form-item>
                     <el-form-item label="组队参赛">
                       <el-switch v-model="rules.teamEnabled" size="large" active-text="开启" inactive-text="关闭"
@@ -172,7 +186,7 @@
                       <el-switch v-model="tmpInfo.isPublic" size="large" active-text="公开" inactive-text="私有"
                         :disabled="tmpInfo.done" />
                     </el-form-item>
-                    <el-form-item label="参与 Rating">
+                    <el-form-item v-if="tmpInfo.format !== 'homework'" label="参与 Rating">
                       <el-switch v-model="tmpInfo.ratingEnabled" size="large" active-text="Rated" inactive-text="Unrated"
                         :disabled="tmpInfo.done" />
                     </el-form-item>
@@ -378,6 +392,14 @@ export default {
     teamModeOn() {
       return !!(this.contestInfo.auth && this.contestInfo.auth.teamMode);
     },
+    isHomework() {
+      return this.contestInfo.format === 'homework';
+    },
+    lateNoticeTitle() {
+      const late = this.contestInfo.config && this.contestInfo.config.late || {};
+      const percent = Math.round((Number(late.scoreRatio) || 0) * 100);
+      return `已过截止时间，迟交窗口开放中：此后提交的得分按 ${percent}% 计`;
+    },
     rejudgeContestConfirmTitle() {
       if (this.tmpInfo && this.tmpInfo.done) {
         return '确认重测该场已结束比赛所有提交? Rating 会等待评测完成后再重算';
@@ -408,21 +430,22 @@ export default {
       },
       needUpdate: ['problemList', 'submission', 'rank', 'manageP', 'hack'],
       avalangList: [],
-      // 已解锁赛制；homework 随 M5 加入
       formatOptions: [
         { id: 'oi', label: 'OI' },
         { id: 'ioi', label: 'IOI' },
         { id: 'acm', label: 'ACM' },
         { id: 'cf', label: 'Codeforces' },
+        { id: 'homework', label: '作业' },
       ],
       // 赛制预设默认（与 server/api/contest/formats.js 保持一致）
       formatPresets: {
-        oi: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true },
-        ioi: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true },
-        acm: { liveScoreboard: true, liveResults: true, freezeEnabled: true, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true },
-        cf: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: true, hackEnabled: true, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true },
+        oi: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true, lateEnabled: false, lateWindowMinutes: 1440, lateScoreRatio: 0.5 },
+        ioi: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true, lateEnabled: false, lateWindowMinutes: 1440, lateScoreRatio: 0.5 },
+        acm: { liveScoreboard: true, liveResults: true, freezeEnabled: true, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true, lateEnabled: false, lateWindowMinutes: 1440, lateScoreRatio: 0.5 },
+        cf: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: true, hackEnabled: true, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true, lateEnabled: false, lateWindowMinutes: 1440, lateScoreRatio: 0.5 },
+        homework: { liveScoreboard: true, liveResults: true, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true, lateEnabled: true, lateWindowMinutes: 1440, lateScoreRatio: 0.5 },
       },
-      rules: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true },
+      rules: { liveScoreboard: false, liveResults: false, freezeEnabled: false, freezeMinutes: 60, pretestEnabled: false, hackEnabled: false, teamEnabled: false, teamMaxSize: 3, teamSelfForm: true, lateEnabled: false, lateWindowMinutes: 1440, lateScoreRatio: 0.5 },
       ratingPreviewVisible: false,
       ratingPreviewLoading: false,
       ratingPreviewRows: [],
@@ -440,6 +463,11 @@ export default {
     },
     ratingTier(rating) {
       return getRatingTier(rating);
+    },
+    // 作业语境的状态文案（等待测评 = 已过 deadline，迟交窗口可能仍开放）
+    statusDisplay(status) {
+      if (!this.isHomework) return status;
+      return { '正在进行': '进行中', '等待测评': '已截止' }[status] || status;
     },
     ratingDeltaText(delta) {
       const value = Number(delta || 0);
@@ -577,12 +605,15 @@ export default {
     applyFormatPreset(format) {
       const preset = this.formatPresets[format];
       if (preset) this.rules = { ...preset };
+      // 作业强制 unrated（服务端也会强制）
+      if (format === 'homework') this.tmpInfo.ratingEnabled = false;
     },
     // 从生效配置（服务端 resolveConfig 结果）初始化规则开关
     initRulesFromConfig(config) {
       const preset = this.formatPresets[this.contestInfo.format] || this.formatPresets.oi;
       const freeze = config && config.scoreboard && config.scoreboard.freeze;
       const cf = config && config.cf;
+      const late = config && config.late;
       this.rules = {
         liveScoreboard: config && config.scoreboard
           ? config.scoreboard.duringContest === 'full' : preset.liveScoreboard,
@@ -595,6 +626,9 @@ export default {
         teamEnabled: config && config.team && config.team.enabled !== undefined ? !!config.team.enabled : preset.teamEnabled,
         teamMaxSize: config && config.team && config.team.maxSize != null ? config.team.maxSize : preset.teamMaxSize,
         teamSelfForm: config && config.team && config.team.allowSelfForm !== undefined ? !!config.team.allowSelfForm : preset.teamSelfForm,
+        lateEnabled: late && late.enabled !== undefined ? !!late.enabled : preset.lateEnabled,
+        lateWindowMinutes: late && late.windowMinutes != null ? late.windowMinutes : preset.lateWindowMinutes,
+        lateScoreRatio: late && late.scoreRatio != null ? late.scoreRatio : preset.lateScoreRatio,
       };
     },
     // 只保存与预设不同的键；与预设完全一致则清空覆盖（config=null）
@@ -624,6 +658,17 @@ export default {
         if (this.rules.pretestEnabled !== preset.pretestEnabled) cfPatch.pretestEnabled = this.rules.pretestEnabled;
         if (this.rules.hackEnabled !== preset.hackEnabled) cfPatch.hackEnabled = this.rules.hackEnabled;
         if (Object.keys(cfPatch).length) patch.cf = cfPatch;
+      }
+      if (this.tmpInfo.format === 'homework') {
+        const latePatch = {};
+        if (this.rules.lateEnabled !== preset.lateEnabled) latePatch.enabled = this.rules.lateEnabled;
+        if (this.rules.lateEnabled && this.rules.lateWindowMinutes !== preset.lateWindowMinutes) {
+          latePatch.windowMinutes = this.rules.lateWindowMinutes;
+        }
+        if (this.rules.lateEnabled && this.rules.lateScoreRatio !== preset.lateScoreRatio) {
+          latePatch.scoreRatio = this.rules.lateScoreRatio;
+        }
+        if (Object.keys(latePatch).length) patch.late = latePatch;
       }
       const teamPatch = {};
       if (this.rules.teamEnabled !== preset.teamEnabled) teamPatch.enabled = this.rules.teamEnabled;
@@ -711,7 +756,7 @@ export default {
           this.timer = setInterval(() => {
             this.frushPercentage();
           }, 60000);
-          document.title = "比赛 — " + this.contestInfo.title;
+          document.title = (this.isHomework ? "作业 — " : "比赛 — ") + this.contestInfo.title;
         }
         else {
           this.$message.error(res.data.message);

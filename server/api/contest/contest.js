@@ -39,8 +39,7 @@ const {
 
 const ptype = ['传统文本比较', 'Special Judge'];
 
-// 已解锁的赛制；homework 随 M5 加入。
-const EDITABLE_FORMATS = ['oi', 'ioi', 'acm', 'cf'];
+const EDITABLE_FORMATS = ['oi', 'ioi', 'acm', 'cf', 'homework'];
 
 exports.canManageContest = canManageContest;
 
@@ -65,9 +64,12 @@ exports.createContest = [
   requirePermission('contest.create'),
   handler(async (req, res) => {
     await ensureContestV2Schema();
+    // format 可选（作业列表页传 'homework'），缺省 oi
+    const format = EDITABLE_FORMATS.includes(req.body.format) ? req.body.format : 'oi';
+    const title = format === 'homework' ? '请输入作业标题' : '请输入比赛标题';
     const r = await db.query(
       'INSERT INTO contest(title,host,start,length,type,isPublic,format) VALUES (?,?,?,?,?,?,?)',
-      ['请输入比赛标题', req.session.uid, new Date(2121, 10, 22), 180, 0, 0, 'oi']
+      [title, req.session.uid, new Date(2121, 10, 22), 180, legacyTypeOf(format), 0, format]
     );
     if (!r.affectedRows) return fail(res, 'error');
     return ok(res, { cid: r.insertId });
@@ -98,9 +100,10 @@ exports.updateContestInfo = [
     if (!EDITABLE_FORMATS.includes(format)) return fail(res, '非法比赛类型');
 
     if (info.isPublic !== true && info.isPublic !== false) return fail(res, '非法isPublic参数');
-    const ratingEnabled = info.ratingEnabled === undefined
-      ? !!contest.ratingEnabled
-      : !!info.ratingEnabled;
+    // 作业强制 unrated（结算侧 rating.js 也有兜底）
+    const ratingEnabled = format === 'homework'
+      ? false
+      : (info.ratingEnabled === undefined ? !!contest.ratingEnabled : !!info.ratingEnabled);
 
     // 配置覆盖（partial patch，null = 清空回 preset 默认）
     let configJson = contest.config;
@@ -128,9 +131,14 @@ exports.getContestList = handler(async (req, res) => {
   await ensureContestRatingSchema();
   const { offset, limit } = paginate(req);
   const visibility = contestListVisibility(req);
+  // kind: 比赛列表与作业列表分离（作业 = format='homework'）
+  const kindCond = req.body.kind === 'homework'
+    ? "c.format='homework'"
+    : "(c.format IS NULL OR c.format<>'homework')";
+  const where = visibility.where ? `${visibility.where} AND ${kindCond}` : `WHERE ${kindCond}`;
   const list = await db.query(
     'SELECT c.cid,c.title,c.start,c.length,c.isPublic,c.type,c.format,c.host,c.done,c.ratingEnabled,u.name as hostName ' +
-    `FROM contest c INNER JOIN userInfo u ON u.uid = c.host ${visibility.where} ORDER BY c.start DESC LIMIT ?,?`,
+    `FROM contest c INNER JOIN userInfo u ON u.uid = c.host ${where} ORDER BY c.start DESC LIMIT ?,?`,
     [...visibility.params, offset, limit]
   );
   for (const c of list) {
@@ -143,7 +151,7 @@ exports.getContestList = handler(async (req, res) => {
     await attachContestRatingStatus(c, status);
     c.playerCnt = await playerCnt(c.cid);
   }
-  const cnt = await db.one(`SELECT COUNT(*) as total FROM contest c ${visibility.where}`, visibility.params);
+  const cnt = await db.one(`SELECT COUNT(*) as total FROM contest c ${where}`, visibility.params);
   return ok(res, { total: cnt.total, data: list });
 });
 
@@ -174,6 +182,8 @@ exports.getContestInfo = handler(async (req, res) => {
     hack: caps.canHack,
     viewHacks: caps.canViewHacks,
     teamMode: caps.teamMode,
+    inLateWindow: caps.inLateWindow,
+    canSubmit: caps.canSubmit,
   };
   contest.format = normalizeFormat(contest.format);
   contest.type = formatLabel(contest.format);
@@ -390,12 +400,14 @@ exports.submit = handler(async (req, res) => {
   if (!cid || !idx) return fail(res, '请确认信息完善');
   if (code.length < 10) return fail(res, '代码太短');
   if (code.length > 1024 * 100) return fail(res, '选手提交的程序源文件必须不大于 100KB。');
-  // 失败信息顺序与旧版一致：先查报名，再查比赛存在/时间窗（= caps.canSubmit）
+  // 失败信息顺序与旧版一致：先查报名，再查比赛存在/时间窗
   if (!(await isReg(uid, cid))) return fail(res, '请先报名比赛');
 
-  const contest = await getContest(cid);
-  if (!contest) return fail(res, '无此比赛');
-  if (contestStatus(contest) !== 1) return fail(res, '非比赛时间');
+  const v = await loadView(req, cid);
+  if (!v) return fail(res, '无此比赛');
+  const contest = v.contest;
+  // 作业迟交窗口内 canSubmit 仍为真（得分由榜单层按提交时刻打折）
+  if (!v.caps.canSubmit) return fail(res, '非比赛时间');
 
   const pinfo = await getProblemByIdx(cid, idx);
   if (!pinfo) return fail(res, '无此题目');
@@ -692,6 +704,7 @@ exports.getRankAt = handler(async (req, res) => {
     pageSize,
     data: result.rank.slice(offset, offset + limit),
     problem: result.problem,
+    problemStats: result.problemStats,
     format: result.format,
     teamMode: !!(v.cfg.team && v.cfg.team.enabled),
     atSec: result.atSec,

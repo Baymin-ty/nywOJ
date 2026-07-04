@@ -186,6 +186,49 @@ const reduceScoreFormats = (ctx, events, { maskAfter, takeMax }) => {
   return rows;
 };
 
+// homework: IOI 式取每题最高分，deadline（durationSec）后的提交得分 × late.scoreRatio。
+// 单元格 late = 计入得分的提交是否迟交；full = 曾获满分（迟交满分也算完成，只是分数打折）。
+// row.solved = 完成题数（完成度视图用）。
+const reduceHomework = (ctx, events, { maskAfter }) => {
+  const rows = new Map();
+  for (const p of ctx.participants.values()) rows.set(p.key, newRow(p));
+  const late = ctx.cfg.late || {};
+  const ratio = late.enabled ? Number(late.scoreRatio) || 0 : 0;
+
+  for (const e of events) {
+    const row = rows.get(e.key);
+    if (!row) continue;
+    let cell = row.detail[e.idx];
+    if (!cell) cell = row.detail[e.idx] = { score: 0, time: 0, tries: 0, pending: 0, masked: 0, rawScore: 0, counted: false, late: false, full: false };
+    if (maskAfter != null && e.at >= maskAfter) { cell.masked++; continue; }
+    row.submitted = true;
+    cell.tries++;
+    if (e.pending) { cell.pending++; continue; }
+    const isLate = e.at > ctx.durationSec;
+    if (e.score === 100) cell.full = true;
+    const weighted = Math.round((e.score * (ctx.weights.get(e.idx) || 100)) / 100);
+    const effective = isLate ? Math.round(weighted * ratio) : weighted;
+    // 取「有效得分」最高的提交（按时提交优先于同分迟交）
+    if (!cell.counted || effective > cell.score || (effective === cell.score && cell.late && !isLate)) {
+      cell.rawScore = e.score;
+      cell.score = effective;
+      cell.time = e.runTime;
+      cell.late = isLate;
+      cell.counted = true;
+    }
+  }
+
+  for (const row of rows.values()) {
+    for (const idx of Object.keys(row.detail)) {
+      const cell = row.detail[idx];
+      row.totalScore += cell.score;
+      if (cell.rawScore > 0) row.usedTime += cell.time;
+      if (cell.full) row.solved++;
+    }
+  }
+  return rows;
+};
+
 // acm: 单元格 { ac, time(过题秒), tries(AC前错误数), pending, masked }
 const reduceAcm = (ctx, events, { maskAfter }) => {
   const rows = new Map();
@@ -323,8 +366,19 @@ const sameOf = (format) => {
 const reducerOf = (format) => {
   if (format === 'acm') return { reduce: reduceAcm, compare: comparators.acm };
   if (format === 'cf') return { reduce: reduceCf, compare: comparators.cf };
+  if (format === 'homework') return { reduce: reduceHomework, compare: comparators.score };
   if (format === 'ioi') return { reduce: (c, e, o) => reduceScoreFormats(c, e, { ...o, takeMax: true }), compare: comparators.score };
   return { reduce: (c, e, o) => reduceScoreFormats(c, e, { ...o, takeMax: false }), compare: comparators.score };
+};
+
+// 回放时间上限：作业的迟交窗口在 durationSec 之后，事件不能被裁掉
+const horizonLimitOf = (ctx) => {
+  const late = ctx.cfg.late || {};
+  const format = ctx.contest.format || 'oi';
+  if (format === 'homework' && late.enabled) {
+    return ctx.durationSec + (Number(late.windowMinutes) || 0) * 60;
+  }
+  return ctx.durationSec;
 };
 
 // 一血标记：每题最早 AC（acm）/ 最早满分（oi/ioi）的未掩码提交
@@ -353,7 +407,7 @@ const computeStandings = async (cid, options = {}) => {
   if (!ctx) return null;
   const format = ctx.contest.format || 'oi';
   const elapsedSec = Math.max(0, Math.floor((Date.now() - ctx.startMs) / 1000));
-  const horizon = Math.min(ctx.durationSec, elapsedSec);
+  const horizon = Math.min(horizonLimitOf(ctx), elapsedSec);
   const atSec = options.atSec == null ? horizon : Math.max(0, Math.min(Number(options.atSec), horizon));
 
   const freeze = ctx.cfg.scoreboard && ctx.cfg.scoreboard.freeze || {};
@@ -373,9 +427,24 @@ const computeStandings = async (cid, options = {}) => {
     if (i === 0 || !same(rank[i - 1], rank[i])) displayedRank = i + 1;
     rank[i].rank = displayedRank;
   }
+
+  // 每题 通过/尝试 人数（作业完成度视图；单元格存在即视为尝试过）
+  const problemStats = {};
+  for (const idx of Object.keys(ctx.problemInfo)) problemStats[idx] = { accepted: 0, attempted: 0 };
+  for (const row of rank) {
+    for (const idx of Object.keys(row.detail)) {
+      const st = problemStats[idx];
+      if (!st) continue;
+      st.attempted++;
+      const cell = row.detail[idx];
+      if (cell.ac || cell.full || cell.rawScore === 100) st.accepted++;
+    }
+  }
+
   return {
     rank,
     problem: ctx.problemInfo,
+    problemStats,
     format,
     atSec,
     horizonSec: horizon,
@@ -396,7 +465,7 @@ const participantTimeline = async (cid, participant, options = {}) => {
   if (!ctx.participants.has(targetKey)) return { points: [] };
 
   const elapsedSec = Math.max(0, Math.floor((Date.now() - ctx.startMs) / 1000));
-  let horizon = Math.min(ctx.durationSec, elapsedSec);
+  let horizon = Math.min(horizonLimitOf(ctx), elapsedSec);
   // 封榜遮蔽时，非特权观众的时间线截断在封榜起点
   const freeze = ctx.cfg.scoreboard && ctx.cfg.scoreboard.freeze || {};
   const freezeStartSec = freeze.enabled ? Math.max(0, ctx.durationSec - (freeze.offsetMinutes || 0) * 60) : null;

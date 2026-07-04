@@ -27,6 +27,12 @@
       </el-icon>
       比赛
     </el-menu-item>
+    <el-menu-item index="/homework">
+      <el-icon>
+        <Notebook />
+      </el-icon>
+      作业
+    </el-menu-item>
     <el-menu-item index="/submission">
       <el-icon>
         <DataAnalysis />
