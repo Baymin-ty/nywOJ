@@ -171,6 +171,8 @@ syncPermissionCatalog()
     metrics.startServer(config.METRICS || {});
     // Online IDE interactive terminal — WebSocket at /api/ide/stream.
     attachIdeWs(server);
+    // 站内通知：开赛提醒 / 作业截止提醒的定时扫描（每 60s，幂等）。
+    require('./api/content/notificationScanner').start();
   })
   .catch((err) => {
     console.error('permission catalog sync failed:', err && err.stack ? err.stack : err);

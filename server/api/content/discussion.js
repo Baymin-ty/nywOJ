@@ -455,6 +455,15 @@ exports.addReply = handler(async (req, res) => {
     return inserted;
   });
   if (!result.affectedRows) return fail(res, '回复失败');
+  // 通知讨论作者（自己回自己不通知）
+  if (discussion.uid && discussion.uid !== uid) {
+    const replier = await db.one('SELECT name FROM userInfo WHERE uid=?', [uid]).catch(() => null);
+    require('./notification').push(discussion.uid, {
+      type: 'discussion_reply', refType: 'discussion', refId: did,
+      title: `${(replier && replier.name) || '有人'} 回复了你的讨论`,
+      content: content.slice(0, 200), link: `/discussion/${did}`, excludeUid: uid,
+    }).catch(() => {});
+  }
   return ok(res, { rid: result.insertId });
 });
 

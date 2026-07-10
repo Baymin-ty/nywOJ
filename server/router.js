@@ -249,6 +249,13 @@ router.post('/api/discussion/updateReply', discussion.updateReply);
 router.post('/api/discussion/delReply', discussion.delReply);
 router.post('/api/discussion/toggleReaction', discussion.toggleReaction);
 
+const notification = require('./api/content/notification');
+router.post('/api/notification/getNotifications', notification.getNotifications);
+router.post('/api/notification/getUnreadCount', notification.getUnreadCount);
+router.post('/api/notification/markRead', notification.markRead);
+router.post('/api/notification/markAllRead', notification.markAllRead);
+router.post('/api/notification/broadcast', notification.broadcast);
+
 const contest = require('./api/contest/contest');
 const contestRating = require('./api/contest/rating');
 router.post('/api/contest/createContest', contest.createContest);

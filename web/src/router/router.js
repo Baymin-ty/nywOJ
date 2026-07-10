@@ -18,6 +18,7 @@ const userLogin = () => import(/* webpackChunkName: "page-user-auth" */ "@/compo
 const userReg = () => import(/* webpackChunkName: "page-user-auth" */ "@/components/user/userReg.vue")
 const userForgotPassword = () => import(/* webpackChunkName: "page-user-auth" */ "@/components/user/userForgotPassword.vue")
 const userList = () => import(/* webpackChunkName: "page-users" */ '@/components/user/userList.vue')
+const notificationList = () => import(/* webpackChunkName: "page-notifications" */ '@/components/user/notificationList.vue')
 const userInfo = () => import(/* webpackChunkName: "page-user-info" */ '@/components/user/userInfo.vue')
 const userEdit = () => import(/* webpackChunkName: "page-user-edit" */ '@/components/user/edit/userEdit.vue')
 
@@ -230,6 +231,12 @@ const router = createRouter({
             activeTitle: '/users'
         },
         path: '/users', component: userList,
+    }, {
+        meta: {
+            title: '通知',
+            activeTitle: '/notifications'
+        },
+        path: '/notifications', component: notificationList,
     }, {
         meta: {
             title: '用户榜',
