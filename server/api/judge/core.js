@@ -19,6 +19,15 @@ const { getLanguage, syncLanguages } = require('./languages');
 const judgeClients = require('./clientRegistry');
 const { submissionEvents, notifySubmissionProgress } = require('./events');
 
+// 增量刷新比赛榜单缓存（主进程 judgeQueue 回调 / 提交入队）。懒加载避免
+// 与 contest 模块的加载序耦合；fire-and-forget，绝不影响判题主流程。
+const standingsApplyEvent = (sid) => {
+  try {
+    const { applyEventBySid } = require('../contest/standings');
+    Promise.resolve(applyEventBySid(sid)).catch(() => {});
+  } catch (e) { /* 榜单模块不可用时忽略 */ }
+};
+
 const ANSWER_SUBMIT_DIR = './answerSubmissions';
 const ANSWER_TOTAL_LIMIT = 10 * 1024 * 1024; // 10MB combined
 const SUBMISSION_STAT_TOP = 100;
@@ -113,6 +122,7 @@ const judgeQueue = async.queue((submission, callback) => {
     }
     if (msg.type === 'done' || msg.type === 'error') {
       submissionEvents.emit('update', Number(msg.sid));
+      standingsApplyEvent(Number(msg.sid)); // 增量刷新比赛榜单缓存（主进程）
       worker.kill();
       callback();
     }
@@ -137,6 +147,7 @@ let taskId = 0;
 
 const pushLocalJudge = (sid, isreJudge) => {
   console.log(Format(new Date()), 'server: localJudge', sid);
+  standingsApplyEvent(sid); // 入队即把 pending 事件并进榜单缓存（ACM/CF pending 显示）
   judgeQueue.push({ sid, isreJudge });
 };
 exports.pushLocalJudge = pushLocalJudge;

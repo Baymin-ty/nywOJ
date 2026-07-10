@@ -18,17 +18,66 @@ const AC_RESULT = 4;
 // ICPC 惯例不计罚时的结果：编译错误、取消、跳过、系统故障类
 const NO_PENALTY_RESULTS = new Set([3, 12, 13, 14, 16]);
 
-const CACHE_TTL_MS = 10 * 1000;
-const cache = new Map(); // cid -> { at, ctx }
+// 增量维护事件流后，TTL 只作兜底（漏钩子 / 远程评测机直写 DB 的场景）。
+const CACHE_TTL_MS = 120 * 1000;
+const CACHE_MAX = 32; // LRU 上限，防长期运行内存无界增长
+const INCR_ON = process.env.STANDINGS_INCR !== '0'; // kill-switch，回退纯 TTL 行为
+const cache = new Map(); // cid -> { at, ctx } （Map 保持插入序，命中时重排到尾部实现 LRU）
 
 const invalidateStandings = (cid) => cache.delete(Number(cid));
+
+// LRU 读：命中未过期则重排到尾部并返回 ctx，否则返回 null
+const cacheGet = (cid) => {
+  const key = Number(cid);
+  const hit = cache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at >= CACHE_TTL_MS) { cache.delete(key); return null; }
+  cache.delete(key);
+  cache.set(key, hit); // 重排到尾部（最近使用）
+  return hit.ctx;
+};
+
+const cacheSet = (cid, ctx) => {
+  const key = Number(cid);
+  cache.delete(key);
+  cache.set(key, { at: Date.now(), ctx });
+  while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value); // 淘汰最老
+};
+
+// 从原始 submission 行构造一个事件（loadContext 与 applyEvent 共用同一份逻辑）
+const buildEvent = (ctx, s) => {
+  const idx = ctx.pidToIdx.get(Number(s.pid));
+  const key = ctx.uidToKey.get(Number(s.uid));
+  if (!idx || !key) return null;
+  return {
+    sid: Number(s.sid),
+    key,
+    idx,
+    at: Math.max(0, Math.floor((new Date(s.submitTime).getTime() - ctx.startMs) / 1000)),
+    result: s.judgeResult,
+    score: Number(s.score || 0),
+    runTime: Number(s.time || 0),
+    pending: PENDING_RESULTS.has(s.judgeResult),
+  };
+};
+
+// 按 (at,sid) 有序插入，保持 ctx.events 排序不变量
+const insertEventSorted = (events, ev) => {
+  let lo = 0, hi = events.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    const e = events[mid];
+    if (e.at < ev.at || (e.at === ev.at && e.sid < ev.sid)) lo = mid + 1;
+    else hi = mid;
+  }
+  events.splice(lo, 0, ev);
+};
 
 // ---- 事件流与上下文 ----
 
 const loadContext = async (cid) => {
-  const key = Number(cid);
-  const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.ctx;
+  const cached = cacheGet(cid);
+  if (cached) return cached;
 
   const contest = await getContest(cid);
   if (!contest) return null;
@@ -95,26 +144,18 @@ const loadContext = async (cid) => {
     }
   }
 
-  const events = [];
+  // ctx 提前建好（buildEvent 依赖 pidToIdx/uidToKey/startMs）
+  const ctx = {
+    contest, cfg, startMs, durationSec, problemInfo, weights, participants,
+    pidToIdx, uidToKey, events: [], hacks: [],
+  };
   for (const s of submissions) {
-    const idx = pidToIdx.get(Number(s.pid));
-    const key = uidToKey.get(Number(s.uid));
-    if (!idx || !key) continue;
-    events.push({
-      sid: s.sid,
-      key,
-      idx,
-      at: Math.max(0, Math.floor((new Date(s.submitTime).getTime() - startMs) / 1000)),
-      result: s.judgeResult,
-      score: Number(s.score || 0),
-      runTime: Number(s.time || 0),
-      pending: PENDING_RESULTS.has(s.judgeResult),
-    });
+    const ev = buildEvent(ctx, s);
+    if (ev) ctx.events.push(ev);
   }
 
-  const hacks = [];
   for (const h of hackRows) {
-    hacks.push({
+    ctx.hacks.push({
       hackId: h.hackId,
       hackerKey: uidToKey.get(Number(h.hackerUid)) || null,
       targetSid: Number(h.targetSid),
@@ -124,9 +165,39 @@ const loadContext = async (cid) => {
     });
   }
 
-  const ctx = { contest, cfg, startMs, durationSec, problemInfo, weights, participants, events, hacks };
-  cache.set(key, { at: Date.now(), ctx });
+  cacheSet(cid, ctx);
   return ctx;
+};
+
+// ---- 增量事件维护（主进程 judgeQueue 回调 / 提交入队时调用）----
+// 只更新已缓存的 ctx；未缓存则不做（下次 getRankAt 全量加载）。
+// 未知选手/题目 -> 保守失效整场（新报名或题目变更）。
+const applyEventBySid = async (sid) => {
+  if (!INCR_ON) return;
+  try {
+    const row = await db.one(
+      'SELECT sid,uid,pid,cid,submitTime,judgeResult,score,time FROM submission WHERE sid=?',
+      [sid]
+    );
+    if (!row || !row.cid) return;
+    const ctx = cacheGet(row.cid);
+    if (!ctx) return; // 该场未缓存，跳过
+    const ev = buildEvent(ctx, row);
+    if (!ev) { invalidateStandings(row.cid); return; } // 未知选手/题目 -> 失效
+    const existing = ctx.events.find((e) => e.sid === ev.sid);
+    if (existing) {
+      existing.result = ev.result;
+      existing.score = ev.score;
+      existing.runTime = ev.runTime;
+      existing.pending = ev.pending;
+    } else {
+      insertEventSorted(ctx.events, ev);
+    }
+  } catch (e) {
+    // 增量失败不能影响判题主流程；失效兜底
+    console.log('applyEventBySid error', e && e.message);
+    try { const r = await db.one('SELECT cid FROM submission WHERE sid=?', [sid]); if (r && r.cid) invalidateStandings(r.cid); } catch (_) { /* ignore */ }
+  }
 };
 
 // ---- 赛制归约器：事件流 -> 每participant每题单元格 + 总量 ----
@@ -529,4 +600,5 @@ module.exports = {
   persistFinalStandings,
   buildContestRank,
   invalidateStandings,
+  applyEventBySid,
 };

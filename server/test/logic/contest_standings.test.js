@@ -206,6 +206,50 @@ const run = async () => {
     assert(!!t, '组队榜单出现队伍行');
     if (t) assertEq(t.solved, 2, '组队按队聚合过题数(2)');
   }
+
+  // ---------------- 增量缓存：applyEventBySid 与全量重载一致 ----------------
+  {
+    const cid = BASE + 80;
+    const startMs = await mkContest(cid, 'oi', 60, {}, 7200);
+    await addProblem(cid, BASE + 801, 1, 100);
+    await addProblem(cid, BASE + 802, 2, 100);
+    await addPlayer(cid, BASE + 1);
+    await addSub(startMs, cid, BASE + 1, BASE + 801, AC, 30, 100);
+    // 首次计算 -> ctx 进缓存
+    standings.invalidateStandings(cid);
+    const first = await standings.computeStandings(cid, { atSec: 3600, masked: false });
+    assertEq(rankOf(first, `u${BASE + 1}`).totalScore, 30, '增量前 A 总分 30');
+
+    // 插入更晚的新提交 -> applyEventBySid（不失效缓存），OI 取最后一次
+    const ins = await db.query(
+      'INSERT INTO submission (uid,pid,cid,code,submitTime,codeLength,judgeResult,score,time) VALUES (?,?,?,?,?,?,?,?,?)',
+      [BASE + 1, BASE + 801, cid, '//x', new Date(startMs + 200 * 1000), 3, AC, 90, 10]
+    );
+    const newSid = ins.insertId;
+    await standings.applyEventBySid(newSid); // 分支：插入新事件
+    const incr = await standings.computeStandings(cid, { atSec: 3600, masked: false });
+    assertEq(rankOf(incr, `u${BASE + 1}`).totalScore, 90, '增量插入后取最后一次(90)');
+
+    // 与全量重载逐字段比对
+    standings.invalidateStandings(cid);
+    const full = await standings.computeStandings(cid, { atSec: 3600, masked: false });
+    const ri = rankOf(incr, `u${BASE + 1}`), rf = rankOf(full, `u${BASE + 1}`);
+    assertEq(ri.totalScore, rf.totalScore, '增量与全量总分一致');
+    assertEq(JSON.stringify(ri.detail), JSON.stringify(rf.detail), '增量与全量单元格一致');
+
+    // 分支：更新已有事件（pending -> AC）
+    const insP = await db.query(
+      'INSERT INTO submission (uid,pid,cid,code,submitTime,codeLength,judgeResult,score,time) VALUES (?,?,?,?,?,?,?,?,?)',
+      [BASE + 1, BASE + 802, cid, '//x', new Date(startMs + 300 * 1000), 3, 1, 0, 0] // Pending
+    );
+    const pSid = insP.insertId;
+    standings.invalidateStandings(cid);
+    await standings.computeStandings(cid, { atSec: 3600, masked: false }); // 重新缓存含 pending
+    await db.query('UPDATE submission SET judgeResult=?,score=? WHERE sid=?', [AC, 100, pSid]);
+    await standings.applyEventBySid(pSid); // 分支：更新已有事件
+    const afterUpd = await standings.computeStandings(cid, { atSec: 3600, masked: false });
+    assertEq(rankOf(afterUpd, `u${BASE + 1}`).detail[2].score, 100, '增量更新 pending->AC 反映 100');
+  }
 };
 
 const cleanup = async () => {
