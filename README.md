@@ -285,11 +285,22 @@ cp server/config.example.json server/config.json
 cd server
 cp config.example.json config.json     # 仅首次；之后编辑填入凭据
 npm install
+bash scripts/apply_migrations.sh       # 建/补库表（全新库或升级后）
 ( cd comparer && make )                # 构建 comparer 二进制（git-ignored）
 node app.js                            # 监听 :1234
 ```
 
 启动时 `auth/sync.js` 会自动 reconcile 权限目录到 DB，并同步内置角色与权限关系。
+
+### 测试 / Tests
+
+```bash
+cd server
+npm run test:logic     # 纯逻辑回归（只需 DB）：RBAC / 榜单引擎 / 鉴权冒烟
+npm run test:e2e       # e2e（需活 Rust sandbox / LLM key）：判题 / 出题助手
+```
+
+分层说明、CI 建库与 GitHub Actions 见 [docs/testing.md](docs/testing.md)。
 
 ### 前端
 
@@ -370,6 +381,7 @@ npm run build        # 生产构建（输出到 web/dist/，已 git-ignored）
 | [rust-sandbox-deploy.md](docs/rust-sandbox-deploy.md) | Rust sandbox 部署 |
 | [rust-sandbox-migration.md](docs/rust-sandbox-migration.md) | Rust sandbox `/api/*` 请求 / 返回契约 |
 | [cloud-upgrade.md](docs/cloud-upgrade.md) | 从 `250fa62` 到当前版本的云端升级方案 |
+| [testing.md](docs/testing.md) | 回归测试分层（logic / e2e）、CI 建库与 GitHub Actions |
 
 ---
 

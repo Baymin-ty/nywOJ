@@ -1,4 +1,11 @@
 {
+  "scripts": {
+    "start": "node app.js",
+    "migrate": "bash scripts/apply_migrations.sh",
+    "test": "node test/run.js all",
+    "test:logic": "node test/run.js logic",
+    "test:e2e": "node test/run.js e2e"
+  },
   "dependencies": {
     "async": "^3.2.4",
     "axios": "^1.3.4",

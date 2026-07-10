@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [next]
+  pull_request:
+    branches: [next]
+
+jobs:
+  server-logic:
+    name: 后端 logic 回归
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: ci_root_pw
+          MARIADB_DATABASE: nywoj_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASS: ci_root_pw
+      DB_NAME: nywoj_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 安装依赖
+        working-directory: server
+        run: npm install --no-audit --no-fund
+      - name: 生成 CI 配置
+        working-directory: server
+        run: node scripts/ci_config.js
+      - name: 等待数据库就绪
+        run: |
+          for i in $(seq 1 30); do
+            if mysqladmin ping -h127.0.0.1 -P3306 -uroot -pci_root_pw --silent; then echo "db up"; break; fi
+            echo "waiting for mariadb ($i)"; sleep 2
+          done
+      - name: 应用迁移
+        working-directory: server
+        run: bash scripts/apply_migrations.sh
+      - name: 种子数据（uid=1 占位 + languages）
+        working-directory: server
+        run: node scripts/ci_seed.js
+      - name: 构建 comparer
+        working-directory: server/comparer
+        run: make
+      - name: logic 回归
+        working-directory: server
+        run: npm run test:logic
+
+  web-build:
+    name: 前端构建
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 安装依赖
+        working-directory: web
+        run: npm install --no-audit --no-fund
+      - name: 构建
+        working-directory: web
+        run: npm run build
+
+# e2e 层（判题真沙箱 / LLM 出题助手）不进 CI：需要活 Rust sandbox(:5050) 或 LLM key。
+# 本地运行：cd server && npm run test:e2e （沙箱起法见 docs/rust-sandbox-deploy.md）。
