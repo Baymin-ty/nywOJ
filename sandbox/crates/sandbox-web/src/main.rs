@@ -16,6 +16,7 @@ use std::sync::atomic::Ordering;
 
 use axum::{
     extract::{
+        DefaultBodyLimit,
         ws::{Message, WebSocket, WebSocketUpgrade},
         Path, State,
     },
@@ -24,9 +25,40 @@ use axum::{
     Json, Router,
 };
 use serde_json::json;
+use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
 use job::{Jobs, SubmitRequest};
+
+const DEFAULT_HTTP_BODY_LIMIT_BYTES: usize = 256 * 1024 * 1024;
+
+fn parse_size_bytes(value: &str) -> Option<usize> {
+    let raw = value.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    let split = raw
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(raw.len());
+    let (digits, unit) = raw.split_at(split);
+    let n = digits.parse::<usize>().ok()?;
+    let unit = unit.trim().to_ascii_lowercase();
+    let scale = match unit.as_str() {
+        "" | "b" => 1,
+        "k" | "kb" | "kib" => 1024,
+        "m" | "mb" | "mib" => 1024 * 1024,
+        "g" | "gb" | "gib" => 1024 * 1024 * 1024,
+        _ => return None,
+    };
+    n.checked_mul(scale)
+}
+
+fn env_size_bytes(key: &str, fallback: usize) -> usize {
+    std::env::var(key)
+        .ok()
+        .and_then(|value| parse_size_bytes(&value))
+        .unwrap_or(fallback)
+}
 
 #[derive(Clone)]
 struct AppState {
@@ -58,10 +90,12 @@ async fn main() {
         jobs_root,
         file_root,
     };
+    let http_body_limit = env_size_bytes("SANDBOX_HTTP_BODY_LIMIT", DEFAULT_HTTP_BODY_LIMIT_BYTES);
 
     let app = Router::new()
         .route("/api/submit", post(submit))
         .route("/api/languages", get(list_languages))
+        .route("/api/health", get(health))
         .route("/api/run", post(api::run))
         .route("/api/version", get(api::version))
         .route("/api/stream", get(api::stream))
@@ -70,11 +104,15 @@ async fn main() {
             get(api::get_file).delete(api::delete_file),
         )
         .route("/ws/:job_id", get(ws_handler))
+        .layer(CorsLayer::permissive())
         .fallback_service(ServeDir::new(&frontend_dir).append_index_html_on_directories(true))
+        .layer(DefaultBodyLimit::max(http_body_limit))
         .with_state(state);
 
     let addr = std::env::var("BIND").unwrap_or_else(|_| "0.0.0.0:1145".into());
-    tracing::info!("listening on http://{addr}  (frontend={frontend_dir})");
+    tracing::info!(
+        "listening on http://{addr}  (frontend={frontend_dir}, body_limit={http_body_limit} bytes)"
+    );
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
@@ -88,6 +126,10 @@ async fn list_languages() -> impl IntoResponse {
             {"id": "shell", "name": "Shell (sh)"}
         ]
     }))
+}
+
+async fn health() -> impl IntoResponse {
+    Json(json!({ "ok": true }))
 }
 
 async fn submit(

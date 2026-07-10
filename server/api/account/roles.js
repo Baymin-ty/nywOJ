@@ -3,6 +3,7 @@ const { handler, fail, ok } = require('../../db/util');
 const { recordEvent } = require('../../static');
 const policy = require('../../auth/policy');
 const { PERMISSIONS, RESOURCE_TYPES, RESOURCE_GRANTABLE } = require('../../auth/permissions');
+const { syncPermissionCatalog } = require('../../auth/sync');
 const { buildEndpointMap } = require('../../auth/endpoints');
 
 const KEY_REGEX = /^[a-z][a-z0-9_]{0,30}[a-z0-9]$/;
@@ -46,6 +47,20 @@ exports.listRoles = handler(async (req, res) => {
   }
   for (const r of roles) r.permissions = byRole.get(r.id) || [];
   return ok(res, { roles });
+});
+
+exports.syncCatalog = handler(async (req, res) => {
+  if (!req.can('user.role.admin')) return res.status(403).end('403 Forbidden');
+  await syncPermissionCatalog();
+  policy.invalidate();
+  const [permissionCount, roleCount] = await Promise.all([
+    db.one('SELECT COUNT(*) AS cnt FROM permissions'),
+    db.one('SELECT COUNT(*) AS cnt FROM roles'),
+  ]);
+  return ok(res, {
+    permissionCount: Number(permissionCount && permissionCount.cnt || 0),
+    roleCount: Number(roleCount && roleCount.cnt || 0),
+  });
 });
 
 // ---------- role management ----------
@@ -521,6 +536,3 @@ exports.searchContests = handler(async (req, res) => {
   );
   return ok(res, { contests: rows });
 });
-
-// expose for sanity tests
-exports._catalog = { PERMISSIONS };

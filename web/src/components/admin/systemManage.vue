@@ -27,7 +27,6 @@
 
 <script>
 import { markRaw } from 'vue';
-import { UserFilled, DataAnalysis, Grid, DataLine, UploadFilled, Setting } from '@element-plus/icons-vue';
 import { can, canAny } from '@/utils/can';
 
 import groupManage from '@/components/group/groupManage.vue';
@@ -42,12 +41,12 @@ export default {
   data() {
     return {
       sections: [
-        { id: 'groups', label: '用户组', icon: markRaw(UserFilled), can: () => canAny('user.manage', 'user.role.admin'), comp: markRaw(groupManage) },
-        { id: 'judge', label: '评测监控', icon: markRaw(DataAnalysis), can: () => canAny('submission.rejudge.any', 'user.manage', 'user.role.admin'), comp: markRaw(judgeMonitor) },
-        { id: 'tags', label: '题目标签', icon: markRaw(Grid), can: () => can('problem.manage.any'), comp: markRaw(problemTagManager) },
-        { id: 'rating', label: 'Rating 管理', icon: markRaw(DataLine), can: () => can('user.role.admin'), comp: markRaw(ratingTool) },
-        { id: 'migration', label: '迁移工具', icon: markRaw(UploadFilled), can: () => can('user.role.admin'), comp: markRaw(migrationTool) },
-        { id: 'homepage', label: '首页设置', icon: markRaw(Setting), can: () => can('announcement.manage'), comp: markRaw(homepageSettings) },
+        { id: 'groups', label: '用户组', icon: 'UserFilled', can: () => can('group.manage'), comp: markRaw(groupManage) },
+        { id: 'judge', label: '评测监控', icon: 'DataAnalysis', can: () => canAny('judge.monitor.view', 'judge.client.manage'), comp: markRaw(judgeMonitor) },
+        { id: 'tags', label: '题目标签', icon: 'Grid', can: () => can('problem.tag.manage'), comp: markRaw(problemTagManager) },
+        { id: 'rating', label: 'Rating 管理', icon: 'DataLine', can: () => can('system.rating.manage'), comp: markRaw(ratingTool) },
+        { id: 'migration', label: '迁移工具', icon: 'UploadFilled', can: () => can('system.migration.manage'), comp: markRaw(migrationTool) },
+        { id: 'homepage', label: '首页设置', icon: 'Setting', can: () => can('system.homepage.manage'), comp: markRaw(homepageSettings) },
       ],
     };
   },

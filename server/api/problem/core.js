@@ -45,6 +45,8 @@ const problemAuth = async (req, pid) => {
 };
 exports.problemAuth = problemAuth;
 
+const canManageProblemTags = (req) => !!(req.can && req.can('problem.tag.manage'));
+
 const canViewPaste = (req, paste) => {
   return !!paste.isPublic || paste.uid === (req.session && req.session.uid) || req.can('paste.edit.any');
 };
@@ -1280,7 +1282,7 @@ exports.getAllProblemTags = handler(async (req, res) => {
 });
 
 exports.getAllProblemTagsOfAllLocales = handler(async (req, res) => {
-  if (!req.can('problem.manage.any')) return res.status(403).end('403 Forbidden');
+  if (!canManageProblemTags(req)) return res.status(403).end('403 Forbidden');
   const rows = await listProblemTagRows();
   const usage = await problemTagUsageCounts();
   const catalogNames = new Set();
@@ -1323,7 +1325,7 @@ exports.getProblemTagDetail = handler(async (req, res) => {
 });
 
 exports.createProblemTag = handler(async (req, res) => {
-  if (!req.can('problem.manage.any')) return ok(res, { error: 'PERMISSION_DENIED', message: '权限不足' });
+  if (!canManageProblemTags(req)) return ok(res, { error: 'PERMISSION_DENIED', message: '权限不足' });
   const color = normalizeTagColor(req.body.color);
   if (!color) return fail(res, '标签颜色格式错误');
   const normalized = normalizeTagLocalizedNames(req.body.localizedNames || req.body.names);
@@ -1341,7 +1343,7 @@ exports.createProblemTag = handler(async (req, res) => {
 });
 
 exports.updateProblemTag = handler(async (req, res) => {
-  if (!req.can('problem.manage.any')) return ok(res, { error: 'PERMISSION_DENIED', message: '权限不足' });
+  if (!canManageProblemTags(req)) return ok(res, { error: 'PERMISSION_DENIED', message: '权限不足' });
   const id = Number(req.body.id);
   if (!Number.isSafeInteger(id) || id <= 0) return ok(res, { error: 'NO_SUCH_PROBLEM_TAG', message: '标签编号非法' });
   const color = normalizeTagColor(req.body.color);
@@ -1375,7 +1377,7 @@ exports.updateProblemTag = handler(async (req, res) => {
 });
 
 exports.deleteProblemTag = handler(async (req, res) => {
-  if (!req.can('problem.manage.any')) return ok(res, { error: 'PERMISSION_DENIED', message: '权限不足' });
+  if (!canManageProblemTags(req)) return ok(res, { error: 'PERMISSION_DENIED', message: '权限不足' });
   const id = Number(req.body.id);
   if (!Number.isSafeInteger(id) || id <= 0) return ok(res, { error: 'NO_SUCH_PROBLEM_TAG', message: '标签编号非法' });
   const row = (await listProblemTagRows()).find((item) => Number(item.id) === id);

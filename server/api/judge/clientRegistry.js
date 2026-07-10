@@ -24,7 +24,6 @@ const ensureSchema = () => {
         queueWaiting INT NULL,
         queueRunning INT NULL,
         queueConcurrency INT NULL,
-        systemInfo MEDIUMTEXT NULL,
         UNIQUE KEY idx_name (name),
         UNIQUE KEY idx_client_key (clientKey),
         KEY idx_enabled (enabled),
@@ -36,11 +35,10 @@ const ensureSchema = () => {
       const columns = await db.query(
         `SELECT COLUMN_NAME AS name FROM information_schema.COLUMNS
           WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='judgeClient'
-            AND COLUMN_NAME IN ('allowedHosts','systemInfo')`
+            AND COLUMN_NAME IN ('allowedHosts')`
       );
       const names = new Set(columns.map((row) => row.name));
       if (!names.has('allowedHosts')) await db.query('ALTER TABLE judgeClient ADD COLUMN allowedHosts TEXT NULL AFTER endpoint');
-      if (!names.has('systemInfo')) await db.query('ALTER TABLE judgeClient ADD COLUMN systemInfo MEDIUMTEXT NULL');
     });
   }
   return schemaReady;
@@ -52,15 +50,6 @@ const makeClientKey = () =>
 const maskKey = (key) => {
   if (!key) return '';
   return `${key.slice(0, 6)}...${key.slice(-4)}`;
-};
-
-const parseSystemInfo = (value) => {
-  if (!value) return null;
-  try {
-    return JSON.parse(value);
-  } catch (_) {
-    return null;
-  }
 };
 
 const normalizeAllowedHosts = (value) => {
@@ -104,14 +93,11 @@ const formatClient = (row, includeKey = false) => {
     queueWaiting: Number(row.queueWaiting || 0),
     queueRunning: Number(row.queueRunning || 0),
     queueConcurrency: Number(row.queueConcurrency || 0),
-    systemInfo: parseSystemInfo(row.systemInfo),
   };
 };
 
 exports.ensureSchema = ensureSchema;
-exports.makeClientKey = makeClientKey;
 exports.formatClient = formatClient;
-exports.normalizeAllowedHosts = normalizeAllowedHosts;
 
 exports.listClients = async () => {
   await ensureSchema();
@@ -226,13 +212,5 @@ exports.recordHeartbeat = async (id, { status, message, queue }) => {
       q.concurrency,
       id,
     ]
-  );
-};
-
-exports.recordSystemInfo = async (id, systemInfo) => {
-  await ensureSchema();
-  return db.query(
-    'UPDATE judgeClient SET lastSeenAt=?,lastStatus=?,lastMessage=?,systemInfo=? WHERE id=?',
-    [new Date(), 'online', 'socket systemInfo received', JSON.stringify(systemInfo || null), id]
   );
 };

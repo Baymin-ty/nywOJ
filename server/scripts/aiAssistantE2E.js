@@ -6,6 +6,9 @@
 //   node scripts/aiAssistantE2E.js                          # 全部题型
 //   node scripts/aiAssistantE2E.js spj interactive          # 指定题型
 //   node scripts/aiAssistantE2E.js answer-static-math edit-title-only
+//   node scripts/aiAssistantE2E.js --list                   # 列出可测场景
+//   node scripts/aiAssistantE2E.js --dry-run                # 只构建提示词，不调用模型
+//   node scripts/aiAssistantE2E.js --skip-sandbox spj       # 真调模型，但跳过 sandbox 自检
 //   node scripts/aiAssistantE2E.js --model gpt-5.3-codex-spark --uid 1
 //
 // 需要：MySQL（读 userLlmConfig 的 key）、sandbox（127.0.0.1:5050）。
@@ -121,18 +124,84 @@ const FAKE_PROBLEM = {
 
 const parseArgs = () => {
   const argv = process.argv.slice(2);
-  const opts = { presets: [], model: '', uid: 1, verbose: false };
+  const opts = {
+    presets: [],
+    model: '',
+    uid: 1,
+    verbose: false,
+    list: false,
+    dryRun: false,
+    skipSandbox: false,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--model') opts.model = argv[++i];
     else if (a === '--uid') opts.uid = Number(argv[++i]);
     else if (a === '-v' || a === '--verbose') opts.verbose = true;
+    else if (a === '--list') opts.list = true;
+    else if (a === '--dry-run' || a === '--prompt-only') opts.dryRun = true;
+    else if (a === '--skip-sandbox' || a === '--no-sandbox') opts.skipSandbox = true;
     else opts.presets.push(a);
   }
   if (!opts.presets.length) {
     opts.presets = ['traditional', 'spj', 'answer', 'answer-spj', 'function', 'interactive', 'communication'];
   }
   return opts;
+};
+
+const scenarioNames = () => Object.keys(SCENARIOS);
+
+const printScenarioList = () => {
+  console.log('可测试场景：');
+  for (const name of scenarioNames()) {
+    const item = SCENARIOS[name];
+    const expects = Object.entries(item.expects || {})
+      .map(([key, value]) => `${key}=${value}`)
+      .join(', ');
+    console.log(`- ${name} (${item.preset})${expects ? `: ${expects}` : ''}`);
+  }
+};
+
+const promptBytes = (text) => Buffer.byteLength(String(text || ''), 'utf-8');
+
+const dryRunPrompts = (presets) => {
+  let ok = true;
+  for (const preset of presets) {
+    const scenario = SCENARIOS[preset];
+    if (!scenario) {
+      console.log(`❌ ${preset}: 未知场景`);
+      ok = false;
+      continue;
+    }
+    try {
+      const messages = buildMessages(scenario.prompt, ALL_SECTIONS, FAKE_PROBLEM, {});
+      const system = messages.find((m) => m.role === 'system') || {};
+      const user = messages.find((m) => m.role === 'user') || {};
+      const hasPresetContract = system.content.includes(`judge.preset="${scenario.preset}"`) ||
+        system.content.includes(`preset="${scenario.preset}"`) ||
+        system.content.includes(`${scenario.preset}:`);
+      const hasUserPrompt = user.content.includes(scenario.prompt.slice(0, 40));
+      if (!hasPresetContract) {
+        console.log(`❌ ${preset}: 系统提示词里没有可识别的 ${scenario.preset} 题型契约`);
+        ok = false;
+        continue;
+      }
+      if (!hasUserPrompt) {
+        console.log(`❌ ${preset}: 用户提示没有进入消息体`);
+        ok = false;
+        continue;
+      }
+      console.log(`✅ ${preset}: system ${(promptBytes(system.content) / 1024).toFixed(1)}KB, user ${(promptBytes(user.content) / 1024).toFixed(1)}KB`);
+      if (process.env.DUMP_AI_PROMPTS === '1') {
+        fs.mkdirSync(DUMP_DIR, { recursive: true });
+        fs.writeFileSync(path.join(DUMP_DIR, `${preset}.messages.json`), JSON.stringify(messages, null, 2));
+      }
+    } catch (err) {
+      console.log(`❌ ${preset}: ${err.message}`);
+      ok = false;
+    }
+  }
+  return ok;
 };
 
 const callLlm = async (llm, messages, label) => {
@@ -243,9 +312,11 @@ const runPreset = async (preset, llm, opts) => {
         ...staticDraftIssues(scenario.preset, draft),
         ...scenarioDraftIssues(scenario, draft),
       ];
-      const result = await runDraftChecks(draft, ALL_SECTIONS, (text) => {
-        if (opts.verbose) console.log(`  [${preset}] ${text}`);
-      });
+      const result = opts.skipSandbox
+        ? { checks: [{ id: 'sandbox', label: 'sandbox 自检', status: 'skip', detail: '--skip-sandbox' }], ok: true }
+        : await runDraftChecks(draft, ALL_SECTIONS, (text) => {
+          if (opts.verbose) console.log(`  [${preset}] ${text}`);
+        });
       // 静态问题合并进 checks 报告，一并喂给修复轮
       for (const issue of staticIssues) {
         result.checks.push({ id: 'static', label: '草稿完整性', status: 'fail', detail: issue });
@@ -311,6 +382,15 @@ const runPreset = async (preset, llm, opts) => {
 
 const main = async () => {
   const opts = parseArgs();
+  if (opts.list) {
+    printScenarioList();
+    return;
+  }
+  if (opts.dryRun) {
+    printScenarioList();
+    console.log('\n提示词构建检查：');
+    process.exit(dryRunPrompts(opts.presets) ? 0 : 2);
+  }
   const llm = await loadUserLlmConfig(opts.uid);
   if (!llm.enabled) {
     console.error(`uid=${opts.uid} 没有配置 LLM key`);
@@ -319,7 +399,7 @@ const main = async () => {
   if (opts.model) llm.model = opts.model;
   llm.maxTokens = Math.max(llm.maxTokens, 20000);
   llm.timeout = Math.max(llm.timeout, 300000);
-  console.log(`模型: ${llm.model} @ ${llm.baseUrl}\n题型: ${opts.presets.join(', ')}\n`);
+  console.log(`模型: ${llm.model} @ ${llm.baseUrl}\n题型: ${opts.presets.join(', ')}${opts.skipSandbox ? '\n模式: 跳过 sandbox 自检' : ''}\n`);
 
   const reports = [];
   for (const preset of opts.presets) {

@@ -6,8 +6,8 @@
         <h1>题目标签</h1>
       </div>
       <div class="head-actions">
-        <el-button plain :icon="Refresh" :loading="loading" @click="fetchTags">刷新</el-button>
-        <el-button type="primary" :icon="Plus" @click="openCreate()">新建标签</el-button>
+        <el-button plain icon="Refresh" :loading="loading" @click="fetchTags">刷新</el-button>
+        <el-button type="primary" icon="Plus" @click="openCreate()">新建标签</el-button>
       </div>
     </header>
 
@@ -39,8 +39,8 @@
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="scope">
             <el-button-group>
-              <el-button plain :icon="Edit" @click="openEdit(scope.row)" />
-              <el-button plain type="danger" :icon="Delete" @click="deleteTag(scope.row)" />
+              <el-button plain icon="Edit" @click="openEdit(scope.row)" />
+              <el-button plain type="danger" icon="Delete" @click="deleteTag(scope.row)" />
             </el-button-group>
           </template>
         </el-table-column>
@@ -57,7 +57,7 @@
         <el-table-column prop="usage" label="使用" width="90" />
         <el-table-column label="操作" width="120">
           <template #default="scope">
-            <el-button plain size="small" :icon="Plus" @click="openCreate(scope.row.name)">收录</el-button>
+            <el-button plain size="small" icon="Plus" @click="openCreate(scope.row.name)">收录</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -76,15 +76,15 @@
                 <el-option v-for="locale in localeOptions" :key="locale.value" :value="locale.value" :label="locale.label" />
               </el-select>
               <el-input v-model="item.name" maxlength="30" show-word-limit />
-              <el-button plain :icon="Close" :disabled="form.localizedNames.length <= 1" @click="removeLocale(index)" />
+              <el-button plain icon="Close" :disabled="form.localizedNames.length <= 1" @click="removeLocale(index)" />
             </div>
-            <el-button plain :icon="Plus" @click="addLocale">添加语言</el-button>
+            <el-button plain icon="Plus" @click="addLocale">添加语言</el-button>
           </div>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button :icon="Close" @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :icon="Check" :loading="saving" @click="saveTag">保存</el-button>
+        <el-button icon="Close" @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" icon="Check" :loading="saving" @click="saveTag">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -93,7 +93,6 @@
 <script>
 import axios from 'axios';
 import { ElMessageBox } from 'element-plus';
-import { Check, Close, Delete, Edit, Grid, Operation, Plus, Refresh } from '@element-plus/icons-vue';
 
 const emptyForm = (name = '') => ({
   color: '#409eff',
@@ -102,7 +101,6 @@ const emptyForm = (name = '') => ({
 
 export default {
   name: 'problemTagManager',
-  components: { Grid, Operation },
   data() {
     return {
       loading: false,
@@ -117,12 +115,6 @@ export default {
         { value: 'en', label: 'English' },
         { value: 'ja', label: '日本語' },
       ],
-      Check,
-      Close,
-      Delete,
-      Edit,
-      Plus,
-      Refresh,
     };
   },
   methods: {

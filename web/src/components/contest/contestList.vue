@@ -1,34 +1,31 @@
 <template>
   <div class="contest-page">
-    <el-card class="box-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          比赛列表
-          <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
-            layout="total, prev, pager, next" :total="total"></el-pagination>
-          <el-button-group>
-            <el-popconfirm v-if="$can('contest.create')" confirm-button-text="确认" cancel-button-text="取消" title="确认添加比赛?"
-              @confirm="addContest">
-              <template #reference>
-                <el-button type="success">
-                  <el-icon class="el-icon--left">
-                    <Plus />
-                  </el-icon>
-                  添加比赛
-                </el-button>
-              </template>
-            </el-popconfirm>
-            <el-button type="primary" @click="all">
+    <div class="sub-header">
+      <span class="sub-title">比赛列表</span>
+      <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
+        layout="total, prev, pager, next" :total="total"></el-pagination>
+      <el-button-group>
+        <el-popconfirm v-if="$can('contest.create')" confirm-button-text="确认" cancel-button-text="取消" title="确认添加比赛?"
+          @confirm="addContest">
+          <template #reference>
+            <el-button type="success">
               <el-icon class="el-icon--left">
-                <Refresh />
+                <Plus />
               </el-icon>
-              刷新
+              添加比赛
             </el-button>
-          </el-button-group>
-        </div>
-      </template>
-      <el-table :data="contestList" height="600px" :header-cell-style="{ textAlign: 'center' }"
-        :cell-style="{ textAlign: 'center' }" v-loading="!finished">
+          </template>
+        </el-popconfirm>
+        <el-button type="primary" @click="all">
+          <el-icon class="el-icon--left">
+            <Refresh />
+          </el-icon>
+          刷新
+        </el-button>
+      </el-button-group>
+    </div>
+    <el-table :data="contestList" :header-cell-style="{ textAlign: 'center' }"
+        :cell-style="cellStyle" empty-text="暂无比赛" v-loading="!finished">
         <el-table-column prop="cid" label="#" min-width="5%" />
         <el-table-column prop="title" label="标题" min-width="25%">
           <template #default="scope">
@@ -53,17 +50,19 @@
             <span> {{ scope.row.length }} min </span>
           </template>
         </el-table-column>
-        <el-table-column prop="type" label="类型" min-width="7%">
+        <el-table-column prop="type" label="类型" min-width="10%">
           <template #default="scope">
             <span> {{ scope.row.type }} </span>
           </template>
         </el-table-column>
-        <el-table-column prop="isPublic" label="是否公开" min-width="15%">
+        <el-table-column prop="isPublic" label="是否公开" min-width="7%">
           <template #default="scope">
-            <el-switch v-model="scope.row.isPublic" size="small" disabled active-text="公开" inactive-text="私有" />
+            <el-tag size="small" :type="scope.row.isPublic ? 'success' : 'info'" effect="plain" round>
+              {{ scope.row.isPublic ? '公开' : '私有' }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="playerCnt" label="参赛人数" min-width="10%">
+        <el-table-column prop="playerCnt" label="参赛人数" min-width="8%">
           <template #default="scope">
             <router-link class="rlink" :to="'/contest/player/' + scope.row.cid">
               <el-icon id="picon" size="13">
@@ -81,7 +80,6 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
   </div>
 </template>
 
@@ -105,6 +103,9 @@ export default {
     }
   },
   methods: {
+    cellStyle() {
+      return { textAlign: 'center', padding: '14px 0' };
+    },
     all() {
       this.finished = false;
       let url = location.pathname;
@@ -161,21 +162,26 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-.box-card {
-  margin: 10px;
-}
-
 .contest-page {
   text-align: center;
   margin: 0 auto;
-  max-width: 1200px;
+  max-width: 1400px;
 }
 
-.card-header {
+.sub-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 20px;
+  gap: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.sub-title {
+  font-weight: bolder;
+  color: #3f3f3f;
+  white-space: nowrap;
 }
 
 #picon {
@@ -191,11 +197,8 @@ export default {
     width: 100%;
   }
 
-  .box-card {
-    margin: 0;
-  }
-
-  .card-header {
+  .sub-header {
+    flex-wrap: wrap;
     justify-content: center;
   }
 }

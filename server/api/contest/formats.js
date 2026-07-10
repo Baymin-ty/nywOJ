@@ -80,8 +80,6 @@ const FORMATS = {
   },
 };
 
-const FORMAT_IDS = Object.keys(FORMATS);
-
 const isPlainObject = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
 const deepMerge = (base, patch) => {
@@ -214,8 +212,6 @@ const legacyTypeOf = (format) => {
 };
 
 module.exports = {
-  FORMATS,
-  FORMAT_IDS,
   normalizeFormat,
   formatLabel,
   resolveConfig,

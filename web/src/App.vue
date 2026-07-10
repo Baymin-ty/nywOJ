@@ -4,7 +4,7 @@
       <myHeader />
     </el-header>
     <el-main>
-      <router-view :key="$route.fullPath" />
+      <router-view :key="routerViewKey" />
     </el-main>
     <el-footer id="footer">
       <div style="font-weight: 600; color:#74767a">
@@ -28,6 +28,12 @@ export default {
   name: 'App',
   components: {
     myHeader,
+  },
+  computed: {
+    routerViewKey() {
+      if (/^\/problem\/case\/\d+$/.test(this.$route.path)) return this.$route.path;
+      return this.$route.fullPath;
+    }
   },
   mounted() {
     axios.post('/api/judge/getLangs').then(res => {

@@ -8,8 +8,8 @@
             <div class="title">{{ problem.title || '提交统计榜' }}</div>
           </div>
           <el-button-group>
-            <el-button plain :icon="Back" @click="$router.push('/problem/' + pid)">返回题目</el-button>
-            <el-button type="primary" :icon="Refresh" :loading="loading" @click="loadData">刷新</el-button>
+            <el-button plain icon="Back" @click="$router.push('/problem/' + pid)">返回题目</el-button>
+            <el-button type="primary" icon="Refresh" :loading="loading" @click="loadData">刷新</el-button>
           </el-button-group>
         </div>
       </template>
@@ -87,7 +87,6 @@
 <script>
 import axios from 'axios';
 import { resColor, scoreColor } from '@/assets/common';
-import { Back, Refresh } from '@element-plus/icons-vue';
 
 const STAT_TYPES = [
   { value: 'Fastest', path: 'fastest', label: '最快通过' },
@@ -121,8 +120,6 @@ export default {
       scores: new Array(101).fill(0),
       problem: {},
       statTypes: STAT_TYPES,
-      Back,
-      Refresh,
     };
   },
   computed: {

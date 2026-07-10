@@ -10,14 +10,13 @@ const db = require('../../db');
 const { handler, fail, ok, paginate, buildWhere } = require('../../db/util');
 const { Format, kbFormat } = require('../../static');
 const conf = require('../../config.json');
-const { getFile, setFile } = require('../../file');
+const { getFile } = require('../../file');
 const storage = require('../../storage');
 const { updateProblemStat, problemAuth, getProblemLang } = require('../problem/core');
 const { judgeRes, formatSubmissionRow, formatCaseRow, isAnswerType } = require('../../db/format');
 const { readJudgeLogEntries } = require('./log');
 const { getLanguage, syncLanguages } = require('./languages');
 const judgeClients = require('./clientRegistry');
-const judgeSocketBridge = require('./socketBridge');
 const { submissionEvents, notifySubmissionProgress } = require('./events');
 
 const ANSWER_SUBMIT_DIR = './answerSubmissions';
@@ -160,39 +159,15 @@ const pushSidIntoQueue = async (sid, isreJudge) => {
 
   if (conf.JUDGE.ISSERVER) {
     const remoteDispatchEnabled = allowRemoteSandboxClients();
-    const socketClients = remoteDispatchEnabled ? judgeSocketBridge.onlineClients() : [];
-    const socketClientIds = new Set(socketClients.map((client) => Number(client.id)));
     const remoteClients = remoteDispatchEnabled
       ? await judgeClients.getDispatchClients().catch((err) => {
         console.log(Format(new Date()), 'server: judge client registry unavailable:', err.message);
         return [];
-      }).then((clients) => clients.filter((client) => !socketClientIds.has(Number(client.id))))
+      })
       : [];
-    const targets = [{ local: true, name: 'localhost' }, ...socketClients, ...remoteClients];
+    const targets = [{ local: true, name: 'localhost' }, ...remoteClients];
     const target = targets[++taskId % targets.length];
     if (target.local) return pushLocalJudge(sid, isreJudge);
-    if (target.kind === 'socket') {
-      const accepted = await judgeSocketBridge.enqueue(target.id, sid, isreJudge, async (err) => {
-        await judgeClients.recordDispatch(target.id, {
-          status: 'fallback',
-          message: err && err.message ? err.message : String(err),
-          sid,
-          queue: judgeSocketBridge.queueStats(),
-        }).catch(() => {});
-        pushLocalJudge(sid, isreJudge);
-      });
-      if (accepted) {
-        await judgeClients.recordDispatch(target.id, {
-          status: 'queued',
-          message: 'socket task queued',
-          sid,
-          queue: judgeSocketBridge.queueStats(),
-        });
-        console.log(Format(new Date()), 'server: task queued for socket judge', target.name, sid);
-        return;
-      }
-      return pushLocalJudge(sid, isreJudge);
-    }
 
     console.log(Format(new Date()), 'server: task assigned to', target.name, target.endpoint, sid);
     try {
@@ -898,7 +873,6 @@ exports.cancelSubmission = [
       [sid]
     );
     await exports.clearCase(sid);
-    judgeSocketBridge.cancelSid(sid);
     notifyProgress(sid);
     if (sub) await refreshProblemJudgeStats(sub.pid);
     return ok(res, { message: 'ok' });

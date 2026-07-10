@@ -175,6 +175,7 @@ exports.getContestInfo = handler(async (req, res) => {
   contest.playerCnt = await playerCnt(contest.cid);
   contest.end = Format(new Date(new Date(contest.start).getTime() + contest.length * 1000 * 60));
   contest.regAble = caps.canRegister;
+  contest.unregAble = caps.canUnregister;
   contest.auth = {
     join: caps.canJoin,
     view: caps.canViewScoreboard,
@@ -252,6 +253,27 @@ exports.contestReg = handler(async (req, res) => {
     return fail(res, '比赛已结束或私有，请联系管理员');
 
   await db.query('INSERT INTO contestPlayer(cid,uid) VALUES (?,?)', [cid, req.session.uid]);
+  return ok(res);
+});
+
+exports.cancelContestReg = handler(async (req, res) => {
+  await ensureContestV2Schema();
+  const { cid } = req.body;
+  const v = await loadView(req, cid);
+  if (!v) return fail(res, '无此比赛');
+  if (!v.caps.canUnregister)
+    return fail(res, '只有未开始的公开个人赛可以取消报名');
+
+  const player = await db.one('SELECT teamId FROM contestPlayer WHERE cid=? AND uid=? LIMIT 1', [cid, req.session.uid]);
+  if (!player) return fail(res, '你尚未报名本场比赛');
+  if (player.teamId) return fail(res, '组队比赛请在队伍页退出队伍');
+
+  const hasSubmission = await db.exists('SELECT 1 FROM submission WHERE cid=? AND uid=? LIMIT 1', [cid, req.session.uid]);
+  if (hasSubmission) return fail(res, '已有提交记录，无法取消报名');
+
+  const r = await db.query('DELETE FROM contestPlayer WHERE cid=? AND uid=?', [cid, req.session.uid]);
+  if (!r.affectedRows) return fail(res, '取消报名失败');
+  invalidateStandings(cid);
   return ok(res);
 });
 

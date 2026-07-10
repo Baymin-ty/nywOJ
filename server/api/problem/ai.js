@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const multer = require('multer');
 const db = require('../../db');
 const { handler, fail, ok } = require('../../db/util');
 const config = require('../../config.json');
@@ -19,15 +20,18 @@ const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
 const MAX_PROMPT_BYTES = 24 * 1024;
 const MAX_CASES = 50;
 const MAX_CASE_TOTAL_BYTES = 5 * 1024 * 1024;
+const MAX_CHUNKED_CASE_BYTES = 16 * 1024 * 1024;
+const MAX_CHUNKED_TOTAL_BYTES = 128 * 1024 * 1024;
 const MAX_SOURCE_BYTES = 1024 * 1024;
 const MAX_SOLUTION_BYTES = 512 * 1024;
 const MAX_STATEMENT_BYTES = 512 * 1024;
 const MAX_PROFILE_BYTES = 256 * 1024;
-const MAX_DRAFT_CONTEXT_BYTES = 96 * 1024;
+const MAX_DRAFT_CONTEXT_BYTES = 512 * 1024;
 const MAX_PROMPT_HISTORY_ITEMS = 8;
 const MAX_PROMPT_HISTORY_BYTES = 16 * 1024;
 const MAX_JUDGE_ASSETS = 12;
 const JOB_TTL_MS = 2 * 60 * 60 * 1000;
+const DATA_SAVE_TTL_MS = 30 * 60 * 1000;
 const LOST_JOB_GRACE_MS = 10 * 60 * 1000;
 const PREVIEW_REASONING_BYTES = 128 * 1024;
 const MAX_REPAIR_ROUNDS = 2;
@@ -37,11 +41,25 @@ const CANCELLED_JOB_MESSAGE = '已停止本次生成。';
 const PROCESS_STARTED_AT = Date.now();
 const loadYaml = yaml.load || yaml.safeLoad;
 
+const dataCaseUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    files: 2,
+    fields: 8,
+    parts: 12,
+    fileSize: MAX_CHUNKED_CASE_BYTES,
+  },
+}).fields([
+  { name: 'input', maxCount: 1 },
+  { name: 'output', maxCount: 1 },
+]);
+
 const JUDGE_PRESETS = new Set(['traditional', 'spj', 'answer', 'answer-spj', 'function', 'interactive', 'communication', 'custom']);
 const DRAFT_SECTIONS = ['statement', 'std', 'solution', 'data', 'judge'];
 
 const aiJobs = new Map();
 const latestJobByUserProblem = new Map();
+const dataSaveSessions = new Map();
 
 const dataDirOf = (pid) => path.join(__dirname, '..', '..', 'data', String(pid));
 const judgeAssetRel = (pid, name) => name === 'checker.cpp' ? `./data/${pid}/checker.cpp` : `./data/${pid}/assets/${name}`;
@@ -379,6 +397,28 @@ const normalizeDataDraft = (data) => {
     subtasks,
     generator: normalizeCodeBlock(data && data.generator, 'ai-generator'),
     generation,
+    notes: cleanText(data && data.notes, 64 * 1024),
+  };
+};
+
+const normalizeDataSaveMeta = (data) => {
+  const rawCases = Array.isArray(data && data.cases) ? data.cases : [];
+  const cases = [];
+  const used = new Set();
+  for (let i = 0; i < rawCases.length && cases.length < MAX_CASES; i++) {
+    const item = rawCases[i] || {};
+    const index = cases.length + 1;
+    cases.push({
+      index,
+      name: sanitizeCaseBase(item.name, index, used),
+      subtaskId: clampInt(item.subtaskId, 1, 100, 1),
+    });
+  }
+  const subtasks = normalizeSubtasks(data && data.subtasks, cases);
+  return {
+    cases,
+    subtasks,
+    generator: normalizeCodeBlock(data && data.generator, 'ai-generator'),
     notes: cleanText(data && data.notes, 64 * 1024),
   };
 };
@@ -756,7 +796,7 @@ const compactDraftForPrompt = (draft, compact = false) => {
   if (!draft || typeof draft !== 'object') return null;
   const sourceBytes = compact ? 12000 : 32000;
   const markdownBytes = compact ? 12000 : 32000;
-  const statementBytes = compact ? 12000 : 32000;
+  const statementBytes = MAX_STATEMENT_BYTES;
   const assetBytes = compact ? 12000 : 24000;
   const data = draft.data || {};
   const generation = data.generation || data.generationPlan || {};
@@ -835,7 +875,7 @@ const buildMessages = (prompt, sections, problem, options = {}) => {
     level: problem.level,
     timeLimit: problem.timeLimit,
     memoryLimit: problem.memoryLimit,
-    description: cleanText(problem.description, 8000),
+    description: cleanText(problem.description, MAX_STATEMENT_BYTES),
     samples: problem.samples || [],
   };
   return aiPrompt.buildMessages(prompt, sections, context, {
@@ -1166,6 +1206,46 @@ const cleanupOldJobs = () => {
   }
 };
 
+const cleanupOldDataSaveSessions = () => {
+  const now = Date.now();
+  for (const [id, session] of dataSaveSessions.entries()) {
+    if (now - session.updatedAt < DATA_SAVE_TTL_MS) continue;
+    dataSaveSessions.delete(id);
+  }
+};
+
+const getDataSaveSession = (req, res, pid) => {
+  const body = req.body || {};
+  const sessionId = cleanString(body.sessionId || body.saveId, 100);
+  const session = dataSaveSessions.get(sessionId);
+  if (!session || session.pid !== pid || session.uid !== req.session.uid) {
+    fail(res, '保存会话不存在或已过期，请重新保存');
+    return null;
+  }
+  session.updatedAt = Date.now();
+  return session;
+};
+
+const uploadedCaseText = (req, field, fallback) => {
+  const files = req.files && req.files[field];
+  const file = Array.isArray(files) ? files[0] : null;
+  if (file && file.buffer) return file.buffer.toString('utf-8');
+  return String(fallback == null ? '' : fallback);
+};
+
+exports.saveDataCaseUpload = (req, res, next) => {
+  dataCaseUpload(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return fail(res, `测试点单个输入或输出超过 ${Math.round(MAX_CHUNKED_CASE_BYTES / 1024 / 1024)}MB`);
+    }
+    if (err.code && String(err.code).startsWith('LIMIT_')) {
+      return fail(res, '测试点上传内容过大或字段数量过多');
+    }
+    return next(err);
+  });
+};
+
 const isActiveJobStatus = (status) => status === 'queued' || status === 'running';
 
 const draftHasPreviewContent = (draft) => {
@@ -1178,6 +1258,7 @@ const draftHasPreviewContent = (draft) => {
   const judge = draft.judge || {};
   return !!(
     statement.description ||
+    Array.isArray(statement.samples) && statement.samples.length ||
     std.source ||
     solution.markdown ||
     data.generator && data.generator.source ||
@@ -1189,11 +1270,35 @@ const draftHasPreviewContent = (draft) => {
   );
 };
 
+const problemStatementPayload = (problem = {}) => ({
+  statement: {
+    title: problem.title || '',
+    description: problem.description || '',
+    tags: Array.isArray(problem.tags) ? problem.tags : [],
+    timeLimit: problem.timeLimit,
+    memoryLimit: problem.memoryLimit,
+    level: problem.level,
+    samples: Array.isArray(problem.samples) ? problem.samples : [],
+  },
+});
+
 const currentDraftFromRequest = (body, problem) => {
+  const base = normalizeDraft(problemStatementPayload(problem), problem);
   const raw = body && (body.currentDraft || body.draftContext || body.draft);
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return draftHasPreviewContent(base) ? base : null;
   const draft = normalizeDraft(raw, problem);
-  return draftHasPreviewContent(draft) ? draft : null;
+  const rawStatement = raw.statement && typeof raw.statement === 'object' && !Array.isArray(raw.statement)
+    ? raw.statement
+    : null;
+  if (!rawStatement) {
+    draft.statement = base.statement;
+  } else {
+    const hasRawDescription = Object.prototype.hasOwnProperty.call(rawStatement, 'description') ||
+      Object.prototype.hasOwnProperty.call(rawStatement, 'markdown');
+    if (!hasRawDescription) draft.statement.description = base.statement.description;
+    if (!Array.isArray(rawStatement.samples)) draft.statement.samples = base.statement.samples;
+  }
+  return draftHasPreviewContent(draft) ? draft : (draftHasPreviewContent(base) ? base : null);
 };
 
 const markLostPreviewJob = async (uid, pid, jobId) => {
@@ -1951,6 +2056,39 @@ const summarizeGeneratedCases = (cases) => {
   return { rows, totalBytes };
 };
 
+const dataConfigForCases = (data, caseMeta) => {
+  const cases = caseMeta.map((item, index) => {
+    const input = `ai/${item.name}.in`;
+    const output = `ai/${item.name}.out`;
+    return { index: index + 1, input, output, subtaskId: item.subtaskId || 1 };
+  });
+  const usedSubtasks = new Set(cases.map((item) => Number(item.subtaskId)));
+  const subtasks = data.subtasks.filter((item) => usedSubtasks.has(Number(item.index)));
+  if (!subtasks.length) subtasks.push({ index: 1, score: 100, option: 0, skip: false, dependencies: [] });
+  const score = subtasks.reduce((sum, item) => sum + Number(item.score || 0), 0);
+  if (score !== 100) {
+    subtasks.splice(0, subtasks.length, { index: 1, score: 100, option: 0, skip: false, dependencies: [] });
+    cases.forEach((item) => { item.subtaskId = 1; });
+  }
+  return { cases, subtasks };
+};
+
+const finishDataFiles = async (pid, data, caseMeta) => {
+  const dir = dataDirOf(pid);
+  const { cases, subtasks } = dataConfigForCases(data, caseMeta);
+  await setFile(`./data/${pid}/config.json`, JSON.stringify({ cases, subtask: subtasks }, null, 2));
+  const previewPath = path.join(dir, 'preview.json');
+  if (fs.existsSync(previewPath)) fs.rmSync(previewPath, { force: true });
+
+  let generatorSaved = null;
+  if (data.generator && data.generator.source && data.generator.source.trim()) {
+    generatorSaved = sanitizeAssetName(data.generator.fileName, 'ai-generator.cpp');
+    await setFile(`./data/${pid}/assets/${generatorSaved}`, data.generator.source);
+  }
+  await storage.mirrorProblemData(pid, dir);
+  return { cases, subtasks, generatorSaved };
+};
+
 exports.previewData = handler(async (req, res) => {
   const pid = Number(req.body.pid || 0);
   if (!pid) return fail(res, 'expect pid');
@@ -1994,36 +2132,136 @@ exports.saveData = handler(async (req, res) => {
   fs.rmSync(aiDir, { recursive: true, force: true });
   fs.mkdirSync(aiDir, { recursive: true });
 
-  const cases = dataCases.map((item, index) => {
-    const input = `ai/${item.name}.in`;
-    const output = `ai/${item.name}.out`;
-    return { index: index + 1, input, output, subtaskId: item.subtaskId || 1 };
-  });
-  const usedSubtasks = new Set(cases.map((item) => Number(item.subtaskId)));
-  const subtasks = data.subtasks.filter((item) => usedSubtasks.has(Number(item.index)));
-  if (!subtasks.length) subtasks.push({ index: 1, score: 100, option: 0, skip: false, dependencies: [] });
-  const score = subtasks.reduce((sum, item) => sum + Number(item.score || 0), 0);
-  if (score !== 100) {
-    subtasks.splice(0, subtasks.length, { index: 1, score: 100, option: 0, skip: false, dependencies: [] });
-    cases.forEach((item) => { item.subtaskId = 1; });
-  }
-
+  const caseMeta = dataCases.map((item, index) => ({
+    index: index + 1,
+    name: item.name,
+    subtaskId: item.subtaskId || 1,
+  }));
+  const { cases } = dataConfigForCases(data, caseMeta);
   for (let i = 0; i < dataCases.length; i++) {
     await setFile(`./data/${pid}/${cases[i].input}`, dataCases[i].input);
     await setFile(`./data/${pid}/${cases[i].output}`, dataCases[i].output);
   }
-  await setFile(`./data/${pid}/config.json`, JSON.stringify({ cases, subtask: subtasks }, null, 2));
-  const previewPath = path.join(dir, 'preview.json');
-  if (fs.existsSync(previewPath)) fs.rmSync(previewPath, { force: true });
+  const result = await finishDataFiles(pid, data, caseMeta);
+  recordEvent(req, 'problem.aiSaveData', {
+    pid,
+    cases: result.cases.length,
+    generatorSaved: result.generatorSaved,
+    sandboxGenerated: !!generatedCases,
+  });
+  return ok(res, {
+    cases: result.cases,
+    subtask: result.subtasks,
+    generatorSaved: result.generatorSaved,
+    sandboxGenerated: !!generatedCases,
+  });
+});
 
-  let generatorSaved = null;
-  if (data.generator && data.generator.source && data.generator.source.trim()) {
-    generatorSaved = sanitizeAssetName(data.generator.fileName, 'ai-generator.cpp');
-    await setFile(`./data/${pid}/assets/${generatorSaved}`, data.generator.source);
+exports.startDataSave = handler(async (req, res) => {
+  cleanupOldDataSaveSessions();
+  const pid = Number(req.body.pid || 0);
+  if (!pid) return fail(res, 'expect pid');
+  if (!(await assertManage(req, res, pid))) return;
+
+  const data = normalizeDataSaveMeta(req.body.data || req.body.dataDraft || {});
+  if (!data.cases.length) return fail(res, '测试数据为空，请提供静态 Case');
+
+  const dir = dataDirOf(pid);
+  const aiDir = path.join(dir, 'ai');
+  fs.mkdirSync(dir, { recursive: true });
+  const hasConfig = fs.existsSync(path.join(dir, 'config.json'));
+  if (hasConfig && !bool(req.body.confirmReplace)) return fail(res, '测试数据已存在，请确认覆盖');
+
+  fs.rmSync(aiDir, { recursive: true, force: true });
+  fs.mkdirSync(aiDir, { recursive: true });
+
+  const now = Date.now();
+  const id = crypto.randomUUID ? crypto.randomUUID() : `${now}-${Math.random().toString(36).slice(2)}`;
+  dataSaveSessions.set(id, {
+    id,
+    uid: req.session.uid,
+    pid,
+    data,
+    written: new Array(data.cases.length).fill(false),
+    caseBytes: new Array(data.cases.length).fill(0),
+    totalBytes: 0,
+    createdAt: now,
+    updatedAt: now,
+  });
+  recordEvent(req, 'problem.aiStartDataSave', { pid, cases: data.cases.length });
+  return ok(res, {
+    sessionId: id,
+    cases: data.cases.map((item) => ({ index: item.index, name: item.name, subtaskId: item.subtaskId })),
+    total: data.cases.length,
+  });
+});
+
+exports.saveDataCase = handler(async (req, res) => {
+  cleanupOldDataSaveSessions();
+  const body = req.body || {};
+  const pid = Number(body.pid || 0);
+  if (!pid) return fail(res, 'expect pid');
+  if (!(await assertManage(req, res, pid))) return;
+
+  const session = getDataSaveSession(req, res, pid);
+  if (!session) return;
+  const index = Number(body.index || 0);
+  if (!Number.isInteger(index) || index < 1 || index > session.data.cases.length) {
+    return fail(res, '测试点编号非法');
   }
-  await storage.mirrorProblemData(pid, dir);
-  recordEvent(req, 'problem.aiSaveData', { pid, cases: cases.length, generatorSaved, sandboxGenerated: !!generatedCases });
-  return ok(res, { cases, subtask: subtasks, generatorSaved, sandboxGenerated: !!generatedCases });
+  const item = session.data.cases[index - 1];
+  const input = uploadedCaseText(req, 'input', body.input).replace(/\r\n/g, '\n');
+  const output = uploadedCaseText(req, 'output', body.output).replace(/\r\n/g, '\n');
+  if (!input.trim() && !output.trim()) return fail(res, `测试点 ${item.name} 为空`);
+
+  const inputBytes = byteLen(input);
+  const outputBytes = byteLen(output);
+  if (inputBytes > MAX_CHUNKED_CASE_BYTES || outputBytes > MAX_CHUNKED_CASE_BYTES) {
+    return fail(res, `测试点 ${item.name} 单个输入或输出超过 ${Math.round(MAX_CHUNKED_CASE_BYTES / 1024 / 1024)}MB`);
+  }
+  const bytes = inputBytes + outputBytes;
+  const nextTotal = session.totalBytes - Number(session.caseBytes[index - 1] || 0) + bytes;
+  if (nextTotal > MAX_CHUNKED_TOTAL_BYTES) {
+    return fail(res, `静态测试数据总量超过 ${Math.round(MAX_CHUNKED_TOTAL_BYTES / 1024 / 1024)}MB`);
+  }
+
+  await setFile(`./data/${pid}/ai/${item.name}.in`, input);
+  await setFile(`./data/${pid}/ai/${item.name}.out`, output);
+  session.caseBytes[index - 1] = bytes;
+  session.totalBytes = nextTotal;
+  session.written[index - 1] = true;
+  const written = session.written.filter(Boolean).length;
+  return ok(res, { index, name: item.name, written, total: session.data.cases.length, totalBytes: session.totalBytes });
+});
+
+exports.finishDataSave = handler(async (req, res) => {
+  cleanupOldDataSaveSessions();
+  const pid = Number(req.body.pid || 0);
+  if (!pid) return fail(res, 'expect pid');
+  if (!(await assertManage(req, res, pid))) return;
+
+  const session = getDataSaveSession(req, res, pid);
+  if (!session) return;
+  const missing = session.written
+    .map((written, index) => written ? null : session.data.cases[index].name)
+    .filter(Boolean);
+  if (missing.length) return fail(res, `仍有测试点未写入：${missing.slice(0, 8).join('、')}`);
+
+  const result = await finishDataFiles(pid, session.data, session.data.cases);
+  dataSaveSessions.delete(session.id);
+  recordEvent(req, 'problem.aiFinishDataSave', {
+    pid,
+    cases: result.cases.length,
+    totalBytes: session.totalBytes,
+    generatorSaved: result.generatorSaved,
+  });
+  return ok(res, {
+    cases: result.cases,
+    subtask: result.subtasks,
+    generatorSaved: result.generatorSaved,
+    sandboxGenerated: false,
+    totalBytes: session.totalBytes,
+  });
 });
 
 exports.saveJudge = handler(async (req, res) => {

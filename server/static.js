@@ -197,5 +197,3 @@ exports.recordEvent = (req, reason, detail, uid) => {
     `${req.useragent.browser.name} ${req.useragent.browser.version}`, `${req.useragent.os.name} ${req.useragent.os.version}`, detail ? JSON.stringify(detail, null, 2) : null
   ]).catch((err) => console.log(err));
 }
-
-exports.queryPromise = (sql, values) => db.query(sql, values);

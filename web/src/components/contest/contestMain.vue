@@ -7,7 +7,13 @@
             <div class="card-header">
               <p class="title">{{ contestInfo.title }}
                 <el-button v-show="contestInfo.regAble" type="danger" plain @click="regContest">点击报名</el-button>
-                <el-button v-show="contestInfo.isReg" type="info" disabled>已报名</el-button>
+                <el-popconfirm v-if="contestInfo.unregAble" title="确认取消报名？" confirm-button-text="确认"
+                  cancel-button-text="取消" @confirm="cancelContestReg">
+                  <template #reference>
+                    <el-button type="warning" plain>取消报名</el-button>
+                  </template>
+                </el-popconfirm>
+                <el-button v-show="contestInfo.isReg && !contestInfo.unregAble" type="info" disabled>已报名</el-button>
               </p>
             </div>
           </template>
@@ -167,6 +173,8 @@
                         <span class="rules-hint" style="margin: 0 0 0 8px;">每队上限</span>
                         <el-checkbox v-model="rules.teamSelfForm" :disabled="tmpInfo.done"
                           style="margin-left: 12px;">允许自由组队</el-checkbox>
+                        <el-button v-if="teamModeOn && canManage" type="primary" plain size="small"
+                          style="margin-left: 12px;" @click="openTeamManage">管理队伍</el-button>
                       </template>
                     </el-form-item>
                     <template v-if="tmpInfo.format === 'cf'">
@@ -432,7 +440,7 @@ export default {
         '等待测评': 'success',
         '已结束': 'info',
       },
-      needUpdate: ['problemList', 'submission', 'rank', 'manageP', 'hack'],
+      needUpdate: ['problemList', 'submission', 'rank', 'manageP', 'hack', 'team'],
       avalangList: [],
       formatOptions: [
         { id: 'oi', label: 'OI' },
@@ -781,6 +789,10 @@ export default {
         this.$nextTick(() => { this.$refs[tab].all(); });
       }
     },
+    openTeamManage() {
+      this.activeName = 'team';
+      this.switchTab('team');
+    },
     closeContest() {
       axios.post('/api/contest/closeContest', {
         cid: this.cid,
@@ -848,6 +860,20 @@ export default {
         this.all();
       }).catch(err => {
         this.$message.error(this.apiErrorMessage(err, '报名失败'));
+      });
+    },
+    cancelContestReg() {
+      axios.post('/api/contest/cancelContestReg', {
+        cid: this.cid,
+      }).then(res => {
+        if (res.status === 200) {
+          this.$message.success('已取消报名');
+        } else {
+          this.$message.error('取消报名失败' + res.data.message);
+        }
+        this.all();
+      }).catch(err => {
+        this.$message.error(this.apiErrorMessage(err, '取消报名失败'));
       });
     },
     reJudgeContest() {

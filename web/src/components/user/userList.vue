@@ -1,32 +1,30 @@
 <template>
   <div class="leaderboard-page">
-    <el-card class="box-card" shadow="hover">
-      <template #header>
-        <div class="lb-header">
-          <div class="lb-heading">
-            <el-icon class="lb-trophy"><Trophy /></el-icon>
-            <span class="lb-title">用户榜</span>
-          </div>
-          <div class="lb-tools">
-            <el-radio-group v-model="sortBy" size="small" @change="switchSort">
-              <el-radio-button value="acceptedProblemCount">AC 题数</el-radio-button>
-              <el-radio-button value="rating">积分</el-radio-button>
-            </el-radio-group>
-            <el-button size="small" plain @click="all">
-              <el-icon class="el-icon--left"><Refresh /></el-icon>
-              刷新
-            </el-button>
-          </div>
-        </div>
-      </template>
+    <div class="lb-header">
+      <div class="lb-heading">
+        <el-icon class="lb-trophy"><Trophy /></el-icon>
+        <span class="lb-title">用户榜</span>
+      </div>
+      <div class="lb-tools">
+        <el-radio-group v-model="sortBy" size="small" @change="switchSort">
+          <el-radio-button value="acceptedProblemCount">AC 题数</el-radio-button>
+          <el-radio-button value="rating">积分</el-radio-button>
+          <el-radio-button value="clickCnt">点击数</el-radio-button>
+        </el-radio-group>
+        <el-button size="small" plain @click="all">
+          <el-icon class="el-icon--left"><Refresh /></el-icon>
+          刷新
+        </el-button>
+      </div>
+    </div>
 
-      <div v-loading="loading" class="lb-list">
-        <div
-          v-for="row in users"
-          :key="row.uid"
-          class="lb-row"
-          :class="{ top: isTop3(row) }"
-        >
+    <div v-loading="loading" class="lb-list">
+      <div
+        v-for="row in users"
+        :key="row.uid"
+        class="lb-row"
+        :class="{ top: isTop3(row) }"
+      >
           <span class="lb-rank" :class="medalClass(row)">
             <el-icon v-if="isTop3(row)"><Trophy /></el-icon>
             <span>{{ row.rank || '-' }}</span>
@@ -39,6 +37,7 @@
             <div class="lb-sub">
               @{{ row.name }}<span v-if="row.bio"> · {{ row.bio }}</span>
             </div>
+            <div v-if="row.mottoExcerpt" class="lb-motto">{{ row.mottoExcerpt }}</div>
           </div>
           <div class="lb-stats">
             <div class="lb-stat">
@@ -60,18 +59,22 @@
                 <el-tag class="rating-cache-tag" type="warning" size="small">!</el-tag>
               </el-tooltip>
             </div>
-            <div class="lb-reg">{{ regDate(row) }}</div>
+            <div class="lb-stat">
+              <div class="lb-stat-val lb-click" :class="{ primary: sortBy === 'clickCnt' }">
+                {{ row.clickCnt || 0 }}
+              </div>
+              <div class="lb-stat-label">点击</div>
+            </div>
           </div>
         </div>
 
-        <el-empty v-if="!loading && !users.length" description="暂无用户" />
-      </div>
+      <el-empty v-if="!loading && !users.length" description="暂无用户" />
+    </div>
 
-      <div class="pager">
-        <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="pageSize"
-          layout="total, prev, pager, next" :total="total" />
-      </div>
-    </el-card>
+    <div class="pager">
+      <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="pageSize"
+        layout="total, prev, pager, next" :total="total" />
+    </div>
   </div>
 </template>
 
@@ -133,22 +136,13 @@ export default {
     medalClass(row) {
       return { 1: 'gold', 2: 'silver', 3: 'bronze' }[row.rank] || '';
     },
-    regDate(row) {
-      const t = row.reg_time;
-      if (!t) return '';
-      const d = new Date(t);
-      if (Number.isNaN(d.getTime())) return String(t).slice(0, 10);
-      const pad = (n) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    },
     ratingTier(rating) {
       return getRatingTier(rating);
     },
   },
   mounted() {
     const query = this.$route.query || {};
-    if (query.sortBy === 'rating') this.sortBy = 'rating';
-    else if (query.sortBy === 'acceptedProblemCount') this.sortBy = 'acceptedProblemCount';
+    if (['acceptedProblemCount', 'rating', 'clickCnt'].includes(query.sortBy)) this.sortBy = query.sortBy;
     else if (this.$store.state.serverPreference && this.$store.state.serverPreference.misc
       && this.$store.state.serverPreference.misc.sortUserByRating) this.sortBy = 'rating';
     if (query.pageId) this.currentPage = Math.max(1, parseInt(query.pageId, 10) || 1);
@@ -159,13 +153,9 @@ export default {
 
 <style scoped>
 .leaderboard-page {
-  max-width: 980px;
+  max-width: 1400px;
   margin: 0 auto;
   text-align: left;
-}
-
-.box-card {
-  margin: 10px;
 }
 
 .lb-header {
@@ -174,6 +164,9 @@ export default {
   justify-content: space-between;
   gap: 12px;
   min-height: 24px;
+  padding-bottom: 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #ebeef5;
 }
 
 .lb-heading {
@@ -275,10 +268,20 @@ export default {
   white-space: nowrap;
 }
 
+.lb-motto {
+  margin-top: 3px;
+  color: #a8abb2;
+  font-size: 12px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .lb-stats {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 34px;
   flex: 0 0 auto;
 }
 
@@ -286,7 +289,7 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 50px;
+  min-width: 72px;
 }
 
 .lb-stat-val {
@@ -316,7 +319,7 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-width: 92px;
+  min-width: 120px;
   padding: 3px 8px;
   border: 1px solid;
   border-radius: 999px;
@@ -336,13 +339,17 @@ export default {
   font-weight: 700;
 }
 
+.lb-reg {
+  display: none;
+}
+
 .rating-cache-tag {
   padding: 0 5px;
   line-height: 18px;
 }
 
 .lb-reg {
-  width: 108px;
+  width: 132px;
   text-align: right;
   color: #909399;
   font-size: 12px;
@@ -357,10 +364,6 @@ export default {
 @media (max-width: 768px) {
   .leaderboard-page {
     width: 100%;
-  }
-
-  .box-card {
-    margin: 0;
   }
 
   .lb-header {
@@ -394,10 +397,6 @@ export default {
     flex-direction: row;
     gap: 5px;
     min-width: auto;
-  }
-
-  .lb-reg {
-    display: none;
   }
 }
 </style>

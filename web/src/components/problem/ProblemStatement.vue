@@ -28,7 +28,7 @@
 </template>
 
 <script>
-const MARKER_NAME = '(?:samples?|sample-list|样例)';
+const MARKER_NAME = '(?:samples?|sample-list|cases?|case-list|样例)';
 const RAW_SAMPLE_MARKER = `<!--\\s*${MARKER_NAME}\\s*-->`;
 const ESCAPED_SAMPLE_MARKER = `(?:&lt;|&#60;|&#x3c;)!\\s*--\\s*${MARKER_NAME}\\s*--\\s*(?:&gt;|&#62;|&#x3e;)`;
 const SAMPLE_MARKER_RE = new RegExp(`(?:${RAW_SAMPLE_MARKER}|${ESCAPED_SAMPLE_MARKER})`, 'i');

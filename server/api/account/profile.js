@@ -2,13 +2,13 @@ const bcrypt = require('bcryptjs');
 const db = require('../../db');
 const { handler, ok, fail } = require('../../db/util');
 const config = require('../../config.json');
-const { eventList, eventExp, ip2loc, recordEvent } = require('../../static');
+const { eventList, ip2loc, recordEvent } = require('../../static');
 const policy = require('../../auth/policy');
 const { ensureContestRatingStorageSchema, latestRatingJoin, effectiveRatingExpr } = require('../contest/ratingStorage');
 
 const NAME_REGEX = /^[A-Za-z0-9\-_.#$]{3,24}$/;
 const EMAIL_REGEX = /^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/;
-const USER_LIST_SORTS = new Set(['acceptedProblemCount', 'rating']);
+const USER_LIST_SORTS = new Set(['acceptedProblemCount', 'rating', 'clickCnt']);
 const DEFAULT_USER_SEARCH_LIMIT = 10;
 const DEFAULT_USER_LIST_LIMIT = 100;
 const DEFAULT_AVATAR = '/default-avatar.svg';
@@ -126,9 +126,11 @@ const rankCacheValue = async (cache, key, loader) => {
 const attachLeaderboardRanks = async (rows, sortBy) => {
   const acceptedRankCache = new Map();
   const ratingRankCache = new Map();
+  const clickRankCache = new Map();
   await Promise.all(rows.map(async (row) => {
     const accepted = Number(row.acceptedProblemCount || 0);
     const rating = Number(row.effectiveRating != null ? row.effectiveRating : row.rating || 0);
+    const clickCnt = Number(row.clickCnt || 0);
     const acceptedAhead = await rankCacheValue(acceptedRankCache, accepted, async () =>
       Number((await db.one(
         `SELECT COUNT(*) AS cnt FROM userInfo u WHERE u.inUse=1 AND ${acceptedCountExpr('u.uid')} > ?`,
@@ -149,7 +151,16 @@ const attachLeaderboardRanks = async (rows, sortBy) => {
     } else {
       row.ratingRank = null;
     }
-    row.rank = sortBy === 'rating' ? row.ratingRank : row.acceptedRank;
+    const clickAhead = await rankCacheValue(clickRankCache, clickCnt, async () =>
+      Number((await db.one(
+        'SELECT COUNT(*) AS cnt FROM userInfo u WHERE u.inUse=1 AND COALESCE(u.clickCnt,0) > ?',
+        [clickCnt]
+      ))?.cnt || 0)
+    );
+    row.clickRank = clickAhead + 1;
+    if (sortBy === 'rating') row.rank = row.ratingRank;
+    else if (sortBy === 'clickCnt') row.rank = row.clickRank;
+    else row.rank = row.acceptedRank;
   }));
 };
 
@@ -183,6 +194,21 @@ const avatarUrl = (avatar, size = 80) => {
   return DEFAULT_AVATAR;
 };
 
+// Condense the markdown "个人主页" (motto) into a short single-line preview for
+// listings such as the leaderboard: drop code blocks / images, unwrap links,
+// strip common markdown markers and collapse whitespace, then clip.
+const mottoExcerpt = (motto, len = 60) => {
+  const text = String(motto || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/^[ \t]*#{1,6}[ \t]+/gm, '')
+    .replace(/[*_`~>#]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > len ? `${text.slice(0, len)}…` : text;
+};
+
 const userMeta = (row) => ({
   id: row.uid,
   uid: row.uid,
@@ -191,10 +217,12 @@ const userMeta = (row) => ({
   email: row.publicEmail || row.uid === row.currentViewer || row.showPrivate ? row.email || '' : '',
   nickname: row.nickname || '',
   bio: row.bio || '',
+  mottoExcerpt: mottoExcerpt(row.motto),
   avatar: parseAvatar(row),
   isAdmin: Number(row.uid) === 1,
   acceptedProblemCount: Number(row.acceptedProblemCount || 0),
   submissionCount: Number(row.submissionCount || 0),
+  clickCnt: Number(row.clickCnt || 0),
   rating: Number(row.effectiveRating != null ? row.effectiveRating : row.rating || 0),
   cachedRating: Number(row.cachedRating != null ? row.cachedRating : row.rating || 0),
   historyRating: Number(row.historyRating || 0),
@@ -202,6 +230,7 @@ const userMeta = (row) => ({
   ...(row.rank !== undefined ? { rank: row.rank == null ? null : Number(row.rank) } : {}),
   ...(row.acceptedRank !== undefined ? { acceptedRank: Number(row.acceptedRank || 0) } : {}),
   ...(row.ratingRank !== undefined ? { ratingRank: row.ratingRank == null ? null : Number(row.ratingRank) } : {}),
+  ...(row.clickRank !== undefined ? { clickRank: Number(row.clickRank || 0) } : {}),
   registrationTime: row.reg_time,
 });
 
@@ -295,9 +324,12 @@ exports.getUserList = handler(async (req, res) => {
   );
   const sortBy = USER_LIST_SORTS.has(req.body.sortBy) ? req.body.sortBy : 'acceptedProblemCount';
   const acceptedExpr = acceptedCountExpr('u.uid');
+  const ratingExpr = effectiveRatingExpr('u');
   const orderExpr = sortBy === 'rating'
-    ? `${effectiveRatingExpr('u')} DESC,${acceptedExpr} DESC,u.uid ASC`
-    : `${acceptedExpr} DESC,${effectiveRatingExpr('u')} DESC,u.uid ASC`;
+    ? `${ratingExpr} DESC,${acceptedExpr} DESC,u.uid ASC`
+    : sortBy === 'clickCnt'
+      ? `COALESCE(u.clickCnt,0) DESC,${acceptedExpr} DESC,${ratingExpr} DESC,u.uid ASC`
+      : `${acceptedExpr} DESC,${ratingExpr} DESC,u.uid ASC`;
   const rows = await db.query(
     `SELECT ${compatUserSelect()}
        FROM userInfo u ${latestRatingJoin('u')}

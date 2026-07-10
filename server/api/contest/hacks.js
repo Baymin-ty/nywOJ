@@ -8,7 +8,7 @@ const { getFile } = require('../../file');
 const sandboxClient = require('../judge/sandbox');
 const { getLanguage, stdioFiles, COMPILE_LIMITS, DEFAULT_ENV } = require('../judge/languages');
 const { summarizeProfileFlow } = require('../problem/judgeProfile');
-const { getContest, getProblemByIdx, getIdxByPid } = require('./store');
+const { getIdxByPid } = require('./store');
 const { loadView } = require('./policy');
 const { invalidateStandings } = require('./standings');
 

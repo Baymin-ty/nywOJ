@@ -1,33 +1,30 @@
 <template>
-  <div class="list-page">
-    <el-card class="box-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          题目列表
-          <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
-            layout="total, prev, pager, next" :total="total"></el-pagination>
-          <el-button-group>
-            <el-popconfirm v-if="$can('problem.create')" confirm-button-text="确认" cancel-button-text="取消" title="确认添加题目?"
-              @confirm="addProblem">
-              <template #reference>
-                <el-button type="success">
-                  <el-icon class="el-icon--left">
-                    <Plus />
-                  </el-icon>
-                  添加题目
-                </el-button>
-              </template>
-            </el-popconfirm>
-            <el-button type="primary" @click="all">
+  <div class="problem-page">
+    <div class="sub-header">
+      <span class="sub-title">题目列表</span>
+      <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
+        layout="total, prev, pager, next" :total="total"></el-pagination>
+      <el-button-group>
+        <el-popconfirm v-if="$can('problem.create')" confirm-button-text="确认" cancel-button-text="取消" title="确认添加题目?"
+          @confirm="addProblem">
+          <template #reference>
+            <el-button type="success">
               <el-icon class="el-icon--left">
-                <Refresh />
+                <Plus />
               </el-icon>
-              刷新
+              添加题目
             </el-button>
-          </el-button-group>
-        </div>
-      </template>
-      <div class="filter-row">
+          </template>
+        </el-popconfirm>
+        <el-button type="primary" @click="all">
+          <el-icon class="el-icon--left">
+            <Refresh />
+          </el-icon>
+          刷新
+        </el-button>
+      </el-button-group>
+    </div>
+    <div class="filter-row">
         <el-form :inline="true" :model="filter">
           <el-form-item>
             <el-input v-model="pid" type="text" placeholder="pid跳转" style="width: 70px;"
@@ -67,8 +64,8 @@
           </el-button>
         </el-button-group>
       </div>
-      <el-table :data="problemList" height="600px" :header-cell-style="{ textAlign: 'center' }" :cell-style="cellStyle"
-        v-loading="!finished">
+      <el-table :data="problemList" :header-cell-style="{ textAlign: 'center' }" :cell-style="cellStyle"
+        empty-text="暂无题目" v-loading="!finished">
         <el-table-column prop="pid" label="#" width="100px" />
         <el-table-column prop="title" width="auto">
           <template #header>
@@ -108,9 +105,13 @@
             </el-button>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="AC/提交" width="120px">
+        <el-table-column prop="status" label="AC / 提交" width="140px">
           <template #default="scope">
-            <span> {{ scope.row.acCnt }} / {{ scope.row.submitCnt }}</span>
+            <div class="ac-cell">
+              <span class="ac-count">{{ scope.row.acCnt }} / {{ scope.row.submitCnt }}</span>
+              <el-progress :percentage="acRate(scope.row)" :stroke-width="5" :show-text="false"
+                :color="acRateColor(scope.row)" />
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="time" label="发布时间" width="120px" />
@@ -122,7 +123,6 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
   </div>
 </template>
 
@@ -239,6 +239,17 @@ export default {
     cellStyle({ columnIndex }) {
       return { textAlign: columnIndex === 1 ? 'left' : 'center' };
     },
+    acRate(row) {
+      const submit = Number(row.submitCnt || 0);
+      if (!submit) return 0;
+      return Math.round((Number(row.acCnt || 0) / submit) * 100);
+    },
+    acRateColor(row) {
+      const rate = this.acRate(row);
+      if (rate >= 70) return '#52C41A';
+      if (rate >= 40) return '#FFC116';
+      return '#FE4C61';
+    },
     clear() {
       this.filter = {
         name: null,
@@ -321,12 +332,7 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-.box-card {
-  height: auto;
-  margin: 10px;
-}
-
-.list-page {
+.problem-page {
   text-align: center;
   margin: 0 auto;
   max-width: 1300px;
@@ -339,13 +345,23 @@ export default {
   flex-wrap: wrap;
   gap: 8px;
   max-width: 100%;
+  margin-bottom: 14px;
 }
 
-.card-header {
+.sub-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 20px;
+  gap: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.sub-title {
+  font-weight: bolder;
+  color: #3f3f3f;
+  white-space: nowrap;
 }
 
 .title-container {
@@ -376,20 +392,38 @@ export default {
   font-size: 14px;
 }
 
+.ac-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.ac-count {
+  font-size: 13px;
+  color: #606266;
+}
+
+.ac-cell :deep(.el-progress) {
+  width: 100%;
+}
+
+.ac-cell :deep(.el-progress-bar__outer) {
+  background-color: #f0f2f5;
+}
+
 .el-form--inline .el-form-item {
   margin-right: 15px;
 }
 
 @media (max-width: 768px) {
-  .list-page {
+  .problem-page {
     width: 100%;
   }
 
-  .box-card {
-    margin: 0;
-  }
-
-  .card-header {
+  .sub-header {
+    flex-wrap: wrap;
     justify-content: center;
   }
 

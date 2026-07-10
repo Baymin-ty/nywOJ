@@ -12,6 +12,16 @@ module.exports = defineConfig({
     },
   },
   devServer: {
+    client: {
+      overlay: {
+        warnings: true,
+        errors: true,
+        runtimeErrors: (error) => {
+          const message = error && error.message ? error.message : String(error || '');
+          return !message.includes('ResizeObserver loop');
+        },
+      },
+    },
     historyApiFallback: true,
     proxy: {
       '/api': {

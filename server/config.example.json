@@ -17,8 +17,8 @@
   "SESSION": {
     "expire": "604800000"
   },
-  "SECURITY": {
-    "maintainceKey": "<change-this-cron-secret>"
+  "HTTP": {
+    "bodyLimit": "64mb"
   },
   "preference": {
     "security": {
@@ -77,10 +77,6 @@
     "userAuditLogs": 20,
     "discussions": 20,
     "discussionReplies": 50
-  },
-  "CORS": {
-    "enabled": false,
-    "whiteList": ["https://example.com"]
   },
   "METRICS": {
     "enabled": false,

@@ -10,6 +10,7 @@
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
     "@kangc/v-md-editor": "^2.3.15",
+    "axios": "^1.7.2",
     "core-js": "^3.8.3",
     "echarts": "^5.4.1",
     "element-plus": "^2.7.6",
@@ -18,7 +19,6 @@
     "monaco-editor-webpack-plugin": "^7.0.1",
     "qs": "^6.11.1",
     "vue": "^3.2.13",
-    "vue-axios": "^3.5.2",
     "vue-router": "^4.1.6",
     "vuedraggable": "^4.1.0",
     "vuex": "^4.1.0",
@@ -32,8 +32,7 @@
     "@vue/cli-plugin-eslint": "~5.0.0",
     "@vue/cli-service": "~5.0.0",
     "eslint": "^7.32.0",
-    "eslint-plugin-vue": "^8.0.3",
-    "webpack-bundle-analyzer": "^4.10.1"
+    "eslint-plugin-vue": "^8.0.3"
   },
   "eslintConfig": {
     "root": true,

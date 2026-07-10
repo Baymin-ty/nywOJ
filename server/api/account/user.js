@@ -14,7 +14,7 @@ const USERNAME_RULE_MESSAGE = '用户名长度应在3~24之间，可包含字母
 const EMAIL_REGEX = /^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/;
 const VERIFY_CODE_TTL_MS = 3 * 60 * 1000;
 const VERIFY_CODE_RATE_LIMIT_MS = 30 * 1000;
-const USER_LIST_SORTS = new Set(['acceptedProblemCount', 'rating']);
+const USER_LIST_SORTS = new Set(['acceptedProblemCount', 'rating', 'clickCnt']);
 const USER_LIST_MAX_PAGE_SIZE = 100;
 const DEFAULT_AVATAR = '/default-avatar.svg';
 const GRAVATAR_CDN = 'https://www.gravatar.com/avatar/';
@@ -125,9 +125,11 @@ const rankCacheValue = async (cache, key, loader) => {
 const attachUserLeaderboardRanks = async (rows, sortBy) => {
   const acceptedRankCache = new Map();
   const ratingRankCache = new Map();
+  const clickRankCache = new Map();
   await Promise.all(rows.map(async (row) => {
     const accepted = Number(row.acceptedProblemCount || 0);
     const rating = Number(row.rating || 0);
+    const clickCnt = Number(row.clickCnt || 0);
     const acceptedAhead = await rankCacheValue(acceptedRankCache, accepted, async () =>
       Number((await db.one(
         `SELECT COUNT(*) AS cnt FROM userInfo u WHERE u.inUse=1 AND ${acceptedProblemCountExpr('u.uid')} > ?`,
@@ -148,12 +150,21 @@ const attachUserLeaderboardRanks = async (rows, sortBy) => {
     } else {
       row.ratingRank = null;
     }
-    row.rank = sortBy === 'rating' ? row.ratingRank : row.acceptedRank;
+    const clickAhead = await rankCacheValue(clickRankCache, clickCnt, async () =>
+      Number((await db.one(
+        'SELECT COUNT(*) AS cnt FROM userInfo u WHERE u.inUse=1 AND COALESCE(u.clickCnt,0) > ?',
+        [clickCnt]
+      ))?.cnt || 0)
+    );
+    row.clickRank = clickAhead + 1;
+    if (sortBy === 'rating') row.rank = row.ratingRank;
+    else if (sortBy === 'clickCnt') row.rank = row.clickRank;
+    else row.rank = row.acceptedRank;
   }));
 };
 
 const publicUserMetaSelect = () =>
-  `u.uid,u.name,u.nickname,u.bio,u.qq,u.avatarInfo,u.motto,u.reg_time,${publicRatingSelect('u')},${acceptedProblemCountExpr('u.uid')} AS acceptedProblemCount`;
+  `u.uid,u.name,u.nickname,u.bio,u.qq,u.avatarInfo,u.motto,u.reg_time,u.clickCnt,${publicRatingSelect('u')},${acceptedProblemCountExpr('u.uid')} AS acceptedProblemCount`;
 
 const md5 = (value) => crypto.createHash('md5').update(String(value || '').trim().toLowerCase()).digest('hex');
 
@@ -207,6 +218,7 @@ const decoratePublicUserMeta = (user, rank) => {
   user.historyRating = Number(user.historyRating || 0);
   user.ratingCacheMismatch = !!Number(user.ratingCacheMismatch || 0);
   user.acceptedProblemCount = Number(user.acceptedProblemCount || 0);
+  user.clickCnt = Number(user.clickCnt || 0);
   user.reg_time = user.reg_time ? briefFormat(user.reg_time) : '';
   if (rank != null) user.rank = rank;
   return user;
@@ -748,9 +760,12 @@ exports.getUserList = handler(async (req, res) => {
   const pageSize = Math.min(Number(req.body.pageSize) || 50, USER_LIST_MAX_PAGE_SIZE);
   const { offset, limit } = paginate({ body: { ...req.body, pageSize } }, 50);
   const sortBy = USER_LIST_SORTS.has(req.body.sortBy) ? req.body.sortBy : 'acceptedProblemCount';
+  const acceptedExpr = acceptedProblemCountExpr('u.uid');
   const orderExpr = sortBy === 'rating'
-    ? `rating DESC,${acceptedProblemCountExpr('u.uid')} DESC,u.uid ASC`
-    : `acceptedProblemCount DESC,rating DESC,u.uid ASC`;
+    ? `rating DESC,${acceptedExpr} DESC,u.uid ASC`
+    : sortBy === 'clickCnt'
+      ? `COALESCE(u.clickCnt,0) DESC,${acceptedExpr} DESC,rating DESC,u.uid ASC`
+      : `acceptedProblemCount DESC,rating DESC,u.uid ASC`;
   const data = await db.query(
     `SELECT ${publicUserMetaSelect()} FROM userInfo u ${latestRatingJoin('u')} WHERE u.inUse=1 ORDER BY ${orderExpr} LIMIT ?,?`,
     [offset, limit]

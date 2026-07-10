@@ -10,7 +10,7 @@ description = "Web UI + WebSocket event stream for the teaching sandbox"
 sandbox-core = { path = "../sandbox-core" }
 axum = { version = "0.7", features = ["ws"] }
 tokio = { version = "1", features = ["full"] }
-tower-http = { version = "0.6", features = ["fs", "trace"] }
+tower-http = { version = "0.6", features = ["cors", "fs", "trace"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }

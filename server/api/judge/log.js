@@ -63,28 +63,6 @@ const readJudgeLogEntries = async (sid, limit = 200) => {
   return entries;
 };
 
-const formatJudgeLogText = (raw) => {
-  if (!raw) return '';
-  const lines = raw.split('\n').filter((l) => l.trim().length);
-  const out = [];
-  for (const line of lines) {
-    try {
-      const entry = JSON.parse(line);
-      const head = `[${entry.ts || ''}] ${entry.event || 'log'}`.trim();
-      out.push(head);
-      if (entry.meta && Object.keys(entry.meta).length) {
-        out.push(JSON.stringify(entry.meta, null, 2));
-      }
-      if (entry.data && Object.keys(entry.data).length) {
-        out.push(JSON.stringify(entry.data, null, 2));
-      }
-    } catch (_err) {
-      out.push(line);
-    }
-  }
-  return out.join('\n');
-};
-
 const truncateText = (value, max = MAX_FIELD) => {
   if (value == null) return value;
   const text = String(value);
@@ -126,9 +104,7 @@ const summarizeAxiosError = (err) => {
 module.exports = {
   resetJudgeLog,
   appendJudgeLog,
-  readJudgeLog,
   readJudgeLogEntries,
-  formatJudgeLogText,
   truncateText,
   summarizeSandboxResult,
   summarizeAxiosError,

@@ -23,7 +23,6 @@ const judgeRes = [
 const ptype = ['传统文本比较', 'Special Judge', '提交答案', '提交答案 (SPJ)'];
 // type ∈ {2, 3} are answer-submission problems (no code, no language).
 const isAnswerType = (t) => t === 2 || t === 3;
-const ctype = ['OI', 'IOI'];
 const cstatus = ['未开始', '正在进行', '等待测评', '已结束'];
 
 const formatSubmissionRow = (row) => {
@@ -45,7 +44,6 @@ module.exports = {
   judgeRes,
   ptype,
   isAnswerType,
-  ctype,
   cstatus,
   formatSubmissionRow,
   formatCaseRow,

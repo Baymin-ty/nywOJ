@@ -258,7 +258,6 @@
 
 <script>
 import axios from 'axios';
-import { UploadFilled, Download, VideoPlay, InfoFilled } from '@element-plus/icons-vue';
 import monacoEditor from '@/components/monacoEditor.vue'
 import ProblemStatement from '@/components/problem/ProblemStatement.vue'
 
@@ -376,10 +375,6 @@ export default {
   components: {
     monacoEditor,
     ProblemStatement,
-    UploadFilled,
-    Download,
-    VideoPlay,
-    InfoFilled
   },
   methods: {
     async ensureLangs() {

@@ -59,7 +59,7 @@
             <el-button size="small" type="danger" plain @click="batchBan">批量封禁</el-button>
             <el-icon style="cursor: pointer; color: #909399;" @click="selected.clear()"><Close /></el-icon>
           </div>
-          <el-button size="small" plain :icon="Refresh" @click="loadUsers">刷新</el-button>
+          <el-button size="small" plain icon="Refresh" @click="loadUsers">刷新</el-button>
         </div>
 
         <!-- Table -->
@@ -125,8 +125,8 @@
                   <td class="mono last-login">{{ u.lastLogin || '—' }}</td>
                   <td>
                     <div class="action-buttons">
-                      <el-button size="small" type="primary" plain :icon="EditPen" @click="openEdit(u)" v-if="$canAny('user.manage', 'user.role.admin')">编辑</el-button>
-                      <el-button size="small" type="info" plain :icon="Key" @click="resetPassword(u)" v-if="$can('user.manage')">重置密码</el-button>
+                      <el-button size="small" type="primary" plain icon="EditPen" @click="openEdit(u)" v-if="$canAny('user.manage', 'user.role.admin')">编辑</el-button>
+                      <el-button size="small" type="info" plain icon="Key" @click="resetPassword(u)" v-if="$can('user.manage')">重置密码</el-button>
                       <el-button size="small" :type="u.inUse ? 'danger' : 'success'" plain @click="setBlock(u.uid, !u.inUse)" v-if="$can('user.manage')">
                         {{ u.inUse ? '封禁' : '解封' }}
                       </el-button>
@@ -165,8 +165,9 @@
             </div>
           </div>
           <div class="section-actions">
-            <el-button size="small" plain :icon="Refresh" @click="reloadAll">同步目录</el-button>
-            <el-button v-if="isRoot" size="small" type="primary" :icon="Plus" @click="openCreateRole">新建自定义角色</el-button>
+            <el-button v-if="canGrantPerm" size="small" plain icon="Refresh" @click="syncCatalog">同步目录</el-button>
+            <el-button v-else size="small" plain icon="Refresh" @click="reloadAll">刷新</el-button>
+            <el-button v-if="isRoot" size="small" type="primary" icon="Plus" @click="openCreateRole">新建自定义角色</el-button>
           </div>
         </div>
         <div class="matrix-wrap">
@@ -182,7 +183,7 @@
                       {{ r.name }}
                     </span>
                     <div class="matrix-count">{{ (r.permissions || []).length }}/{{ permissions.length }}</div>
-                    <el-button v-if="isRoot" size="small" type="primary" plain :icon="EditPen" @click.stop="openEditRole(r)">编辑</el-button>
+                    <el-button v-if="isRoot" size="small" type="primary" plain icon="EditPen" @click.stop="openEditRole(r)">编辑</el-button>
                   </div>
                 </th>
               </tr>
@@ -272,7 +273,7 @@
             <div class="section-subtitle">权限敏感操作的完整轨迹 · 需要 <code>audit.view</code></div>
           </div>
           <div class="section-actions">
-            <el-button size="small" plain :icon="Refresh" @click="loadAuditLog">刷新</el-button>
+            <el-button size="small" plain icon="Refresh" @click="loadAuditLog">刷新</el-button>
           </div>
         </div>
         <div class="toolbar audit-toolbar">
@@ -403,7 +404,7 @@
             <div class="danger-zone">
               <div class="danger-title">危险操作</div>
               <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <el-button size="small" plain type="warning" :icon="Key" @click="resetPassword(editingUser)" v-if="$can('user.manage')">重置密码</el-button>
+                <el-button size="small" plain type="warning" icon="Key" @click="resetPassword(editingUser)" v-if="$can('user.manage')">重置密码</el-button>
                 <el-button size="small" plain :type="editingUser.inUse ? 'danger' : 'success'" @click="setBlock(editingUser.uid, !editingUser.inUse)" v-if="$can('user.manage')">
                   {{ editingUser.inUse ? '封禁账号' : '解除封禁' }}
                 </el-button>
@@ -578,12 +579,11 @@
 <script>
 import axios from 'axios';
 import { ElMessageBox, ElMessage } from 'element-plus';
-import { Search, Refresh, Plus, EditPen, Key, Lock, Check, Close } from '@element-plus/icons-vue';
-import { markRaw } from 'vue';
 import UserPicker from '@/components/permission/UserPicker.vue';
 import GrantTable from '@/components/permission/GrantTable.vue';
 import RoleEditor from '@/components/permission/RoleEditor.vue';
 import { can } from '@/utils/can';
+import { refreshUserInfo } from '@/assets/common';
 
 const ROLE_COLORS = {
   user:            { bg: '#f0f2f5', fg: '#606266', border: '#dcdfe6' },
@@ -617,7 +617,7 @@ const AUDIT_KIND_MAP = {
 
 export default {
   name: 'PermissionCenter',
-  components: { UserPicker, GrantTable, RoleEditor, Search, Refresh, Plus, EditPen, Key, Lock, Check, Close },
+  components: { UserPicker, GrantTable, RoleEditor },
   props: {
     embedded: {
       type: Boolean,
@@ -673,12 +673,6 @@ export default {
       batchMode: 'add',
       batchSaving: false,
       syncingRoute: false,
-      // icons
-      Search: markRaw(Search),
-      Refresh: markRaw(Refresh),
-      Plus: markRaw(Plus),
-      EditPen: markRaw(EditPen),
-      Key: markRaw(Key),
     };
   },
   computed: {
@@ -916,6 +910,17 @@ export default {
         this.roles = (rr.data && rr.data.roles) || [];
       } catch (e) {
         ElMessage.error(e.message || '加载失败');
+      }
+    },
+    async syncCatalog() {
+      try {
+        const res = await axios.post('/api/auth/syncPermissionCatalog');
+        await refreshUserInfo();
+        await this.reloadAll();
+        const count = res.data && res.data.permissionCount;
+        ElMessage.success(count ? `权限目录已同步（${count} 项）` : '权限目录已同步');
+      } catch (e) {
+        ElMessage.error(e.message || '同步失败');
       }
     },
     async loadStats() {

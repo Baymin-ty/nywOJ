@@ -41,6 +41,8 @@
 - 测试数据方案。
 - judgeProfile / `nywoj.yaml` / checker 等评测资产。
 
+题面正文中的样例由结构化的 `statement.samples` 单独维护。Markdown 里不需要再写 `### 输入样例` / `### 输出样例` 和对应代码块；如需指定样例展示位置，单独放一行 `<!-- case -->`（兼容 `<!-- samples -->`）即可。
+
 生成后先在页面中预览、修改，再分别点击保存。数据和评测流程建议分开保存：先保存评测配置，再生成数据，最后使用数据体检检查。
 
 ## LLM 数据生成
@@ -163,6 +165,18 @@ int main(int argc, char **argv) {
 - 大规模数据建议先用少量点预览，再扩大生成点。
 - LLM 返回的代码必须人工检查后再写入。
 - API Key 属于用户个人配置，不要写进题面、题解、generator 或公开文档。
+
+## 提示词回归测试
+
+修改系统提示词或评测接口后，可以在 `server/` 目录运行：
+
+```bash
+node scripts/aiAssistantE2E.js --list
+node scripts/aiAssistantE2E.js --dry-run
+node scripts/aiAssistantE2E.js traditional spj answer function interactive communication
+```
+
+`--dry-run` 只构建各题型消息，不调用模型；真调模型需要当前 uid 已保存 LLM Key，并启动 sandbox。临时没有 sandbox 时可加 `--skip-sandbox` 先检查模型返回结构与题型契约。
 
 ## 排错
 

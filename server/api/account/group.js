@@ -1,6 +1,5 @@
 const db = require('../../db');
 const { handler, fail, ok } = require('../../db/util');
-const config = require('../../config.json');
 const policy = require('../../auth/policy');
 const { PERMISSIONS, RESOURCE_TYPES } = require('../../auth/permissions');
 const { ensureGroupSchema } = require('../../groupSchema');
@@ -24,15 +23,6 @@ const boolValue = (value, fallback = false) => {
   return !!value;
 };
 
-const queryLimitNumber = (key, fallback) => {
-  const section = config.queryLimit || config.QUERY_LIMIT || {};
-  const value = section[key];
-  const number = Number(value);
-  return Number.isFinite(number) && number > 0 ? number : fallback;
-};
-
-const escapeLike = (value) => String(value).replace(/[\\%_]/g, (ch) => `\\${ch}`);
-
 let groupUserMetaSchemaReady = null;
 const ensureGroupUserMetaSchema = () => {
   if (!groupUserMetaSchemaReady) {
@@ -54,13 +44,6 @@ const ensureGroupUserMetaSchema = () => {
     })();
   }
   return groupUserMetaSchemaReady;
-};
-
-const groupSearchPattern = (query, wildcard) => {
-  let pattern = escapeLike(query);
-  if (wildcard === 'Start' || wildcard === 'Both') pattern = `%${pattern}`;
-  if (wildcard === 'End' || wildcard === 'Both') pattern += '%';
-  return pattern;
 };
 
 const validName = (name) => {
@@ -165,30 +148,6 @@ exports.getGroupList = handler(async (req, res) => {
     if (group.isAdmin) groupsWithAdminPermission.push(group.gid);
   }
   return ok(res, { groups, groupsWithAdminPermission, canManage: canManageGroups(req) });
-});
-
-exports.searchGroup = handler(async (req, res) => {
-  await ensureGroupSchema();
-  const source = req.method === 'GET' ? req.query : req.body;
-  const q = normalizeName(source.q || source.query);
-  if (!q) return ok(res, { groups: [], groupMetas: [] });
-  const wildcard = ['Start', 'End', 'Both'].includes(source.wildcard) ? source.wildcard : undefined;
-  const rows = await db.query(
-    'SELECT gid,name,memberCnt,createTime FROM user_groups WHERE name LIKE ? ORDER BY name LIMIT ?',
-    [groupSearchPattern(q, wildcard), queryLimitNumber('searchGroup', 10)]
-  );
-  const groupMetas = rows.map(formatGroupMeta);
-  return ok(res, { groups: groupMetas, groupMetas });
-});
-
-exports.getGroupMeta = handler(async (req, res) => {
-  await ensureGroupSchema();
-  const source = req.method === 'GET' ? req.query : req.body;
-  const gid = parseInt(source.groupId || source.gid || source.id, 10);
-  if (!gid) return ok(res, { error: 'NO_SUCH_GROUP' });
-  const group = await ensureGroup(gid);
-  if (!group) return ok(res, { error: 'NO_SUCH_GROUP' });
-  return ok(res, { groupMeta: formatGroupMeta(group) });
 });
 
 exports.createGroup = handler(async (req, res) => {

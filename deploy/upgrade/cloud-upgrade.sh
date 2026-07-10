@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Idempotent cloud upgrade entry for online IDE + judgeProfile.
+# Idempotent cloud upgrade entry for the current nywOJ cloud stack.
 #
 # Run from an already updated checkout on the deploy host:
 #   deploy/upgrade/cloud-upgrade.sh
 #
 # The script is intentionally configurable instead of assuming one process
-# manager. See docs/cloud-upgrade.md for the shortest path and all variables.
+# manager. See docs/cloud-upgrade.md for the rollout plan and all variables.
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,6 +22,7 @@ if [ "$SANDBOX_PROBE_HOST" = "0.0.0.0" ]; then SANDBOX_PROBE_HOST="127.0.0.1"; f
 
 RUN_DEPS="${NYWOJ_INSTALL_DEPS:-1}"
 RUN_DB="${NYWOJ_UPGRADE_DB:-1}"
+RUN_SCHEMA_SYNC="${NYWOJ_SYNC_RUNTIME_SCHEMA:-1}"
 APPLY_PROFILE="${NYWOJ_APPLY_PROFILE_MIGRATION:-1}"
 RUN_AUDIT="${NYWOJ_AUDIT_PROFILES:-1}"
 RUN_SANDBOX="${NYWOJ_UPGRADE_SANDBOX:-${NYWOJ_UPGRADE_GOJUDGE:-1}}"
@@ -43,7 +44,8 @@ Usage: deploy/upgrade/cloud-upgrade.sh [options]
 
 Options:
   --skip-deps            Skip npm install and comparer build
-  --skip-db              Skip SQL migrations
+  --skip-db              Skip SQL migrations and runtime schema/catalog sync
+  --skip-schema-sync     Skip runtime schema/catalog sync
   --skip-profile         Skip judgeProfile backfill
   --skip-audit           Skip profile health audit
   --skip-sandbox         Skip Rust sandbox image/container upgrade
@@ -64,13 +66,15 @@ Common environment:
   NYWOJ_PUBLIC_URL=https://oj.example.com
   NYWOJ_BACKUP_DB=1
   NYWOJ_BACKUP_DIR=/var/backups/nywoj
+  DISABLE_DROP_GID=1
 EOF
 }
 
 while [ "${1:-}" ]; do
   case "$1" in
     --skip-deps) RUN_DEPS=0 ;;
-    --skip-db) RUN_DB=0 ;;
+    --skip-db) RUN_DB=0; RUN_SCHEMA_SYNC=0 ;;
+    --skip-schema-sync) RUN_SCHEMA_SYNC=0 ;;
     --skip-profile) APPLY_PROFILE=0 ;;
     --skip-audit) RUN_AUDIT=0 ;;
     --skip-sandbox) RUN_SANDBOX=0 ;;
@@ -83,6 +87,10 @@ while [ "${1:-}" ]; do
   esac
   shift
 done
+
+if [ "$RUN_DB" != "1" ] && [ -z "${NYWOJ_SYNC_RUNTIME_SCHEMA+x}" ]; then
+  RUN_SCHEMA_SYNC=0
+fi
 
 log() { printf '\n==> %s\n' "$*"; }
 note() { printf '    %s\n' "$*"; }
@@ -152,12 +160,41 @@ backup_db() {
   db_pass="$(node_config DB.password)"
   db_name="$(node_config DB.databasename)"
   mkdir -p "$BACKUP_DIR"
-  out="$BACKUP_DIR/${db_name}-before-ide-profile-$(date +%Y%m%d-%H%M%S).sql"
+  out="$BACKUP_DIR/${db_name}-before-current-upgrade-$(date +%Y%m%d-%H%M%S).sql"
   MYSQL_PWD="$db_pass" mysqldump \
     --default-character-set=utf8mb4 \
     -h "$db_host" -P "$db_port" -u "$db_user" "$db_name" > "$out"
   chmod 600 "$out"
   note "database backup: $out"
+}
+
+sync_runtime_schema() {
+  (
+    cd "$SERVER_DIR"
+    node <<'NODE'
+(async () => {
+  try {
+    await require('./auth/sync').syncPermissionCatalog();
+    await require('./groupSchema').ensureGroupSchema();
+    await require('./api/contest/schema').ensureContestV2Schema();
+    const rating = require('./api/contest/ratingStorage');
+    await rating.ensureContestRatingStorageSchema();
+    const unique = await rating.contestRatingUniqueConstraintStatus();
+    const indexes = await rating.contestRatingAuxiliaryIndexStatus();
+    if (!unique.uniqueConstraintReady) {
+      console.warn('[schema] contestRating cid/uid uniqueness is not ready:', JSON.stringify(unique));
+    }
+    if (!indexes.uidIndexReady || !indexes.cidRankIndexReady) {
+      console.warn('[schema] contestRating auxiliary indexes are not ready:', JSON.stringify(indexes));
+    }
+    process.exit(0);
+  } catch (err) {
+    console.error(err && err.stack ? err.stack : err);
+    process.exit(1);
+  }
+})();
+NODE
+  )
 }
 
 restart_backend() {
@@ -230,12 +267,15 @@ log "preflight"
 need_file "$SERVER_DIR/config.json"
 need_file "$SERVER_DIR/db/add_judgeProfile.sql"
 need_file "$SERVER_DIR/db/add_solVisible.sql"
+need_file "$SERVER_DIR/db/add_contestV2.sql"
+need_file "$SERVER_DIR/db/add_contestRating.sql"
 need_file "$RUST_SANDBOX_DIR/build.sh"
 have node || die "node is required"
 have npm || die "npm is required"
 if [ "$RUN_DB" = "1" ]; then have mysql || die "mysql client is required for DB migrations"; fi
 if [ "$BACKUP_DB" = "1" ] && [ "$RUN_DB" = "1" ]; then have mysqldump || die "mysqldump is required for NYWOJ_BACKUP_DB=1"; fi
 if [ "$RUN_SANDBOX" = "1" ]; then have docker || die "docker is required for Rust sandbox upgrade"; fi
+if [ "$RUN_HEALTH" = "1" ]; then have curl || die "curl is required for health checks"; fi
 note "repo: $REPO_ROOT"
 note "Rust sandbox target: $SANDBOX_HOST:$SANDBOX_PORT"
 
@@ -254,6 +294,13 @@ if [ "$RUN_DB" = "1" ]; then
   log "apply idempotent database migrations"
   mysql_run_file "$SERVER_DIR/db/add_judgeProfile.sql"
   mysql_run_file "$SERVER_DIR/db/add_solVisible.sql"
+  mysql_run_file "$SERVER_DIR/db/add_contestV2.sql"
+  mysql_run_file "$SERVER_DIR/db/add_contestRating.sql"
+fi
+
+if [ "$RUN_SCHEMA_SYNC" = "1" ]; then
+  log "sync runtime schemas and permission catalog"
+  sync_runtime_schema
 fi
 
 if [ "$APPLY_PROFILE" = "1" ]; then
@@ -309,4 +356,4 @@ if [ "$RUN_HEALTH" = "1" ]; then
 fi
 
 log "upgrade finished"
-note "If this host is only a remote judge worker, run with --skip-db --skip-web and restart that worker service too."
+note "If this host is only a remote judge worker, run with --skip-db --skip-profile --skip-audit --skip-web and restart that worker service too."

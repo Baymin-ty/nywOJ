@@ -468,12 +468,14 @@
 import axios from 'axios';
 import jsyaml from 'js-yaml';
 import { ElMessageBox } from 'element-plus';
-import { Loading, CircleClose } from '@element-plus/icons-vue';
 import monacoEditor from '@/components/monacoEditor.vue';
+
+const MAX_STATIC_CASE_FILE_BYTES = 16 * 1024 * 1024;
+const CONTEXT_CASE_PREVIEW_CHARS = 2048;
 
 export default {
   name: 'problemAiAssistant',
-  components: { monacoEditor, Loading, CircleClose },
+  components: { monacoEditor },
   data() {
     return {
       pid: 0,
@@ -616,8 +618,12 @@ export default {
       } else {
         actions.push(
           { label: '例：传统题', prompt: '出一道提高组难度的传统题，考察二分答案 + 贪心检查，n ≤ 2×10^5。生成完整题面、std、题解、数据和评测配置。' },
-          { label: '例：交互题', prompt: '出一道交互题：猜数字，最多 20 次询问，需要 testlib interactor。写清交互协议和 flush 要求。' },
           { label: '例：SPJ 题', prompt: '出一道答案不唯一、需要 testlib SPJ 的构造题，普及+难度。' },
+          { label: '例：提交答案', prompt: '出一道提交答案题：给 5 个固定测试点，选手只提交答案文件。必须使用静态 data.cases，不要生成器，默认逐字节比较。' },
+          { label: '例：提交答案 SPJ', prompt: '出一道提交答案 + SPJ 题：选手提交一个合法构造，checker.cpp 用 testlib 验证合法性并按质量给部分分。使用 4 个静态测试点。' },
+          { label: '例：函数题', prompt: '出一道函数题：选手实现 solution.h 中的函数，提供 problem.h 和 grader.cpp。生成完整题面、std、题解、生成器和 function 评测配置。' },
+          { label: '例：交互题', prompt: '出一道交互题：猜数字，最多 20 次询问，需要 testlib interactor。写清交互协议、flush 要求和退出条件。' },
+          { label: '例：通信题', prompt: '出一道通信题：同一份 sol.cpp 用 -DSIDE_A/-DSIDE_B 编译两个角色，manager.cpp 负责通信和裁判。写清通信限制。' },
         );
       }
       return actions;
@@ -661,7 +667,11 @@ export default {
           timeLimit: Number(this.problemInfo.timeLimit) || 1000,
           memoryLimit: Number(this.problemInfo.memoryLimit) || 256,
           level: Number(this.problemInfo.level) || 0,
-          samples: [],
+          samples: (Array.isArray(this.problemInfo.samples) ? this.problemInfo.samples : []).map(sample => ({
+            key: this.key(),
+            inputData: String(sample && sample.inputData != null ? sample.inputData : ''),
+            outputData: String(sample && sample.outputData != null ? sample.outputData : ''),
+          })),
         },
         std: { language: 'cpp', fileName: 'std.cpp', source: '', explanation: '' },
         solution: { title: `${this.problemInfo.title || '题目'} 题解`.slice(0, 20), markdown: '' },
@@ -1139,7 +1149,7 @@ export default {
     },
     currentDraftPayload() {
       const draft = this.draft || this.emptyDraft();
-      const data = this.dataPayload();
+      const data = this.dataPayload({ compactStaticCases: true });
       return {
         statement: {
           title: draft.statement.title,
@@ -1211,7 +1221,7 @@ export default {
         this.handleGenerationSnapshot(job);
         this.connectGenerationStream(job.jobId);
       } catch (err) {
-        const message = (err.response && err.response.data && err.response.data.message) || err.message || '生成失败';
+        const message = this.apiError(err, '生成失败');
         this.stream.error = message;
         this.$message.error(message);
         this.loading = false;
@@ -1498,14 +1508,17 @@ export default {
         this.savingSolution = false;
       }
     },
-    dataPayload() {
+    dataPayload(options = {}) {
       const generationCases = (this.draft.data.generation && this.draft.data.generation.cases) || [];
+      const compactStaticCases = !!options.compactStaticCases;
       return {
         ...this.draft.data,
         cases: this.draft.data.cases.map(item => ({
           name: item.name,
-          input: item.input,
-          output: item.output,
+          input: compactStaticCases ? this.contextCasePreview(item.input) : item.input,
+          output: compactStaticCases ? this.contextCasePreview(item.output) : item.output,
+          inputBytes: compactStaticCases ? this.textBytes(item.input) : undefined,
+          outputBytes: compactStaticCases ? this.textBytes(item.output) : undefined,
           subtaskId: item.subtaskId,
         })),
         generation: {
@@ -1520,8 +1533,103 @@ export default {
         },
       };
     },
+    textBytes(value) {
+      const text = String(value == null ? '' : value);
+      if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(text).length;
+      try {
+        return unescape(encodeURIComponent(text)).length;
+      } catch (_) {
+        return text.length;
+      }
+    },
+    contextCasePreview(value) {
+      const text = String(value == null ? '' : value);
+      return text.length > CONTEXT_CASE_PREVIEW_CHARS
+        ? `${text.slice(0, CONTEXT_CASE_PREVIEW_CHARS)}\n...(truncated)`
+        : text;
+    },
+    dataWithoutStaticCases(data) {
+      return { ...data, cases: [] };
+    },
+    dataMetaPayload(data) {
+      return {
+        ...data,
+        cases: (data.cases || []).map(item => ({
+          name: item.name,
+          subtaskId: item.subtaskId,
+        })),
+        generation: { ...data.generation, cases: [] },
+      };
+    },
+    previewCaseText(value, maxChars = 4096) {
+      const text = String(value == null ? '' : value);
+      const bytes = this.textBytes(text);
+      if (text.length <= maxChars) return { content: text, bytes, truncated: false };
+      return { content: `${text.slice(0, maxChars)}\n...(truncated)`, bytes, truncated: true };
+    },
+    previewStaticData(data) {
+      let totalBytes = 0;
+      const cases = (data.cases || []).map((item, index) => {
+        const input = this.previewCaseText(item.input);
+        const output = this.previewCaseText(item.output);
+        totalBytes += input.bytes + output.bytes;
+        return {
+          index: index + 1,
+          name: item.name || String(index + 1),
+          subtaskId: item.subtaskId || 1,
+          input,
+          output,
+        };
+      });
+      return { cases, totalBytes, sandboxGenerated: false, generatorSaved: false };
+    },
+    caseSaveFormData(sessionId, index, item) {
+      const form = new FormData();
+      form.append('pid', String(this.pid));
+      form.append('sessionId', sessionId);
+      form.append('index', String(index));
+      form.append('input', new Blob([String(item.input == null ? '' : item.input)], { type: 'text/plain;charset=utf-8' }), `${index}.in`);
+      form.append('output', new Blob([String(item.output == null ? '' : item.output)], { type: 'text/plain;charset=utf-8' }), `${index}.out`);
+      return form;
+    },
+    async saveStaticDataInChunks(data) {
+      const startRes = await axios.post('/api/problem/ai/startDataSave', {
+        pid: this.pid,
+        data: this.dataMetaPayload(data),
+        confirmReplace: true,
+      });
+      if (startRes.status !== 200 || !startRes.data || !startRes.data.sessionId) {
+        throw new Error((startRes.data && startRes.data.message) || '创建保存会话失败');
+      }
+      const sessionId = startRes.data.sessionId;
+      const cases = data.cases || [];
+      for (let i = 0; i < cases.length; i++) {
+        try {
+          const caseRes = await axios.post('/api/problem/ai/saveDataCase', this.caseSaveFormData(sessionId, i + 1, cases[i]));
+          if (caseRes.status !== 200) {
+            throw new Error((caseRes.data && caseRes.data.message) || '写入失败');
+          }
+        } catch (err) {
+          throw new Error(`写入第 ${i + 1}/${cases.length} 个测试点失败：${this.apiError(err, '写入失败')}`);
+        }
+      }
+      return axios.post('/api/problem/ai/finishDataSave', { pid: this.pid, sessionId });
+    },
     validateDataDraft() {
+      const data = this.dataPayload();
       const generationCases = (this.draft.data.generation && this.draft.data.generation.cases) || [];
+      if (!generationCases.length) {
+        for (const item of data.cases || []) {
+          const inputBytes = this.textBytes(item.input);
+          const outputBytes = this.textBytes(item.output);
+          if (inputBytes > MAX_STATIC_CASE_FILE_BYTES || outputBytes > MAX_STATIC_CASE_FILE_BYTES) {
+            this.$message.error(
+              `测试点 ${item.name || ''} 的单个输入或输出超过 ${this.formatBytes(MAX_STATIC_CASE_FILE_BYTES)}，请拆分数据或改用 Generator 在线生成`
+            );
+            return null;
+          }
+        }
+      }
       if (!this.draft.data.cases.length && !generationCases.length) {
         this.$message.error('请至少保留一个生成点或静态 Case');
         return null;
@@ -1530,16 +1638,22 @@ export default {
         this.$message.error('在线生成需要 STD');
         return null;
       }
-      return this.dataPayload();
+      return data;
     },
     async previewData() {
       const data = this.validateDataDraft();
       if (!data) return;
+      const generationCases = data.generation.cases || [];
+      if (!generationCases.length) {
+        this.dataPreview = this.previewStaticData(data);
+        this.$message.success('预览已生成');
+        return;
+      }
       this.previewingData = true;
       try {
         const res = await axios.post('/api/problem/ai/previewData', {
           pid: this.pid,
-          data,
+          data: this.dataWithoutStaticCases(data),
           std: this.draft.std,
         });
         if (res.status === 200 && res.data.data) {
@@ -1549,7 +1663,7 @@ export default {
           this.$message.error((res.data && res.data.message) || '预览失败');
         }
       } catch (err) {
-        this.$message.error((err.response && err.response.data && err.response.data.message) || err.message || '预览失败');
+        this.$message.error(this.apiError(err, '预览失败'));
       } finally {
         this.previewingData = false;
       }
@@ -1571,19 +1685,21 @@ export default {
       }
       this.savingData = true;
       try {
-        const res = await axios.post('/api/problem/ai/saveData', {
-          pid: this.pid,
-          data,
-          std: this.draft.std,
-          confirmReplace: true,
-        });
+        const res = generationCases.length
+          ? await axios.post('/api/problem/ai/saveData', {
+            pid: this.pid,
+            data: this.dataWithoutStaticCases(data),
+            std: this.draft.std,
+            confirmReplace: true,
+          })
+          : await this.saveStaticDataInChunks(data);
         if (res.status === 200) {
           const count = res.data && res.data.cases ? res.data.cases.length : 0;
           this.$message.success(res.data && res.data.sandboxGenerated ? `已在线生成并保存 ${count} 个测试点` : '测试数据已保存');
         }
         else this.$message.error((res.data && res.data.message) || '保存测试数据失败');
       } catch (err) {
-        this.$message.error((err.response && err.response.data && err.response.data.message) || err.message || '保存测试数据失败');
+        this.$message.error(this.apiError(err, '保存测试数据失败'));
       } finally {
         this.savingData = false;
       }
@@ -1593,6 +1709,14 @@ export default {
       if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(2)} MB`;
       if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
       return `${value} B`;
+    },
+    apiError(err, fallback) {
+      const status = err.response && err.response.status;
+      const data = err.response && err.response.data;
+      if (status === 413) return '请求内容过大，请减少静态数据或调大 HTTP.bodyLimit 后重试';
+      if (data && typeof data === 'object' && data.message) return data.message;
+      if (typeof data === 'string' && data.trim()) return data.slice(0, 200);
+      return err.message || fallback;
     },
     async saveJudge() {
       const profile = this.parseJudgeForSave();

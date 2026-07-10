@@ -25,7 +25,7 @@
 
 ### 用户系统
 - 注册（邮箱验证码，30 秒限频，用户名 / 邮箱可用性检查）、用户名/邮箱密码登录、邮箱验证码登录、退出、邮箱找回密码
-- 兼容 LibreOJ 上游 `/api/auth/*` 账户接口：会话信息、登录/退出、注册、验证码、重置密码、会话列表与下线
+- 前端启动时通过 `/api/auth/getSessionInfo` 拉取当前登录态、权限键与站点偏好
 - 密码 bcrypt 哈希存储；修改密码后吊销所有其他会话
 - 邮箱绑定 / 修改（验证码 3 分钟有效）
 - 个人资料：昵称、简介、组织、所在地、个人网址、QQ / Telegram / GitHub、Gravatar / QQ / GitHub 头像、个人主页（motto）
@@ -59,7 +59,6 @@
 - `group.manage` 可创建 / 重命名 / 删除用户组，设置组管理员和组权限
 - 组管理员可维护本组成员
 - `group_permissions` 中的 allow / deny 会在登录态权限计算时并入用户有效权限
-- 提供 LibreOJ 兼容的 `/api/group/getGroupMeta`、`/api/group/searchGroup`、`/api/group/getGroupList` GET 接口
 - 授权管理员可在 `/admin/migration` 导出 / 导入用户、题目、提交与讨论元数据 JSON；
   导入支持 dry-run 预检并按主键 upsert
 
@@ -72,7 +71,7 @@ role_permissions / user_roles / user_permissions`。前端权限管理中心位�
 - 创建、编辑、删除、公开 / 私有控制
 - 题库与题目详情使用内部 `pid` 作为唯一题号
 - 题面使用单一默认内容（标题、描述、标签）
-- LibreOJ 风格题面样例：独立维护多组样例输入 / 输出，题面页展示并支持复制
+- 题面样例：独立维护多组样例输入 / 输出，题面页展示并支持复制
 - 难度分级（0–5）、最多 5 个标签（单标签 ≤ 10 字符）
 - 管理员标签目录：支持多语言标签名、颜色、收录现有标签，删除 / 重命名会同步题目标签数组
 - 时间限制（≤ 10000 ms）、内存限制（≤ 512 MB）
@@ -88,17 +87,50 @@ role_permissions / user_roles / user_permissions`。前端权限管理中心位�
 - 题解绑定（paste 系统）
   - 题解绑定由 `problem.solmanage` 或题目管理权控制；绑定前会校验 paste 对当前用户可见
 - 统计信息：提交次数、AC 次数、分数分布图、最快通过榜
-- LibreOJ 风格提交统计榜：最快通过、最短代码、最低内存、最早通过（每个用户取 AC 最佳提交，展示前 100）
-- 提供 LibreOJ 兼容的 `/api/problem/*` 题集查询、题目分块详情、题面更新、协作者权限、题目文件增删改下载、评测信息更新与题型切换接口
+- 提交统计榜：最快通过、最短代码、最低内存、最早通过（每个用户取 AC 最佳提交，展示前 100）
+- `/api/problem/*` 提供题集查询、题目分块详情、题面更新、协作者权限、题目文件增删改下载、评测信息更新与题型切换接口
 
 ### 比赛系统
-- 创建 / 管理比赛（标题、描述、开始时间、时长）
-- 比赛类型：OI（封榜） / IOI（实时可见）
-- 公开报名 / 管理员手动添加选手
-- 四种比赛状态：未开始 / 正在进行 / 等待测评 / 已结束
-- 提交在比赛期间对 OI 赛制选手封锁评测详情
-- 比赛排名榜（按总分降序 → 用时升序）、First Blood 标记
-- 单题 / 整场重测
+围绕三个核心设计重写，详见 [比赛系统架构](docs/contest-system.md)：
+
+1. **赛制 = 声明式配置**：`contest.format` 选预设（oi / ioi / acm / cf / homework），
+   `contest.config`（JSON）保存对预设的覆盖 patch。管理者可在任意赛制下自由改
+   「封榜 / 真实分数 / hack / 组队 / 迟交」等独立开关 —— preset 只是初始值，
+   与 `problem.judgeProfile` 的设计哲学一致。
+2. **鉴权收口到 policy**：所有 endpoint 不再写内联布尔，统一经
+   [policy.js](server/api/contest/policy.js) 的 `resolveView` 拿 capabilities 对象，
+   问「能不能」而非「是什么身份」；管理权支持按 contest 资源域授权协作者。
+3. **榜单 = 事件回放**：榜单不是持久状态，而是把该场提交（+hack）按时间排成事件流，
+   回放到任意时刻 t 再按赛制归约，天然支持时间轴拖动、封榜掩码、选手曲线、赛后回放。
+
+五种赛制：
+
+| format | 计分 | 进行中看榜/结果 | 默认封榜 | 特有配置 |
+|--------|------|----------------|---------|---------|
+| `oi` | 每题最后一次提交 × weight | ✗ / ✗ | ✗ | |
+| `ioi` | 每题历史最高分 × weight | ✓ / ✓ | ✗ | |
+| `acm` | 过题数 + 罚时 | ✓ / ✓ | ✓（60min） | 错误罚时 |
+| `cf` | 初始分线性衰减 − 错误罚分 ± hack 分 | ✓ / ✓ | ✗ | pretest / hack / 衰减 |
+| `homework` | 每题最高分 × weight × 迟交系数 | ✓ / ✓ | ✗ | 迟交窗口 / 折分 |
+
+- 四种比赛状态：未开始 / 进行中 / 等待测评（过截止未关闭）/ 已结束
+- 公开报名 / 管理员手动添加选手；OI 式赛制进行中遮蔽选手自己的评测结果与榜单
+- **事件回放榜单**：`getRankAt` 任意时刻分页榜单（前端时间轴滑块 + 封榜 / 截止刻度），
+  `getParticipantTimeline` 选手分数 / 排名曲线（点选手弹 ECharts 双轴图），
+  响应含每题 通过 / 尝试 人数、一血标记；封榜期对非管理员把封榜后事件掩码为 `?N`
+- **封榜**：可配置开启时间与偏移，管理员解榜或结束比赛后揭晓；结束时把官方最终榜固化到
+  `contestFinalStandings`
+- **组队参赛**（全赛制）：`team.enabled` 后走队伍报名流程（创建队 / 邀请码加入 / 退队，
+  队长与队伍管理），榜单按队聚合，组队场强制不产生 Rating
+- **CF 赛制**：pretest（数据页勾选测试点，赛中只跑 pretest）→ 过 pretest 锁题 →
+  简化无房间制 hack（validator 校验输入 → std 期望输出 → 目标程序 → checker 比对，
+  成功数据自动进终测）→ 管理员启动 systest 全量重测
+- **作业**：独立 `/homework` 入口，开放期即时看完整结果，deadline 后进入迟交窗口
+  （得分 × scoreRatio，单元格带「迟」标记），完成度统计，强制 unrated
+- **比赛体检**：`checkContest` 分级 checklist（ok / warn / error），覆盖支持语言、时长、
+  封榜、组队、作业、每题测试数据 / judgeProfile 资产 / 泄题 / CF pretest 与 hack 资产等
+- Rating 结算 / 重建 / 预览（Elo 式，组队与作业不计入）
+- 单题 / 整场重测；旧 `type` 列与 API `type` 字段保留，OI/IOI 行为与重构前 1:1 等价
 
 ### 评测系统（2026-05 重写）
 - 单一 Worker 文件 [worker.js](server/api/judge/worker.js) 处理所有语言；
@@ -109,16 +141,13 @@ role_permissions / user_roles / user_permissions`。前端权限管理中心位�
 - 支持语言：C11、C++14、Python 3、Java、Kotlin、Pascal、Rust、Go、Swift、Haskell、C#、F#（实际可用性取决于沙箱镜像中的工具链）
 - SPJ checker 跨提交缓存（按 pid + 源码 sha256 命中），sandbox `fileId` 持久化到
   [server/judge_cache/spj.json](server/api/judge/checkerCache.js)，编辑 `checker.cpp` 自动失效
-- 分布式评测：支持管理员注册远程评测机、启停客户端、重置客户端 Key，并通过 HTTP `/api/judge/receiveTask` 分发任务；默认只使用本机 Rust sandbox，确认远端也部署 sandbox 后再开启 `JUDGE.ALLOW_REMOTE_SANDBOX_CLIENTS`
-- 提供 LibreOJ 兼容的 `/api/judgeClient/*` 评测机新增、删除、重置 Key 与列表接口
-- 提供 LibreOJ judge 客户端兼容的 Socket.IO `/api/socket` `judge` 命名空间：官方客户端可用 40 位 Base64 key 连接、完成 `ready` 握手、上报 `systemInfo`，并接收传统题 / SPJ / 提交答案题 / LibreOJ 原生交互题评测任务；本地扩展的通信题、函数题和依赖答案文件的 pipeGroup 任务会自动回退到本地 worker
+- 分布式评测：管理员在后台「评测监控」注册远程评测机、启停客户端、重置客户端 Key，服务端通过 HTTP `/api/judge/receiveTask` 分发任务、`/api/judge/clientHeartbeat` 接收心跳；默认只使用本机 Rust sandbox，确认远端也部署 sandbox 后再开启 `JUDGE.ALLOW_REMOTE_SANDBOX_CLIENTS`
 - 评测结果：Waiting / Pending / Rejudging / CE / AC / **Partially Correct** / WA / TLE / MLE / RE / Segfault / OLE / 危险系统调用 / SE / **Judgement Failed** / Canceled / Skipped
   - **System Error**：后端 / 评测机代码层面的故障（沙箱不可用、网络、判题代码异常）
   - **Judgement Failed**：题目配置层面（缺失 / 非法的 config 或测试数据）或 SPJ 层面（缺失 / 编译失败 / 运行 FAIL 的 checker）的问题
 - 评测完成后自动更新题目统计
 - 非比赛提交支持公开 / 私有切换、源码 / 答案文件下载、管理者删除
-- 提供 LibreOJ 兼容的 `/api/submission/*` 提交、查询、详情、下载、统计、重测、取消、公开性和删除接口
-- 提供 LibreOJ 兼容的 Socket.IO `/api/socket` `submission-progress` 命名空间，`/api/submission/*` 会返回 `progressSubscriptionKey` 供上游前端实时订阅进度
+- 提交进度通过 SSE `/api/judge/streamSubmission`（比赛为 `/api/contest/streamSubmission`）实时推送
 - 交互题 / 通信题支持管道组可视化配置、interactor / manager 快捷资产和提交详情中的管道组结果概览
 
 ### Paste（剪贴板）
@@ -130,14 +159,13 @@ role_permissions / user_roles / user_permissions`。前端权限管理中心位�
 - 创建、编辑、删除讨论，Markdown 内容展示
 - 回复、编辑回复、删除回复
 - 公开 / 隐藏讨论与回复
-- 提供 LibreOJ 兼容的 `/api/discussion/*` 讨论创建、回复、查询、详情、更新与删除接口
 - 讨论与回复支持 reaction 计数和当前用户选中状态
 - `discussion.manage` 可全局管理讨论与回复，普通用户可管理自己的讨论与回复
 
 ### 公告系统
 - 管理员发布 / 编辑，支持权重排序，首页最多展示 5 条
-- 首页模块可在后台启停、排序和分栏，支持公告、一言、点击排行、点击统计与自定义 Markdown
-- 兼容 LibreOJ `/api/homepage/getHomepage`、`getHomepageSettings`、`updateHomepageSettings`，并把上游首页设置保存在本地 `home.config` 中
+- 首页模块可在后台启停、排序和分栏，支持公告、一言、点击排行、点击统计与自定义 Markdown；配置保存在本地 `home.config`
+- `/api/homepage/getHomepage` 聚合返回公告、用户榜、最新题目与近期比赛供首页展示
 
 ### 其他
 - 一言（hitokoto）随机返回
@@ -168,7 +196,7 @@ nywOJ/
 │   ├── api/
 │   │   ├── account/            # 用户、会话、资料、用户组
 │   │   ├── content/            # 公告、Paste、讨论区、首页互动
-│   │   ├── contest/            # 比赛、Rating 存储
+│   │   ├── contest/            # 比赛：policy / formats / standings 回放 / teams / hacks / health / rating
 │   │   ├── judge/              # 提交、Worker、语言、sandbox、日志、缓存、Socket
 │   │   ├── problem/            # 题目 CRUD、测试点、judgeProfile、AI、上传
 │   │   └── system/             # 管理、迁移、维护任务
@@ -219,8 +247,6 @@ cp server/config.example.json server/config.json
 - `DB` — MySQL/MariaDB 连接信息
 - `EMAIL` — 注册、登录验证码、改邮箱、找回密码使用的 SMTP 配置；`host/port/secure/from` 可选，未填时默认使用 163 SMTP
 - `SESSION.expire` — express-session cookie 过期毫秒数
-- `CORS.enabled` / `CORS.whiteList` — LibreOJ 风格 xdomain 跨域代理配置；资源位于 `/cors/xdomain.html` 和 `/cors/xdomain.min.js`
-- `/cors/streamsaver/mitm.html` / `/cors/streamsaver/sw.js` — StreamSaver 大文件下载辅助页与 service worker
 - `METRICS.enabled` — 是否启动 Prometheus metrics 导出端口；开启后默认监听 `127.0.0.1:9100/metrics`
 - `METRICS.allowedIps` — metrics 端口访问白名单；为空数组时不限制来源 IP
 - `EVENT_REPORT.enabled` — 可选 Telegram 事件上报；开启并配置 token / chat 后会报告 API handler、Express 中间件和进程级未捕获异常
@@ -233,7 +259,6 @@ cp server/config.example.json server/config.json
 - `JUDGE.CLIENT_KEY` — 非服务端评测机接收任务时校验的客户端 Key；由后台"评测监控"生成 / 重置
 - `JUDGE.CLIENT_TIMEOUT` — 服务端向远程评测机分发任务的 HTTP 超时毫秒数，默认 10000
 - `JUDGE.ALLOW_REMOTE_SANDBOX_CLIENTS` — 默认 `false`。为保证用户上传代码只在 sandbox 中运行，服务端默认不向远程评测机分发提交；确认所有远程评测机也运行 Rust sandbox 后再设为 `true`
-- `SECURITY.maintainceKey` — 兼容 LibreOJ cron 维护端点 `/api/runMaintainceTasks` 的 `maintaince-key`；未配置时端点会拒绝执行。也可用环境变量 `MAINTAINCE_KEY` / `MAINTENANCE_KEY` 覆盖
 - `/api/judge/clientHeartbeat` — 远程评测机可向服务端上报 `{ clientKey, status, message, queue }`，后台会展示最近心跳与队列遥测
 - `STORAGE.provider` — 题目文件存储 provider；`local` 使用本机文件系统，`s3` / `minio` / `r2` 使用 S3-compatible 对象存储
 - `STORAGE.localRoot` — 本地运行缓存根目录；默认 `.` 表示以 `server/` 为根，判题仍从本地 `data/{pid}` 读取
@@ -313,18 +338,16 @@ npm run build        # 生产构建（输出到 web/dist/，已 git-ignored）
 | 前缀 | 功能 |
 |------|------|
 | `/api/user/*` | 用户认证与个人信息 |
-| `/api/admin/*` | 管理员操作（用户列表 / 编辑 / 封禁 / 审计） |
-| `/api/auth/*` | LibreOJ 兼容账户接口，以及角色 / 权限 / 资源协作者管理 |
-| `/api/group/*` | 用户组、组成员、组权限与 LibreOJ 兼容组元信息接口 |
+| `/api/admin/*` | 管理员操作（用户列表 / 编辑 / 封禁 / 审计 / 评测监控） |
+| `/api/auth/*` | 会话信息（`getSessionInfo`）与角色 / 权限 / 资源协作者管理 |
+| `/api/group/*` | 用户组、组成员与组权限 |
+| `/api/migration/*` | 老站用户 / 数据迁移 |
 | `/api/problem/*` | 题目与测试数据 |
 | `/api/judge/*` | 提交与评测 |
-| `/api/submission/*` | LibreOJ 兼容提交生命周期接口 |
-| `/api/judgeClient/*` | LibreOJ 兼容评测机管理接口 |
 | `/api/contest/*` | 比赛全流程 |
 | `/api/common/*` | 公告、Paste、一言 |
-| `/api/homepage/*` | LibreOJ 兼容首页内容与设置接口 |
+| `/api/homepage/*` | 首页聚合数据 |
 | `/api/rabbit/*` | 首页互动 |
-| `/api/cors/*` | LibreOJ 兼容 xdomain / StreamSaver 辅助资源别名 |
 
 未登录用户仅可访问白名单接口（题目列表、比赛列表、提交列表、一言等）。
 其余接口由 `auth/middleware.js` 的 `requirePermission(key)` 守卫；调用方必须
@@ -333,6 +356,20 @@ npm run build        # 生产构建（输出到 web/dist/，已 git-ignored）
 （新建角色、编辑角色权限、删除角色）仅允许 `uid=1`。列表型只读接口
 （`listPermissions` / `listRoles` / `listUserGrants`）放开给 `user.manage`
 或 `user.role.admin` 任一。
+
+---
+
+## 文档 / Docs
+
+| 文档 | 内容 |
+|------|------|
+| [contest-system.md](docs/contest-system.md) | 比赛系统架构：赛制声明式配置、policy 收口、事件回放榜单、CF / 组队 / 作业 |
+| [judge-pipeline.md](docs/judge-pipeline.md) | 统一评测流水线：`judgeProfile` 解释器、Worker、语言、sandbox |
+| [data-config-guide.md](docs/data-config-guide.md) | 测试数据目录、`config.json`、ZIP 导入与在线造数据 |
+| [llm-usage-guide.md](docs/llm-usage-guide.md) | LLM 出题助手使用说明 |
+| [rust-sandbox-deploy.md](docs/rust-sandbox-deploy.md) | Rust sandbox 部署 |
+| [rust-sandbox-migration.md](docs/rust-sandbox-migration.md) | Rust sandbox `/api/*` 请求 / 返回契约 |
+| [cloud-upgrade.md](docs/cloud-upgrade.md) | 从 `250fa62` 到当前版本的云端升级方案 |
 
 ---
 

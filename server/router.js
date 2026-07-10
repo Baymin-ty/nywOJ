@@ -1,19 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const corsAssets = require('./corsAssets');
-const maintenance = require('./api/system/maintenance');
-const judgeSocketBridge = require('./api/judge/socketBridge');
-
-router.post('/api/runMaintainceTasks', maintenance.runMaintainceTasks);
-router.get('/api/judge/socketFile', judgeSocketBridge.serveFile);
-router.get('/cors/xdomain.html', corsAssets.xdomainHtml);
-router.get('/cors/xdomain.min.js', corsAssets.xdomainScript);
-router.get('/cors/streamsaver/mitm.html', corsAssets.streamSaverMitm);
-router.get('/cors/streamsaver/sw.js', corsAssets.streamSaverSw);
-router.get('/api/cors/xdomain.html', corsAssets.xdomainHtml);
-router.get('/api/cors/xdomain.min.js', corsAssets.xdomainScript);
-router.get('/api/cors/streamsaver/mitm.html', corsAssets.streamSaverMitm);
-router.get('/api/cors/streamsaver/sw.js', corsAssets.streamSaverSw);
 
 const rabbit = require('./api/content/rabbit');
 
@@ -86,14 +72,7 @@ const auth = require('./api/account/roles');
 const sessionApi = require('./api/account/session');
 
 router.get('/api/auth/getSessionInfo', sessionApi.getSessionInfo);
-router.post('/api/auth/login', sessionApi.login);
-router.post('/api/auth/logout', sessionApi.logout);
-router.get('/api/auth/checkAvailability', sessionApi.checkAvailability);
-router.post('/api/auth/sendEmailVerificationCode', sessionApi.sendEmailVerificationCode);
-router.post('/api/auth/register', sessionApi.register);
-router.post('/api/auth/resetPassword', sessionApi.resetPassword);
-router.post('/api/auth/listUserSessions', sessionApi.listUserSessions);
-router.post('/api/auth/revokeUserSession', sessionApi.revokeUserSession);
+router.post('/api/auth/syncPermissionCatalog', auth.syncCatalog);
 router.post('/api/auth/listPermissions', auth.listPermissions);
 router.post('/api/auth/listRoles', auth.listRoles);
 router.post('/api/auth/createRole', auth.createRole);
@@ -110,11 +89,7 @@ router.post('/api/auth/searchProblems', auth.searchProblems);
 router.post('/api/auth/searchContests', auth.searchContests);
 
 const group = require('./api/account/group');
-router.get('/api/group/getGroupMeta', group.getGroupMeta);
-router.get('/api/group/searchGroup', group.searchGroup);
-router.get('/api/group/getGroupList', group.getGroupList);
 router.post('/api/group/getGroupList', group.getGroupList);
-router.post('/api/group/searchGroup', group.searchGroup);
 router.post('/api/group/createGroup', group.createGroup);
 router.post('/api/group/renameGroup', group.renameGroup);
 router.post('/api/group/deleteGroup', group.deleteGroup);
@@ -189,6 +164,9 @@ router.post('/api/problem/ai/saveStd', problemAi.saveStd);
 router.post('/api/problem/ai/saveSolution', problemAi.saveSolution);
 router.post('/api/problem/ai/previewData', problemAi.previewData);
 router.post('/api/problem/ai/saveData', problemAi.saveData);
+router.post('/api/problem/ai/startDataSave', problemAi.startDataSave);
+router.post('/api/problem/ai/saveDataCase', problemAi.saveDataCaseUpload, problemAi.saveDataCase);
+router.post('/api/problem/ai/finishDataSave', problemAi.finishDataSave);
 router.post('/api/problem/ai/saveJudge', problemAi.saveJudge);
 router.get('/api/problem/signedDownloadCase', problem.signedDownloadCase);
 router.get('/api/problem/signedDownloadAnswerInputs', problem.signedDownloadAnswerInputs);
@@ -237,17 +215,6 @@ router.post('/api/judge/receiveTask', judge.receiveTask);
 router.post('/api/judge/clientHeartbeat', judge.clientHeartbeat);
 router.post('/api/judge/getLangs', judge.getLangs);
 
-const submissionApi = require('./api/judge/submissionApi');
-router.post('/api/submission/submit', submissionApi.submit);
-router.post('/api/submission/querySubmission', submissionApi.querySubmission);
-router.post('/api/submission/getSubmissionDetail', submissionApi.getSubmissionDetail);
-router.post('/api/submission/downloadSubmissionFile', submissionApi.downloadSubmissionFile);
-router.post('/api/submission/querySubmissionStatistics', submissionApi.querySubmissionStatistics);
-router.post('/api/submission/rejudgeSubmission', submissionApi.rejudgeSubmission);
-router.post('/api/submission/cancelSubmission', submissionApi.cancelSubmission);
-router.post('/api/submission/setSubmissionPublic', submissionApi.setSubmissionPublic);
-router.post('/api/submission/deleteSubmission', submissionApi.deleteSubmission);
-
 const customRun = require('./api/judge/customRun');
 router.post('/api/judge/customRun', customRun.customRun);
 
@@ -269,35 +236,17 @@ router.post('/api/common/delPaste', common.delPaste);
 router.post('/api/common/getPasteList', common.getPasteList);
 router.post('/api/common/getHitokoto', common.getHitokoto);
 router.get('/api/homepage/getHomepage', homepage.getHomepage);
-router.get('/api/homepage/getHomepageSettings', homepage.getHomepageSettings);
-router.post('/api/homepage/updateHomepageSettings', homepage.updateHomepageSettings);
-
-const judgeClientApi = require('./api/judge/clients');
-router.post('/api/judgeClient/addJudgeClient', judgeClientApi.addJudgeClient);
-router.post('/api/judgeClient/deleteJudgeClient', judgeClientApi.deleteJudgeClient);
-router.post('/api/judgeClient/resetJudgeClientKey', judgeClientApi.resetJudgeClientKey);
-router.get('/api/judgeClient/listJudgeClients', judgeClientApi.listJudgeClients);
 
 const discussion = require('./api/content/discussion');
-const discussionPortal = require('./api/content/discussionPortal');
 router.post('/api/discussion/getDiscussionList', discussion.getDiscussionList);
 router.post('/api/discussion/getDiscussion', discussion.getDiscussion);
-router.post('/api/discussion/createDiscussion', discussionPortal.createDiscussion);
-router.post('/api/discussion/createDiscussionReply', discussionPortal.createDiscussionReply);
-router.post('/api/discussion/queryDiscussion', discussionPortal.queryDiscussion);
-router.post('/api/discussion/getDiscussionAndReplies', discussionPortal.getDiscussionAndReplies);
 router.post('/api/discussion/addDiscussion', discussion.addDiscussion);
-router.post('/api/discussion/updateDiscussion', discussionPortal.updateDiscussion);
+router.post('/api/discussion/updateDiscussion', discussion.updateDiscussion);
 router.post('/api/discussion/delDiscussion', discussion.delDiscussion);
-router.post('/api/discussion/setDiscussionPublic', discussionPortal.setDiscussionPublic);
 router.post('/api/discussion/getReplies', discussion.getReplies);
 router.post('/api/discussion/addReply', discussion.addReply);
 router.post('/api/discussion/updateReply', discussion.updateReply);
-router.post('/api/discussion/updateDiscussionReply', discussionPortal.updateDiscussionReply);
-router.post('/api/discussion/deleteDiscussion', discussionPortal.deleteDiscussion);
-router.post('/api/discussion/deleteDiscussionReply', discussionPortal.deleteDiscussionReply);
 router.post('/api/discussion/delReply', discussion.delReply);
-router.post('/api/discussion/setDiscussionReplyPublic', discussionPortal.setDiscussionReplyPublic);
 router.post('/api/discussion/toggleReaction', discussion.toggleReaction);
 
 const contest = require('./api/contest/contest');
@@ -310,6 +259,7 @@ router.post('/api/contest/getPlayerList', contest.getPlayerList);
 router.post('/api/contest/addPlayer', contest.addPlayer);
 router.post('/api/contest/removePlayer', contest.removePlayer);
 router.post('/api/contest/contestReg', contest.contestReg);
+router.post('/api/contest/cancelContestReg', contest.cancelContestReg);
 router.post('/api/contest/closeContest', contest.closeContest);
 router.post('/api/contest/recalculateContestRating', contestRating.recalculateContestRating);
 router.post('/api/contest/settleContestRating', contestRating.settleContestRating);
@@ -348,6 +298,7 @@ router.post('/api/contest/leaveTeam', contestTeams.leaveTeam);
 router.post('/api/contest/getMyTeam', contestTeams.getMyTeam);
 router.post('/api/contest/getTeamList', contestTeams.getTeamList);
 router.post('/api/contest/adminCreateTeam', contestTeams.adminCreateTeam);
+router.post('/api/contest/adminUpdateTeam', contestTeams.adminUpdateTeam);
 router.post('/api/contest/adminRemoveTeam', contestTeams.adminRemoveTeam);
 router.post('/api/contest/getRatingChanges', contestRating.getRatingChanges);
 router.post('/api/contest/getUserRatingHistory', contestRating.getUserRatingHistory);

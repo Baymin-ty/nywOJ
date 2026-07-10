@@ -427,10 +427,6 @@
 import axios from 'axios';
 import jsyaml from 'js-yaml';
 import monacoEditor from '@/components/monacoEditor.vue';
-import {
-  CircleCheck, Plus, Close, Delete, Document, Download, Edit, ArrowDown, Top, Bottom,
-  Tickets, Connection, SetUp, ChatLineSquare, Share, Files, InfoFilled,
-} from '@element-plus/icons-vue';
 
 const emptyProfile = () => ({
   version: 1, preset: 'traditional',
@@ -442,8 +438,6 @@ export default {
   name: 'judgeProfileDesigner',
   components: {
     monacoEditor,
-    CircleCheck, Plus, Close, Delete, Document, Download, Edit, ArrowDown, Top, Bottom,
-    Tickets, Connection, SetUp, ChatLineSquare, Share, Files, InfoFilled,
   },
   props: {
     pid: { type: [Number, String], required: true },

@@ -111,11 +111,6 @@ const signingKey = (dateStamp) => {
   return hmac(kService, 'aws4_request');
 };
 
-const canonicalQuery = (params) => Object.keys(params)
-  .sort()
-  .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(params[key]).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase())}`)
-  .join('&');
-
 const ensureS3 = () => {
   if (provider !== 's3' && provider !== 'minio' && provider !== 'r2') {
     throw new Error(`当前存储 provider=${provider} 不是 S3-compatible provider`);
@@ -170,39 +165,6 @@ const s3Request = async (method, key, options = {}) => {
     maxBodyLength: Infinity,
     maxContentLength: Infinity,
   });
-};
-
-const presignS3Url = (method, key, ttlSeconds = defaultTtl) => {
-  ensureS3();
-  const ttl = Math.max(1, Math.min(Number(ttlSeconds) || defaultTtl, 7 * 24 * 60 * 60));
-  const { amzDate, dateStamp } = amzNow();
-  const parts = s3UrlParts(key);
-  const scope = `${dateStamp}/${s3Region()}/s3/aws4_request`;
-  const params = {
-    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
-    'X-Amz-Credential': `${s3AccessKey()}/${scope}`,
-    'X-Amz-Date': amzDate,
-    'X-Amz-Expires': String(ttl),
-    'X-Amz-SignedHeaders': 'host',
-  };
-  if (s3SessionToken()) params['X-Amz-Security-Token'] = s3SessionToken();
-  const query = canonicalQuery(params);
-  const canonicalRequest = [
-    method,
-    parts.canonicalUri,
-    query,
-    `host:${parts.host}\n`,
-    'host',
-    'UNSIGNED-PAYLOAD',
-  ].join('\n');
-  const stringToSign = [
-    'AWS4-HMAC-SHA256',
-    amzDate,
-    scope,
-    sha256Hex(canonicalRequest),
-  ].join('\n');
-  const signature = hmac(signingKey(dateStamp), stringToSign, 'hex');
-  return `${parts.url}?${query}&X-Amz-Signature=${signature}`;
 };
 
 const signString = (value) => crypto.createHmac('sha256', signSecret).update(value).digest();
@@ -372,16 +334,10 @@ const info = () => ({
 
 module.exports = {
   info,
-  normalizeKey,
-  localPath,
   isRemote,
   getText,
   putText,
   deleteObject,
-  putFile,
-  getFileTo,
-  presignS3Url,
-  problemArchiveKey,
   mirrorProblemData,
   restoreProblemData,
   deleteProblemDataArchive,

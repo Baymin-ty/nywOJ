@@ -79,6 +79,21 @@ RUST_SANDBOX_CONTAINER=nywoj-rust-sandbox \
 deploy/rust-sandbox/build.sh --deploy
 ```
 
+请求大小限制：
+
+```bash
+SANDBOX_HTTP_BODY_LIMIT=256mb \
+SANDBOX_STREAM_REQUEST_LIMIT=1mb \
+SANDBOX_STREAM_INPUT_CHUNK_LIMIT=64kb \
+SANDBOX_STREAM_INPUT_TOTAL_LIMIT=16mb \
+deploy/rust-sandbox/build.sh --deploy
+```
+
+- `SANDBOX_HTTP_BODY_LIMIT` 控制普通 `/api/run` JSON 请求体上限，正式评测走这个通道。
+- `SANDBOX_STREAM_REQUEST_LIMIT` 控制 `/api/stream` 首个执行请求帧上限。
+- `SANDBOX_STREAM_INPUT_CHUNK_LIMIT` 控制 `/api/stream` 单次 stdin 输入块上限。
+- `SANDBOX_STREAM_INPUT_TOTAL_LIMIT` 控制 `/api/stream` 单连接累计 stdin 输入上限。
+
 ## 后端配置
 
 后端默认访问：

@@ -148,7 +148,7 @@ const ensureOptionalTables = async () => {
 };
 
 const requireMigrationAdmin = (req, res) => {
-  if (!req.can('user.role.admin')) {
+  if (!req.can('system.migration.manage')) {
     res.status(403).end('403 Forbidden');
     return false;
   }

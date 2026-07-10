@@ -2,7 +2,7 @@ const db = require('../../db');
 const { handler, fail, ok, paginate, buildWhere } = require('../../db/util');
 const { requirePermission } = require('../../auth/middleware');
 const { loadEffectivePermissions, can } = require('../../auth/policy');
-const { Format, ip2loc, eventList, eventExp, recordEvent } = require('../../static');
+const { Format, eventList, eventExp, recordEvent } = require('../../static');
 const { judgeRes } = require('../../db/format');
 const judgeClients = require('../judge/clientRegistry');
 const sandboxClient = require('../judge/sandbox');
@@ -18,7 +18,8 @@ const guardPrivilegedTarget = async (req, targetUid) => {
   return null;
 };
 
-const judgeClientPermission = ['submission.rejudge.any', 'user.manage', 'user.role.admin'];
+const judgeMonitorPermission = ['judge.monitor.view', 'judge.client.manage'];
+const judgeClientPermission = 'judge.client.manage';
 const NAME_REGEX = /^[A-Za-z0-9\-_.#$]{3,24}$/;
 const USERNAME_RULE_MESSAGE = '用户名长度应在3~24之间，可包含字母、数字和 -_.#$';
 const EMAIL_REGEX = /^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/;
@@ -393,7 +394,7 @@ const probeSandboxCached = async () => {
 };
 
 exports.getJudgeMonitor = [
-  requirePermission(judgeClientPermission),
+  requirePermission(judgeMonitorPermission),
   handler(async (req, res) => {
     const queue = require('../judge/core').getJudgeQueueStats();
     const [sandbox, statusRows, recentFailures, machineRows, throughput, clientRows] = await Promise.all([
@@ -446,6 +447,7 @@ exports.getJudgeMonitor = [
         recentFailures,
         machines: machineRows,
         clients: clientRows.map((row) => judgeClients.formatClient(row)),
+        canManageJudgeClients: req.can('judge.client.manage'),
         throughput: {
           lastHour: Number(throughput.lastHour || 0),
           today: Number(throughput.today || 0),
@@ -458,7 +460,7 @@ exports.getJudgeMonitor = [
 ];
 
 exports.listJudgeClients = [
-  requirePermission(judgeClientPermission),
+  requirePermission(judgeMonitorPermission),
   handler(async (req, res) => {
     const rows = await judgeClients.listClients();
     return ok(res, { data: rows.map((row) => judgeClients.formatClient(row)) });

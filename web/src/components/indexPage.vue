@@ -130,25 +130,46 @@
             <template #header>
               <div class="card-header">{{ block.title }}</div>
             </template>
-            <el-table :data="latestProblems" v-loading="homepageLoading" empty-text="暂无题目">
+            <el-table class="home-problem-table" :data="latestProblems" v-loading="homepageLoading" empty-text="暂无题目">
               <el-table-column label="题目" min-width="220" align="left">
                 <template #default="scope">
                   <router-link class="rlink problem-title" :to="problemLink(scope.row)">
                     {{ scope.row.title }}
                   </router-link>
-                  <div class="problem-sub">
-                    {{ problemTypeText(scope.row) }}
-                  </div>
                 </template>
               </el-table-column>
-              <el-table-column label="通过/提交" width="110">
+              <el-table-column label="出题人" width="150" align="left">
                 <template #default="scope">
-                  {{ acceptedCount(scope.row) }}/{{ submissionCount(scope.row) }}
+                  <router-link v-if="problemOwnerUsername(scope.row)" class="rlink problem-owner" :to="userProfilePath(problemOwnerUsername(scope.row))">
+                    {{ problemOwnerName(scope.row) }}
+                  </router-link>
+                  <span v-else class="problem-owner">{{ problemOwnerName(scope.row) }}</span>
                 </template>
+              </el-table-column>
+              <el-table-column class-name="problem-date-cell" label="日期" width="120">
+                <template #default="scope">{{ problemDate(scope.row) }}</template>
               </el-table-column>
             </el-table>
           </el-card>
-          <cuteRank v-else-if="block.type === 'rabbitRank'" />
+          <el-card v-else-if="block.type === 'recentContests'" class="box-card" shadow="hover">
+            <template #header>
+              <div class="card-header">{{ block.title }}</div>
+            </template>
+            <div class="recent-contest-list" v-loading="homepageLoading">
+              <el-empty v-if="!recentContests.length" :image-size="54" description="暂无比赛" />
+              <router-link v-for="c in recentContests" :key="c.cid" class="recent-contest-item" :to="'/contest/' + c.cid">
+                <div class="rc-line">
+                  <span class="rc-title">{{ c.title }}</span>
+                  <el-tag size="small" :type="contestStatusTag(c.status)" effect="light">{{ c.status }}</el-tag>
+                </div>
+                <div class="rc-meta">
+                  <span class="rc-meta-item"><el-icon><Clock /></el-icon>{{ c.start }}</span>
+                  <span class="rc-meta-item"><el-icon><Trophy /></el-icon>{{ c.type }}</span>
+                  <span class="rc-meta-item"><el-icon><UserFilled /></el-icon>{{ c.playerCnt }}</span>
+                </div>
+              </router-link>
+            </div>
+          </el-card>
           <rabbitData v-else-if="block.type === 'rabbitData'" />
         </template>
       </el-col>
@@ -270,25 +291,46 @@
             <template #header>
               <div class="card-header">{{ block.title }}</div>
             </template>
-            <el-table :data="latestProblems" v-loading="homepageLoading" empty-text="暂无题目">
+            <el-table class="home-problem-table" :data="latestProblems" v-loading="homepageLoading" empty-text="暂无题目">
               <el-table-column label="题目" min-width="150" align="left">
                 <template #default="scope">
                   <router-link class="rlink problem-title" :to="problemLink(scope.row)">
                     {{ scope.row.title }}
                   </router-link>
-                  <div class="problem-sub">
-                    {{ problemTypeText(scope.row) }}
-                  </div>
                 </template>
               </el-table-column>
-              <el-table-column label="通过/提交" width="100">
+              <el-table-column label="出题人" width="120" align="left">
                 <template #default="scope">
-                  {{ acceptedCount(scope.row) }}/{{ submissionCount(scope.row) }}
+                  <router-link v-if="problemOwnerUsername(scope.row)" class="rlink problem-owner" :to="userProfilePath(problemOwnerUsername(scope.row))">
+                    {{ problemOwnerName(scope.row) }}
+                  </router-link>
+                  <span v-else class="problem-owner">{{ problemOwnerName(scope.row) }}</span>
                 </template>
+              </el-table-column>
+              <el-table-column class-name="problem-date-cell" label="日期" width="112">
+                <template #default="scope">{{ problemDate(scope.row) }}</template>
               </el-table-column>
             </el-table>
           </el-card>
-          <cuteRank v-else-if="block.type === 'rabbitRank'" />
+          <el-card v-else-if="block.type === 'recentContests'" class="box-card" shadow="hover">
+            <template #header>
+              <div class="card-header">{{ block.title }}</div>
+            </template>
+            <div class="recent-contest-list" v-loading="homepageLoading">
+              <el-empty v-if="!recentContests.length" :image-size="54" description="暂无比赛" />
+              <router-link v-for="c in recentContests" :key="c.cid" class="recent-contest-item" :to="'/contest/' + c.cid">
+                <div class="rc-line">
+                  <span class="rc-title">{{ c.title }}</span>
+                  <el-tag size="small" :type="contestStatusTag(c.status)" effect="light">{{ c.status }}</el-tag>
+                </div>
+                <div class="rc-meta">
+                  <span class="rc-meta-item"><el-icon><Clock /></el-icon>{{ c.start }}</span>
+                  <span class="rc-meta-item"><el-icon><Trophy /></el-icon>{{ c.type }}</span>
+                  <span class="rc-meta-item"><el-icon><UserFilled /></el-icon>{{ c.playerCnt }}</span>
+                </div>
+              </router-link>
+            </div>
+          </el-card>
           <rabbitData v-else-if="block.type === 'rabbitData'" />
         </template>
       </el-col>
@@ -299,14 +341,12 @@
 <script>
 import axios from "axios";
 import { userProfilePath } from '@/assets/common'
-import cuteRank from '@/components/rabbit/cuteRankList.vue'
 import rabbitData from '@/components/rabbit/rabbitClickData.vue'
 
 export default {
   name: "myHeader",
   components: {
     rabbitData,
-    cuteRank,
   },
   data() {
     return {
@@ -316,6 +356,7 @@ export default {
       homepageLoading: false,
       topUsers: [],
       latestProblems: [],
+      recentContests: [],
       homepageNotice: '',
       homepageCountdown: null,
       homepageFriendLinks: null,
@@ -380,6 +421,7 @@ export default {
         if (res.status === 200) {
           this.topUsers = res.data.topUsers || [];
           this.latestProblems = res.data.latestUpdatedProblems || [];
+          this.recentContests = res.data.recentContests || [];
           this.homepageNotice = res.data.notice || '';
           this.homepageCountdown = res.data.countdown || null;
           this.homepageFriendLinks = res.data.friendLinks || null;
@@ -412,14 +454,27 @@ export default {
       const meta = this.problemMeta(problem);
       return '/problem/' + (meta.pid || meta.id || '');
     },
+    problemOwnerUsername(problem) {
+      return this.problemMeta(problem).ownerUsername || '';
+    },
+    problemOwnerName(problem) {
+      const meta = this.problemMeta(problem);
+      return meta.ownerUsername || '未知出题人';
+    },
+    problemDate(problem) {
+      const meta = this.problemMeta(problem);
+      return meta.publicDate || (meta.publicTime ? String(meta.publicTime).slice(0, 10) : '');
+    },
     problemTypeText(problem) {
       return this.problemMeta(problem).type || 'Traditional';
     },
-    submissionCount(problem) {
-      return Number(this.problemMeta(problem).submissionCount || 0);
-    },
-    acceptedCount(problem) {
-      return Number(this.problemMeta(problem).acceptedSubmissionCount || 0);
+    contestStatusTag(status) {
+      return {
+        '未开始': 'primary',
+        '正在进行': 'danger',
+        '等待测评': 'success',
+        '已结束': 'info',
+      }[status] || 'info';
     },
     formatCountdown(diff, target) {
       if (!Number.isFinite(target)) return '时间未设置';
@@ -601,9 +656,80 @@ export default {
   white-space: nowrap;
 }
 
-.problem-sub {
+.problem-owner {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-problem-table :deep(.problem-date-cell .cell) {
+  white-space: nowrap;
+}
+
+.recent-contest-list {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  min-height: 40px;
+}
+
+.recent-contest-item {
+  display: block;
+  padding: 10px 6px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.recent-contest-item + .recent-contest-item {
+  border-top: 1px solid #f0f2f5;
+}
+
+.recent-contest-item:hover {
+  background-color: #f5f7fa;
+}
+
+.rc-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rc-title {
+  overflow: hidden;
+  color: #303133;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-contest-item:hover .rc-title {
+  color: #409eff;
+}
+
+.rc-line .el-tag {
+  flex-shrink: 0;
+}
+
+.rc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 6px;
   color: #909399;
   font-size: 12px;
+}
+
+.rc-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rc-meta-item .el-icon {
+  font-size: 13px;
 }
 
 .home-notice-card {

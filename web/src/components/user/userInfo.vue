@@ -32,7 +32,7 @@
           </div>
         </div>
         <div class="hero-actions">
-          <el-button v-if="$store.state.uid === Number(info.uid)" type="primary" plain :icon="Edit"
+          <el-button v-if="$store.state.uid === Number(info.uid)" type="primary" plain icon="Edit"
             @click="$router.push('/user/edit')">修改资料</el-button>
         </div>
       </div>
@@ -214,13 +214,11 @@
 
 <script>
 import axios from "axios";
-import { Edit, Link, School } from '@element-plus/icons-vue';
 import chart from '@/chart/myChart';
 import { getRatingTier, resColor } from '@/assets/common';
 
 export default {
   name: "userInfo",
-  components: { Link, School },
   data() {
     return {
       uid: 0,
@@ -228,7 +226,6 @@ export default {
       info: {},
       avatarAddress: '',
       activeTab: 'about',
-      Edit,
       roleLabel: {
         user: '普通用户',
         problem_setter: '出题人',

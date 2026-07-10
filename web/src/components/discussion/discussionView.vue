@@ -70,9 +70,9 @@
 
     <section class="reply-panel">
       <div class="reply-head">
-        <div>
-          <div class="section-label">Replies</div>
-          <h2>回复 · {{ total }}</h2>
+        <div class="reply-title-wrap">
+          <span class="reply-title">回复</span>
+          <span class="reply-count-pill">{{ total }} 条</span>
         </div>
         <el-pagination
           v-if="total > 30"
@@ -347,15 +347,14 @@ export default {
 .discussion-view {
   margin: 0 auto;
   max-width: 1080px;
-  padding: 16px 10px 30px;
 }
 
 .discussion-article,
 .reply-panel {
-  border: 1px solid #e4e9f2;
-  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 12px 32px rgba(31, 45, 61, 0.08);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
   text-align: left;
 }
 
@@ -364,14 +363,15 @@ export default {
 }
 
 .article-head {
-  padding: 24px 26px 18px;
-  border-bottom: 1px solid #edf1f7;
-  background: linear-gradient(135deg, #f8fbff 0%, #ffffff 62%, #f4fff8 100%);
+  padding: 18px 22px 16px;
+  border-bottom: 1px solid #ebeef5;
+  background: #ffffff;
 }
 
 .article-kicker,
 .article-title-row,
 .reply-head,
+.reply-title-wrap,
 .reply-meta,
 .reply-actions,
 .reply-author {
@@ -381,9 +381,9 @@ export default {
 }
 
 .article-kicker {
-  margin-bottom: 10px;
-  color: #64748b;
-  font-size: 13px;
+  margin-bottom: 8px;
+  color: #909399;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -396,9 +396,9 @@ export default {
 .article-title-row h1 {
   min-width: 0;
   margin: 0;
-  color: #1f2937;
-  font-size: 30px;
-  line-height: 1.35;
+  color: #303133;
+  font-size: 24px;
+  line-height: 1.4;
   letter-spacing: 0;
 }
 
@@ -410,15 +410,15 @@ export default {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 18px;
+  margin-top: 14px;
 }
 
 .meta-item {
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid #e8eef7;
+  padding: 9px 11px;
+  border: 1px solid #eef2f7;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
+  background: #f8fafc;
 }
 
 .meta-item span,
@@ -433,19 +433,19 @@ export default {
 
 .meta-item span {
   margin-bottom: 3px;
-  color: #94a3b8;
+  color: #909399;
   font-size: 12px;
 }
 
 .meta-item strong,
 .meta-item a {
-  color: #374151;
+  color: #303133;
   font-size: 13px;
   font-weight: 600;
 }
 
 .article-body {
-  padding: 22px 26px;
+  padding: 20px 22px;
 }
 
 .article-body :deep(.v-md-editor-preview),
@@ -455,37 +455,44 @@ export default {
 }
 
 .reply-panel {
-  margin-top: 16px;
+  margin-top: 14px;
   overflow: hidden;
 }
 
 .reply-head {
-  padding: 18px 22px;
-  border-bottom: 1px solid #edf1f7;
-  background: #f8fafc;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid #ebeef5;
+  background: #ffffff;
 }
 
-.section-label {
-  margin-bottom: 4px;
-  color: #3b82f6;
+.reply-title-wrap {
+  align-items: baseline;
+}
+
+.reply-title {
+  color: #303133;
+  font-size: 17px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.reply-count-pill {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #f4f4f5;
+  color: #909399;
   font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.reply-head h2 {
-  margin: 0;
-  color: #1f2937;
-  font-size: 20px;
-  letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .reply {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
   gap: 14px;
-  padding: 18px 22px;
-  border-bottom: 1px solid #edf1f7;
+  padding: 18px;
+  border-bottom: 1px solid #ebeef5;
 }
 
 .reply:last-of-type {
@@ -498,8 +505,8 @@ export default {
   width: 42px;
   height: 42px;
   border-radius: 8px;
-  background: #eef6ff;
-  color: #2563eb;
+  background: #ecf5ff;
+  color: #409eff;
   font-weight: 800;
 }
 
@@ -549,7 +556,7 @@ export default {
   gap: 8px;
   align-items: center;
   min-height: 32px;
-  padding: 0 26px 22px;
+  padding: 0 22px 20px;
 }
 
 .reaction-bar :deep(.el-button + .el-button) {
@@ -558,7 +565,6 @@ export default {
 
 .reaction-button {
   min-width: 72px;
-  border-radius: 8px;
 }
 
 .reaction-count {
@@ -574,8 +580,8 @@ export default {
 }
 
 .reply-composer {
-  padding: 18px 22px 22px;
-  background: #fbfcfe;
+  padding: 18px;
+  background: #ffffff;
 }
 
 .reply-submit {
@@ -585,7 +591,7 @@ export default {
 
 @media (max-width: 768px) {
   .discussion-view {
-    padding: 8px 0 20px;
+    width: 100%;
   }
 
   .article-head,
@@ -606,7 +612,7 @@ export default {
   }
 
   .article-title-row h1 {
-    font-size: 24px;
+    font-size: 21px;
   }
 
   .article-actions {

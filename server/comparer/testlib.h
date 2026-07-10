@@ -3136,7 +3136,15 @@ void InStream::init(std::FILE *f, TMode mode) {
         name = "stderr", stdfile = true;
 
     reset(f);
-    skipBom();
+    /*
+     * For live interactors, ouf is backed by stdin, which is a FIFO connected
+     * to the contestant's stdout. skipBom() peeks one byte via curChar(); on a
+     * FIFO that blocks before the interactor has a chance to print its first
+     * prompt. Defer reading contestant output until the interactor explicitly
+     * calls ouf.read*().
+     */
+    if (!(testlibMode == _interactor && mode == _output && f == stdin))
+        skipBom();
 }
 
 void InStream::skipBom() {

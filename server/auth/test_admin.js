@@ -293,9 +293,11 @@ const cleanupSandbox = async () => {
     // ============================================================
 
     await test('listAuditLog: rejected without audit.view', async () => {
-      const req = makeReq(modUid, modPerms);
+      // moderator legitimately holds audit.view, so deny it to exercise the guard
+      const withoutAudit = { ...modPerms, denies: new Set([...modPerms.denies, 'audit.view']) };
+      const req = makeReq(modUid, withoutAudit);
       const res = await runHandler(admin.listAuditLog, req);
-      assertEq(res.statusCode, 403, 'status 403 for moderator (no audit.view)');
+      assertEq(res.statusCode, 403, 'status 403 without audit.view');
     });
 
     await test('listAuditLog: super_admin gets the list', async () => {

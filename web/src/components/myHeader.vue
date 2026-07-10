@@ -80,7 +80,7 @@
         </el-icon>
         编辑资料
       </el-menu-item>
-      <el-menu-item v-if="$canAny('user.manage','user.role.admin','submission.rejudge.any','problem.manage.any','announcement.manage')" index="/system">
+      <el-menu-item v-if="$canAny('group.manage','judge.monitor.view','judge.client.manage','problem.tag.manage','system.rating.manage','system.migration.manage','system.homepage.manage')" index="/system">
         <el-icon>
           <Setting />
         </el-icon>

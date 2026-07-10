@@ -1,62 +1,62 @@
 <template>
-  <el-row style="min-width: 600px;max-width: 1250px; margin: 0 auto;">
-    <el-table :data="table" style="margin-bottom:10px;" :header-cell-style="{ textAlign: 'center' }"
-      :cell-style="cellStyle2">
-      <el-table-column prop="sid" label="#" min-width="5%" />
-      <el-table-column prop="title" label="题目" min-width="15%">
-        <template #default="scope">
-          <router-link class="rlink" :to="!isContest ?
-            '/problem/' + scope.row.pid :
-            '/contest/' + scope.row.cid + '/problem/' + scope.row.idx">
-            {{ scope.row.title }}
-          </router-link>
-          <el-icon id="hidden" v-if="!scope.row.problemPublic && !isContest">
-            <Hide />
-          </el-icon>
-        </template>
-      </el-table-column>
-      <el-table-column prop="name" label="提交者" min-width="10%">
-        <template #default="scope">
-          <router-link class="rlink" :to="'/user/' + scope.row.uid">
-            {{ scope.row.name }}
-          </router-link>
-        </template>
-      </el-table-column>
-      <el-table-column prop="judgeResult" label="评测状态" min-width="16%">
-        <template #default="scope">
-          <span class="judge-result" :class="{ 'is-live': isLiveResult(scope.row.judgeResult) }">
-            <span v-if="isLiveResult(scope.row.judgeResult)" class="live-dot"></span>
-            {{ scope.row.judgeResult }}
-          </span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="score" label="分数" min-width="5%">
-        <template #default="scope">
-          <span> {{ scope.row.score }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="总用时" min-width="8%">
-        <template #default="scope">
-          <span> {{ scope.row.time }} ms</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="内存" min-width="8%">
-        <template #default="scope">
-          <span> {{ scope.row.memory }} </span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="codeLength" label="语言 / 代码长度" min-width="15%">
-        <template #default="scope">
-          <span v-if="scope.row.lang == null">答案 / {{ scope.row.codeLength }} B</span>
-          <span v-else>{{ $store.state.langList[scope.row.lang].des }} / {{ scope.row.codeLength }} B </span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="submitTime" label="提交时间" min-width="16%" />
-      <el-table-column prop="machine" label="评测机" min-width="10%" />
-    </el-table>
-  </el-row>
-  <el-row style="text-align: center; margin: 0 auto; max-width: 1250px; min-width: 600px;">
-    <el-col :span="24" style="min-width: 400px;margin: 0 auto;">
+  <div class="sv-page">
+    <el-card class="box-card summary-card" shadow="hover" v-loading="!hasTaken">
+      <div v-if="!hasTaken" class="summary-loading"></div>
+      <div v-else class="summary-wrap">
+        <div class="summary-status">
+          <div class="summary-result" :class="{ 'is-live': isLive }"
+            :style="{ color: resColor[submissionInfo.judgeResult] || '#909399' }">
+            <span v-if="isLive" class="live-dot"></span>
+            {{ submissionInfo.judgeResult }}
+          </div>
+          <div class="summary-score-line">
+            <span class="summary-score" :style="{ color: scoreColor[Math.floor((submissionInfo.score || 0) / 10)] }">
+              {{ submissionInfo.score }}
+            </span>
+            <span class="summary-score-unit">分</span>
+          </div>
+        </div>
+        <div class="summary-info">
+          <div class="summary-line1">
+            <span class="sid-chip">#{{ submissionInfo.sid }}</span>
+            <router-link class="rlink summary-title" :to="!isContest ?
+              '/problem/' + submissionInfo.pid :
+              '/contest/' + submissionInfo.cid + '/problem/' + submissionInfo.idx">
+              {{ submissionInfo.title }}
+            </router-link>
+            <el-icon id="hidden" v-if="!submissionInfo.problemPublic && !isContest">
+              <Hide />
+            </el-icon>
+            <span class="summary-by">by</span>
+            <router-link class="rlink" :to="'/user/' + submissionInfo.uid">
+              {{ submissionInfo.name }}
+            </router-link>
+          </div>
+          <div class="summary-meta">
+            <div class="meta-item">
+              <span class="meta-label">总用时</span>
+              <span class="meta-value">{{ submissionInfo.time }} ms</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">内存</span>
+              <span class="meta-value">{{ submissionInfo.memory }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">语言 / 代码长度</span>
+              <span class="meta-value">{{ langText }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">提交时间</span>
+              <span class="meta-value">{{ submissionInfo.submitTime }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">评测机</span>
+              <span class="meta-value">{{ submissionInfo.machine || '-' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-card>
       <el-card class="box-card" shadow="hover">
         <template #header>
           <div class=" card-header">
@@ -160,10 +160,6 @@
           <div v-else class="answer-empty">该提交未关联任何答案文件</div>
         </div>
       </el-card>
-    </el-col>
-  </el-row>
-  <el-row style="text-align: center; margin: 0 auto; max-width: 1250px; min-width: 600px;">
-    <el-col :span="24" style="min-width: 400px">
       <el-card class="box-card cases-card" :class="{ 'cases-card--live': isLive }" shadow="hover">
         <template #header>
           <div class="card-header cases-header">
@@ -207,11 +203,7 @@
           v-show="isErrorReport"
           :text="submissionInfo.compileResult" />
       </el-card>
-    </el-col>
-  </el-row>
-  <el-row v-if="judgeFlow" style="text-align: center; margin: 0 auto; max-width: 1250px; min-width: 600px;">
-    <el-col :span="24" style="min-width: 400px">
-      <el-card class="box-card flow-card" shadow="hover">
+      <el-card v-if="judgeFlow" class="box-card flow-card" shadow="hover">
         <template #header>
           <div class="card-header">
             <span>评测流程</span>
@@ -290,10 +282,6 @@
         </div>
         <div v-else-if="isInteractionSubmission && isLive" class="interaction-empty">交互进行中，测试点结果将实时出现</div>
       </el-card>
-    </el-col>
-  </el-row>
-  <el-row style="text-align: center; margin: 0 auto; max-width: 1250px; min-width: 600px;">
-    <el-col :span="24" style="min-width: 400px">
       <el-card class="box-card log-card" shadow="hover">
         <template #header>
           <div class="log-header">
@@ -361,8 +349,7 @@
           </el-timeline-item>
         </el-timeline>
       </el-card>
-    </el-col>
-  </el-row>
+  </div>
 </template>
 
 <script>
@@ -377,7 +364,8 @@ export default {
   name: "submissionView",
   data() {
     return {
-      table: [],
+      resColor,
+      scoreColor,
       submissionInfo: {},
       code: '',
       hasTaken: false,
@@ -420,6 +408,12 @@ export default {
       // submission.lang is NULL only for answer-submission problems
       // (type ∈ {2,3}). Server preserves null through the JSON payload.
       return this.hasTaken && this.submissionInfo.lang == null;
+    },
+    langText() {
+      const info = this.submissionInfo;
+      if (info.lang == null) return `答案 / ${info.codeLength} B`;
+      const l = (this.$store.state.langList || {})[info.lang];
+      return `${l ? l.des : '未知'} / ${info.codeLength} B`;
     },
     sourceFiles() {
       const files = Array.isArray(this.submissionInfo.sourceFiles) ? this.submissionInfo.sourceFiles : [];
@@ -579,7 +573,6 @@ export default {
     caseDisplay
   },
   methods: {
-    isLiveResult(r) { return LIVE_STATES.has(r); },
     tableRowClassName(obj) {
       const classes = [];
       if (obj.row.result == 'Accepted') classes.push('success');
@@ -592,19 +585,6 @@ export default {
       if (columnIndex === 2) {
         style['font-weight'] = 500;
         style['color'] = resColor[row.result];
-      }
-      return style;
-    },
-    cellStyle2({ row, columnIndex }) {
-      let style = {};
-      style['textAlign'] = 'center';
-      if (columnIndex === 3) {
-        style['font-weight'] = 500;
-        style['color'] = resColor[row.judgeResult];
-      }
-      if (columnIndex === 4) {
-        style['font-weight'] = 500;
-        style['color'] = scoreColor[Math.floor(row.score / 10)];
       }
       return style;
     },
@@ -934,7 +914,6 @@ export default {
       }
       this.hasTaken = true;
       this.canRejudge = !!info.canRejudge;
-      this.table = [info];
       this.rebuildAnswerFiles(info);
     },
     openStream() {
@@ -1028,7 +1007,6 @@ export default {
         if (res.status === 200) {
           this.$message.success(next ? '提交已公开' : '提交已设为私有');
           this.submissionInfo.isPublic = next ? 1 : 0;
-          this.table = [{ ...this.submissionInfo }];
         } else {
           this.$message.error((res.data && res.data.message) || '设置失败');
         }
@@ -1067,9 +1045,157 @@ export default {
 </script>
 
 <style scoped>
+.sv-page {
+  max-width: 1250px;
+  margin: 0 auto;
+}
+
 .box-card {
   margin: 10px;
   text-align: left;
+  border-radius: 10px;
+}
+
+/* ---- 顶部概要卡片 ---- */
+.summary-loading {
+  height: 96px;
+}
+
+.summary-wrap {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.summary-status {
+  flex: 0 0 auto;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 18px 4px 6px;
+  border-right: 1px solid #f0f2f5;
+}
+
+.summary-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.summary-score-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.summary-score {
+  font-size: 28px;
+  font-weight: 800;
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.summary-score-unit {
+  font-size: 12px;
+  color: #909399;
+}
+
+.summary-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summary-line1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sid-chip {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 1px 8px;
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.summary-title {
+  font-size: 16px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+
+.summary-by {
+  color: #c0c4cc;
+  font-size: 12px;
+}
+
+.summary-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px 18px;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.meta-label {
+  font-size: 11px;
+  color: #94a3b8;
+  letter-spacing: 0.4px;
+}
+
+.meta-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .summary-wrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .summary-status {
+    flex-direction: row;
+    justify-content: center;
+    align-items: baseline;
+    gap: 16px;
+    padding: 0 0 10px;
+    border-right: none;
+    border-bottom: 1px solid #f0f2f5;
+    min-width: 0;
+  }
+
+  .summary-title {
+    max-width: 100%;
+  }
 }
 
 .card-header {
@@ -1093,13 +1219,7 @@ export default {
   border-radius: 5px;
 }
 
-.judge-result {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.judge-result.is-live {
+.summary-result.is-live {
   letter-spacing: 0.3px;
 }
 

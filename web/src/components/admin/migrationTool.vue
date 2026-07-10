@@ -5,7 +5,7 @@
         <div class="eyebrow">ADMIN</div>
         <h1>迁移工具</h1>
       </div>
-      <el-button plain :icon="Refresh" :loading="checking" @click="runDryRun" :disabled="!payload">
+      <el-button plain icon="Refresh" :loading="checking" @click="runDryRun" :disabled="!payload">
         重新预检
       </el-button>
     </header>
@@ -22,7 +22,7 @@
           <el-checkbox label="submissions">提交记录</el-checkbox>
           <el-checkbox label="discussions">讨论区</el-checkbox>
         </el-checkbox-group>
-        <el-button type="primary" :icon="Download" :loading="exporting" @click="exportData">
+        <el-button type="primary" icon="Download" :loading="exporting" @click="exportData">
           导出
         </el-button>
       </section>
@@ -45,10 +45,10 @@
           <div class="el-upload__text">拖入迁移 JSON 或点击选择</div>
         </el-upload>
         <div class="import-actions">
-          <el-button plain :icon="Search" :loading="checking" :disabled="!payload" @click="runDryRun">
+          <el-button plain icon="Search" :loading="checking" :disabled="!payload" @click="runDryRun">
             预检
           </el-button>
-          <el-button type="danger" :icon="Upload" :loading="importing" :disabled="!payload || !summary.length" @click="applyImport">
+          <el-button type="danger" icon="Upload" :loading="importing" :disabled="!payload || !summary.length" @click="applyImport">
             执行导入
           </el-button>
         </div>
@@ -88,11 +88,9 @@
 <script>
 import axios from 'axios';
 import { ElMessageBox } from 'element-plus';
-import { Download, Refresh, Search, Tickets, Upload, UploadFilled } from '@element-plus/icons-vue';
 
 export default {
   name: 'migrationTool',
-  components: { Download, Tickets, UploadFilled },
   data() {
     return {
       exportGroups: ['users', 'problems', 'submissions', 'discussions'],
@@ -101,10 +99,6 @@ export default {
       importing: false,
       payload: null,
       summary: [],
-      Refresh,
-      Download,
-      Search,
-      Upload,
     };
   },
   methods: {

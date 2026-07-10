@@ -18,19 +18,19 @@
           <el-input-number v-model="listLimit" size="small" :min="10" :max="100" :step="10"
             controls-position="right" @change="fetchStats" />
         </div>
-        <el-button plain :icon="Refresh" :loading="loading" @click="fetchStats">刷新</el-button>
-        <el-button plain :icon="DataLine" :loading="syncing"
+        <el-button plain icon="Refresh" :loading="loading" @click="fetchStats">刷新</el-button>
+        <el-button plain icon="DataLine" :loading="syncing"
           :disabled="!stats.ratingCacheMismatchCount" @click="syncRatingCache">
           同步缓存
         </el-button>
-        <el-button type="warning" plain :icon="Tickets" :loading="cleaning"
+        <el-button type="warning" plain icon="Tickets" :loading="cleaning"
           :disabled="cleanupDisabled" @click="cleanupStaleRatings">
           清理异常
         </el-button>
-        <el-button plain :icon="Tickets" :loading="previewingRebuild" @click="previewRebuildRatings">
+        <el-button plain icon="Tickets" :loading="previewingRebuild" @click="previewRebuildRatings">
           预检重建
         </el-button>
-        <el-button type="danger" :icon="Warning" :loading="rebuilding" @click="rebuildRatings">
+        <el-button type="danger" icon="Warning" :loading="rebuilding" @click="rebuildRatings">
           全量重建
         </el-button>
       </div>
@@ -617,12 +617,10 @@
 <script>
 import axios from 'axios';
 import { ElMessageBox } from 'element-plus';
-import { DataLine, Refresh, Tickets, Warning } from '@element-plus/icons-vue';
 import { userProfilePath } from '@/assets/common';
 
 export default {
   name: 'ratingTool',
-  components: { DataLine, Tickets, Warning },
   data() {
     return {
       loading: false,
@@ -653,10 +651,6 @@ export default {
       previewRows: [],
       listLimit: 10,
       previewDetailLimit: 100,
-      DataLine,
-      Refresh,
-      Tickets,
-      Warning,
     };
   },
   computed: {

@@ -76,6 +76,47 @@ SANDBOX_URL=http://127.0.0.1:1145 node scripts/breakout-smoke.mjs
 clone3 挡成 ENOSYS）、pipeMapping 死锁与干净 EOF、以及 `copyOut/copyOutCached` 的软链接外泄。
 这些程序用于回归测试 sandbox 是否稳固，不包含逃逸、提权或反连载荷。
 
+## 判题接口 `/api/run` 与题型支持
+
+评测走的是 `POST /api/run`（与教学用的 `/api/submit` 不同）：它把一组「命令」在沙箱里跑起来，
+可选地用「管道」把多个沙箱进程连起来。**无论请求里写什么，`/api/run` 一律强制开启全套隔离**
+（命名空间 + cgroup v2 + seccomp errno 黑名单 + 断网 + 降权到非特权 uid），客户端只能调
+*限额*（cpu/wall/mem/stack/进程数）与*文件*，**无法**关掉任何安全机制。请求体：
+
+```jsonc
+{
+  "commands": [{
+    "command": ["/box/a.out"],          // argv；[0] 支持绝对路径 / gcc·g++·python3·sh / /box 内文件
+    "env": ["PATH=/usr/bin:/bin"],       // 覆盖默认 PATH/HOME
+    "stdio": [                           // 按 fd 下标：0=stdin 1=stdout 2=stderr
+      {"content": "3 4\n"},              // fd0：内联内容，或 {"name":"in.txt"} 指向 box 内文件，或 null
+      {"name": "stdout", "max": 1048576},// fd1：捕获上限（字节，封顶 64 MiB）
+      {"name": "stderr", "max": 1048576}
+    ],
+    "limits": {"cpuMs":2000,"wallMs":5000,"memoryMB":256,"stackMB":64,"processes":16},
+    "inputFiles": {"data.in": {"content":"..."}, "prog": {"cachedFile":"<id>"}},
+    "outputFiles": ["stdout","stderr","user.out"], // 要取回的文件（缺省取 stdout/stderr）
+    "cachedOutputs": ["prog"],           // 落盘到文件缓存、返回可复用的 id
+    "cachePrefix": "nywOJ_spj"
+  }],
+  "pipes": [{"from":{"command":0,"fd":1},"to":{"command":1,"fd":0}}]
+}
+```
+
+响应是与 `commands` 同序的结果数组：`{status, exitCode, exitSignal, cpuTimeMs, memoryKb,
+wallTimeMs, outputFiles:{…}, cachedFiles:{…}}`。缓存文件用 `GET/DELETE /api/file/:id` 取回或删除。
+
+凭这几件积木（多命令 + 管道 + 额外 fd + 输入/输出文件 + 缓存二进制），四类题型都能表达：
+
+| 题型 | 做法 | 对应机制 |
+|---|---|---|
+| **交互题** | 2 个命令（选手 + 交互器），2 条管道互连 stdin/stdout；交互器读测试数据、用退出码/stderr 给判定 | `pipes` 双向 FIFO（见 `scripts/pipe-smoke.mjs`） |
+| **通信题** | ≥3 个命令（manager + 多个选手进程），多条管道由 manager 居中转发 | 多命令 + 多 `pipes`，每个进程各自独立隔离 |
+| **函数题** | ①编译：`inputFiles` 传 grader.cpp+选手函数+头文件，`command` 跑 g++，`cachedOutputs` 拿二进制 id；②运行：`command:["prog"]`、`inputFiles:{prog:{cachedFile:id}}` | 缓存二进制 + 常规单命令运行 |
+| **自定义题（SPJ）** | 编译 testlib checker → 缓存 id；再 `command:["spj","data.in","user.out","data.out"]` 跑，退出码/stderr = 判定 | 缓存二进制 + 输入文件（见 `scripts/spj-smoke.mjs`） |
+
+交互题也可走 `GET /api/stream`（WebSocket，实时喂 stdin/收 stdout）用于在线 IDE 式交互。
+
 ## 架构
 
 ```
@@ -119,7 +160,32 @@ echo '{"box_dir":"/tmp/box","command":["/box/a.out"], ... }' | sandbox-cli
 - [docs/03-seccomp-ptrace.md](docs/03-seccomp-ptrace.md) —— 系统调用过滤与追踪
 - [docs/isolate-mapping.md](docs/isolate-mapping.md) —— 本项目 ↔ isolate 对照
 
-## 安全说明
+## 安全模型与加固
 
-这是**教学项目**，为求"跑得通、看得见"用了 `privileged` 容器并在容器内编译用户提交的代码。
-**请勿直接用于生产评测或对公网开放**。生产化方向见各 docs 末尾的"进阶"。
+**两条路径，两套策略：**
+
+- **`/api/run`、`/api/stream`（评测路径）**：安全开关**全部硬编码为开**——命名空间隔离、
+  cgroup v2 限额、seccomp（errno 黑名单，拦 `mount/ptrace/unshare/setns/socket/bpf/io_uring/
+  userfaultfd/keyctl/pidfd_getfd/open_by_handle_at` 等一票危险 syscall，并按 `clone` 的 flags
+  拦命名空间创建、`clone3` 挡成 ENOSYS）、断网、`pivot_root` 到最小只读根、卸载旧根、降权到
+  非特权 uid、`no_new_privs`。客户端只能调*限额*和*文件*，**改不动任何一项隔离**。
+- **`/api/submit`（教学路径）**：为了逐项对照学习，命名空间/cgroup/seccomp/共享网络/user ns
+  等开关**可由前端自由切换**。因此它只该跑在 `localhost`，**绝不能对公网开放**。
+
+**本轮安全评审补的洞（均在 `/api/run` 路径上）：**
+
+- **软链越权读取**：被测程序对 `/box` 可写，可能留下软链把 `outputFiles`/`cachedOutputs` 的读取
+  重定向到宿主文件（如把子目录做成指向 `/etc` 的软链）。现在读取产物时逐层设防——`symlink_metadata`
+  拒绝最终分量是软链或非普通文件，再 `canonicalize` 要求真实路径仍落在 `box_dir` 内，越界即拒。
+- **路径校验收紧**：`inputFiles`/stdin 的文件名拒绝空串、绝对路径、`..` 与 NUL 字节。
+- **请求级 DoS 上限**：单个 `/api/run` 请求的命令数（≤64）与管道数（≤256）设了硬上限，
+  挡住"一次请求 fork 上万个 sandbox-cli / 占满宿主 fd"。配合默认 256 MiB 的 HTTP body 上限
+  与 stream 输入分片/总量上限（可用 `SANDBOX_*_LIMIT` 环境变量调）。
+- **多命令失败清理**：管道请求准备阶段失败时，会中止持锚任务并删掉整棵 `pipe_root`，不再泄漏
+  带 FIFO 的临时目录树。
+
+回归可跑 `scripts/{security,adversarial,malicious-corpus,breakout}-smoke.mjs`（见上文）。
+
+> 仍是**教学/自托管定位**：为求"跑得通、看得见"用了 `privileged` 容器，且编译在容器内的宿主侧进行。
+> 生产评测请在此基础上进一步收敛（编译也入沙箱、rootless、更严白名单 seccomp、全局并发配额等），
+> 方向见各 docs 末尾的"进阶"。**不要把任何一个端口直接暴露到公网。**

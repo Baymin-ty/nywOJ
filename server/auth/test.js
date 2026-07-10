@@ -1111,6 +1111,13 @@ const cleanupSandbox = async () => {
       assert(keys.has('problem.manage.any'), 'moderator has problem.manage.any');
       assert(keys.has('problem.manage.self'), 'moderator has problem.manage.self');
       assert(keys.has('problem.view.any'), 'moderator has problem.view.any');
+      assert(keys.has('problem.tag.manage'), 'moderator has problem.tag.manage');
+      assert(keys.has('group.manage'), 'moderator has group.manage');
+      assert(keys.has('judge.monitor.view'), 'moderator has judge.monitor.view');
+      assert(keys.has('judge.client.manage'), 'moderator has judge.client.manage');
+      assert(keys.has('system.homepage.manage'), 'moderator has system.homepage.manage');
+      assert(!keys.has('system.rating.manage'), 'moderator does not get system.rating.manage');
+      assert(!keys.has('system.migration.manage'), 'moderator does not get system.migration.manage');
     });
 
     await test('migration: old keys (problem.edit.any etc.) no longer exist', async () => {

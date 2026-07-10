@@ -82,6 +82,8 @@ const capabilities = (contest, cfg, status, viewer) => {
     canEnter: isPublic || isReged || isManager,
     // 个人报名（组队模式走队伍流程，不走此按钮）
     canRegister: status < 2 && isPublic && !isReged && !teamMode,
+    // 自由报名的个人赛可在开赛前自行取消报名。开赛后保留参赛关系，避免提交/榜单历史被破坏。
+    canUnregister: status === 0 && isPublic && isReged && !teamMode,
     // 「参加」：看题/提交入口
     canJoin: (isReged && status > 0) || isManager,
     // 查看题目（进行中限选手；结束后公开赛任何人、私有赛选手）

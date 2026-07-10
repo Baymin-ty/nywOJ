@@ -25,6 +25,69 @@ use crate::AppState;
 
 const DEFAULT_CAPTURE_MAX: usize = 64 * 1024 * 1024;
 const HARD_CAPTURE_MAX: usize = 64 * 1024 * 1024;
+/// 单个 /api/run 请求最多并发拉起多少个沙箱进程。挡住"一次请求 fork 上万个 sandbox-cli"
+/// 把宿主打爆的 DoS——通信/交互题最多也就几个进程，这个上限足够宽松。
+const MAX_COMMANDS_PER_REQUEST: usize = 64;
+/// 单个请求最多多少条管道映射。每条管道要建一个 FIFO 并占宿主 fd，需有界。
+const MAX_PIPES_PER_REQUEST: usize = 256;
+const DEFAULT_STREAM_REQUEST_MAX: usize = 1024 * 1024;
+const DEFAULT_STREAM_INPUT_CHUNK_MAX: usize = 64 * 1024;
+const DEFAULT_STREAM_INPUT_TOTAL_MAX: usize = 16 * 1024 * 1024;
+
+fn parse_size_bytes(value: &str) -> Option<usize> {
+    let raw = value.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    let split = raw
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(raw.len());
+    let (digits, unit) = raw.split_at(split);
+    let n = digits.parse::<usize>().ok()?;
+    let unit = unit.trim().to_ascii_lowercase();
+    let scale = match unit.as_str() {
+        "" | "b" => 1,
+        "k" | "kb" | "kib" => 1024,
+        "m" | "mb" | "mib" => 1024 * 1024,
+        "g" | "gb" | "gib" => 1024 * 1024 * 1024,
+        _ => return None,
+    };
+    n.checked_mul(scale)
+}
+
+fn env_size_bytes(key: &str, fallback: usize) -> usize {
+    std::env::var(key)
+        .ok()
+        .and_then(|value| parse_size_bytes(&value))
+        .unwrap_or(fallback)
+}
+
+#[derive(Clone, Copy)]
+struct StreamLimits {
+    request_bytes: usize,
+    input_chunk_bytes: usize,
+    input_total_bytes: usize,
+}
+
+impl StreamLimits {
+    fn from_env() -> Self {
+        Self {
+            request_bytes: env_size_bytes("SANDBOX_STREAM_REQUEST_LIMIT", DEFAULT_STREAM_REQUEST_MAX),
+            input_chunk_bytes: env_size_bytes(
+                "SANDBOX_STREAM_INPUT_CHUNK_LIMIT",
+                DEFAULT_STREAM_INPUT_CHUNK_MAX,
+            ),
+            input_total_bytes: env_size_bytes(
+                "SANDBOX_STREAM_INPUT_TOTAL_LIMIT",
+                DEFAULT_STREAM_INPUT_TOTAL_MAX,
+            ),
+        }
+    }
+
+    fn ws_message_bytes(&self) -> usize {
+        self.request_bytes.max(self.input_chunk_bytes.saturating_add(2))
+    }
+}
 
 #[derive(Debug, Deserialize)]
 pub struct RunRequest {
@@ -175,6 +238,24 @@ pub async fn version() -> impl IntoResponse {
 }
 
 pub async fn run(State(state): State<AppState>, Json(req): Json<RunRequest>) -> impl IntoResponse {
+    if req.commands.len() > MAX_COMMANDS_PER_REQUEST {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": format!("too many commands (max {MAX_COMMANDS_PER_REQUEST})")
+            })),
+        )
+            .into_response();
+    }
+    if req.pipes.len() > MAX_PIPES_PER_REQUEST {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": format!("too many pipes (max {MAX_PIPES_PER_REQUEST})")
+            })),
+        )
+            .into_response();
+    }
     if !req.pipes.is_empty() {
         return match run_piped(&state, req.commands, req.pipes).await {
             Ok(out) => Json(out).into_response(),
@@ -225,10 +306,12 @@ pub async fn delete_file(
 }
 
 pub async fn stream(State(state): State<AppState>, ws: WebSocketUpgrade) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| stream_socket(socket, state))
+    let limits = StreamLimits::from_env();
+    ws.max_message_size(limits.ws_message_bytes())
+        .on_upgrade(move |socket| stream_socket(socket, state, limits))
 }
 
-async fn stream_socket(mut socket: WebSocket, state: AppState) {
+async fn stream_socket(mut socket: WebSocket, state: AppState, limits: StreamLimits) {
     let Some(Ok(first)) = socket.recv().await else {
         return;
     };
@@ -240,6 +323,17 @@ async fn stream_socket(mut socket: WebSocket, state: AppState) {
         .await;
         return;
     };
+    if bytes.len() > limits.request_bytes {
+        let _ = send_stream_result(
+            &mut socket,
+            internal_run_result(format!(
+                "stream request frame exceeds {} bytes",
+                limits.request_bytes
+            )),
+        )
+        .await;
+        return;
+    }
     if bytes.first().copied() != Some(1) {
         let _ = send_stream_result(
             &mut socket,
@@ -291,6 +385,7 @@ async fn stream_socket(mut socket: WebSocket, state: AppState) {
     let mut output_limited = false;
     let mut stdout_used = 0usize;
     let mut stderr_used = 0usize;
+    let mut stdin_used = 0usize;
 
     loop {
         tokio::select! {
@@ -345,6 +440,25 @@ async fn stream_socket(mut socket: WebSocket, state: AppState) {
                         // basic FIFO stream does not allocate a PTY yet.
                     }
                     Some(3) => {
+                        let payload_len = bytes.len().saturating_sub(2);
+                        if payload_len > limits.input_chunk_bytes {
+                            result = Some(SandboxResult::internal_error(format!(
+                                "stream stdin chunk exceeds {} bytes",
+                                limits.input_chunk_bytes
+                            )));
+                            let _ = child.start_kill();
+                            break;
+                        }
+                        let next_stdin_used = stdin_used.saturating_add(payload_len);
+                        if next_stdin_used > limits.input_total_bytes {
+                            result = Some(SandboxResult::internal_error(format!(
+                                "stream stdin total exceeds {} bytes",
+                                limits.input_total_bytes
+                            )));
+                            let _ = child.start_kill();
+                            break;
+                        }
+                        stdin_used = next_stdin_used;
                         if bytes.len() > 2 && stdin.write_all(&bytes[2..]).await.is_err() {
                             let _ = child.start_kill();
                             break;
@@ -566,7 +680,16 @@ async fn run_piped(
     let mut prepared = Vec::with_capacity(cmds.len());
     for (idx, cmd) in cmds.into_iter().enumerate() {
         let box_dir = pipe_root.join(format!("cmd{idx}"));
-        prepared.push(prepare_piped_command(state, cmd, box_dir, fd_mappings[idx].clone()).await?);
+        match prepare_piped_command(state, cmd, box_dir, fd_mappings[idx].clone()).await {
+            Ok(p) => prepared.push(p),
+            // 准备失败也要清理：中止持锚任务（释放 FIFO fd）、删掉整棵 pipe_root，
+            // 否则失败的多命令请求会在宿主 /tmp 里留下带 FIFO 的目录树。
+            Err(e) => {
+                anchor_releaser.abort();
+                let _ = tokio::fs::remove_dir_all(&pipe_root).await;
+                return Err(e);
+            }
+        }
     }
 
     let mut handles = Vec::with_capacity(prepared.len());
@@ -802,18 +925,18 @@ async fn finish_run_result(
         .iter()
         .filter(|x| *x != "stdout" && *x != "stderr")
     {
-        let p = checked_box_path(&box_dir, name)?;
         let max = file_max_for_name(&cmd.stdio, name, DEFAULT_CAPTURE_MAX);
-        if let Some((data, truncated)) = read_limited_text(&p, max).await? {
-            output_limited |= truncated;
-            files.insert(name.clone(), data);
+        if let Some(p) = resolve_existing_box_file(&box_dir, name).await? {
+            if let Some((data, truncated)) = read_limited_text(&p, max).await? {
+                output_limited |= truncated;
+                files.insert(name.clone(), data);
+            }
         }
     }
 
     let mut cached_files = HashMap::new();
     for name in &cmd.cached_outputs {
-        let p = checked_box_path(&box_dir, name)?;
-        if tokio::fs::try_exists(&p).await.unwrap_or(false) {
+        if let Some(p) = resolve_existing_box_file(&box_dir, name).await? {
             let id = cache_file(&state.file_root, cmd.cache_prefix.as_deref(), &p).await?;
             cached_files.insert(name.clone(), id);
         }
@@ -1025,7 +1148,11 @@ fn checked_box_path(box_dir: &Path, name: &str) -> Result<PathBuf, String> {
 
 fn checked_relative_path(name: &str) -> Result<PathBuf, String> {
     let rel = Path::new(name);
-    if rel.is_absolute() || name.contains("..") {
+    if name.is_empty()
+        || rel.is_absolute()
+        || name.contains("..")
+        || name.bytes().any(|b| b == 0)
+    {
         return Err(format!("unsafe sandbox path: {name}"));
     }
     Ok(rel.to_path_buf())
@@ -1124,6 +1251,47 @@ async fn read_limited_text(path: &Path, max: usize) -> Result<Option<(String, bo
         String::from_utf8_lossy(&buf).into_owned(),
         truncated,
     )))
+}
+
+/// 解析 box 内的产物文件，用于读取 stdout 之外的 outputFiles / cachedOutputs。
+///
+/// 安全要点：被测程序对 `/box` 可写，可能留下**软链接**试图把读取重定向到宿主文件
+/// （例如把 `sub/out.txt` 里的 `sub` 做成指向 `/etc` 的软链）。这里逐层设防：
+///   1. `symlink_metadata` 拒绝**最终分量**是软链或非普通文件；
+///   2. `canonicalize` 解析全部中间软链后，要求真实路径仍落在 box_dir 内，
+///      挡住"中间目录软链指向 box 外"这条越权读取路径。
+/// 文件不存在时返回 `Ok(None)`（视作未产出，非错误）。
+async fn resolve_existing_box_file(box_dir: &Path, name: &str) -> Result<Option<PathBuf>, String> {
+    let target = checked_box_path(box_dir, name)?;
+    match tokio::fs::symlink_metadata(&target).await {
+        Ok(meta) => {
+            let ty = meta.file_type();
+            if ty.is_symlink() {
+                return Err(format!("refuse to read output symlink: {}", target.display()));
+            }
+            if !ty.is_file() {
+                return Err(format!(
+                    "refuse to read non-regular output: {}",
+                    target.display()
+                ));
+            }
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => return Err(format!("inspect output file failed: {e}")),
+    }
+    let real = tokio::fs::canonicalize(&target)
+        .await
+        .map_err(|e| format!("canonicalize output file failed: {e}"))?;
+    let root = tokio::fs::canonicalize(box_dir)
+        .await
+        .map_err(|e| format!("canonicalize box dir failed: {e}"))?;
+    if !real.starts_with(&root) {
+        return Err(format!(
+            "refuse to read output escaping box: {}",
+            target.display()
+        ));
+    }
+    Ok(Some(real))
 }
 
 async fn ensure_regular_output_file(path: &Path) -> Result<(), String> {

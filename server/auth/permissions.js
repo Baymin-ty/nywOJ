@@ -6,6 +6,7 @@ const PERMISSIONS = {
   'problem.create': { group: 'problem', name: '创建题目', description: '创建新题目' },
   'problem.manage.any': { group: 'problem', name: '管理任意题目', description: '编辑/删除/管理测试数据 任意题目', scopable: true },
   'problem.manage.self': { group: 'problem', name: '管理自己的题目', description: '编辑/删除/管理自己创建题目的测试数据' },
+  'problem.tag.manage': { group: 'problem', name: '管理题目标签', description: '创建、编辑、删除题目标签目录' },
   // problem.view.any is scopable: a manager can grant it on a single pid so
   // the grantee becomes a "view-only collaborator" who can read the problem,
   // its submission list, and submission details — but NOT manage it.
@@ -33,6 +34,8 @@ const PERMISSIONS = {
   'submission.rejudge.any': { group: 'judge', name: '重测任意提交', description: '重测任意提交（含比赛与非比赛）' },
   'submission.rejudge.self': { group: 'judge', name: '重测自己的提交', description: '重测自己提交的非比赛代码' },
   'submission.manage.any': { group: 'judge', name: '管理任意提交', description: '设置提交公开性 / 删除提交' },
+  'judge.monitor.view': { group: 'judge', name: '查看评测监控', description: '查看评测队列、沙箱探针和评测机状态' },
+  'judge.client.manage': { group: 'judge', name: '管理评测机', description: '新增、编辑、禁用、删除评测机并重置 Key' },
 
   // User admin:
   //   user.manage      — user list/edit/ban (merged from user.{list,edit,ban})
@@ -43,6 +46,9 @@ const PERMISSIONS = {
   'group.manage': { group: 'user', name: '用户组管理', description: '创建用户组、管理成员和组权限' },
 
   'announcement.manage': { group: 'system', name: '管理公告' },
+  'system.homepage.manage': { group: 'system', name: '管理首页设置', description: '配置首页模块、公告位和展示内容' },
+  'system.rating.manage': { group: 'system', name: '管理 Rating 系统', description: '结算、重建、清理和同步比赛 Rating' },
+  'system.migration.manage': { group: 'system', name: '管理迁移工具', description: '导出和导入站点迁移数据' },
   'paste.edit.any': { group: 'system', name: '编辑他人 paste' },
   'discussion.view.any': { group: 'system', name: '查看讨论', description: '查看隐藏讨论' },
   'discussion.reply.any': { group: 'system', name: '回复讨论', description: '回复隐藏讨论' },
@@ -65,6 +71,8 @@ const JUDGE_ADMIN_PERMS = [
   'submission.view.any',
   'submission.rejudge.any',
   'submission.manage.any',
+  'judge.monitor.view',
+  'judge.client.manage',
 ];
 
 const SOLUTION_ADMIN_PERMS = [
@@ -80,12 +88,14 @@ const MODERATOR_PERMS = Array.from(new Set([
   ...SOLUTION_ADMIN_PERMS,
   // 题/赛升级到 manage.any（子角色只有 manage.self）
   'problem.manage.any',
+  'problem.tag.manage',
   'contest.manage.any',
   // 用户管理（不含 user.role.admin）
   'user.manage',
   'group.manage',
   // 系统
   'announcement.manage',
+  'system.homepage.manage',
   'audit.view',
   'paste.edit.any',
   'discussion.manage',

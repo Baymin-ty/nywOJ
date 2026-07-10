@@ -23,7 +23,7 @@
       </el-button>
     </el-button-group>
   </div>
-  <el-table ref="table" :data="submissionList" height="560px" :header-cell-style="{ textAlign: 'center' }"
+  <el-table ref="table" :data="submissionList" :header-cell-style="{ textAlign: 'center' }"
     :cell-style="cellStyle" :row-class-name="tableRowClassName" v-loading="!finished"
     @selection-change="onSelectionChange">
     <el-table-column v-if="canBulkRejudge" type="selection" width="46" fixed />

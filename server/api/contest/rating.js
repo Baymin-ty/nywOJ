@@ -42,7 +42,7 @@ const RATING_POLICY = {
 
 // ---- shared helpers ----
 const ensureContestRatingSchema = ensureContestRatingStorageSchema;
-const canManageRatingSystem = (req) => !!(req.can && req.can('user.role.admin'));
+const canManageRatingSystem = (req) => !!(req.can && req.can('system.rating.manage'));
 
 const activeRatingRowsFrom =
   'FROM contestRating cr INNER JOIN contest c ON c.cid=cr.cid INNER JOIN userInfo u ON u.uid=cr.uid WHERE c.done=1 AND c.ratingEnabled=1';
@@ -1268,7 +1268,7 @@ exports.recalculateContestRating = handler(async (req, res) => {
 });
 
 exports.settleContestRating = [
-  requirePermission('user.role.admin'),
+  requirePermission('system.rating.manage'),
   handler(async (req, res) => {
     await ensureContestRatingSchema();
     const { cid } = req.body;
@@ -1349,7 +1349,7 @@ exports.previewRating = handler(async (req, res) => {
 });
 
 exports.rebuildContestRatings = [
-  requirePermission('user.role.admin'),
+  requirePermission('system.rating.manage'),
   handler(async (req, res) => {
     const result = await rebuildAllContestRatings({ outputLimit: ratingAdminSampleLimit(req) });
     if (failIfRatingLocked(res, result)) return null;
@@ -1358,7 +1358,7 @@ exports.rebuildContestRatings = [
 ];
 
 exports.previewContestRatingRebuild = [
-  requirePermission('user.role.admin'),
+  requirePermission('system.rating.manage'),
   handler(async (req, res) => {
     const result = await rebuildAllContestRatings({ dryRun: true, outputLimit: ratingAdminSampleLimit(req) });
     return ok(res, { rating: result });
@@ -1366,7 +1366,7 @@ exports.previewContestRatingRebuild = [
 ];
 
 exports.cleanupStaleContestRatings = [
-  requirePermission('user.role.admin'),
+  requirePermission('system.rating.manage'),
   handler(async (req, res) => {
     const result = await cleanupStaleContestRatings();
     if (failIfRatingLocked(res, result)) return null;
@@ -1375,7 +1375,7 @@ exports.cleanupStaleContestRatings = [
 ];
 
 exports.syncContestRatingCache = [
-  requirePermission('user.role.admin'),
+  requirePermission('system.rating.manage'),
   handler(async (req, res) => {
     const result = await syncContestRatingCache();
     if (failIfRatingLocked(res, result)) return null;
@@ -1384,7 +1384,7 @@ exports.syncContestRatingCache = [
 ];
 
 exports.getRatingSystemStats = [
-  requirePermission('user.role.admin'),
+  requirePermission('system.rating.manage'),
   handler(async (req, res) => {
     await ensureContestRatingSchema();
     await ensureContestRatingAuxiliaryIndexes();

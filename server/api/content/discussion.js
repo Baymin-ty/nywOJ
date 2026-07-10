@@ -1,7 +1,7 @@
 const db = require('../../db');
 const { handler, fail, ok, paginate, buildWhere } = require('../../db/util');
 const config = require('../../config.json');
-const { Format, briefFormat, recordEvent } = require('../../static');
+const { Format, briefFormat } = require('../../static');
 const { problemAuth } = require('../problem/core');
 
 let schemaReady = null;
@@ -195,13 +195,6 @@ const problemIdFilter = (body) => {
   }
   return { specified: true, all: false, pid: positiveInt(raw) };
 };
-
-const boolValue = (value) => {
-  if (typeof value === 'string') return !['0', 'false', 'off', 'no'].includes(value.trim().toLowerCase());
-  return !!value;
-};
-
-const discussionIdFromBody = (body) => positiveInt(body.discussionId || body.did || body.id);
 
 const loadDiscussion = (did) =>
   db.one(
@@ -410,20 +403,6 @@ exports.delDiscussion = handler(async (req, res) => {
   return ok(res);
 });
 
-exports.setDiscussionPublic = handler(async (req, res) => {
-  await ensureSchema();
-  const did = discussionIdFromBody(req.body);
-  if (!did) return fail(res, '讨论 ID 无效');
-  const row = await db.one('SELECT did,pid,uid,isPublic FROM discussion WHERE did=?', [did]);
-  if (!row) return fail(res, '未找到讨论');
-  if (!canManageDiscussion(req, row)) return fail(res, '无权限修改讨论可见性');
-
-  const isPublic = boolValue(req.body.isPublic ?? req.body.public);
-  await db.query('UPDATE discussion SET isPublic=?,updateTime=? WHERE did=?', [isPublic ? 1 : 0, new Date(), did]);
-  recordEvent(req, isPublic ? 'discussion.setPublic' : 'discussion.setHidden', { did });
-  return ok(res);
-});
-
 exports.getReplies = handler(async (req, res) => {
   await ensureSchema();
   const { offset, limit } = paginate(req, 30);
@@ -513,32 +492,6 @@ exports.delReply = handler(async (req, res) => {
     await t.query('DELETE FROM discussionReply WHERE rid=?', [rid]);
     await t.query('UPDATE discussion SET replyCnt=GREATEST(replyCnt-1,0) WHERE did=?', [row.did]);
   });
-  return ok(res);
-});
-
-exports.setDiscussionReplyPublic = handler(async (req, res) => {
-  await ensureSchema();
-  const rid = positiveInt(req.body.discussionReplyId || req.body.rid || req.body.id);
-  if (!rid) return fail(res, '回复 ID 无效');
-  const row = await db.one(
-    'SELECT r.rid,r.did,r.uid,r.isPublic,d.pid,d.uid AS discussionUid,d.isPublic AS discussionPublic ' +
-      'FROM discussionReply r INNER JOIN discussion d ON d.did=r.did WHERE r.rid=?',
-    [rid]
-  );
-  if (!row) return fail(res, '未找到回复');
-  const discussion = {
-    did: row.did,
-    pid: row.pid,
-    uid: row.discussionUid,
-    isPublic: row.discussionPublic,
-  };
-  if (row.uid !== uidOf(req) && !canManageDiscussion(req, discussion)) {
-    return fail(res, '无权限修改回复可见性');
-  }
-
-  const isPublic = boolValue(req.body.isPublic ?? req.body.public);
-  await db.query('UPDATE discussionReply SET isPublic=?,updateTime=? WHERE rid=?', [isPublic ? 1 : 0, new Date(), rid]);
-  recordEvent(req, isPublic ? 'discussion.setReplyPublic' : 'discussion.setReplyHidden', { did: row.did, rid });
   return ok(res);
 });
 

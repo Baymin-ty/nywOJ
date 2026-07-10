@@ -1,54 +1,8 @@
 import { createApp } from 'vue'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
-import {
-  Back,
-  Bottom,
-  Check,
-  CircleCheck,
-  CirclePlus,
-  Close,
-  CloseBold,
-  DataAnalysis,
-  DataLine,
-  Delete,
-  Download,
-  Document,
-  DocumentAdd,
-  Edit,
-  Files,
-  Grid,
-  Guide,
-  Hide,
-  Histogram,
-  InfoFilled,
-  Key,
-  List,
-  Lock,
-  Lollipop,
-  Monitor,
-  Operation,
-  Place,
-  Plus,
-  Refresh,
-  RefreshLeft,
-  Remove,
-  Search,
-  Setting,
-  SetUp,
-  SwitchButton,
-  Top,
-  Trophy,
-  Upload,
-  UploadFilled,
-  User,
-  UserFilled,
-  View,
-  Warning,
-} from '@element-plus/icons-vue'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
-// import axios from 'axios'
-// import VueAxios from 'vue-axios'
 import router from './router/router'
 import store from './sto/store'
 import { registerMarkdownComponents } from './plugins/markdown'
@@ -71,52 +25,7 @@ window.addEventListener('error', swallow, true);
 window.addEventListener('unhandledrejection', swallow, true);
 
 const app = createApp(App)
-const icons = {
-  Back,
-  Bottom,
-  Check,
-  CircleCheck,
-  CirclePlus,
-  Close,
-  CloseBold,
-  DataAnalysis,
-  DataLine,
-  Delete,
-  Download,
-  Document,
-  DocumentAdd,
-  Edit,
-  Files,
-  Grid,
-  Guide,
-  Hide,
-  Histogram,
-  InfoFilled,
-  Key,
-  List,
-  Lock,
-  Lollipop,
-  Monitor,
-  Operation,
-  Place,
-  Plus,
-  Refresh,
-  RefreshLeft,
-  Remove,
-  Search,
-  Setting,
-  SetUp,
-  SwitchButton,
-  Top,
-  Trophy,
-  Upload,
-  UploadFilled,
-  User,
-  UserFilled,
-  View,
-  Warning,
-}
-Object.entries(icons).forEach(([key, component]) => app.component(key, component))
+Object.entries(ElementPlusIconsVue).forEach(([key, component]) => app.component(key, component))
 
 import { ElMessage } from 'element-plus'
 app.config.globalProperties.$message = ElMessage

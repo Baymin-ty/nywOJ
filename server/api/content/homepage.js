@@ -1,8 +1,12 @@
 const db = require('../../db');
-const { handler, fail, ok } = require('../../db/util');
+const { handler, ok } = require('../../db/util');
 const common = require('./common');
 const config = require('../../config.json');
 const discussionApi = require('./discussion');
+const { Format, briefFormat } = require('../../static');
+const { cstatus } = require('../../db/format');
+const { contestStatus } = require('../contest/policy');
+const { normalizeFormat, formatLabel } = require('../contest/formats');
 const { ensureContestRatingStorageSchema, latestRatingJoin, effectiveRatingExpr } = require('../contest/ratingStorage');
 
 const DEFAULT_LOCALE = 'zh-CN';
@@ -30,8 +34,6 @@ const ensureUserSummarySchema = () => {
   }
   return userSummarySchemaReady;
 };
-
-const canManageHomepage = (req) => !!(req.can && req.can('announcement.manage'));
 
 const toObject = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? value : {});
 
@@ -149,104 +151,9 @@ const normalizeHomepageSettings = (value, fallbackConfig = {}) => {
   return normalized;
 };
 
-const settingsToBlocks = (settings, currentBlocks) => {
-  const blocks = Array.isArray(currentBlocks) ? currentBlocks.map((block) => ({ ...block })) : [];
-  const noticeText = settings.notice.contents[DEFAULT_LOCALE] || Object.values(settings.notice.contents)[0] || '';
-  let noticeBlock = blocks.find((block) => block.id === 'homepage-notice');
-  if (!noticeBlock && (settings.notice.enabled || noticeText)) {
-    noticeBlock = {
-      id: 'homepage-notice',
-      type: 'notice',
-      title: '首页公告',
-      column: 'main',
-      enabled: !!settings.notice.enabled,
-      content: noticeText,
-    };
-    blocks.unshift(noticeBlock);
-  } else if (noticeBlock) {
-    noticeBlock.type = 'notice';
-    noticeBlock.enabled = !!settings.notice.enabled;
-    noticeBlock.content = noticeText;
-  }
-
-  let announcementsBlock = blocks.find((block) => block.type === 'announcements');
-  if (!announcementsBlock) {
-    announcementsBlock = {
-      id: 'announcements',
-      type: 'announcements',
-      title: '公告栏',
-      column: 'main',
-      enabled: true,
-      content: '',
-    };
-    blocks.push(announcementsBlock);
-  }
-
-  let hitokotoBlock = blocks.find((block) => block.type === 'hitokoto');
-  if (!hitokotoBlock) {
-    hitokotoBlock = {
-      id: 'hitokoto',
-      type: 'hitokoto',
-      title: settings.hitokoto.customTitle || '一言（ヒトコト）',
-      column: 'side',
-      enabled: !!settings.hitokoto.enabled,
-      content: '',
-    };
-    blocks.push(hitokotoBlock);
-  } else {
-    hitokotoBlock.enabled = !!settings.hitokoto.enabled;
-    if (settings.hitokoto.customTitle) hitokotoBlock.title = settings.hitokoto.customTitle;
-  }
-
-  let countdownBlock = blocks.find((block) => block.type === 'countdown');
-  if (!countdownBlock && (settings.countdown.enabled || Object.keys(settings.countdown.items).length)) {
-    countdownBlock = {
-      id: 'countdown',
-      type: 'countdown',
-      title: '倒计时',
-      column: 'side',
-      enabled: !!settings.countdown.enabled,
-      content: '',
-    };
-    blocks.push(countdownBlock);
-  } else if (countdownBlock) {
-    countdownBlock.enabled = !!settings.countdown.enabled;
-  }
-
-  let friendLinksBlock = blocks.find((block) => block.type === 'friendLinks');
-  if (!friendLinksBlock && (settings.friendLinks.enabled || Object.keys(settings.friendLinks.links).length)) {
-    friendLinksBlock = {
-      id: 'friend-links',
-      type: 'friendLinks',
-      title: '友情链接',
-      column: 'side',
-      enabled: !!settings.friendLinks.enabled,
-      content: '',
-    };
-    blocks.push(friendLinksBlock);
-  } else if (friendLinksBlock) {
-    friendLinksBlock.enabled = !!settings.friendLinks.enabled;
-  }
-  return blocks;
-};
-
 const readHomepageSettings = async () => {
   const config = await common._home.readHomeConfig();
   return normalizeHomepageSettings(config.homepageSettings, config);
-};
-
-const saveHomepageSettings = async (settings) => {
-  const current = await common._home.readHomeConfig();
-  const config = common._home.normalizeHomeConfig({
-    ...current,
-    blocks: settingsToBlocks(settings, current.blocks),
-    homepageSettings: settings,
-  });
-  await common._home.ensureSettingSchema();
-  await db.query(
-    'INSERT INTO siteSetting(`key`,value,updateTime) VALUES (?,?,?) ON DUPLICATE KEY UPDATE value=VALUES(value),updateTime=VALUES(updateTime)',
-    ['home.config', JSON.stringify(config), new Date()]
-  );
 };
 
 const formatAnnouncementMeta = (row) => ({
@@ -272,20 +179,6 @@ const getAnnouncements = async (settings, locale) => {
   );
   const byId = new Map(rows.map((row) => [Number(row.did), row]));
   return ids.map((id) => byId.get(Number(id))).filter(Boolean).map(formatAnnouncementMeta);
-};
-
-const getAnnouncementDiscussionsByIds = async (ids) => {
-  await discussionApi.ensureSchema();
-  const orderedIds = (Array.isArray(ids) ? ids : [])
-    .map((id) => parseInt(id, 10))
-    .filter((id) => id > 0);
-  if (!orderedIds.length) return [];
-  const rows = await db.query(
-    'SELECT did,pid,uid,title,isPublic,time,updateTime,lastReplyTime,replyCnt FROM discussion WHERE did IN (?)',
-    [Array.from(new Set(orderedIds))]
-  );
-  const byId = new Map(rows.map((row) => [Number(row.did), row]));
-  return orderedIds.map((id) => byId.get(id)).filter(Boolean).map(formatAnnouncementMeta);
 };
 
 const avatarOf = (row) => {
@@ -334,40 +227,68 @@ const topUsers = async () => {
   }));
 };
 
-const problemTypeOf = (type) => ([2, 3].includes(Number(type)) ? 'SubmitAnswer' : 'Traditional');
-
 const latestUpdatedProblems = async () => {
   const limit = preferenceNumber('pagination', 'homepageProblemList', 10);
   const rows = await db.query(
-    `SELECT pid,title,time,type,isPublic,publisher,submitCnt,acCnt
-       FROM problem
-      WHERE isPublic=1
-      ORDER BY time DESC,pid DESC
+    `SELECT p.pid,p.title,p.time,p.isPublic,p.publisher,p.submitCnt,p.acCnt,
+            u.name AS publisherName
+       FROM problem p LEFT JOIN userInfo u ON u.uid=p.publisher
+      WHERE p.isPublic=1
+      ORDER BY p.time DESC,p.pid DESC
       LIMIT ?`,
     [limit]
   );
-  return rows.map((row) => ({
-    meta: {
-      id: row.pid,
-      pid: row.pid,
-      type: problemTypeOf(row.type),
-      isPublic: !!row.isPublic,
-      publicTime: row.time,
-      ownerId: row.publisher,
-      locales: [DEFAULT_LOCALE],
-      submissionCount: Number(row.submitCnt || 0),
-      acceptedSubmissionCount: Number(row.acCnt || 0),
-    },
-    title: row.title,
-    submission: null,
-  }));
+  return rows.map((row) => {
+    const ownerName = row.publisherName || '';
+    return {
+      meta: {
+        id: row.pid,
+        pid: row.pid,
+        isPublic: !!row.isPublic,
+        publicTime: row.time,
+        publicDate: row.time ? briefFormat(row.time) : '',
+        ownerId: row.publisher,
+        ownerUsername: row.publisherName || '',
+        ownerName,
+        locales: [DEFAULT_LOCALE],
+        submissionCount: Number(row.submitCnt || 0),
+        acceptedSubmissionCount: Number(row.acCnt || 0),
+      },
+      title: row.title,
+      submission: null,
+    };
+  });
 };
 
-const existingDiscussionIds = async (ids) => {
-  await discussionApi.ensureSchema();
-  if (!ids.length) return new Set();
-  const rows = await db.query('SELECT did FROM discussion WHERE did IN (?)', [ids]);
-  return new Set(rows.map((row) => Number(row.did)));
+const recentContests = async () => {
+  const limit = preferenceNumber('pagination', 'homepageContestList', 5);
+  const rows = await db.query(
+    `SELECT c.cid,c.title,c.start,c.length,c.type,c.format,c.host,c.done,c.ratingEnabled,u.name AS hostName,
+            (SELECT COUNT(*) FROM contestPlayer cp WHERE cp.cid=c.cid) AS playerCnt
+       FROM contest c INNER JOIN userInfo u ON u.uid=c.host
+      WHERE c.isPublic=1 AND (c.format IS NULL OR c.format<>'homework')
+      ORDER BY c.start DESC
+      LIMIT ?`,
+    [limit]
+  );
+  return rows.map((row) => {
+    const status = contestStatus(row);
+    const format = normalizeFormat(row.format);
+    return {
+      cid: row.cid,
+      title: row.title,
+      start: Format(row.start),
+      length: Number(row.length || 0),
+      format,
+      type: formatLabel(format),
+      status: cstatus[status],
+      statusIndex: status,
+      host: row.host,
+      hostName: row.hostName,
+      ratingEnabled: !!row.ratingEnabled,
+      playerCnt: Number(row.playerCnt || 0),
+    };
+  });
 };
 
 exports.getHomepage = handler(async (req, res) => {
@@ -375,10 +296,11 @@ exports.getHomepage = handler(async (req, res) => {
   const settings = await readHomepageSettings();
   const noticeLocale = settings.notice.contents[locale] ? locale : Object.keys(settings.notice.contents)[0];
   const annnouncementsLocale = settings.annnouncements.items[locale] ? locale : Object.keys(settings.annnouncements.items)[0];
-  const [annnouncements, users, problems] = await Promise.all([
+  const [annnouncements, users, problems, contests] = await Promise.all([
     getAnnouncements(settings, annnouncementsLocale || locale),
     topUsers(),
     latestUpdatedProblems(),
+    recentContests(),
   ]);
   return ok(res, {
     notice: settings.notice.enabled && noticeLocale ? settings.notice.contents[noticeLocale] : null,
@@ -390,27 +312,6 @@ exports.getHomepage = handler(async (req, res) => {
     friendLinks: settings.friendLinks.enabled ? settings.friendLinks : null,
     topUsers: users,
     latestUpdatedProblems: problems,
+    recentContests: contests,
   });
-});
-
-exports.getHomepageSettings = handler(async (req, res) => {
-  if (!canManageHomepage(req)) return ok(res, { error: 'PERMISSION_DENIED' });
-  const settings = await readHomepageSettings();
-  const annnouncementDiscussionIds = Object.values(settings.annnouncements.items).flat();
-  const annnouncementDiscussions = await getAnnouncementDiscussionsByIds(annnouncementDiscussionIds);
-  return ok(res, { settings, annnouncementDiscussions });
-});
-
-exports.updateHomepageSettings = handler(async (req, res) => {
-  if (!canManageHomepage(req)) return ok(res, { error: 'PERMISSION_DENIED' });
-  if (!req.body || !req.body.settings) return fail(res, '请确认信息完善');
-  const current = await common._home.readHomeConfig();
-  const settings = normalizeHomepageSettings(req.body.settings, current);
-  const annnouncementIds = Object.values(settings.annnouncements.items).flat();
-  const uniqueIds = Array.from(new Set(annnouncementIds));
-  const existingIds = await existingDiscussionIds(uniqueIds);
-  const missingId = uniqueIds.find((id) => !existingIds.has(Number(id)));
-  if (missingId) return ok(res, { error: 'NO_SUCH_DISCUSSION', errorDiscussionId: missingId });
-  await saveHomepageSettings(settings);
-  return ok(res);
 });

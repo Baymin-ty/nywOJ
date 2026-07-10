@@ -68,8 +68,10 @@ const SYSTEM_PROMPT_CONTENT = [
   '',
   '## 题面 Markdown（nywOJ 风格）',
   '- statement.description 只写正文，不写一级标题、不重复题目名。',
-  '- 用三级标题组织：可选 ### 题目背景、### 题目描述、### 输入格式、### 输出格式、样例、可选 ### 样例解释、### 数据范围。',
-  '- 单组样例用 ### 输入样例 / ### 输出样例；多组用 ### 样例 1 输入 / ### 样例 1 输出，编号从 1 起。样例内容用 fenced code block，且必须与 statement.samples 完全一致。',
+  '- 用三级标题组织：可选 ### 题目背景、### 题目描述、### 输入格式、### 输出格式、可选样例占位、可选 ### 样例解释、### 数据范围。',
+  '- 样例输入输出只写入 statement.samples，不要在 statement.description 里重复生成 ### 输入样例 / ### 输出样例 / ### 样例 1 输入 / ### 样例 1 输出，也不要把样例内容写进 fenced code block。',
+  '- 如需控制样例显示位置，在 statement.description 中单独放一行 <!-- case -->（等价别名：<!-- samples -->）；平台会把 statement.samples 渲染到这里。没有占位时平台默认把样例放在题面末尾。',
+  '- ### 样例解释 可以保留，但只解释样例含义，不重复样例输入输出；用“样例 #1”“样例 #2”引用。',
   '- 数据范围写全部约束；分档用 $\\text{Subtask 1 (20pts)}$ 或 Markdown 表格，最后写「对于全部数据 ...」。',
   '- 公式用行内 $...$；输出的固定字符串用反引号如 `Yes`。',
   '- 交互题题面必须写清：交互流程、每步输出格式、必须 flush、询问次数限制、何时退出。',
@@ -95,6 +97,20 @@ const SYSTEM_PROMPT_DATA = [
   '- 交互/通信题的 .out 是给 interactor/manager 的参考答案（case.answer）：std 是离线程序，读 .in 输出该参考答案；若协议不需要参考答案，也要输出一个占位行。',
   '- subtasks 的 score 总和必须为 100；generation.cases 的 subtaskId 必须存在于 subtasks。单 subtask 时就写 [{"index":1,"score":100,"option":0,"skip":false,"dependencies":[]}]。',
   '- 单点数据 ≤ 16MB，总量 ≤ 128MB；极限点规模按数据范围算好字节数，别超。',
+].join('\n');
+
+const SYSTEM_PROMPT_TYPE_CONTRACTS = [
+  '## 题型契约（用户指定题型时是硬约束）',
+  '- 不要为了省事或绕过自检把用户指定的 SPJ/提交答案/函数/交互/通信题降级成传统题；如果无法完成某题型，也要在 summary 里说明缺口，而不是偷偷换题型。',
+  '- 传统题 traditional：judge.preset="traditional"；不需要 checker/interactor/manager/grader 资产；std 是完整可运行程序；数据默认用 generator + generation.cases。',
+  '- SPJ 题 spj：judge.preset="spj"；必须提供 checker.cpp，checker 验证题面承诺的任意解/精度/部分分规则；std 仍要输出一个合法参考答案用于 case.answer。',
+  '- 提交答案题 answer：judge.preset="answer"，submit.mode="answer"；选手提交答案文件，不编译代码；通常使用静态 data.cases，output 就是标准答案；不要无故生成 STD/生成器，除非用户明确要求。',
+  '- answer/answer-spj 只要用户说“固定测试点/静态数据/不要生成器”，data.generator.source 必须是空字符串，data.generation.cases 必须是空数组；用户给了几个点就严格输出几个 data.cases，不能多也不能少。',
+  '- 如果 answer/answer-spj 本轮 sections 包含 std，可以把 std 当作“出题人参考求解/校验程序”生成；但 data.output 必须直接写在静态 cases 里，不能依赖 std 或 generator 才能得到答案。',
+  '- 提交答案 SPJ answer-spj：judge.preset="answer-spj"；必须提供 checker.cpp；checker 的选手输出来自 submit.answer，按题面规则判定合法性或部分分。',
+  '- 函数题 function：judge.preset="function"；必须提供 grader.cpp 和 problem.h；题面写清选手需要实现的函数签名、头文件名、返回值和副作用；std 仍是独立可运行程序，用来造 .out。',
+  '- 交互题 interactive：judge.preset="interactive"；必须提供 interactor.cpp；题面写清询问格式、回答格式、次数限制、flush 要求和结束条件；std 离线读 .in 输出 interactor 所需 case.answer。',
+  '- 通信题 communication：judge.preset="communication"；必须提供 manager.cpp；题面写清多进程角色、每个角色可见输入、通信限制和输出责任；选手 sol.cpp 会用 -DSIDE_A/-DSIDE_B 编译两份。',
 ].join('\n');
 
 const systemPromptJudge = () => [
@@ -144,6 +160,7 @@ const systemPrompt = () => {
       SYSTEM_PROMPT_HEAD,
       SYSTEM_PROMPT_CONTENT,
       SYSTEM_PROMPT_DATA,
+      SYSTEM_PROMPT_TYPE_CONTRACTS,
       systemPromptJudge(),
       SYSTEM_PROMPT_SCHEMA,
     ].join('\n\n');
@@ -165,6 +182,7 @@ const buildUserMessage = (prompt, sections, problemContext, options = {}) => {
   } else {
     lines.push(`任务模式：全新生成。请输出全部这些部分：${wanted}。`);
   }
+  lines.push('注意：无论本次允许修改哪些 section，下面都会提供完整题目信息作为上下文；选择范围只限制你输出和改动的 section，不限制你阅读题面、样例、STD、题解、数据和评测配置。');
   lines.push('', '题目在数据库中的现状（仅供参考，草稿优先）：', JSON.stringify(problemContext, null, 1));
   if (promptHistory.length) {
     lines.push('', '之前几轮用户的要求（从旧到新，修改时保持这些约束仍然成立）：', JSON.stringify(promptHistory, null, 1));

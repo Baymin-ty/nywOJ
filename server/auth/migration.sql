@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS user_permissions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -----------------------------------------------------------------------------
--- Step 2. 写入权限目录（17 项，与 server/auth/permissions.js 对齐）
+-- Step 2. 写入权限目录（28 项，与 server/auth/permissions.js 对齐）
 --
 -- 重复执行时由 UNIQUE(`key`) + ON DUPLICATE 兜底，name/description/scopable 会被刷新。
 -- -----------------------------------------------------------------------------
@@ -98,6 +98,7 @@ INSERT INTO permissions (`key`, `group`, name, description, scopable) VALUES
   ('problem.create',             'problem', '创建题目',       '创建新题目',                                                       0),
   ('problem.manage.any',         'problem', '管理任意题目',   '编辑/删除/管理测试数据 任意题目',                                  1),
   ('problem.manage.self',        'problem', '管理自己的题目', '编辑/删除/管理自己创建题目的测试数据',                             0),
+  ('problem.tag.manage',         'problem', '管理题目标签',   '创建、编辑、删除题目标签目录',                                      0),
   ('problem.view.any',           'problem', '查看所有题目',   '查看题目（含非公开）及其非比赛提交。可被全局或单题授予',           1),
   ('problem.solmanage',          'problem', '管理题解绑定',   '绑定/解绑自己可查看题目的题解，不包含编辑他人 paste',              0),
   ('contest.create',             'contest', '创建比赛',       NULL,                                                               0),
@@ -107,10 +108,20 @@ INSERT INTO permissions (`key`, `group`, name, description, scopable) VALUES
   ('submission.view.notcontest', 'judge',   '查看非比赛提交', '查看所有非比赛提交详情/代码',                                      0),
   ('submission.rejudge.any',     'judge',   '重测任意提交',   '重测任意提交（含比赛与非比赛）',                                   0),
   ('submission.rejudge.self',    'judge',   '重测自己的提交', '重测自己提交的非比赛代码',                                         0),
+  ('submission.manage.any',      'judge',   '管理任意提交',   '设置提交公开性 / 删除提交',                                        0),
+  ('judge.monitor.view',         'judge',   '查看评测监控',   '查看评测队列、沙箱探针和评测机状态',                                0),
+  ('judge.client.manage',        'judge',   '管理评测机',     '新增、编辑、禁用、删除评测机并重置 Key',                            0),
   ('user.manage',                'user',    '用户管理',       '查看用户列表 / 编辑用户资料 / 封禁与解封用户',                     0),
   ('user.role.admin',            'user',    '用户授权管理',   '分配用户角色 / 单点授权',                                          0),
+  ('group.manage',               'user',    '用户组管理',     '创建用户组、管理成员和组权限',                                      0),
   ('announcement.manage',        'system',  '管理公告',       NULL,                                                               0),
+  ('system.homepage.manage',     'system',  '管理首页设置',   '配置首页模块、公告位和展示内容',                                    0),
+  ('system.rating.manage',       'system',  '管理 Rating 系统', '结算、重建、清理和同步比赛 Rating',                              0),
+  ('system.migration.manage',    'system',  '管理迁移工具',   '导出和导入站点迁移数据',                                            0),
   ('paste.edit.any',             'system',  '编辑他人 paste', NULL,                                                               0),
+  ('discussion.view.any',        'system',  '查看讨论',       '查看隐藏讨论',                                                      0),
+  ('discussion.reply.any',       'system',  '回复讨论',       '回复隐藏讨论',                                                      0),
+  ('discussion.manage',          'system',  '管理讨论',       '编辑/隐藏/删除讨论与回复',                                          0),
   ('audit.view',                 'system',  '查看审计日志',   NULL,                                                               0)
 ON DUPLICATE KEY UPDATE
   `group`     = VALUES(`group`),
@@ -152,13 +163,16 @@ SELECT r.id, p.id FROM roles r JOIN permissions p
 -- contest_manager
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r JOIN permissions p
-  ON p.`key` IN ('contest.create', 'contest.manage.any', 'contest.manage.self')
+  ON p.`key` IN ('contest.create', 'contest.manage.self')
   WHERE r.`key` = 'contest_manager';
 
 -- judge_admin
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r JOIN permissions p
-  ON p.`key` IN ('submission.view.any', 'submission.rejudge.any')
+  ON p.`key` IN (
+    'submission.view.any', 'submission.rejudge.any', 'submission.manage.any',
+    'judge.monitor.view', 'judge.client.manage'
+  )
   WHERE r.`key` = 'judge_admin';
 
 -- solution_admin
@@ -167,17 +181,18 @@ SELECT r.id, p.id FROM roles r JOIN permissions p
   ON p.`key` = 'problem.solmanage'
   WHERE r.`key` = 'solution_admin';
 
--- moderator = 全部 17 项里排除 {user.role.admin, submission.rejudge.self,
---             submission.view.notcontest}，共 14 项。
+-- moderator = 日常站务能力，但不含用户授权、个人/窄域提交查看、Rating 全局维护、迁移工具等高危权限。
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r JOIN permissions p
   ON p.`key` IN (
-    'problem.create', 'problem.manage.any', 'problem.manage.self',
+    'problem.create', 'problem.manage.any', 'problem.manage.self', 'problem.tag.manage',
     'problem.solmanage', 'problem.view.any',
     'contest.create', 'contest.manage.any', 'contest.manage.self',
-    'submission.view.any', 'submission.rejudge.any',
-    'user.manage',
-    'announcement.manage', 'audit.view', 'paste.edit.any'
+    'submission.view.any', 'submission.rejudge.any', 'submission.manage.any',
+    'judge.monitor.view', 'judge.client.manage',
+    'user.manage', 'group.manage',
+    'announcement.manage', 'system.homepage.manage', 'audit.view', 'paste.edit.any',
+    'discussion.manage'
   )
   WHERE r.`key` = 'moderator';
 

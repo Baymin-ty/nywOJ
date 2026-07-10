@@ -1,53 +1,6 @@
 <template>
   <div class="ide-page">
     <div class="ide-shell">
-      <header class="ide-topbar">
-        <div class="ide-title-block">
-          <div class="eyebrow">WORKSPACE</div>
-          <h1>在线 IDE</h1>
-        </div>
-        <div class="ide-actions">
-          <el-radio-group v-model="mode" size="small" @change="onModeChange">
-            <el-radio-button label="free">自由</el-radio-button>
-            <el-radio-button label="problem">题目</el-radio-button>
-          </el-radio-group>
-          <template v-if="mode === 'problem'">
-            <el-select
-              v-model="pidInput"
-              class="ide-problem-select"
-              size="small"
-              filterable
-              remote
-              reserve-keyword
-              clearable
-              allow-create
-              default-first-option
-              :remote-method="searchProblems"
-              :loading="problemSearchLoading"
-              placeholder="搜索 PID 或题目标题"
-              @change="onProblemSelect">
-              <el-option
-                v-for="item in problemOptions"
-                :key="item.pid"
-                :label="problemOptionLabel(item)"
-                :value="String(item.pid)" />
-            </el-select>
-            <el-button size="small" :loading="profileLoading" @click="loadProblem">
-              <el-icon class="el-icon--left"><Search /></el-icon>载入
-            </el-button>
-          </template>
-          <el-select v-model="lang" placeholder="语言" size="default" class="ide-lang" @change="onLangChange">
-            <el-option v-for="l in availableLangOptions" :key="l.id" :label="l.des" :value="l.id" />
-          </el-select>
-          <el-button type="primary" :loading="runLoading" :disabled="runDisabled" @click="startRun">
-            <el-icon class="el-icon--left"><VideoPlay /></el-icon>运行
-          </el-button>
-          <el-button type="danger" plain :disabled="mode !== 'free' || !isLive" @click="stop">
-            <el-icon class="el-icon--left"><Close /></el-icon>停止
-          </el-button>
-        </div>
-      </header>
-
       <div v-if="mode === 'problem' && problemCtx" class="problem-strip">
         <div class="problem-title">#{{ problemCtx.pid }} {{ problemCtx.title }}</div>
         <div class="problem-tags">
@@ -59,11 +12,52 @@
 
       <div class="ide-grid">
         <section class="ide-panel editor-panel">
-          <div class="panel-head">
-            <div class="panel-title">编辑器</div>
-            <div class="panel-meta">
-              <span v-if="mode === 'problem'">{{ submitSlots.length || 0 }} 个文件</span>
-              <span v-else>{{ editorLang }}</span>
+          <div class="panel-head editor-head">
+            <div class="panel-title-wrap">
+              <div class="panel-title">编辑器</div>
+              <div v-if="mode === 'problem'" class="panel-meta">
+                <span>{{ submitSlots.length || 0 }} 个文件</span>
+              </div>
+            </div>
+            <div class="ide-actions">
+              <el-radio-group v-model="mode" size="small" @change="onModeChange">
+                <el-radio-button label="free">自由</el-radio-button>
+                <el-radio-button label="problem">题目</el-radio-button>
+              </el-radio-group>
+              <template v-if="mode === 'problem'">
+                <el-select
+                  v-model="pidInput"
+                  class="ide-problem-select"
+                  size="small"
+                  filterable
+                  remote
+                  reserve-keyword
+                  clearable
+                  allow-create
+                  default-first-option
+                  :remote-method="searchProblems"
+                  :loading="problemSearchLoading"
+                  placeholder="搜索 PID 或题目标题"
+                  @change="onProblemSelect">
+                  <el-option
+                    v-for="item in problemOptions"
+                    :key="item.pid"
+                    :label="problemOptionLabel(item)"
+                    :value="String(item.pid)" />
+                </el-select>
+                <el-button size="small" :loading="profileLoading" @click="loadProblem">
+                  <el-icon class="el-icon--left"><Search /></el-icon>载入
+                </el-button>
+              </template>
+              <el-select v-model="lang" placeholder="语言" size="default" class="ide-lang" @change="onLangChange">
+                <el-option v-for="l in availableLangOptions" :key="l.id" :label="l.des" :value="l.id" />
+              </el-select>
+              <el-button plain @click="openSettings">
+                <el-icon class="el-icon--left"><Setting /></el-icon>设置
+              </el-button>
+              <el-button plain :disabled="!canUseSourceTemplate" @click="resetEditorSource">
+                <el-icon class="el-icon--left"><RefreshRight /></el-icon>重置
+              </el-button>
             </div>
           </div>
 
@@ -76,26 +70,29 @@
                   :key="slotKey(slot, i)"
                   :label="slotTabLabel(slot, i)"
                   :name="String(i)">
-                  <div class="slot-head">
-                    <span>{{ slot.label || ('文件 ' + (i + 1)) }}</span>
-                    <code v-if="slot.name">{{ slot.name }}</code>
-                    <el-tag v-if="slot.primary" size="small" effect="plain">主文件</el-tag>
-                    <el-tag v-if="slot.optional" size="small" type="info" effect="plain">可选</el-tag>
-                  </div>
-                  <div class="editor-frame">
-                    <monacoEditor
-                      v-if="slot.kind === 'source'"
-                      :value="multiCode[i] || ''"
-                      :language="editorLangForSlot(slot)"
-                      :height="slotEditorHeight"
-                      @update:value="setMultiContent(i, $event)" />
-                    <el-input
-                      v-else
-                      type="textarea"
-                      :rows="18"
-                      resize="vertical"
-                      :model-value="multiCode[i] || ''"
-                      @input="setMultiContent(i, $event)" />
+                  <div class="slot-pane-body">
+                    <div class="slot-head">
+                      <span>{{ slot.label || ('文件 ' + (i + 1)) }}</span>
+                      <code v-if="slot.name">{{ slot.name }}</code>
+                      <el-tag v-if="slot.primary" size="small" effect="plain">主文件</el-tag>
+                      <el-tag v-if="slot.optional" size="small" type="info" effect="plain">可选</el-tag>
+                    </div>
+                    <div class="editor-frame">
+                      <monacoEditor
+                        v-if="slot.kind === 'source'"
+                        :value="multiCode[i] || ''"
+                        :language="editorLangForSlot(slot)"
+                        :height="slotEditorHeight"
+                        v-bind="editorPreferenceProps"
+                        @update:value="setMultiContent(i, $event)" />
+                      <el-input
+                        v-else
+                        type="textarea"
+                        :rows="18"
+                        resize="vertical"
+                        :model-value="multiCode[i] || ''"
+                        @input="setMultiContent(i, $event)" />
+                    </div>
                   </div>
                 </el-tab-pane>
               </el-tabs>
@@ -107,7 +104,8 @@
               :value="code"
               :language="editorLang"
               :height="editorHeight"
-              @update:value="code = $event" />
+              v-bind="editorPreferenceProps"
+              @update:value="setFreeCode" />
           </div>
         </section>
 
@@ -117,9 +115,17 @@
               终端
               <el-tag size="small" :type="statusTag.type" effect="light" round>{{ statusTag.text }}</el-tag>
             </div>
-            <el-button text size="small" @click="clearTerminal">
-              <el-icon class="el-icon--left"><Delete /></el-icon>清空
-            </el-button>
+            <div class="terminal-actions">
+              <el-button class="terminal-run-button" type="primary" :loading="runLoading" :disabled="runDisabled" @click="startRun">
+                <el-icon class="el-icon--left"><VideoPlay /></el-icon>运行
+              </el-button>
+              <el-button type="danger" plain :disabled="mode !== 'free' || !isLive" @click="stop">
+                <el-icon class="el-icon--left"><Close /></el-icon>停止
+              </el-button>
+              <el-button plain @click="clearTerminal">
+                <el-icon class="el-icon--left"><Delete /></el-icon>清空
+              </el-button>
+            </div>
           </div>
 
           <div ref="termEl" class="ide-term"></div>
@@ -176,12 +182,126 @@
           </div>
         </section>
       </div>
+
+      <el-dialog
+        v-model="settingsVisible"
+        title="IDE 设置"
+        class="ide-settings-dialog"
+        width="780px"
+        append-to-body
+        @open="syncSettingsSource">
+        <el-tabs v-model="settingsTab" class="ide-settings-tabs">
+          <el-tab-pane label="编辑器" name="editor">
+            <el-form class="ide-settings-form" label-width="112px">
+              <div class="settings-grid">
+                <el-form-item label="主题">
+                  <el-select v-model="settingsDraft.theme">
+                    <el-option
+                      v-for="item in themeOptions"
+                      :key="item.value"
+                      :label="item.label"
+                      :value="item.value" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="字号">
+                  <el-input-number v-model="settingsDraft.fontSize" :min="12" :max="24" :step="1" controls-position="right" />
+                </el-form-item>
+                <el-form-item label="Tab 宽度">
+                  <el-input-number v-model="settingsDraft.tabSize" :min="2" :max="8" :step="1" controls-position="right" />
+                </el-form-item>
+                <el-form-item label="缩进空格">
+                  <el-switch v-model="settingsDraft.insertSpaces" />
+                </el-form-item>
+                <el-form-item label="自动换行">
+                  <el-select v-model="settingsDraft.wordWrap">
+                    <el-option
+                      v-for="item in wordWrapOptions"
+                      :key="item.value"
+                      :label="item.label"
+                      :value="item.value" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="小地图">
+                  <el-switch v-model="settingsDraft.minimap" />
+                </el-form-item>
+                <el-form-item label="行号">
+                  <el-select v-model="settingsDraft.lineNumbers">
+                    <el-option
+                      v-for="item in lineNumberOptions"
+                      :key="item.value"
+                      :label="item.label"
+                      :value="item.value" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="空白字符">
+                  <el-select v-model="settingsDraft.renderWhitespace">
+                    <el-option
+                      v-for="item in whitespaceOptions"
+                      :key="item.value"
+                      :label="item.label"
+                      :value="item.value" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="括号着色">
+                  <el-switch v-model="settingsDraft.bracketPairColorization" />
+                </el-form-item>
+                <el-form-item label="括号引导线">
+                  <el-switch v-model="settingsDraft.bracketPairGuides" />
+                </el-form-item>
+              </div>
+            </el-form>
+          </el-tab-pane>
+
+          <el-tab-pane label="缺省源" name="source">
+            <div class="settings-source-head">
+              <el-select v-model="settingsSourceLang" class="settings-lang-select" @change="syncSettingsSource">
+                <el-option
+                  v-for="item in sourceLangOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value" />
+              </el-select>
+              <div class="settings-source-actions">
+                <el-button plain :disabled="!canUseSourceTemplate" @click="useCurrentSourceInSettings">
+                  <el-icon class="el-icon--left"><DocumentChecked /></el-icon>使用当前代码
+                </el-button>
+                <el-button plain @click="restoreSystemSourceInSettings">
+                  <el-icon class="el-icon--left"><RefreshRight /></el-icon>系统模板
+                </el-button>
+                <el-button type="primary" @click="saveSettingsSource">
+                  <el-icon class="el-icon--left"><DocumentChecked /></el-icon>保存缺省源
+                </el-button>
+              </div>
+            </div>
+            <div class="settings-source-editor">
+              <monacoEditor
+                :value="settingsSourceDraft"
+                :language="settingsSourceLang"
+                :height="330"
+                v-bind="settingsPreviewProps"
+                @update:value="settingsSourceDraft = $event" />
+            </div>
+          </el-tab-pane>
+
+          <el-tab-pane label="草稿" name="drafts">
+            <div class="settings-draft-actions">
+              <el-button plain @click="clearCurrentFreeDraft">清空当前自由草稿</el-button>
+              <el-button plain @click="clearCurrentProblemDraft">清空当前题目草稿</el-button>
+              <el-button plain type="danger" @click="clearAllProblemDrafts">清空全部题目草稿</el-button>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
+        <template #footer>
+          <el-button @click="resetEditorSettingsDraft">恢复默认</el-button>
+          <el-button @click="settingsVisible = false">关闭</el-button>
+          <el-button type="primary" @click="saveEditorSettings">保存编辑器设置</el-button>
+        </template>
+      </el-dialog>
     </div>
   </div>
 </template>
 
 <script>
-import { VideoPlay, Close, Delete, Promotion, Search } from '@element-plus/icons-vue';
 import axios from 'axios';
 import monacoEditor from '@/components/monacoEditor.vue';
 import { Terminal } from 'xterm';
@@ -189,14 +309,22 @@ import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 
 const TEMPLATES = {
+  c: `#include <stdio.h>
+
+int main(void) {
+    int a, b;
+    scanf("%d%d", &a, &b);
+    printf("%d\\n", a + b);
+    return 0;
+}
+`,
   cpp: `#include <bits/stdc++.h>
 using namespace std;
 
 int main() {
     int a, b;
-    cout << "请输入两个整数: " << flush;
     cin >> a >> b;
-    cout << "和为 " << a + b << endl;
+    cout << a + b << endl;
     return 0;
 }
 `,
@@ -204,6 +332,53 @@ int main() {
 print("和为", a + b)
 `,
 };
+
+const STORAGE_KEYS = {
+  defaultSources: 'nywoj.ide.defaultSources.v1',
+  editorPrefs: 'nywoj.ide.editorPrefs.v1',
+  freeDrafts: 'nywoj.ide.freeDrafts.v1',
+  problemDrafts: 'nywoj.ide.problemDrafts.v1',
+};
+
+const EDITOR_DEFAULTS = {
+  theme: 'vs-light',
+  fontSize: 15,
+  tabSize: 4,
+  insertSpaces: true,
+  wordWrap: 'off',
+  minimap: false,
+  lineNumbers: 'on',
+  renderWhitespace: 'selection',
+  bracketPairColorization: true,
+  bracketPairGuides: false,
+};
+
+const THEME_OPTIONS = [
+  { value: 'vs-light', label: '浅色' },
+  { value: 'vs-dark', label: '深色' },
+  { value: 'hc-black', label: '高对比黑' },
+];
+
+const WORD_WRAP_OPTIONS = [
+  { value: 'off', label: '关闭' },
+  { value: 'on', label: '开启' },
+  { value: 'bounded', label: '边界' },
+];
+
+const LINE_NUMBER_OPTIONS = [
+  { value: 'on', label: '显示' },
+  { value: 'off', label: '隐藏' },
+  { value: 'relative', label: '相对' },
+  { value: 'interval', label: '间隔' },
+];
+
+const WHITESPACE_OPTIONS = [
+  { value: 'selection', label: '选区' },
+  { value: 'boundary', label: '边界' },
+  { value: 'trailing', label: '行尾' },
+  { value: 'all', label: '全部' },
+  { value: 'none', label: '隐藏' },
+];
 
 const EXT_LANG = {
   '.c': 'c',
@@ -225,7 +400,7 @@ const EXT_LANG = {
 
 export default {
   name: 'onlineIde',
-  components: { monacoEditor, VideoPlay, Close, Delete, Promotion, Search },
+  components: { monacoEditor },
   data() {
     return {
       mode: 'free',
@@ -249,23 +424,64 @@ export default {
       ws: null,
       phase: 'idle',
       exitInfo: null,
-      editorHeight: 620,
-      slotEditorHeight: 570,
+      editorHeight: 420,
+      slotEditorHeight: 420,
       term: null,
       fitAddon: null,
       resizeObserver: null,
       onWinResize: null,
+      layoutRaf: null,
+      freeDraftLang: '',
+      problemDraftKey: '',
+      editorPrefs: { ...EDITOR_DEFAULTS },
+      settingsVisible: false,
+      settingsTab: 'editor',
+      settingsDraft: { ...EDITOR_DEFAULTS },
+      settingsSourceLang: 'cpp',
+      settingsSourceDraft: '',
     };
   },
   computed: {
+    themeOptions() {
+      return THEME_OPTIONS;
+    },
+    wordWrapOptions() {
+      return WORD_WRAP_OPTIONS;
+    },
+    lineNumberOptions() {
+      return LINE_NUMBER_OPTIONS;
+    },
+    whitespaceOptions() {
+      return WHITESPACE_OPTIONS;
+    },
     langOptions() {
       const m = this.$store.state.langList || {};
       return Object.keys(m).map((id) => m[id]);
+    },
+    sourceLangOptions() {
+      const seen = new Set();
+      const options = [];
+      const add = (value, label) => {
+        const key = this.storageLangKey(value);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        options.push({ value: key, label: label || key });
+      };
+      this.langOptions.forEach((l) => add(l.lang, l.des || l.name || l.lang));
+      Object.keys(TEMPLATES).forEach((key) => add(key, key));
+      add(this.activeSourceLang(), this.activeSourceLang());
+      return options;
     },
     availableLangOptions() {
       if (this.mode !== 'problem' || !this.problemCtx || this.problemCtx.langMask == null) return this.langOptions;
       const mask = Number(this.problemCtx.langMask) || 0;
       return this.langOptions.filter((l) => ((1 << Number(l.id)) & mask));
+    },
+    editorPreferenceProps() {
+      return { ...this.editorPrefs };
+    },
+    settingsPreviewProps() {
+      return { ...this.normalizeEditorPrefs(this.settingsDraft) };
     },
     editorLang() {
       const m = this.$store.state.langList || {};
@@ -284,6 +500,12 @@ export default {
       if (this.mode === 'problem') return this.profileRunning || this.profileLoading || !this.problemCtx || !this.problemCtx.runnable || !this.lang;
       return this.phase === 'running';
     },
+    canUseSourceTemplate() {
+      if (!this.lang) return false;
+      if (this.mode === 'free') return true;
+      const slot = this.activeSubmitSlot();
+      return !!slot && slot.kind === 'source';
+    },
     statusTag() {
       return {
         idle: { type: 'info', text: '空闲' },
@@ -291,6 +513,17 @@ export default {
         running: { type: 'success', text: '运行中' },
         done: { type: 'info', text: '已结束' },
       }[this.phase] || { type: 'info', text: '空闲' };
+    },
+  },
+  watch: {
+    mode() {
+      this.$nextTick(this.updateLayoutHeights);
+    },
+    problemCtx() {
+      this.$nextTick(this.updateLayoutHeights);
+    },
+    activeSlot() {
+      this.$nextTick(this.updateLayoutHeights);
     },
   },
   methods: {
@@ -311,13 +544,250 @@ export default {
       } else {
         this.onLangChange();
       }
+      this.$nextTick(this.updateLayoutHeights);
     },
     onLangChange() {
-      const tpls = Object.values(TEMPLATES);
-      if (this.mode === 'free' && (!this.code.trim() || tpls.some((t) => t.trim() === this.code.trim()))) {
-        this.code = TEMPLATES[this.editorLang] || TEMPLATES.cpp;
+      if (this.mode === 'free') {
+        if (this.freeDraftLang) this.saveFreeDraft(this.freeDraftLang, this.code);
+        this.freeDraftLang = this.editorLang;
+        this.code = this.loadFreeDraft(this.editorLang);
+        return;
       }
-      if (this.mode === 'problem' && this.problemCtx) this.refreshProblemTemplates(false);
+      if (this.mode === 'problem' && this.problemCtx) {
+        if (!this.loadProblemDraft()) this.refreshProblemTemplates(true);
+      }
+    },
+    storageLangKey(lang) {
+      return String(lang || 'cpp').trim().toLowerCase() || 'cpp';
+    },
+    readStorageMap(key) {
+      try {
+        const raw = window.localStorage && window.localStorage.getItem(key);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      } catch (_) {
+        return {};
+      }
+    },
+    writeStorageMap(key, value) {
+      try {
+        if (window.localStorage) window.localStorage.setItem(key, JSON.stringify(value || {}));
+      } catch (_) {
+        // Ignore quota/privacy-mode errors; the editor should still work.
+      }
+    },
+    optionValue(options, value, fallback) {
+      return options.some((item) => item.value === value) ? value : fallback;
+    },
+    numberInRange(value, min, max, fallback) {
+      const next = Number(value);
+      if (!Number.isFinite(next)) return fallback;
+      return Math.min(max, Math.max(min, Math.round(next)));
+    },
+    boolPref(raw, key) {
+      return raw && Object.prototype.hasOwnProperty.call(raw, key)
+        ? !!raw[key]
+        : EDITOR_DEFAULTS[key];
+    },
+    normalizeEditorPrefs(raw) {
+      const prefs = raw && typeof raw === 'object' ? raw : {};
+      return {
+        theme: this.optionValue(THEME_OPTIONS, prefs.theme, EDITOR_DEFAULTS.theme),
+        fontSize: this.numberInRange(prefs.fontSize, 12, 24, EDITOR_DEFAULTS.fontSize),
+        tabSize: this.numberInRange(prefs.tabSize, 2, 8, EDITOR_DEFAULTS.tabSize),
+        insertSpaces: this.boolPref(prefs, 'insertSpaces'),
+        wordWrap: this.optionValue(WORD_WRAP_OPTIONS, prefs.wordWrap, EDITOR_DEFAULTS.wordWrap),
+        minimap: this.boolPref(prefs, 'minimap'),
+        lineNumbers: this.optionValue(LINE_NUMBER_OPTIONS, prefs.lineNumbers, EDITOR_DEFAULTS.lineNumbers),
+        renderWhitespace: this.optionValue(WHITESPACE_OPTIONS, prefs.renderWhitespace, EDITOR_DEFAULTS.renderWhitespace),
+        bracketPairColorization: this.boolPref(prefs, 'bracketPairColorization'),
+        bracketPairGuides: this.boolPref(prefs, 'bracketPairGuides'),
+      };
+    },
+    loadEditorPrefs() {
+      return this.normalizeEditorPrefs(this.readStorageMap(STORAGE_KEYS.editorPrefs));
+    },
+    writeEditorPrefs(value) {
+      const prefs = this.normalizeEditorPrefs(value);
+      this.writeStorageMap(STORAGE_KEYS.editorPrefs, prefs);
+      this.editorPrefs = prefs;
+      return prefs;
+    },
+    systemTemplateForLang(lang) {
+      const key = this.storageLangKey(lang);
+      return TEMPLATES[key] || TEMPLATES.cpp;
+    },
+    defaultSourceForLang(lang) {
+      const key = this.storageLangKey(lang);
+      const defaults = this.readStorageMap(STORAGE_KEYS.defaultSources);
+      return Object.prototype.hasOwnProperty.call(defaults, key)
+        ? String(defaults[key] || '')
+        : this.systemTemplateForLang(key);
+    },
+    loadFreeDraft(lang) {
+      const key = this.storageLangKey(lang);
+      const drafts = this.readStorageMap(STORAGE_KEYS.freeDrafts);
+      return Object.prototype.hasOwnProperty.call(drafts, key)
+        ? String(drafts[key] || '')
+        : this.defaultSourceForLang(key);
+    },
+    saveFreeDraft(lang, source) {
+      const key = this.storageLangKey(lang);
+      const drafts = this.readStorageMap(STORAGE_KEYS.freeDrafts);
+      drafts[key] = String(source || '');
+      this.writeStorageMap(STORAGE_KEYS.freeDrafts, drafts);
+    },
+    setFreeCode(value) {
+      this.code = value;
+      if (this.mode === 'free') {
+        this.freeDraftLang = this.editorLang;
+        this.saveFreeDraft(this.editorLang, value);
+      }
+    },
+    activeSlotIndex() {
+      const index = Number(this.activeSlot);
+      return Number.isSafeInteger(index) && index >= 0 ? index : -1;
+    },
+    activeSubmitSlot() {
+      const index = this.activeSlotIndex();
+      return index >= 0 ? this.submitSlots[index] : null;
+    },
+    activeSourceLang() {
+      if (this.mode === 'problem') {
+        const slot = this.activeSubmitSlot();
+        return slot && slot.kind === 'source' ? this.editorLangForSlot(slot) : '';
+      }
+      return this.editorLang;
+    },
+    activeSourceValue() {
+      if (this.mode === 'problem') {
+        const index = this.activeSlotIndex();
+        return index >= 0 ? (this.multiCode[index] || '') : '';
+      }
+      return this.code;
+    },
+    saveDefaultSource() {
+      if (!this.canUseSourceTemplate) return;
+      const lang = this.activeSourceLang();
+      const key = this.storageLangKey(lang);
+      const defaults = this.readStorageMap(STORAGE_KEYS.defaultSources);
+      defaults[key] = this.activeSourceValue();
+      this.writeStorageMap(STORAGE_KEYS.defaultSources, defaults);
+      this.$message.success('缺省源已保存');
+    },
+    openSettings() {
+      this.settingsDraft = { ...this.editorPrefs };
+      this.settingsSourceLang = this.storageLangKey(this.activeSourceLang() || this.editorLang || 'cpp');
+      this.syncSettingsSource();
+      this.settingsVisible = true;
+    },
+    syncSettingsSource() {
+      const lang = this.storageLangKey(this.settingsSourceLang || this.activeSourceLang() || this.editorLang || 'cpp');
+      this.settingsSourceLang = lang;
+      this.settingsSourceDraft = this.defaultSourceForLang(lang);
+    },
+    useCurrentSourceInSettings() {
+      if (!this.canUseSourceTemplate) return;
+      this.settingsSourceLang = this.storageLangKey(this.activeSourceLang());
+      this.settingsSourceDraft = this.activeSourceValue();
+      this.settingsTab = 'source';
+    },
+    restoreSystemSourceInSettings() {
+      const lang = this.storageLangKey(this.settingsSourceLang || 'cpp');
+      this.settingsSourceDraft = this.systemTemplateForLang(lang);
+    },
+    saveSettingsSource() {
+      const key = this.storageLangKey(this.settingsSourceLang || 'cpp');
+      const defaults = this.readStorageMap(STORAGE_KEYS.defaultSources);
+      defaults[key] = String(this.settingsSourceDraft || '');
+      this.writeStorageMap(STORAGE_KEYS.defaultSources, defaults);
+      this.$message.success('缺省源已保存');
+    },
+    saveEditorSettings() {
+      this.settingsDraft = this.writeEditorPrefs(this.settingsDraft);
+      this.$nextTick(this.updateLayoutHeights);
+      this.$message.success('编辑器设置已保存');
+    },
+    resetEditorSettingsDraft() {
+      this.settingsDraft = { ...EDITOR_DEFAULTS };
+    },
+    clearCurrentFreeDraft() {
+      const key = this.storageLangKey(this.editorLang || 'cpp');
+      const drafts = this.readStorageMap(STORAGE_KEYS.freeDrafts);
+      delete drafts[key];
+      this.writeStorageMap(STORAGE_KEYS.freeDrafts, drafts);
+      if (this.mode === 'free') {
+        this.freeDraftLang = key;
+        this.code = this.defaultSourceForLang(key);
+      }
+      this.$message.success('当前自由草稿已清空');
+    },
+    clearCurrentProblemDraft() {
+      const key = this.currentProblemDraftKey() || this.problemDraftKey;
+      if (!key) {
+        this.$message.warning('当前没有题目草稿');
+        return;
+      }
+      const drafts = this.readStorageMap(STORAGE_KEYS.problemDrafts);
+      delete drafts[key];
+      this.writeStorageMap(STORAGE_KEYS.problemDrafts, drafts);
+      if (this.mode === 'problem' && this.problemCtx) this.refreshProblemTemplates(true);
+      this.$message.success('当前题目草稿已清空');
+    },
+    clearAllProblemDrafts() {
+      this.writeStorageMap(STORAGE_KEYS.problemDrafts, {});
+      if (this.mode === 'problem' && this.problemCtx) this.refreshProblemTemplates(true);
+      this.$message.success('全部题目草稿已清空');
+    },
+    resetEditorSource() {
+      if (!this.canUseSourceTemplate) return;
+      if (this.mode === 'problem') {
+        const index = this.activeSlotIndex();
+        const slot = this.activeSubmitSlot();
+        if (index < 0 || !slot) return;
+        this.setMultiContent(index, this.defaultSlotTemplate(slot));
+      } else {
+        this.setFreeCode(this.defaultSourceForLang(this.editorLang));
+      }
+      this.$message.success('已重置为缺省源');
+    },
+    problemSlotSignature() {
+      return this.submitSlots
+        .map((slot) => [slot.kind || '', slot.name || '', slot.label || ''].join(':'))
+        .join('|');
+    },
+    currentProblemDraftKey() {
+      if (!this.problemCtx || !this.problemCtx.pid || !this.lang) return '';
+      return [
+        this.problemCtx.pid,
+        this.lang,
+        this.problemSlotSignature(),
+      ].join('::');
+    },
+    loadProblemDraft() {
+      const key = this.currentProblemDraftKey();
+      this.problemDraftKey = key;
+      if (!key) return false;
+      const drafts = this.readStorageMap(STORAGE_KEYS.problemDrafts);
+      const saved = drafts[key];
+      if (!saved || !Array.isArray(saved.files)) return false;
+      this.multiCode = this.submitSlots.map((slot, i) => (
+        Object.prototype.hasOwnProperty.call(saved.files, i)
+          ? String(saved.files[i] || '')
+          : this.defaultSlotTemplate(slot)
+      ));
+      return true;
+    },
+    saveProblemDraft() {
+      const key = this.problemDraftKey || this.currentProblemDraftKey();
+      if (!key) return;
+      this.problemDraftKey = key;
+      const drafts = this.readStorageMap(STORAGE_KEYS.problemDrafts);
+      drafts[key] = {
+        files: this.multiCode.map((source) => String(source || '')),
+        updatedAt: Date.now(),
+      };
+      this.writeStorageMap(STORAGE_KEYS.problemDrafts, drafts);
     },
     normalizeProblemPid(value) {
       const text = String(value || '').trim().replace(/^#/, '').replace(/^p/i, '');
@@ -389,7 +859,7 @@ export default {
         this.submitSlots = this.problemCtx.submitSlots || [];
         this.activeSlot = this.submitSlots.length ? '0' : '';
         this.chooseAllowedLang();
-        this.refreshProblemTemplates(true);
+        if (!this.loadProblemDraft()) this.refreshProblemTemplates(true);
         if (this.problemCtx.samples && this.problemCtx.samples.length) {
           this.sampleIndex = 0;
           this.useSample(0);
@@ -400,6 +870,7 @@ export default {
           this.answerProvided = false;
         }
         document.title = `在线 IDE - #${this.problemCtx.pid}`;
+        this.$nextTick(this.updateLayoutHeights);
       } catch (err) {
         const msg = err && err.response && err.response.data && err.response.data.message;
         this.$message.error(msg || '载入失败');
@@ -414,13 +885,15 @@ export default {
         next[i] = force || !old ? this.defaultSlotTemplate(this.submitSlots[i]) : old;
       }
       this.multiCode = next;
+      this.problemDraftKey = this.currentProblemDraftKey();
     },
     defaultSlotTemplate(slot) {
       const name = String(slot && slot.name || '').toLowerCase();
       if (name.endsWith('.h') || name.endsWith('.hpp')) return `// ${slot.label || slot.name || '你的实现'}\n\n`;
-      if (name.endsWith('.py')) return TEMPLATES.python;
-      if (!name && this.editorLang === 'python') return TEMPLATES.python;
-      if (!name || name.endsWith('.c') || name.endsWith('.cc') || name.endsWith('.cpp') || name.endsWith('.cxx')) return TEMPLATES.cpp;
+      const lang = this.editorLangForSlot(slot);
+      if (!name || EXT_LANG[Object.keys(EXT_LANG).find((suffix) => name.endsWith(suffix))] || slot.kind === 'source') {
+        return this.defaultSourceForLang(lang);
+      }
       return '';
     },
     slotKey(slot, i) {
@@ -431,6 +904,7 @@ export default {
     },
     setMultiContent(i, value) {
       this.multiCode.splice(i, 1, value);
+      this.saveProblemDraft();
     },
     editorLangForSlot(slot) {
       const name = String(slot && slot.name || '').toLowerCase();
@@ -689,9 +1163,25 @@ export default {
     ansiText(s) {
       return String(s).replace(/\r?\n/g, '\r\n');
     },
-    sendInput(data) {
+    normalizeTerminalInput(data) {
+      return String(data == null ? '' : data).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    },
+    echoTerminalInput(data) {
+      if (!this.term || !data) return;
+      let out = '';
+      for (const ch of String(data)) {
+        const code = ch.codePointAt(0);
+        if (ch === '\n') out += '\r\n';
+        else if (ch === '\b' || ch === '\x7f') out += '\b \b';
+        else if (ch === '\t' || code >= 0x20) out += ch;
+      }
+      if (out) this.term.write(out);
+    },
+    sendInput(data, options = {}) {
+      const normalized = this.normalizeTerminalInput(data);
       if (this.ws && this.ws.readyState === WebSocket.OPEN && this.isRunning && this.mode === 'free') {
-        this.ws.send(JSON.stringify({ op: 'input', data }));
+        if (options.echo !== false) this.echoTerminalInput(normalized);
+        this.ws.send(JSON.stringify({ op: 'input', data: normalized }));
       }
     },
     sendStdinBox() {
@@ -718,13 +1208,35 @@ export default {
         this.ws.send(JSON.stringify({ op: 'resize', rows: this.term.rows, cols: this.term.cols }));
       }
     },
+    updateLayoutHeights() {
+      if (this.layoutRaf) window.cancelAnimationFrame(this.layoutRaf);
+      this.layoutRaf = window.requestAnimationFrame(() => {
+        this.layoutRaf = null;
+        this.$nextTick(() => {
+          const root = this.$el;
+          if (!root) return;
+          const frames = Array.from(root.querySelectorAll('.editor-panel .editor-frame'));
+          const frame = frames.find((el) => el.offsetParent !== null && el.clientHeight > 0)
+            || frames.find((el) => el.clientHeight > 0);
+          if (frame) {
+            const nextHeight = Math.max(260, Math.floor(frame.clientHeight));
+            if (this.editorHeight !== nextHeight) this.editorHeight = nextHeight;
+            if (this.slotEditorHeight !== nextHeight) this.slotEditorHeight = nextHeight;
+          }
+          this.fit();
+        });
+      });
+    },
   },
   async mounted() {
     document.title = '在线 IDE';
+    this.editorPrefs = this.loadEditorPrefs();
+    this.settingsDraft = { ...this.editorPrefs };
     await this.ensureLangs();
     const opts = this.langOptions;
     if (opts.length) this.lang = opts[0].id;
-    this.onLangChange();
+    this.freeDraftLang = this.editorLang;
+    this.code = this.loadFreeDraft(this.editorLang);
 
     const term = new Terminal({
       convertEol: false,
@@ -744,11 +1256,18 @@ export default {
     this.term = term;
     this.fitAddon = fitAddon;
 
-    this.onWinResize = () => this.fit();
+    this.updateLayoutHeights();
+
+    this.onWinResize = () => {
+      this.updateLayoutHeights();
+      this.fit();
+    };
     window.addEventListener('resize', this.onWinResize);
     if (window.ResizeObserver) {
-      this.resizeObserver = new ResizeObserver(() => this.fit());
-      this.resizeObserver.observe(this.$refs.termEl);
+      this.resizeObserver = new ResizeObserver(() => this.updateLayoutHeights());
+      const editorPanel = this.$el && this.$el.querySelector('.editor-panel');
+      if (editorPanel) this.resizeObserver.observe(editorPanel);
+      if (this.$refs.termEl) this.resizeObserver.observe(this.$refs.termEl);
     }
 
     const routePid = this.$route.query.pid || (this.$route.params && this.$route.params.pid);
@@ -758,8 +1277,11 @@ export default {
     }
   },
   beforeUnmount() {
+    if (this.mode === 'free') this.saveFreeDraft(this.freeDraftLang || this.editorLang, this.code);
+    else this.saveProblemDraft();
     if (this.onWinResize) window.removeEventListener('resize', this.onWinResize);
     if (this.resizeObserver) this.resizeObserver.disconnect();
+    if (this.layoutRaf) window.cancelAnimationFrame(this.layoutRaf);
     try { if (this.ws) { this.ws.send(JSON.stringify({ op: 'kill' })); this.ws.close(); } } catch (_) { /* */ }
     if (this.term) this.term.dispose();
   },
@@ -768,58 +1290,33 @@ export default {
 
 <style scoped>
 .ide-page {
+  --ide-app-header-height: 60px;
   --ide-bg: transparent;
   --ide-panel: #ffffff;
   --ide-border: #dfe5ef;
   --ide-text: #1f2a3d;
   --ide-muted: #748094;
   --ide-accent: #2f7de1;
-  min-height: calc(100vh - 60px);
+  --ide-main-y-padding: 40px;
+  --ide-min-page-height: 620px;
+  height: calc(100vh - var(--ide-app-header-height) - var(--ide-main-y-padding));
+  height: calc(100dvh - var(--ide-app-header-height) - var(--ide-main-y-padding));
+  min-height: var(--ide-min-page-height);
   margin: auto;
   min-width: 0;
   background: transparent;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .ide-shell {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  height: 100%;
+  min-height: 0;
   max-width: 1720px;
   margin: 0 auto;
-}
-
-.ide-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px;
-  border: 1px solid var(--ide-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 8px 22px rgba(31, 42, 61, 0.06);
-}
-
-.ide-title-block {
-  min-width: 130px;
-}
-
-.eyebrow {
-  color: var(--ide-muted);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-
-h1 {
-  margin: 2px 0 0;
-  color: var(--ide-text);
-  font-size: 24px;
-  line-height: 1.2;
 }
 
 .ide-actions {
@@ -829,24 +1326,11 @@ h1 {
   gap: 8px;
   flex-wrap: wrap;
   min-width: 0;
+  margin-left: auto;
 }
 
 .ide-actions :deep(.el-button + .el-button) {
   margin-left: 0;
-}
-
-.ide-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.ide-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--ide-text);
-  margin-right: 6px;
 }
 
 .ide-lang {
@@ -860,18 +1344,31 @@ h1 {
 .ide-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(380px, 0.85fr);
+  grid-auto-rows: minmax(0, 1fr);
   gap: 12px;
-  align-items: start;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
 
 .ide-panel {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
   border: 1px solid var(--ide-border);
   border-radius: 8px;
   background: var(--ide-panel);
   box-shadow: 0 8px 22px rgba(31, 42, 61, 0.045);
   padding: 12px;
   text-align: left;
+  overflow: hidden;
+}
+
+.editor-panel,
+.terminal-panel {
+  height: 100%;
 }
 
 .panel-head {
@@ -881,6 +1378,19 @@ h1 {
   gap: 10px;
   min-height: 34px;
   margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.editor-head {
+  align-items: flex-start;
+}
+
+.panel-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  min-width: max-content;
 }
 
 .panel-title,
@@ -898,8 +1408,28 @@ h1 {
   font-size: 12px;
 }
 
-.editor-frame {
+.terminal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
   min-width: 0;
+}
+
+.terminal-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.terminal-run-button {
+  min-width: 94px;
+  font-weight: 700;
+}
+
+.editor-frame {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
   border: 1px solid #e6ebf2;
   border-radius: 8px;
@@ -942,11 +1472,34 @@ h1 {
 }
 
 .slot-tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
 .slot-tabs :deep(.el-tabs__header) {
+  flex-shrink: 0;
   margin-bottom: 10px;
+}
+
+.slot-tabs :deep(.el-tabs__content),
+.slot-tabs :deep(.el-tab-pane) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.slot-tabs :deep(.el-tab-pane) {
+  height: 100%;
+}
+
+.slot-pane-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
 .slot-head {
@@ -967,8 +1520,10 @@ h1 {
 }
 
 .ide-term {
+  flex: 1;
   width: 100%;
-  height: 438px;
+  height: auto;
+  min-height: 220px;
   background: #111827;
   border: 1px solid #253044;
   border-radius: 8px;
@@ -1023,6 +1578,7 @@ h1 {
 }
 
 .input-panel {
+  flex-shrink: 0;
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #edf1f6;
@@ -1050,9 +1606,82 @@ h1 {
   margin: 12px 0 8px;
 }
 
+.ide-settings-tabs :deep(.el-tabs__content) {
+  min-height: 380px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 18px;
+}
+
+.ide-settings-form :deep(.el-select),
+.ide-settings-form :deep(.el-input-number) {
+  width: 100%;
+}
+
+.settings-source-head,
+.settings-source-actions,
+.settings-draft-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-source-head {
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.settings-lang-select {
+  width: 180px;
+}
+
+.settings-source-actions {
+  justify-content: flex-end;
+}
+
+.settings-source-actions :deep(.el-button + .el-button),
+.settings-draft-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.settings-source-editor {
+  min-height: 330px;
+  overflow: hidden;
+  border: 1px solid #e6ebf2;
+  border-radius: 8px;
+}
+
+.settings-source-editor :deep(.monaco-editor),
+.settings-source-editor :deep(.overflow-guard) {
+  border-radius: 8px;
+}
+
+.settings-draft-actions {
+  align-items: flex-start;
+  padding-top: 8px;
+}
+
 @media (max-width: 1100px) {
+  .ide-page {
+    height: auto;
+    min-height: var(--ide-min-page-height);
+    overflow: visible;
+  }
+
+  .ide-shell,
+  .ide-grid,
+  .ide-panel {
+    height: auto;
+  }
+
   .ide-grid {
     grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+    min-height: 0;
   }
 
   .terminal-panel {
@@ -1065,30 +1694,50 @@ h1 {
     background: transparent;
   }
 
-  .ide-topbar {
-    position: static;
-    align-items: flex-start;
-    flex-direction: column;
+  .ide-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
   }
 
-  .ide-actions {
+  .terminal-actions {
     width: 100%;
     justify-content: flex-start;
   }
 
   .ide-term {
     height: 320px;
+    flex: none;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-source-head,
+  .settings-source-actions {
+    align-items: stretch;
+  }
+
+  .settings-lang-select,
+  .settings-source-actions,
+  .settings-source-actions :deep(.el-button) {
+    width: 100%;
   }
 
   .ide-lang,
-  .ide-pid {
+  .ide-problem-select {
     width: 130px;
   }
 
-  .panel-head,
+  .editor-head,
   .problem-strip {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .panel-title-wrap {
+    min-width: 0;
   }
 }
 </style>

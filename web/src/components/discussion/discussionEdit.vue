@@ -1,23 +1,26 @@
 <template>
   <div class="discussion-edit">
-    <section class="edit-head">
-      <div>
-        <div class="eyebrow">Discussion</div>
-        <h1>编辑讨论</h1>
-      </div>
-      <el-button-group class="head-actions">
-        <el-button type="primary" @click="updateDiscussion">
-          <el-icon class="el-icon--left"><Check /></el-icon>
-          保存
-        </el-button>
-        <el-button @click="this.$router.push('/discussion/' + did)">
-          <el-icon class="el-icon--left"><Back /></el-icon>
-          返回
-        </el-button>
-      </el-button-group>
-    </section>
-
     <section class="editor-panel" v-loading="loading">
+      <div class="sub-header">
+        <div class="sub-title-wrap">
+          <span class="sub-title">编辑讨论</span>
+        </div>
+        <el-button-group class="head-actions">
+          <el-button type="primary" @click="updateDiscussion">
+            <el-icon class="el-icon--left">
+              <Check />
+            </el-icon>
+            保存
+          </el-button>
+          <el-button @click="$router.push('/discussion/' + did)">
+            <el-icon class="el-icon--left">
+              <Back />
+            </el-icon>
+            返回
+          </el-button>
+        </el-button-group>
+      </div>
+
       <el-form label-position="top" class="form">
         <el-form-item label="标题" class="title-field">
           <el-input v-model="discussion.title" maxlength="80" show-word-limit placeholder="讨论标题" />
@@ -120,49 +123,42 @@ export default {
 .discussion-edit {
   margin: 0 auto;
   max-width: 1160px;
-  padding: 16px 10px 30px;
 }
 
-.edit-head {
+.editor-panel {
+  padding: 18px;
+  border: 1px solid #ebeef5;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+  text-align: left;
+}
+
+.sub-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
-  gap: 16px;
-  padding: 22px 24px;
-  border: 1px solid #e4e9f2;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #f8fbff 0%, #ffffff 60%, #f4fff8 100%);
-  box-shadow: 0 12px 32px rgba(31, 45, 61, 0.08);
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
 }
 
-.eyebrow {
-  margin-bottom: 6px;
-  color: #3b82f6;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
+.sub-title-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
 }
 
-.edit-head h1 {
-  margin: 0;
-  color: #1f2937;
-  font-size: 28px;
-  line-height: 1.25;
-  letter-spacing: 0;
+.sub-title {
+  color: #303133;
+  font-size: 17px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .head-actions {
   flex-shrink: 0;
-}
-
-.editor-panel {
-  margin-top: 14px;
-  padding: 18px;
-  border: 1px solid #e4e9f2;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 12px 32px rgba(31, 45, 61, 0.06);
-  text-align: left;
+  flex-wrap: wrap;
 }
 
 .form {
@@ -184,8 +180,8 @@ export default {
 
 .editor-shell {
   overflow: hidden;
-  border: 1px solid #e4e9f2;
-  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  border-radius: 10px;
 }
 
 .editor-shell :deep(.v-md-editor) {
@@ -194,17 +190,7 @@ export default {
 
 @media (max-width: 768px) {
   .discussion-edit {
-    padding: 8px 0 20px;
-  }
-
-  .edit-head {
-    align-items: stretch;
-    flex-direction: column;
-    padding: 18px;
-  }
-
-  .edit-head h1 {
-    font-size: 24px;
+    width: 100%;
   }
 
   .head-actions {

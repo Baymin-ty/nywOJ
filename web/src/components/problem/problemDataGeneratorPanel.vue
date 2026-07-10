@@ -220,6 +220,8 @@ import axios from 'axios';
 import { ElMessageBox } from 'element-plus';
 import monacoEditor from '@/components/monacoEditor.vue';
 
+const MAX_STATIC_CASE_FILE_BYTES = 16 * 1024 * 1024;
+
 export default {
   name: 'problemDataGeneratorPanel',
   components: { monacoEditor },
@@ -458,9 +460,97 @@ export default {
         generator: this.draft.data.generator,
       };
     },
+    textBytes(value) {
+      const text = String(value == null ? '' : value);
+      if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(text).length;
+      try {
+        return unescape(encodeURIComponent(text)).length;
+      } catch (_) {
+        return text.length;
+      }
+    },
+    dataWithoutStaticCases(data) {
+      return { ...data, cases: [] };
+    },
+    dataMetaPayload(data) {
+      return {
+        ...data,
+        cases: (data.cases || []).map(item => ({
+          name: item.name,
+          subtaskId: item.subtaskId,
+        })),
+        generation: { ...data.generation, cases: [] },
+      };
+    },
+    previewCaseText(value, maxChars = 4096) {
+      const text = String(value == null ? '' : value);
+      const bytes = this.textBytes(text);
+      if (text.length <= maxChars) return { content: text, bytes, truncated: false };
+      return { content: `${text.slice(0, maxChars)}\n...(truncated)`, bytes, truncated: true };
+    },
+    previewStaticData(data) {
+      let totalBytes = 0;
+      const cases = (data.cases || []).map((item, index) => {
+        const input = this.previewCaseText(item.input);
+        const output = this.previewCaseText(item.output);
+        totalBytes += input.bytes + output.bytes;
+        return {
+          index: index + 1,
+          name: item.name || String(index + 1),
+          subtaskId: item.subtaskId || 1,
+          input,
+          output,
+        };
+      });
+      return { cases, totalBytes, sandboxGenerated: false, generatorSaved: false };
+    },
+    caseSaveFormData(sessionId, index, item) {
+      const form = new FormData();
+      form.append('pid', String(this.pid));
+      form.append('sessionId', sessionId);
+      form.append('index', String(index));
+      form.append('input', new Blob([String(item.input == null ? '' : item.input)], { type: 'text/plain;charset=utf-8' }), `${index}.in`);
+      form.append('output', new Blob([String(item.output == null ? '' : item.output)], { type: 'text/plain;charset=utf-8' }), `${index}.out`);
+      return form;
+    },
+    async saveStaticDataInChunks(data) {
+      const startRes = await axios.post('/api/problem/ai/startDataSave', {
+        pid: this.pid,
+        data: this.dataMetaPayload(data),
+        confirmReplace: true,
+      });
+      if (startRes.status !== 200 || !startRes.data || !startRes.data.sessionId) {
+        throw new Error((startRes.data && startRes.data.message) || '创建保存会话失败');
+      }
+      const sessionId = startRes.data.sessionId;
+      const cases = data.cases || [];
+      for (let i = 0; i < cases.length; i++) {
+        try {
+          const caseRes = await axios.post('/api/problem/ai/saveDataCase', this.caseSaveFormData(sessionId, i + 1, cases[i]));
+          if (caseRes.status !== 200) {
+            throw new Error((caseRes.data && caseRes.data.message) || '写入失败');
+          }
+        } catch (err) {
+          throw new Error(`写入第 ${i + 1}/${cases.length} 个测试点失败：${this.apiError(err, '写入失败')}`);
+        }
+      }
+      return axios.post('/api/problem/ai/finishDataSave', { pid: this.pid, sessionId });
+    },
     validateBeforeRun() {
       const data = this.dataPayload();
       const generationCases = data.generation.cases || [];
+      if (!generationCases.length) {
+        for (const item of data.cases || []) {
+          const inputBytes = this.textBytes(item.input);
+          const outputBytes = this.textBytes(item.output);
+          if (inputBytes > MAX_STATIC_CASE_FILE_BYTES || outputBytes > MAX_STATIC_CASE_FILE_BYTES) {
+            this.$message.error(
+              `测试点 ${item.name || ''} 的单个输入或输出超过 ${this.formatBytes(MAX_STATIC_CASE_FILE_BYTES)}，请拆分数据或改用 Generator 在线生成`
+            );
+            return null;
+          }
+        }
+      }
       const subtaskIds = new Set();
       let totalScore = 0;
       for (const item of data.subtasks || []) {
@@ -504,11 +594,17 @@ export default {
     async previewData() {
       const data = this.validateBeforeRun();
       if (!data) return;
+      const generationCases = data.generation.cases || [];
+      if (!generationCases.length) {
+        this.preview = this.previewStaticData(data);
+        this.$message.success('预览已生成');
+        return;
+      }
       this.previewing = true;
       try {
         const res = await axios.post('/api/problem/ai/previewData', {
           pid: this.pid,
-          data,
+          data: this.dataWithoutStaticCases(data),
           std: this.draft.std,
         });
         if (res.status === 200 && res.data.data) {
@@ -537,12 +633,15 @@ export default {
       }
       this.saving = true;
       try {
-        const res = await axios.post('/api/problem/ai/saveData', {
-          pid: this.pid,
-          data,
-          std: this.draft.std,
-          confirmReplace: true,
-        });
+        const generationCases = data.generation.cases || [];
+        const res = generationCases.length
+          ? await axios.post('/api/problem/ai/saveData', {
+            pid: this.pid,
+            data: this.dataWithoutStaticCases(data),
+            std: this.draft.std,
+            confirmReplace: true,
+          })
+          : await this.saveStaticDataInChunks(data);
         if (res.status === 200) {
           const count = res.data && res.data.cases ? res.data.cases.length : 0;
           this.$message.success(count ? `已写入 ${count} 个测试点` : '测试数据已写入');
@@ -563,7 +662,12 @@ export default {
       return `${value} B`;
     },
     apiError(err, fallback) {
-      return (err.response && err.response.data && err.response.data.message) || err.message || fallback;
+      const status = err.response && err.response.status;
+      const data = err.response && err.response.data;
+      if (status === 413) return '请求内容过大，请减少静态数据或调大 HTTP.bodyLimit 后重试';
+      if (data && typeof data === 'object' && data.message) return data.message;
+      if (typeof data === 'string' && data.trim()) return data.slice(0, 200);
+      return err.message || fallback;
     },
   },
 };

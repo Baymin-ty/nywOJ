@@ -97,18 +97,18 @@
             <div class="section-head">
               <div>
                 <h3>子任务与计分</h3>
-                <div class="section-subtitle">改完记得点「保存子任务」；测试点归属在下方数据列表里改。</div>
+                <div class="section-subtitle">计分方式、测试点归属和 pretest 改完后，点「保存数据配置」生效。</div>
               </div>
               <div class="section-actions">
                 <el-button type="warning" plain size="small" @click="addSubtask" :disabled="!auth.manage">
                   <el-icon class="el-icon--left">
                     <CirclePlus />
-                  </el-icon>新增子任务
+                  </el-icon>新增计分子任务
                 </el-button>
                 <el-button type="success" plain size="small" @click="updateSubtaskId" :disabled="!auth.manage">
                   <el-icon class="el-icon--left">
                     <CircleCheck />
-                  </el-icon>保存子任务
+                  </el-icon>保存数据配置
                 </el-button>
               </div>
             </div>
@@ -330,13 +330,14 @@
 
 <script>
 import axios from 'axios';
-import { Download, Connection, FirstAidKit } from '@element-plus/icons-vue';
 import judgeProfileDesigner from '@/components/problem/judge/judgeProfileDesigner.vue';
 import problemDataGeneratorPanel from '@/components/problem/problemDataGeneratorPanel.vue';
 
+const CASE_TABS = ['profile', 'data', 'onlineData', 'samples', 'health'];
+
 export default {
   name: "problemCaseManage",
-  components: { judgeProfileDesigner, problemDataGeneratorPanel, Download, Connection, FirstAidKit },
+  components: { judgeProfileDesigner, problemDataGeneratorPanel },
   data() {
     return {
       pid: 0,
@@ -356,7 +357,30 @@ export default {
       }
     };
   },
+  watch: {
+    activeTab(tab) {
+      this.syncTabToRoute(tab);
+    },
+    '$route.query.tab'(tab) {
+      const normalized = this.normalizeTab(tab);
+      if (normalized !== this.activeTab) this.activeTab = normalized;
+      else this.syncTabToRoute(normalized);
+    }
+  },
   methods: {
+    normalizeTab(tab) {
+      const raw = Array.isArray(tab) ? tab[0] : tab;
+      if (raw === 'manualData') return 'onlineData';
+      return CASE_TABS.includes(raw) ? raw : 'profile';
+    },
+    syncTabToRoute(tab) {
+      const normalized = this.normalizeTab(tab);
+      if (this.$route.query.tab === normalized) return;
+      this.$router.replace({
+        path: this.$route.path,
+        query: { ...this.$route.query, tab: normalized }
+      });
+    },
     onProfileSaved() {
       // 题型/checker 改变后体检结论会变，刷新一次
       this.loadHealth();
@@ -454,11 +478,11 @@ export default {
         cases: this.cases
       }).then(res => {
         if (res.status === 200) {
-          this.$message.success('更新成功');
+          this.$message.success('数据配置已保存');
           this.all();
           this.loadHealth();
         } else {
-          this.$message.error('更新失败' + res.data.message);
+          this.$message.error('保存数据配置失败' + res.data.message);
         }
       })
     },
@@ -633,9 +657,8 @@ export default {
     // Set pid before children mount so the embedded designer loads with the
     // real pid (not 0) on its immediate pid-watcher.
     this.pid = this.$route.params.pid;
-    const tab = this.$route.query.tab;
-    if (tab === 'manualData') this.activeTab = 'onlineData';
-    if (['profile', 'data', 'onlineData', 'samples', 'health'].includes(tab)) this.activeTab = tab;
+    this.activeTab = this.normalizeTab(this.$route.query.tab);
+    this.syncTabToRoute(this.activeTab);
   },
   mounted() {
     axios.post('/api/problem/getProblemAuth', {

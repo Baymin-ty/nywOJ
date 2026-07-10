@@ -7,7 +7,7 @@
         <div class="page-subtitle">刷新时间：{{ monitor.refreshedAt || '-' }}</div>
       </div>
       <div class="head-actions">
-        <el-button type="primary" plain @click="openCreateClient">
+        <el-button v-if="$can('judge.client.manage')" type="primary" plain @click="openCreateClient">
           <el-icon class="el-icon--left"><Plus /></el-icon>
           新增评测机
         </el-button>
@@ -120,7 +120,7 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="260" fixed="right">
+        <el-table-column v-if="$can('judge.client.manage')" label="操作" width="260" fixed="right">
           <template #default="scope">
             <el-button link type="primary" @click="openEditClient(scope.row)">编辑</el-button>
             <el-button link :type="scope.row.enabled ? 'warning' : 'success'" @click="toggleClient(scope.row)">

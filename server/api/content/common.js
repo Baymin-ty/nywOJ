@@ -9,8 +9,8 @@ const DEFAULT_HOME_CONFIG = {
   blocks: [
     { id: 'notice', type: 'notice', title: '首页公告', column: 'main', enabled: true, content: '' },
     { id: 'announcements', type: 'announcements', title: '公告栏', column: 'main', enabled: true, content: '' },
-    { id: 'latest-problems', type: 'latestProblems', title: '最新题目', column: 'main', enabled: true, content: '' },
-    { id: 'rabbit-rank', type: 'rabbitRank', title: '点击数排名', column: 'main', enabled: true, content: '' },
+    { id: 'latest-problems', type: 'latestProblems', title: '最近新增题目', column: 'main', enabled: true, content: '' },
+    { id: 'recent-contests', type: 'recentContests', title: '最近比赛', column: 'main', enabled: true, content: '' },
     { id: 'top-users', type: 'topUsers', title: '用户排行', column: 'side', enabled: true, content: '' },
     { id: 'hitokoto', type: 'hitokoto', title: '一言（ヒトコト）', column: 'side', enabled: true, content: '' },
     { id: 'countdown', type: 'countdown', title: '倒计时', column: 'side', enabled: true, content: '' },
@@ -23,10 +23,10 @@ const DEFAULT_HOME_CONFIG = {
 const HOME_BLOCK_TYPES = new Set([
   'announcements',
   'hitokoto',
-  'rabbitRank',
   'rabbitData',
   'topUsers',
   'latestProblems',
+  'recentContests',
   'notice',
   'countdown',
   'problemSearch',
@@ -101,7 +101,7 @@ exports.getHomeConfig = handler(async (req, res) => {
 });
 
 exports.updateHomeConfig = handler(async (req, res) => {
-  if (!req.can('announcement.manage')) return fail(res, '无权限修改首页设置');
+  if (!req.can('system.homepage.manage')) return fail(res, '无权限修改首页设置');
   await ensureSettingSchema();
   const current = await readHomeConfig();
   const config = normalizeHomeConfig(req.body.config || {}, current.homepageSettings || null);

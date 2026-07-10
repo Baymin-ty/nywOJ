@@ -47,7 +47,6 @@ const contestProblem = () => import(/* webpackChunkName: "page-contest-problem" 
 
 const systemManage = () => import(/* webpackChunkName: "page-admin-system" */ "@/components/admin/systemManage")
 const permissionCenter = () => import(/* webpackChunkName: "page-admin-permissions" */ "@/components/admin/permissionCenter")
-const judgeMachine = () => import(/* webpackChunkName: "page-judge-machine" */ "@/components/judge/judgeMachine.vue")
 
 // Permission-gated routes: route -> [required permission keys, any-of].
 const perPermissions = {
@@ -55,12 +54,12 @@ const perPermissions = {
 };
 
 const systemTabPermissions = {
-  groups: ['user.manage', 'user.role.admin'],
-  judge: ['submission.rejudge.any', 'user.manage', 'user.role.admin'],
-  tags: ['problem.manage.any'],
-  rating: ['user.role.admin'],
-  migration: ['user.role.admin'],
-  homepage: ['announcement.manage'],
+  groups: ['group.manage'],
+  judge: ['judge.monitor.view', 'judge.client.manage'],
+  tags: ['problem.tag.manage'],
+  rating: ['system.rating.manage'],
+  migration: ['system.migration.manage'],
+  homepage: ['system.homepage.manage'],
 };
 
 const allSystemPermissions = [...new Set(
@@ -147,11 +146,11 @@ const oldStatisticsTypePath = (type) => ({
   min: 'minmemory',
 }[String(type || '').toLowerCase()] || String(type || 'fastest').toLowerCase());
 
-const LIBREOJ_USERNAME_RE = /^[A-Za-z0-9\-_.#$]{3,24}$/;
+const USERNAME_ROUTE_RE = /^[A-Za-z0-9\-_.#$]{3,24}$/;
 
 const isPublicUserProfileRoute = (to) =>
     to.matched.some((record) => record.path === '/u/:username') &&
-    LIBREOJ_USERNAME_RE.test(String(to.params.username || ''));
+    USERNAME_ROUTE_RE.test(String(to.params.username || ''));
 
 const router = createRouter({
     history: createWebHistory(),
@@ -215,12 +214,6 @@ const router = createRouter({
             activeTitle: '/user'
         },
         path: '/admin/permissions', component: permissionCenter,
-    }, {
-        meta: {
-            title: '评测机状态',
-            activeTitle: '/judge-machine'
-        },
-        path: '/judge-machine', component: judgeMachine,
     }, {
         path: '/admin/usermanage', redirect: '/admin/permissions',
     }, {
@@ -642,7 +635,6 @@ router.beforeEach(async (to, from, next) => {
             to.path === '/submission' ||
             to.path === '/submissions' ||
             to.path === '/s' ||
-            to.path === '/judge-machine' ||
             to.path === '/discussion' ||
             to.path === '/discussion/global' ||
             to.path === '/discussion/problems' ||
