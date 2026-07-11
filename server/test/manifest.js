@@ -13,6 +13,7 @@ module.exports = {
     { path: 'test/logic/contest_standings.test.js', desc: '榜单事件回放引擎五赛制归约断言' },
     { path: 'test/logic/notification.test.js', desc: '站内通知 push / 幂等 / 未读数' },
     { path: 'test/logic/rateLimit.test.js', desc: '限流令牌桶放行 / 429 / 独立计数' },
+    { path: 'test/logic/clarification.test.js', desc: '赛内提问 提问/回复/公告/可见性/通知' },
   ],
   e2e: [
     { path: 'test/e2e/judge_types.js', desc: '判题六题型真 worker + 活沙箱', needs: 'sandbox' },

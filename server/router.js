@@ -304,6 +304,12 @@ router.post('/api/contest/getHackTargets', contestHacks.getHackTargets);
 router.post('/api/contest/getHackTargetCode', contestHacks.getHackTargetCode);
 router.post('/api/contest/submitHack', contestHacks.submitHack);
 router.post('/api/contest/getHackList', contestHacks.getHackList);
+
+const contestClar = require('./api/contest/clar');
+router.post('/api/contest/submitClar', rlPost, contestClar.submitClar);
+router.post('/api/contest/listClars', contestClar.listClars);
+router.post('/api/contest/answerClar', contestClar.answerClar);
+router.post('/api/contest/postAnnouncement', contestClar.postAnnouncement);
 const contestHealth = require('./api/contest/health');
 router.post('/api/contest/checkContest', contestHealth.checkContest);
 const contestTeams = require('./api/contest/teams');

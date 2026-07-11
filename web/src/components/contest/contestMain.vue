@@ -99,6 +99,15 @@
               </template>
               <hackPanel ref="hack" :can-hack="hackAuth" />
             </el-tab-pane>
+            <el-tab-pane name="clar" v-if="joinAuth || viewAuth || canManage">
+              <template #label>
+                <el-icon style="margin: 4px;">
+                  <ChatDotRound />
+                </el-icon>
+                提问
+              </template>
+              <contestClar ref="clar" :can-manage="canManage" :can-ask="canAsk" />
+            </el-tab-pane>
             <el-tab-pane name="manageC" v-if="canManage">
               <template #label>
                 <el-icon style="margin: 4px;">
@@ -371,6 +380,7 @@ import contestProblemList from './components/contestProblemList.vue'
 import problemManage from './components/problemManage.vue'
 import hackPanel from './components/hackPanel.vue'
 import teamPanel from './components/teamPanel.vue'
+import contestClar from './components/contestClar.vue'
 import CollaboratorPanel from '@/components/permission/CollaboratorPanel.vue'
 
 export default {
@@ -382,9 +392,14 @@ export default {
     problemManage,
     hackPanel,
     teamPanel,
+    contestClar,
     CollaboratorPanel,
   },
   computed: {
+    // 选手可提问：已参与 + 比赛进行中 + 非管理员（管理员走发公告/回复）
+    canAsk() {
+      return this.joinAuth && this.contestInfo.status === '正在进行' && !this.canManage;
+    },
     // Mirrors server/api/contest/contest.js#canManageContest. The server-computed
     // contestInfo.auth.manage is authoritative; this is just the first-paint
     // guess. The new model: (host AND contest.manage.self) OR contest.manage.any.
