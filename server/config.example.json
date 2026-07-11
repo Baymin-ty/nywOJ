@@ -100,6 +100,17 @@
     "timeout": 120000,
     "maxTokens": 20000
   },
+  "SECURITY": {
+    "enabled": true,
+    "abuseAuditThreshold": 20,
+    "rules": {
+      "submit": { "capacity": 2, "refillPerSec": 0.1 },
+      "customRun": { "capacity": 6, "refillPerSec": 0.1 },
+      "login": { "capacity": 10, "refillPerSec": 0.167 },
+      "post": { "capacity": 5, "refillPerSec": 0.083 },
+      "search": { "capacity": 30, "refillPerSec": 0.5 }
+    }
+  },
   "JUDGE": {
     "ISSERVER": true,
     "NAME": "<judge-machine-name>",

@@ -309,6 +309,32 @@ const markRateLimit = (req, key) => {
   lastSent[bucket] = Date.now();
 };
 
+// 登录失败递增退避：key=account:ip。连续失败 n 次后要求等待 min(2^(n-3),60) 秒
+// （前 3 次不罚）；成功登录清零；计数 30 分钟过期。
+const loginFails = new Map(); // key -> { n, until, last }
+const FREE_TRIES = 3;
+const loginBackoffKey = (req, account) => `${String(account).toLowerCase()}:${req.session.ip || req.ip || 'unknown'}`;
+const loginBackoffWait = (req, account) => {
+  const rec = loginFails.get(loginBackoffKey(req, account));
+  if (!rec) return 0;
+  if (Date.now() - rec.last > 30 * 60 * 1000) { loginFails.delete(loginBackoffKey(req, account)); return 0; }
+  if (rec.until && Date.now() < rec.until) return Math.ceil((rec.until - Date.now()) / 1000);
+  return 0;
+};
+const noteLoginFail = (req, account) => {
+  const key = loginBackoffKey(req, account);
+  const rec = loginFails.get(key) || { n: 0, until: 0, last: 0 };
+  rec.n += 1;
+  rec.last = Date.now();
+  if (rec.n > FREE_TRIES) {
+    const wait = Math.min(Math.pow(2, rec.n - FREE_TRIES), 60);
+    rec.until = Date.now() + wait * 1000;
+  }
+  loginFails.set(key, rec);
+  return rec.n;
+};
+const clearLoginFail = (req, account) => loginFails.delete(loginBackoffKey(req, account));
+
 const startLoginSession = async (req, user) => {
   req.session.uid = user.uid;
   req.session.name = user.name;
@@ -374,21 +400,28 @@ exports.login = handler(async (req, res) => {
   const { pwd } = req.body;
   if (!account || !pwd) return fail(res, '请确认信息完善');
 
+  // 登录失败递增退避（撞库缓解）
+  const backoff = loginBackoffWait(req, account);
+  if (backoff > 0) return fail(res, `登录尝试过多，请 ${backoff} 秒后再试`);
+
   const isEmail = EMAIL_REGEX.test(account);
   const user = await db.one(
     isEmail ? 'SELECT * FROM userInfo WHERE email=? LIMIT 1' : 'SELECT * FROM userInfo WHERE name=? LIMIT 1',
     [account]
   );
-  if (!user) return fail(res, '请先注册后再登录');
+  if (!user) { noteLoginFail(req, account); return fail(res, '请先注册后再登录'); }
   if (!user.inUse) {
     recordEvent(req, 'user.loginFail.userBlocked', null, user.uid);
     return fail(res, '你号没了');
   }
   if (!bcrypt.compareSync(pwd, user.pwd)) {
     recordEvent(req, 'user.loginFail.wrongPassword', null, user.uid);
+    const n = noteLoginFail(req, account);
+    if (n >= 10) { try { recordEvent(req, 'security.loginBackoff', { account, fails: n }, user.uid); } catch (e) { /* best effort */ } }
     return fail(res, '密码错误');
   }
 
+  clearLoginFail(req, account);
   await startLoginSession(req, user);
   return ok(res);
 });

@@ -119,6 +119,8 @@ exports.eventList = [
   'problem.aiSaveSolution',
   'problem.aiSaveData',
   'problem.aiSaveJudge',
+  'security.rateLimit.abuse',
+  'security.loginBackoff',
 ];
 
 exports.eventExp = [
@@ -183,6 +185,8 @@ exports.eventExp = [
   'LLM 创建题解草稿',
   'LLM 保存测试数据',
   'LLM 保存评测配置',
+  '安全 - 触发限流',
+  '安全 - 登录失败退避',
 ]
 
 

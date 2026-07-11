@@ -1,6 +1,14 @@
 const express = require('express');
 const router = express.Router();
 
+const { rateLimit } = require('./rateLimit');
+// 复用的限流器（config.SECURITY.rules[name] 可覆盖阈值；enabled=false 全直通）
+const rlSubmit = rateLimit('submit', { capacity: 2, refillPerSec: 0.1, by: 'uid' });     // ~每 10s 1 次
+const rlCustomRun = rateLimit('customRun', { capacity: 6, refillPerSec: 0.1, by: 'uid' }); // ~每分钟 6 次
+const rlLogin = rateLimit('login', { capacity: 10, refillPerSec: 10 / 60, by: 'ip' });     // ~每分钟 10 次/IP
+const rlPost = rateLimit('post', { capacity: 5, refillPerSec: 5 / 60, by: 'uid' });         // 讨论/回复/paste，每分钟 5 次
+const rlSearch = rateLimit('search', { capacity: 30, refillPerSec: 0.5, by: 'both' });      // 搜索，每分钟 30 次
+
 const rabbit = require('./api/content/rabbit');
 
 router.post('/api/rabbit/all', rabbit.all);
@@ -12,7 +20,7 @@ router.post('/api/rabbit/getClickData', rabbit.getClickData);
 const user = require('./api/account/user');
 const profileApi = require('./api/account/profile');
 
-router.post('/api/user/login', user.login);
+router.post('/api/user/login', rlLogin, user.login);
 router.post('/api/user/sendLoginEmailCode', user.sendLoginEmailCode);
 router.post('/api/user/loginByEmailCode', user.loginByEmailCode);
 router.post('/api/user/reg', user.reg);
@@ -194,9 +202,9 @@ router.post('/api/problem/signedUploadData', fileUpload.verifySignedCaseUpload, 
 
 const judge = require('./api/judge/core');
 
-router.post('/api/judge/submit', judge.submit);
-router.post('/api/judge/submitMulti', judge.submitMulti);
-router.post('/api/judge/submitAnswer', fileUpload.answerUpload.single('file'), judge.submitAnswer);
+router.post('/api/judge/submit', rlSubmit, judge.submit);
+router.post('/api/judge/submitMulti', rlSubmit, judge.submitMulti);
+router.post('/api/judge/submitAnswer', rlSubmit, fileUpload.answerUpload.single('file'), judge.submitAnswer);
 router.post('/api/judge/getAnswerFile', judge.getAnswerFile);
 router.post('/api/judge/getSubmissionList', judge.getSubmissionList);
 router.post('/api/judge/getSubmissionInfo', judge.getSubmissionInfo);
@@ -216,7 +224,7 @@ router.post('/api/judge/clientHeartbeat', judge.clientHeartbeat);
 router.post('/api/judge/getLangs', judge.getLangs);
 
 const customRun = require('./api/judge/customRun');
-router.post('/api/judge/customRun', customRun.customRun);
+router.post('/api/judge/customRun', rlCustomRun, customRun.customRun);
 
 const ideProfileRun = require('./api/judge/ideProfileRun');
 router.post('/api/ide/problemContext', ideProfileRun.problemContext);
@@ -240,11 +248,11 @@ router.get('/api/homepage/getHomepage', homepage.getHomepage);
 const discussion = require('./api/content/discussion');
 router.post('/api/discussion/getDiscussionList', discussion.getDiscussionList);
 router.post('/api/discussion/getDiscussion', discussion.getDiscussion);
-router.post('/api/discussion/addDiscussion', discussion.addDiscussion);
+router.post('/api/discussion/addDiscussion', rlPost, discussion.addDiscussion);
 router.post('/api/discussion/updateDiscussion', discussion.updateDiscussion);
 router.post('/api/discussion/delDiscussion', discussion.delDiscussion);
 router.post('/api/discussion/getReplies', discussion.getReplies);
-router.post('/api/discussion/addReply', discussion.addReply);
+router.post('/api/discussion/addReply', rlPost, discussion.addReply);
 router.post('/api/discussion/updateReply', discussion.updateReply);
 router.post('/api/discussion/delReply', discussion.delReply);
 router.post('/api/discussion/toggleReaction', discussion.toggleReaction);
@@ -280,7 +288,7 @@ router.post('/api/contest/updateProblemList', contest.updateProblemList);
 router.post('/api/contest/getProblemList', contest.getProblemList);
 router.post('/api/contest/getPlayerProblemList', contest.getPlayerProblemList);
 router.post('/api/contest/getProblemInfo', contest.getProblemInfo);
-router.post('/api/contest/submit', contest.submit);
+router.post('/api/contest/submit', rlSubmit, contest.submit);
 router.post('/api/contest/getSubmissionList', contest.getSubmissionList);
 router.post('/api/contest/getLastSubmissionList', contest.getLastSubmissionList);
 router.post('/api/contest/getSubmissionInfo', contest.getSubmissionInfo);

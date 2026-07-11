@@ -12,6 +12,7 @@ module.exports = {
     { path: 'auth/http_access_smoke.js', desc: 'HTTP 路由鉴权冒烟（真实 server 子进程）' },
     { path: 'test/logic/contest_standings.test.js', desc: '榜单事件回放引擎五赛制归约断言' },
     { path: 'test/logic/notification.test.js', desc: '站内通知 push / 幂等 / 未读数' },
+    { path: 'test/logic/rateLimit.test.js', desc: '限流令牌桶放行 / 429 / 独立计数' },
   ],
   e2e: [
     { path: 'test/e2e/judge_types.js', desc: '判题六题型真 worker + 活沙箱', needs: 'sandbox' },

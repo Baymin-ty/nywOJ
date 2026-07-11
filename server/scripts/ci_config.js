@@ -16,6 +16,8 @@ cfg.DB.databasename = process.env.DB_NAME || 'nywoj_ci';
 // CI 里没有邮件/沙箱，关闭会拨外网的东西
 cfg.EMAIL.host = '';
 cfg.JUDGE.NAME = 'ci';
+// CI 关闭限流，避免拖慢/干扰测试
+cfg.SECURITY = { enabled: false };
 
 fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify(cfg, null, 2));
 console.log(`ci config.json 已生成 -> ${cfg.DB.username}@${cfg.DB.host}:${cfg.DB.port}/${cfg.DB.databasename}`);

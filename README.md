@@ -249,6 +249,8 @@ cp server/config.example.json server/config.json
 - `SESSION.expire` — express-session cookie 过期毫秒数
 - `METRICS.enabled` — 是否启动 Prometheus metrics 导出端口；开启后默认监听 `127.0.0.1:9100/metrics`
 - `METRICS.allowedIps` — metrics 端口访问白名单；为空数组时不限制来源 IP
+- `SECURITY.enabled` — 统一限流中间件开关（默认 `true`；CI/本地可设 `false` 直通）。按令牌桶对提交 / 自测 / 登录 / 讨论发帖 / 搜索限流，超限回 `429 { wait }`；单实例内存实现，多实例部署需换 Redis
+- `SECURITY.rules` — 各规则 `{ capacity, refillPerSec }` 覆盖（`submit` / `customRun` / `login` / `post` / `search`）；`abuseAuditThreshold` 撞限流达阈值/分钟写审计。登录另有失败递增退避（同 账号+IP 连续失败 >3 次后 `min(2^(n-3),60)` 秒退避，成功清零）
 - `EVENT_REPORT.enabled` — 可选 Telegram 事件上报；开启并配置 token / chat 后会报告 API handler、Express 中间件和进程级未捕获异常
 - `EVENT_REPORT.telegramBotToken` / `EVENT_REPORT.sentTo` — Telegram bot token 与接收方 chat id；`telegramApiRoot`、`proxyUrl`、`timeout` 和 `dedupeWindowMs` 可按部署环境调整
 - `LLM.baseUrl` / `LLM.model` — LLM 出题助手的站点默认 Base URL 与模型；每个用户在助手页面保存自己的 API Key 和 Base URL，生成消耗该用户自己的额度。助手可生成题面、STD、题解、静态数据、造数据程序和 `judgeProfile` 评测配置；SPJ/testlib checker、提交答案、函数题、交互题、通信题会随草稿给出可编辑的评测资产

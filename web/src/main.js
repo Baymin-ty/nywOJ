@@ -30,6 +30,19 @@ Object.entries(ElementPlusIconsVue).forEach(([key, component]) => app.component(
 import { ElMessage } from 'element-plus'
 app.config.globalProperties.$message = ElMessage
 
+// 全局 429 处理：限流响应统一弹提示，避免每个 .catch 各写一遍
+import axios from 'axios'
+axios.interceptors.response.use(
+  (resp) => resp,
+  (error) => {
+    if (error && error.response && error.response.status === 429) {
+      const data = error.response.data || {}
+      ElMessage.warning(data.message || `操作过于频繁，请 ${data.wait || 30} 秒后再试`)
+    }
+    return Promise.reject(error)
+  }
+)
+
 import canPlugin from '@/utils/can'
 app.use(canPlugin)
 registerMarkdownComponents(app)
