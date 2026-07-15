@@ -44,6 +44,7 @@ exports.submitClar = handler(async (req, res) => {
   const cid = cidOf(req);
   const v = await loadView(req, cid);
   if (!v) return fail(res, '比赛不存在');
+  if (v.virtual) return fail(res, '虚拟参赛不支持赛内提问', 403);
   if (!v.isReged) return fail(res, '仅参赛者可提问', 403);
   if (v.status !== 1) return fail(res, '仅比赛进行中可提问');
 

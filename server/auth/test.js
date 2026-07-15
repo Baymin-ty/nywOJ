@@ -162,7 +162,7 @@ const cleanupSandbox = async () => {
     await test('all builtin roles upserted with builtin=1', async () => {
       const rows = await db.query("SELECT `key`, builtin FROM roles WHERE `key` IN (?)", [Object.keys(BUILTIN_ROLES)]);
       const map = new Map(rows.map((r) => [r.key, r]));
-      for (const [k, meta] of Object.entries(BUILTIN_ROLES)) {
+      for (const k of Object.keys(BUILTIN_ROLES)) {
         const row = map.get(k);
         if (!row) throw new Error('missing role: ' + k);
         if (row.builtin !== 1) throw new Error(`role ${k} should have builtin=1`);

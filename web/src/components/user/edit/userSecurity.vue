@@ -25,14 +25,13 @@
     <el-col :span="12">
       <el-form label-position="top">
         <el-form-item label="新邮箱">
-          <el-input v-model="updEmail.new" type="text" placeholder="请先输入邮箱，再进行人机验证" />
+          <el-input v-model="updEmail.new" type="text" placeholder="请输入新邮箱" />
         </el-form-item>
-        <el-form-item label="人机验证">
-          <el-button type="info" plain v-show="!recap" @click="recaptcha">发送验证码</el-button>
-          <div id="grecaptcha" v-show="recap"></div>
+        <el-form-item label="邮箱验证">
+          <el-button type="info" plain @click="sendVerifyCode">发送验证码</el-button>
         </el-form-item>
         <el-form-item label="验证码">
-          <el-input v-model="updEmail.verifyCode" type="text" placeholder="通过上方人机验证后，自动发送验证码" />
+          <el-input v-model="updEmail.verifyCode" type="text" placeholder="请输入邮箱验证码" />
         </el-form-item>
         <el-button type="primary" @click="updateEmail">提交</el-button>
       </el-form>
@@ -55,8 +54,7 @@ export default {
       updEmail: {
         new: '',
         verifyCode: ''
-      },
-      recap: 0
+      }
     }
   },
   methods: {
@@ -64,25 +62,20 @@ export default {
       axios.post('/api/user/modifyPassword', { newPwd: this.updPwd }).then(res => {
         if (res.status === 200) {
           this.$message.success('更新成功');
-        } else {
-          this.$message.error('更新失败' + res.data.message);
+          this.updPwd = { old: '', new: '', rep: '' };
         }
-        this.all();
+      }).catch(err => {
+        this.$message.error((err.response && err.response.data && err.response.data.message) || err.message || '更新失败');
       });
     },
-    sendVerifyCode(retoken) {
+    sendVerifyCode() {
       axios.post('/api/user/sendEmailVerifyCode', {
         email: this.updEmail.new,
-        retoken: retoken,
         update: true
       }).then(res => {
         if (res.status === 200) {
           this.$message.success('验证码已发送，请注意查收');
-        } else {
-          if (this.recap)
-            window.grecaptcha.reset();
-          this.$message.error(res.data.message);
-        }
+        } else this.$message.error(res.data.message);
       }).catch(err => {
         this.$message.error(err.message);
       });
@@ -98,29 +91,11 @@ export default {
             new: '',
             verifyCode: ''
           };
-          if (this.recap)
-            window.grecaptcha.reset();
-        } else {
-          this.$message.error(res.data.message);
-        }
+        } else this.$message.error(res.data.message);
       }).catch(err => {
         this.$message.error(err.message);
       });
-    },
-    recaptcha() {
-      this.sendVerifyCode();
-      return;
-
-      // if (this.recap) return;
-      // this.recap = 1;
-      // window.grecaptcha.render("grecaptcha", {
-      //   sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
-      //   callback: this.sendVerifyCode
-      // });
     }
-  },
-  mounted() {
-
   }
 }
 </script>

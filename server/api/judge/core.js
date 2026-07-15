@@ -1065,8 +1065,7 @@ exports.getLangs = handler(async (req, res) => {
   await syncLanguages(db);
   const data = await db.query('SELECT id,name,des,lang FROM languages');
   const langList = data.filter((i) => getLanguage(i.name)).reduce((acc, i) => {
-    const { name, ...payload } = i;
-    acc[i.id] = payload;
+    acc[i.id] = { id: i.id, des: i.des, lang: i.lang };
     return acc;
   }, {});
   return ok(res, { data: langList });

@@ -4,6 +4,7 @@ const app = express()
 const cors = require('cors')
 const router = require('./router')
 const config = require('./config.json')
+const { sessionSecret, usingLegacySessionSecret } = require('./sessionSecret')
 const requestBodyLimit = process.env.NYWOJ_BODY_LIMIT ||
   (config.HTTP && config.HTTP.bodyLimit) ||
   (config.http && config.http.bodyLimit) ||
@@ -25,12 +26,16 @@ const sessionStore = new MySQLStore(options);
 
 app.use(session({
   store: sessionStore,
-  secret: '114514-nywOJ-1919810',
+  secret: sessionSecret,
   resave: true,
   saveUninitialized: true,
   cookie: { maxAge: parseInt(config.SESSION.expire) },
   name: 'token'
 }));
+
+if (usingLegacySessionSecret) {
+  console.warn('SESSION.secret is not configured; using the legacy compatibility secret.');
+}
 const parser = require('ua-parser-js');
 const db = require('./db');
 const { syncPermissionCatalog } = require('./auth/sync');

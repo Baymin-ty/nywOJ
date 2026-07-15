@@ -1,5 +1,6 @@
 const { getContest, isReg } = require('./store');
 const { resolveConfig } = require('./formats');
+const { activeVirtual } = require('./virtualStore');
 
 // ============================================================================
 // 比赛鉴权/可见性统一收口。所有 endpoint 不再写内联布尔表达式，改为：
@@ -12,11 +13,14 @@ const { resolveConfig } = require('./formats');
 // ============================================================================
 
 // 0 未开始 / 1 进行中 / 2 已过截止但未关闭（等待测评）/ 3 已结束(done)
-const contestStatus = (info) => {
+// nowMs 可注入虚拟时钟（虚拟参赛）；默认真实时间。done 始终优先（虚拟参赛只对
+// 未 done 的历史赛开放，virtualNow 只影响 0/1/2 的推导）。
+const contestStatusAt = (info, nowMs = Date.now()) => {
   if (info.done) return 3;
-  if (Date.now() > info.start.getTime() + info.length * 1000 * 60) return 2;
-  return Date.now() >= info.start.getTime() ? 1 : 0;
+  if (nowMs > info.start.getTime() + info.length * 1000 * 60) return 2;
+  return nowMs >= info.start.getTime() ? 1 : 0;
 };
+const contestStatus = (info) => contestStatusAt(info, Date.now());
 
 // manage = (host AND contest.manage.self) OR contest.manage.any (scoped or global)
 const canManageContest = async (req, cid) => {
@@ -33,20 +37,45 @@ const canManageLoaded = (req, contest) => {
 };
 
 // 观众身份 + 能力推导。返回：
-// { contest, cfg, status, isReged, isManager, caps }
+// { contest, cfg, status, isReged, isManager, caps, virtual }
 const resolveView = async (req, contest) => {
-  const status = contestStatus(contest);
-  const isReged = await isReg(req.session.uid, contest.cid);
-  const isManager = await canManageLoaded(req, contest);
+  const uid = req.session.uid;
   const cfg = resolveConfig(contest);
-  const caps = capabilities(contest, cfg, status, {
-    uid: req.session.uid,
+  const isManager = await canManageLoaded(req, contest);
+
+  // 虚拟参赛：仅对非正式参赛、非管理、已结束(done)的历史赛，且存在未完成 VP 会话时启用。
+  // virtualNow 把「真实经过 (now-startAt)」映射到比赛时间轴 start+经过。
+  let virtual = null;
+  let nowMs = Date.now();
+  const officialReged = await isReg(uid, contest.cid);
+  if (uid && !officialReged && !isManager && contest.done) {
+    const vp = await activeVirtual(uid, contest.cid);
+    if (vp) {
+      const durationMs = contest.length * 60 * 1000;
+      const elapsed = Date.now() - new Date(vp.startAt).getTime();
+      if (elapsed >= 0 && elapsed <= durationMs) {
+        virtual = { vid: vp.vid, startAt: vp.startAt, elapsedSec: Math.floor(elapsed / 1000) };
+        nowMs = contest.start.getTime() + elapsed; // 虚拟时钟
+      }
+    }
+  }
+
+  // VP 会话中把 done 视为 false 来推导阶段（否则 contestStatusAt 直接返回 3）
+  const phaseContest = virtual ? { ...contest, done: 0 } : contest;
+  const status = contestStatusAt(phaseContest, nowMs);
+  // VP 参赛者对该场视作已报名（能看题/提交/看自己的榜）
+  const isReged = officialReged || !!virtual;
+
+  const caps = capabilities(phaseContest, cfg, status, {
+    uid,
     isReged,
     isManager,
+    isVirtual: !!virtual,
+    nowMs,
     canViewAnySubmission: req.can('submission.view.any'),
     canRejudgeAny: req.can('submission.rejudge.any'),
   });
-  return { contest, cfg, status, isReged, isManager, caps };
+  return { contest, cfg, status, isReged, isManager, caps, virtual };
 };
 
 const loadView = async (req, cid) => {
@@ -57,7 +86,8 @@ const loadView = async (req, cid) => {
 
 // 纯函数：能力矩阵。viewer = { uid, isReged, isManager, canViewAnySubmission, canRejudgeAny }
 const capabilities = (contest, cfg, status, viewer) => {
-  const { isReged, isManager } = viewer;
+  const { isReged, isManager, isVirtual } = viewer;
+  const nowMs = viewer.nowMs != null ? viewer.nowMs : Date.now();
   const isPublic = !!contest.isPublic;
   const done = !!contest.done;
   const ended = status === 3;
@@ -73,7 +103,7 @@ const capabilities = (contest, cfg, status, viewer) => {
   const inLateWindow = (() => {
     if (!late.enabled || status !== 2 || done) return false;
     const deadlineMs = new Date(contest.start).getTime() + contest.length * 60 * 1000;
-    return Date.now() <= deadlineMs + (Number(late.windowMinutes) || 0) * 60 * 1000;
+    return nowMs <= deadlineMs + (Number(late.windowMinutes) || 0) * 60 * 1000;
   })();
 
   return {
@@ -117,10 +147,10 @@ const capabilities = (contest, cfg, status, viewer) => {
     fullSubmissionView: isManager || viewer.canViewAnySubmission || ended,
     // 重测：比赛管理者或全局重测权（submission.rejudge.self 不适用于比赛内提交）
     canRejudge: isManager || viewer.canRejudgeAny,
-    // hack（CF）：开启 hack、比赛进行中、终测未开始、已报名选手
+    // hack（CF）：开启 hack、比赛进行中、终测未开始、已报名选手；虚拟参赛禁用 hack（无真人对手）
     canHack:
       contest.format === 'cf' && !!(cfg.cf && cfg.cf.hackEnabled) &&
-      status === 1 && Number(contest.phase || 0) === 0 && isReged,
+      status === 1 && Number(contest.phase || 0) === 0 && isReged && !isVirtual,
     // hack 记录列表：选手赛中可见（自己的+统计），管理员/赛后全量
     canViewHacks:
       contest.format === 'cf' && ((isReged && status > 0) || isManager || (ended && publicOrReged)),
@@ -130,6 +160,7 @@ const capabilities = (contest, cfg, status, viewer) => {
 
 module.exports = {
   contestStatus,
+  contestStatusAt,
   canManageContest,
   canManageLoaded,
   resolveView,

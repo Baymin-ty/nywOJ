@@ -15,6 +15,7 @@
     "from": "nywOJ <your-smtp-user@163.com>"
   },
   "SESSION": {
+    "secret": "<replace-with-a-long-random-secret>",
     "expire": "604800000"
   },
   "HTTP": {

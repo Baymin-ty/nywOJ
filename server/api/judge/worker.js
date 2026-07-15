@@ -619,9 +619,6 @@ const resolveCompileInputWithMeta = async (pid, name, submit) => {
   throw new JudgeError('judgement', `编译输入 ${name} 不存在（既非资产也非提交文件）`);
 };
 
-const resolveCompileInput = async (pid, name, submit) =>
-  (await resolveCompileInputWithMeta(pid, name, submit)).content;
-
 // Compile one step → { product } | { ce }. product = { fileId, runArgs, binName }.
 const compileProfileStep = async (sid, pid, step, lang, submit) => {
   const base = { env: DEFAULT_ENV, stdio: stdioFiles(), ...COMPILE_LIMITS, outputFiles: ['stdout', 'stderr'] };

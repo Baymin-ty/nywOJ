@@ -11,11 +11,11 @@ const crypto = require('crypto');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const signature = require('cookie-signature');
+const { sessionSecret } = require('../sessionSecret');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const SERVER_ROOT = path.join(__dirname, '..');
 const BASE = process.env.NYWOJ_HTTP_BASE || 'http://127.0.0.1:1234';
-const SESSION_SECRET = '114514-nywOJ-1919810';
 const SESSION_COOKIE = 'token';
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -66,7 +66,6 @@ const q = async (sql, params) => db.query(sql, params);
 const one = async (sql, params) => db.one(sql, params);
 
 const post = (identity, apiPath, body = {}) => request(identity, 'POST', apiPath, body);
-const get = (identity, apiPath) => request(identity, 'GET', apiPath);
 
 const request = async (identity, method, apiPath, body) => {
   const headers = {
@@ -186,7 +185,7 @@ const createSession = async (user) => {
     JSON.stringify(data),
   ]);
   state.sids.push(sid);
-  const signed = `s:${signature.sign(sid, SESSION_SECRET)}`;
+  const signed = `s:${signature.sign(sid, sessionSecret)}`;
   return { ...user, sid, cookie: `${SESSION_COOKIE}=${encodeURIComponent(signed)}` };
 };
 

@@ -42,8 +42,8 @@ router.post('/api/user/getUserSecuritySettings', profileApi.getUserSecuritySetti
 router.post('/api/user/queryAuditLogs', profileApi.queryAuditLogs);
 router.post('/api/user/updateUserPassword', profileApi.updateUserPassword);
 router.post('/api/user/updateUserSelfEmail', profileApi.updateUserSelfEmail);
-router.get('/api/user/searchUser', profileApi.searchUser);
-router.post('/api/user/searchUser', profileApi.searchUser);
+router.get('/api/user/searchUser', rlSearch, profileApi.searchUser);
+router.post('/api/user/searchUser', rlSearch, profileApi.searchUser);
 router.post('/api/user/getUserList', profileApi.getUserList);
 router.post('/api/user/setUserMotto', user.setUserMotto);
 router.post('/api/user/listSessions', user.listSessions);
@@ -92,9 +92,9 @@ router.post('/api/auth/setUserRolesBatch', auth.setUserRolesBatch);
 router.post('/api/auth/grantUserPermission', auth.grantUserPermission);
 router.post('/api/auth/revokeUserPermission', auth.revokeUserPermission);
 router.post('/api/auth/listResourceGrants', auth.listResourceGrants);
-router.post('/api/auth/searchUsers', auth.searchUsers);
-router.post('/api/auth/searchProblems', auth.searchProblems);
-router.post('/api/auth/searchContests', auth.searchContests);
+router.post('/api/auth/searchUsers', rlSearch, auth.searchUsers);
+router.post('/api/auth/searchProblems', rlSearch, auth.searchProblems);
+router.post('/api/auth/searchContests', rlSearch, auth.searchContests);
 
 const group = require('./api/account/group');
 router.post('/api/group/getGroupList', group.getGroupList);

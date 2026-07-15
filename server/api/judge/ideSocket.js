@@ -33,13 +33,12 @@ const WebSocket = require('ws');
 const cookie = require('cookie');
 const signature = require('cookie-signature');
 const db = require('../../db');
+const { sessionSecret } = require('../../sessionSecret');
 const { getLanguage, stdioFiles, COMPILE_LIMITS, DEFAULT_ENV } = require('./languages');
 const sandboxClient = require('./sandbox');
 
 const SANDBOX_WS = sandboxClient.streamUrl;
 
-// MUST match the express-session config in app.js.
-const SESSION_SECRET = '114514-nywOJ-1919810';
 const SESSION_COOKIE = 'token';
 
 const MAX_CODE = 100 * 1024;        // 100KB — matches judge.submit / customRun
@@ -78,7 +77,7 @@ async function authUid(req) {
   if (!raw) return null;
   let sid = raw;
   if (raw.slice(0, 2) === 's:') {
-    const unsigned = signature.unsign(raw.slice(2), SESSION_SECRET);
+    const unsigned = signature.unsign(raw.slice(2), sessionSecret);
     if (unsigned === false) return null;
     sid = unsigned;
   }

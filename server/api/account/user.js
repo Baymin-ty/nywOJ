@@ -14,8 +14,6 @@ const USERNAME_RULE_MESSAGE = '用户名长度应在3~24之间，可包含字母
 const EMAIL_REGEX = /^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/;
 const VERIFY_CODE_TTL_MS = 3 * 60 * 1000;
 const VERIFY_CODE_RATE_LIMIT_MS = 30 * 1000;
-const USER_LIST_SORTS = new Set(['acceptedProblemCount', 'rating', 'clickCnt']);
-const USER_LIST_MAX_PAGE_SIZE = 100;
 const DEFAULT_AVATAR = '/default-avatar.svg';
 const GRAVATAR_CDN = 'https://www.gravatar.com/avatar/';
 const GITHUB_AVATAR_CDN = 'https://github.com/';
@@ -117,55 +115,6 @@ const publicRatingSelect = (alias = 'u', latestAlias = 'latestRating') =>
   `COALESCE(${latestAlias}.newRating,0) AS historyRating,` +
   `(COALESCE(${alias}.rating,0)<>COALESCE(${latestAlias}.newRating,0)) AS ratingCacheMismatch`;
 
-const rankCacheValue = async (cache, key, loader) => {
-  if (!cache.has(key)) cache.set(key, await loader());
-  return cache.get(key);
-};
-
-const attachUserLeaderboardRanks = async (rows, sortBy) => {
-  const acceptedRankCache = new Map();
-  const ratingRankCache = new Map();
-  const clickRankCache = new Map();
-  await Promise.all(rows.map(async (row) => {
-    const accepted = Number(row.acceptedProblemCount || 0);
-    const rating = Number(row.rating || 0);
-    const clickCnt = Number(row.clickCnt || 0);
-    const acceptedAhead = await rankCacheValue(acceptedRankCache, accepted, async () =>
-      Number((await db.one(
-        `SELECT COUNT(*) AS cnt FROM userInfo u WHERE u.inUse=1 AND ${acceptedProblemCountExpr('u.uid')} > ?`,
-        [accepted]
-      ))?.cnt || 0)
-    );
-    row.acceptedRank = acceptedAhead + 1;
-    if (rating > 0) {
-      const ratingAhead = await rankCacheValue(ratingRankCache, rating, async () =>
-        Number((await db.one(
-          `SELECT COUNT(*) AS cnt
-             FROM userInfo u ${latestRatingJoin('u')}
-            WHERE u.inUse=1 AND ${effectiveRatingExpr('u')} > ?`,
-          [rating]
-        ))?.cnt || 0)
-      );
-      row.ratingRank = ratingAhead + 1;
-    } else {
-      row.ratingRank = null;
-    }
-    const clickAhead = await rankCacheValue(clickRankCache, clickCnt, async () =>
-      Number((await db.one(
-        'SELECT COUNT(*) AS cnt FROM userInfo u WHERE u.inUse=1 AND COALESCE(u.clickCnt,0) > ?',
-        [clickCnt]
-      ))?.cnt || 0)
-    );
-    row.clickRank = clickAhead + 1;
-    if (sortBy === 'rating') row.rank = row.ratingRank;
-    else if (sortBy === 'clickCnt') row.rank = row.clickRank;
-    else row.rank = row.acceptedRank;
-  }));
-};
-
-const publicUserMetaSelect = () =>
-  `u.uid,u.name,u.nickname,u.bio,u.qq,u.avatarInfo,u.motto,u.reg_time,u.clickCnt,${publicRatingSelect('u')},${acceptedProblemCountExpr('u.uid')} AS acceptedProblemCount`;
-
 const md5 = (value) => crypto.createHash('md5').update(String(value || '').trim().toLowerCase()).digest('hex');
 
 const parseAvatarInfo = (avatarInfo) => {
@@ -205,23 +154,6 @@ const userLookupFromBody = (body, alias = '') => {
   const username = String((body && (body.username || body.name)) || '').trim();
   if (username) return { where: `${prefix}name=?`, params: [username] };
   return null;
-};
-
-const decoratePublicUserMeta = (user, rank) => {
-  const avatar = resolveAvatar(user, 80);
-  user.avatarInfo = avatar.type === 'default' ? '' : `${avatar.type}:${avatar.key}`;
-  user.avatarType = avatar.type;
-  user.avatarKey = avatar.key;
-  user.avatar = avatar.url;
-  user.rating = Number(user.rating || 0);
-  user.cachedRating = Number(user.cachedRating || 0);
-  user.historyRating = Number(user.historyRating || 0);
-  user.ratingCacheMismatch = !!Number(user.ratingCacheMismatch || 0);
-  user.acceptedProblemCount = Number(user.acceptedProblemCount || 0);
-  user.clickCnt = Number(user.clickCnt || 0);
-  user.reg_time = user.reg_time ? briefFormat(user.reg_time) : '';
-  if (rank != null) user.rank = rank;
-  return user;
 };
 
 const trimLimited = (value, limit) => String(value || '').trim().slice(0, limit);
@@ -752,67 +684,8 @@ exports.getUserPublicInfo = handler(async (req, res) => {
   return ok(res, { info });
 });
 
-exports.getUserMeta = handler(async (req, res) => {
-  await ensureUserProfileSchema();
-  await ensureUserRatingHistorySchema();
-  const lookup = userLookupFromBody(req.body, 'u');
-  if (!lookup) return fail(res, '请确认信息完善');
-  const meta = await db.one(
-    `SELECT ${publicUserMetaSelect()} FROM userInfo u ${latestRatingJoin('u')} WHERE ${lookup.where} LIMIT 1`,
-    lookup.params
-  );
-  if (!meta) return fail(res, '无此用户');
-  return ok(res, { meta: decoratePublicUserMeta(meta) });
-});
-
-exports.searchUser = handler(async (req, res) => {
-  await ensureUserProfileSchema();
-  await ensureUserRatingHistorySchema();
-  const source = req.method === 'GET' ? req.query : req.body;
-  const query = String(source.query || source.q || '').trim();
-  const limit = Math.min(Math.max(Number(source.limit) || 20, 1), 50);
-  if (!query) return ok(res, { data: [], userMetas: [] });
-  const pattern = source.wildcard === false || source.wildcard === 'false'
-    ? `${query}%`
-    : `%${query}%`;
-  const users = await db.query(
-    `SELECT ${publicUserMetaSelect()}
-       FROM userInfo u ${latestRatingJoin('u')}
-      WHERE u.inUse=1 AND (u.name LIKE ? OR u.nickname LIKE ?)
-      ORDER BY u.name LIKE ? DESC, ${acceptedProblemCountExpr('u.uid')} DESC, u.uid ASC
-      LIMIT ?`,
-    [pattern, pattern, `${query}%`, limit]
-  );
-  users.forEach((u) => decoratePublicUserMeta(u));
-  return ok(res, { data: users, userMetas: users });
-});
-
-exports.getUserList = handler(async (req, res) => {
-  await ensureUserProfileSchema();
-  await ensureUserRatingHistorySchema();
-  const pageSize = Math.min(Number(req.body.pageSize) || 50, USER_LIST_MAX_PAGE_SIZE);
-  const { offset, limit } = paginate({ body: { ...req.body, pageSize } }, 50);
-  const sortBy = USER_LIST_SORTS.has(req.body.sortBy) ? req.body.sortBy : 'acceptedProblemCount';
-  const acceptedExpr = acceptedProblemCountExpr('u.uid');
-  const orderExpr = sortBy === 'rating'
-    ? `rating DESC,${acceptedExpr} DESC,u.uid ASC`
-    : sortBy === 'clickCnt'
-      ? `COALESCE(u.clickCnt,0) DESC,${acceptedExpr} DESC,rating DESC,u.uid ASC`
-      : `acceptedProblemCount DESC,rating DESC,u.uid ASC`;
-  const data = await db.query(
-    `SELECT ${publicUserMetaSelect()} FROM userInfo u ${latestRatingJoin('u')} WHERE u.inUse=1 ORDER BY ${orderExpr} LIMIT ?,?`,
-    [offset, limit]
-  );
-  const total = await db.one('SELECT COUNT(*) AS total FROM userInfo WHERE inUse=1');
-  await attachUserLeaderboardRanks(data, sortBy);
-  for (let i = 0; i < data.length; i++) {
-    decoratePublicUserMeta(data[i], data[i].rank);
-  }
-  return ok(res, { data, total: total.total, sortBy });
-});
-
 exports.setUserMotto = handler(async (req, res) => {
-  const motto = req.body.data;
+  const motto = String(req.body.data || '');
   if (motto.length > 1000) return fail(res, '个人主页长度应在1000以内');
   await db.query('UPDATE userInfo SET motto=? WHERE uid=?', [motto, req.session.uid]);
   return ok(res);
@@ -942,14 +815,17 @@ exports.listAudits = handler(async (req, res) => {
 });
 
 exports.modifyPassword = handler(async (req, res) => {
-  const { newPwd } = req.body;
-  if (newPwd.new !== newPwd.rep) return fail(res, '两次密码不一致');
-  if (newPwd.new.length > 31 || newPwd.new.length < 6) return fail(res, '密码长度应在6~31之间');
+  const input = req.body.newPwd || {};
+  const oldPassword = String(input.old || '');
+  const newPassword = String(input.new || '');
+  const repeatedPassword = String(input.rep || '');
+  if (newPassword !== repeatedPassword) return fail(res, '两次密码不一致');
+  if (newPassword.length > 31 || newPassword.length < 6) return fail(res, '密码长度应在6~31之间');
 
   const user = await db.one('SELECT pwd FROM userInfo WHERE uid=?', [req.session.uid]);
-  if (!user || !bcrypt.compareSync(newPwd.old, user.pwd)) return fail(res, '旧密码错误');
+  if (!user || !bcrypt.compareSync(oldPassword, user.pwd)) return fail(res, '旧密码错误');
 
-  const updPwd = bcrypt.hashSync(newPwd.new, 12);
+  const updPwd = bcrypt.hashSync(newPassword, 12);
   await db.query('UPDATE userInfo SET pwd=? WHERE uid=?', [updPwd, req.session.uid]);
   recordEvent(req, 'auth.changePassword');
   await revokeAllSessions(req.session.uid, req.sessionID);

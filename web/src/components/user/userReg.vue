@@ -10,20 +10,19 @@
         <el-step title="绑定邮箱" />
         <el-step title="个人信息" />
       </el-steps>
-      <el-form :model="emailInfo" v-show="!active">
+      <el-form :model="userInfo" v-show="!active">
         <el-form-item label="邮箱" prop="name" style="margin-left: 27px">
-          <el-input v-model="userInfo.email" type="text" placeholder="请先输入邮箱，再进行人机验证"
+          <el-input v-model="userInfo.email" type="text" placeholder="请输入邮箱"
             @blur="checkEmailAvailability(false)" />
           <div v-if="availability.email.text" :class="['availability', availability.email.type]">
             {{ availability.email.text }}
           </div>
         </el-form-item>
-        <el-form-item label="人机验证" prop="pass">
-          <el-button type="info" plain v-show="!recap" @click="recaptcha">发送验证码</el-button>
-          <div id="grecaptcha" v-show="recap"></div>
+        <el-form-item label="邮箱验证" prop="pass">
+          <el-button type="info" plain @click="sendVerifyCode">发送验证码</el-button>
         </el-form-item>
         <el-form-item label="验证码" prop="pass" style="margin-left: 13px">
-          <el-input v-model="userInfo.verifyCode" type="text" placeholder="通过上方人机验证后，自动发送验证码" />
+          <el-input v-model="userInfo.verifyCode" type="text" placeholder="请输入邮箱验证码" />
         </el-form-item>
         <el-button type="primary" @click="submit" style="width: 250px;">验证</el-button>
       </el-form>
@@ -58,15 +57,10 @@ export default {
   data() {
     return {
       active: 0,
-      recap: 0,
       userInfo: {
         name: "",
         pwd: "",
         rePwd: "",
-      },
-      emailInfo: {
-        email: "",
-        verifyCode: "",
       },
       availability: {
         email: { type: '', text: '' },
@@ -115,19 +109,14 @@ export default {
       }
       return false;
     },
-    async sendVerifyCode(retoken) {
+    async sendVerifyCode() {
       if (!(await this.checkEmailAvailability(true))) return;
       axios.post('/api/user/sendEmailVerifyCode', {
         email: this.userInfo.email,
-        retoken: retoken,
       }).then(res => {
         if (res.status === 200) {
           this.$message.success('验证码已发送，请注意查收');
-        } else {
-          if (this.recap)
-            window.grecaptcha.reset();
-          this.$message.error(JSON.stringify(res.data.message));
-        }
+        } else this.$message.error(JSON.stringify(res.data.message));
       }).catch(err => {
         this.$message.error(err.message);
       });
@@ -162,17 +151,6 @@ export default {
       }).catch(err => {
         this.$message.error(err.message);
       });
-    },
-    recaptcha() {
-      this.sendVerifyCode();
-      return;
-
-      // if (this.recap) return;
-      // this.recap = 1;
-      // window.grecaptcha.render("grecaptcha", {
-      //   sitekey: "6LcEKJIkAAAAAE2Xz-iJd3w_BW25txCZ0biX9CKU",
-      //   callback: this.sendVerifyCode
-      // });
     }
   },
   async mounted() {

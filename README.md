@@ -15,7 +15,7 @@
 | 前端 | Vue 3 · Element Plus · Monaco Editor · ECharts · Vuex · Vue Router |
 | 后端 | Node.js · Express · express-session (MySQL store) |
 | 数据库 | MariaDB / MySQL |
-| 评测沙箱 | 仓库内 Rust sandbox（默认运行在 `localhost:5050`，API 前缀 `/api/*`） |
+| 评测沙箱 | 仓库内 Rust sandbox（生产部署默认 `127.0.0.1:5050`；教学 Compose 默认 `localhost:1145`） |
 | 邮件 | Nodemailer (SMTP) |
 | IP 归属地 | ip2region |
 
@@ -34,6 +34,13 @@
 - 安全审计日志（登录、密码修改、邮箱变更、下载测试数据等）
 - 管理员更新用户用户名 / 邮箱时会做格式与唯一性校验，并写入审计日志
 
+### 站内通知
+
+- 登录后顶部铃铛展示未读数和最近 10 条通知，`/notifications` 提供完整分页列表、逐条已读和全部已读
+- 已接入讨论回复、比赛开始前 30 分钟提醒、作业截止前 24 小时提醒、赛内提问回复 / 公开答复 / 公告
+- `user.manage` 可发送全站广播；定时扫描每 60 秒运行一次，幂等键避免重复推送
+- 90 天前且已读的通知会被后台扫描自动清理
+
 ### 权限体系（RBAC，2026-05 重构）
 早期三档身份模型已被 RBAC 取代：权限是细粒度的 key（如 `problem.create` /
 `submission.rejudge.any` / `user.role.admin`），多个权限组成"角色"，用户可持
@@ -46,7 +53,7 @@
 | `user` | 普通用户 | 默认角色，无额外权限 |
 | `problem_setter` | 出题人 | `problem.create` / `problem.manage.self` / `problem.view.any` |
 | `contest_manager` | 比赛管理员 | `contest.create` / `contest.manage.self` |
-| `judge_admin` | 判题管理员 | `submission.view.any` / `submission.rejudge.any` |
+| `judge_admin` | 判题管理员 | 提交查看 / 重测 / 管理，以及评测监控与评测机管理 |
 | `solution_admin` | 题解管理员 | `problem.solmanage`，可绑定/解绑自己可查看题目的题解，不含 `paste.edit.any` |
 | `moderator` | 管理员 | 出题 + 办赛 + 判题三合一，加 `*.manage.any` 与用户相关权限 |
 | `super_admin` | 超级管理员 | 所有权限 |
@@ -127,18 +134,19 @@ role_permissions / user_roles / user_permissions`。前端权限管理中心位�
   成功数据自动进终测）→ 管理员启动 systest 全量重测
 - **作业**：独立 `/homework` 入口，开放期即时看完整结果，deadline 后进入迟交窗口
   （得分 × scoreRatio，单元格带「迟」标记），完成度统计，强制 unrated
+- **赛内提问（Clarification）**：进行中的参赛者可按题目提问；比赛管理者可私下回复、公开回复或发布全场公告，公开内容和私信回复会接入站内通知
 - **比赛体检**：`checkContest` 分级 checklist（ok / warn / error），覆盖支持语言、时长、
   封榜、组队、作业、每题测试数据 / judgeProfile 资产 / 泄题 / CF pretest 与 hack 资产等
 - Rating 结算 / 重建 / 预览（Elo 式，组队与作业不计入）
 - 单题 / 整场重测；旧 `type` 列与 API `type` 字段保留，OI/IOI 行为与重构前 1:1 等价
 
 ### 评测系统（2026-05 重写）
+
 - 单一 Worker 文件 [worker.js](server/api/judge/worker.js) 处理所有语言；
   语言相关参数（compile/run argv、源文件名）集中在
-  [languages.js](server/api/judge/languages.js)，新增语言只需加一行
-  注册表 + 一行 `INSERT INTO languages`
+  [languages.js](server/api/judge/languages.js)，并可同步到数据库语言目录；新增语言还需在沙箱镜像中提供对应工具链
 - 并发队列（最多 4 个 Worker 同时运行），使用 Node `child_process.fork`
-- 支持语言：C11、C++14、Python 3、Java、Kotlin、Pascal、Rust、Go、Swift、Haskell、C#、F#（实际可用性取决于沙箱镜像中的工具链）
+- 当前注册语言：C11、C++14、Python 3；语言目录会在服务启动时与数据库同步，新增语言需同时扩展注册表与沙箱镜像工具链
 - SPJ checker 跨提交缓存（按 pid + 源码 sha256 命中），sandbox `fileId` 持久化到
   [server/judge_cache/spj.json](server/api/judge/checkerCache.js)，编辑 `checker.cpp` 自动失效
 - 分布式评测：管理员在后台「评测监控」注册远程评测机、启停客户端、重置客户端 Key，服务端通过 HTTP `/api/judge/receiveTask` 分发任务、`/api/judge/clientHeartbeat` 接收心跳；默认只使用本机 Rust sandbox，确认远端也部署 sandbox 后再开启 `JUDGE.ALLOW_REMOTE_SANDBOX_CLIENTS`
@@ -182,6 +190,7 @@ nywOJ/
 │   ├── router.js               # 所有 API 路由注册
 │   ├── config.example.json     # 配置模板（仓库内）
 │   ├── config.json             # 实际配置（git-ignored，从模板复制）
+│   ├── rateLimit.js            # 提交 / 登录 / 发帖 / 搜索令牌桶限流
 │   ├── static.js               # 工具函数：时间格式化、IP 归属地、审计事件
 │   ├── file.js                 # 文件读写封装
 │   ├── refererCheck.js         # Referer 白名单中间件
@@ -192,11 +201,13 @@ nywOJ/
 │   │   ├── middleware.js       # requirePermission(key) Express 中间件
 │   │   ├── endpoints.js        # 权限 → API 路由反查表
 │   │   └── sync.js             # 启动时把权限目录同步到 DB
-│   ├── db/index.js             # MySQL 连接池
+│   ├── db/                     # MySQL 连接池、基础 schema 与 add_*.sql 增量迁移
+│   ├── scripts/                # 数据库迁移、CI 配置 / 种子、LLM e2e
+│   ├── test/                   # logic / e2e 测试清单与 runner
 │   ├── api/
 │   │   ├── account/            # 用户、会话、资料、用户组
-│   │   ├── content/            # 公告、Paste、讨论区、首页互动
-│   │   ├── contest/            # 比赛：policy / formats / standings 回放 / teams / hacks / health / rating
+│   │   ├── content/            # 公告、Paste、讨论、通知、首页互动
+│   │   ├── contest/            # 比赛：policy / formats / standings / teams / hacks / clar / rating
 │   │   ├── judge/              # 提交、Worker、语言、sandbox、日志、缓存、Socket
 │   │   ├── problem/            # 题目 CRUD、测试点、judgeProfile、AI、上传
 │   │   └── system/             # 管理、迁移、维护任务
@@ -214,20 +225,26 @@ nywOJ/
 │       ├── config.json         # 测试点与子任务配置
 │       ├── *.in / *.out        # 输入输出文件
 │       └── checker.cpp         # SPJ checker（可选）
-└── web/                     # 前端 (Vue 3)
-    ├── src/
-    │   ├── main.js
-    │   ├── App.vue
-    │   ├── router/router.js
-    │   ├── sto/store.js      # Vuex store
-    │   ├── assets/common.js  # axios 封装、通用工具
-    │   ├── chart/myChart.js  # ECharts 封装
-    │   └── components/       # 页面组件
-    │       ├── indexPage.vue
-    │       ├── myHeader.vue
-    │       ├── monacoEditor.vue
-    │       └── NotFoundPage.vue
-    └── public/
+├── web/                     # 前端 (Vue 3)
+│   ├── src/
+│   │   ├── main.js
+│   │   ├── App.vue
+│   │   ├── router/router.js
+│   │   ├── sto/store.js        # Vuex store
+│   │   ├── assets/common.js    # axios 封装、通用工具
+│   │   ├── chart/myChart.js    # ECharts 封装
+│   │   └── components/         # 用户、题目、比赛、IDE、通知与后台页面
+│   ├── public/
+│   └── dist/                   # 生产构建产物（git-ignored）
+├── sandbox/                 # Rust 沙箱引擎、Axum API、教学前端与安全回归脚本
+│   ├── crates/sandbox-core/    # namespaces / cgroups / seccomp / rlimits / pivot_root
+│   ├── crates/sandbox-web/     # /api/run、/api/stream、文件缓存与教学接口
+│   ├── examples/               # 安全边界探针
+│   ├── scripts/                # SPJ / pipe / stream / security smoke tests
+│   └── README.md               # 沙箱快速开始、接口与安全模型
+├── deploy/                  # Rust sandbox 与云端升级脚本、Nginx 配置
+├── docs/                    # 架构、部署、测试和数据配置文档
+└── .github/workflows/ci.yml # MariaDB logic 回归 + 前端构建
 ```
 
 ---
@@ -246,7 +263,9 @@ cp server/config.example.json server/config.json
 
 - `DB` — MySQL/MariaDB 连接信息
 - `EMAIL` — 注册、登录验证码、改邮箱、找回密码使用的 SMTP 配置；`host/port/secure/from` 可选，未填时默认使用 163 SMTP
+- `SESSION.secret` — session 签名密钥；生产环境必须换成长随机值，也可用 `NYWOJ_SESSION_SECRET` 环境变量覆盖
 - `SESSION.expire` — express-session cookie 过期毫秒数
+- `HTTP.bodyLimit` — Express JSON / 表单请求体上限，默认 `64mb`；反向代理的请求体上限也应不小于此值
 - `METRICS.enabled` — 是否启动 Prometheus metrics 导出端口；开启后默认监听 `127.0.0.1:9100/metrics`
 - `METRICS.allowedIps` — metrics 端口访问白名单；为空数组时不限制来源 IP
 - `SECURITY.enabled` — 统一限流中间件开关（默认 `true`；CI/本地可设 `false` 直通）。按令牌桶对提交 / 自测 / 登录 / 讨论发帖 / 搜索限流，超限回 `429 { wait }`；单实例内存实现，多实例部署需换 Redis
@@ -261,6 +280,7 @@ cp server/config.example.json server/config.json
 - `JUDGE.CLIENT_KEY` — 非服务端评测机接收任务时校验的客户端 Key；由后台"评测监控"生成 / 重置
 - `JUDGE.CLIENT_TIMEOUT` — 服务端向远程评测机分发任务的 HTTP 超时毫秒数，默认 10000
 - `JUDGE.ALLOW_REMOTE_SANDBOX_CLIENTS` — 默认 `false`。为保证用户上传代码只在 sandbox 中运行，服务端默认不向远程评测机分发提交；确认所有远程评测机也运行 Rust sandbox 后再设为 `true`
+- `SANDBOX.url` / `SANDBOX.streamUrl` — Rust sandbox 的 HTTP 与 WebSocket 地址；默认分别为 `http://127.0.0.1:5050` 和 `ws://127.0.0.1:5050/api/stream`，可由 `NYWOJ_SANDBOX_URL` / `NYWOJ_SANDBOX_STREAM_URL` 覆盖
 - `/api/judge/clientHeartbeat` — 远程评测机可向服务端上报 `{ clientKey, status, message, queue }`，后台会展示最近心跳与队列遥测
 - `STORAGE.provider` — 题目文件存储 provider；`local` 使用本机文件系统，`s3` / `minio` / `r2` 使用 S3-compatible 对象存储
 - `STORAGE.localRoot` — 本地运行缓存根目录；默认 `.` 表示以 `server/` 为根，判题仍从本地 `data/{pid}` 读取
@@ -276,8 +296,8 @@ cp server/config.example.json server/config.json
 ### 前置依赖
 - Node.js ≥ 16
 - MariaDB / MySQL
-- Rust sandbox 运行于 `localhost:5050`，详见 [docs/rust-sandbox-deploy.md](docs/rust-sandbox-deploy.md)
-- g++-9（C++ 评测）、Python 3（Python 评测，需在沙箱环境内可执行 `pylint` 与 `python3`）
+- Docker 与 cgroup v2；Rust sandbox 生产部署默认运行于 `127.0.0.1:5050`，详见 [docs/rust-sandbox-deploy.md](docs/rust-sandbox-deploy.md)
+- 沙箱镜像内需有 `gcc`、`g++-9`（或对应软链接）与 `python3`；仓库 Dockerfile 已默认安装 / 配置
 - `make`、`g++`（构建 comparer 二进制；首次运行前必须）
 - 可选：`jq`（用于 `sync_data.sh` 从 `config.json` 读取 SYNC 配置）、`rsync`
 
@@ -299,7 +319,8 @@ node app.js                            # 监听 :1234
 ```bash
 cd server
 npm run test:logic     # 纯逻辑回归（只需 DB）：RBAC / 榜单引擎 / 鉴权冒烟
-npm run test:e2e       # e2e（需活 Rust sandbox / LLM key）：判题 / 出题助手
+npm run test:e2e       # e2e：按前置条件运行判题（活 sandbox）与出题助手（LLM key）
+npm test               # logic + e2e；缺少某项 e2e 前置时会明确跳过该项
 ```
 
 分层说明、CI 建库与 GitHub Actions 见 [docs/testing.md](docs/testing.md)。
@@ -357,14 +378,17 @@ npm run build        # 生产构建（输出到 web/dist/，已 git-ignored）
 | `/api/migration/*` | 老站用户 / 数据迁移 |
 | `/api/problem/*` | 题目与测试数据 |
 | `/api/judge/*` | 提交与评测 |
+| `/api/ide/*` | 在线 IDE 的题目上下文、评测配置运行与交互流 |
 | `/api/contest/*` | 比赛全流程 |
+| `/api/notification/*` | 站内通知、已读状态与管理员广播 |
+| `/api/discussion/*` | 讨论、回复与 reaction |
 | `/api/common/*` | 公告、Paste、一言 |
 | `/api/homepage/*` | 首页聚合数据 |
 | `/api/rabbit/*` | 首页互动 |
 
 未登录用户仅可访问白名单接口（题目列表、比赛列表、提交列表、一言等）。
 其余接口由 `auth/middleware.js` 的 `requirePermission(key)` 守卫；调用方必须
-持有该权限（直接授予或通过角色继承）。`/api/admin/*` 需要 `user.manage`。
+持有该权限（直接授予或通过角色继承）。`/api/admin/*` 各端点按用户管理、评测机管理、审计等细粒度权限分别守卫。
 `/api/auth/*` 中的用户角色分配与直接授权需要 `user.role.admin`；角色结构维护
 （新建角色、编辑角色权限、删除角色）仅允许 `uid=1`。列表型只读接口
 （`listPermissions` / `listRoles` / `listUserGrants`）放开给 `user.manage`
@@ -384,6 +408,7 @@ npm run build        # 生产构建（输出到 web/dist/，已 git-ignored）
 | [rust-sandbox-migration.md](docs/rust-sandbox-migration.md) | Rust sandbox `/api/*` 请求 / 返回契约 |
 | [cloud-upgrade.md](docs/cloud-upgrade.md) | 从 `250fa62` 到当前版本的云端升级方案 |
 | [testing.md](docs/testing.md) | 回归测试分层（logic / e2e）、CI 建库与 GitHub Actions |
+| [sandbox/README.md](sandbox/README.md) | 教学沙箱快速开始、评测 API、安全模型与 smoke tests |
 
 ---
 

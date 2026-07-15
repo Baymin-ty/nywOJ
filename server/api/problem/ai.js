@@ -1645,7 +1645,6 @@ const runRepairRound = async (job, args, checks) => {
 // 失败最多回喂模型修复 MAX_REPAIR_ROUNDS 轮；仍失败则降级为 done_with_warning，
 // 让用户带着自检报告手动处理。sandbox 不可用时静默跳过（不影响出稿）。
 const selfCheckAndRepair = async (job, args) => {
-  const { problem } = args;
   if (!draftNeedsSelfCheck(job.draft, job.parsedSections)) return;
   const finalStatus = { status: job.status, warning: job.warning, statusText: job.statusText };
   job.status = 'running';

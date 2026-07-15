@@ -183,9 +183,6 @@ const resolveCompileInputWithMeta = async (pid, name, submit) => {
   throw new IdeJudgeError('judgement', `编译输入 ${name} 不存在`);
 };
 
-const resolveCompileInput = async (pid, name, submit) =>
-  (await resolveCompileInputWithMeta(pid, name, submit)).content;
-
 const compileProfileStep = async (pid, runId, step, lang, submit) => {
   const base = { env: DEFAULT_ENV, stdio: stdioFiles(), ...COMPILE_LIMITS, outputFiles: ['stdout', 'stderr'] };
   let result;

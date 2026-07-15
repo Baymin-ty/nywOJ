@@ -2,7 +2,10 @@ const db = require('../../db');
 const { handler, fail, ok, paginate } = require('../../db/util');
 const { Format, ip2loc } = require('../../static');
 
-let dayClick = {};
+let dayClick = { date: '' };
+
+const localDateKey = (date = new Date()) =>
+  `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 
 exports.all = handler(async (req, res) => {
   const list = await db.query(
@@ -19,9 +22,8 @@ exports.all = handler(async (req, res) => {
 exports.add = handler(async (req, res) => {
   const { ip, uid } = req.session;
 
-  if (!dayClick.lastClick || new Date().getDate() !== dayClick.lastClick.getDate()) {
-    dayClick = {};
-  }
+  const today = localDateKey();
+  if (dayClick.date !== today) dayClick = { date: today };
   if (!dayClick[uid]) dayClick[uid] = 0;
   if (dayClick[uid] >= 1000000) return fail(res, '请明天再试');
 
@@ -39,7 +41,6 @@ exports.add = handler(async (req, res) => {
   await db.query('UPDATE userInfo SET clickCnt=clickCnt+1 WHERE uid=?', [uid]);
 
   dayClick[uid]++;
-  dayClick.lastClick = new Date();
   return ok(res);
 });
 
@@ -50,7 +51,7 @@ exports.getClickCnt = handler(async (req, res) => {
 });
 
 exports.getRankInfo = handler(async (req, res) => {
-  const { pageId, offset, limit } = paginate(req);
+  const { offset, limit } = paginate(req);
   const list = await db.query(
     'SELECT u.uid,u.name,u.clickCnt,u.motto,u.qq, ' +
       '(SELECT 1 FROM user_roles ur JOIN roles r ON r.id=ur.role_id ' +
@@ -72,9 +73,11 @@ exports.getRankInfo = handler(async (req, res) => {
 
 exports.getClickData = handler(async (req, res) => {
   const quid = req.body.uid;
-  let day = req.body.day;
-  if (typeof day === 'undefined' || day > 100) day = 6;
-  else day = day - 1;
+  const requestedDays = Number(req.body.day);
+  const days = Number.isInteger(requestedDays) && requestedDays >= 1 && requestedDays <= 100
+    ? requestedDays
+    : 6;
+  const day = days - 1;
 
   const params = [day];
   let userClause = '';

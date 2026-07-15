@@ -286,9 +286,7 @@ const loadLocalizedContents = async (row) => {
   ];
 };
 
-const chooseLocalizedContent = (contents, desired) => {
-  return contents[0] || null;
-};
+const chooseLocalizedContent = (contents) => contents[0] || null;
 
 const localesOfProblem = async () => [DEFAULT_LOCALE];
 
@@ -571,7 +569,7 @@ exports.queryProblemSet = handler(async (req, res) => {
 
   const result = await Promise.all(rows.map(async (row) => {
     const contents = await loadLocalizedContents(row);
-    const localized = chooseLocalizedContent(contents, locale);
+    const localized = chooseLocalizedContent(contents);
     const tags = localized ? localized.tags : parseJsonArray(row.tags, []);
     return {
       meta: await problemMeta(row, true),
@@ -853,7 +851,7 @@ exports.getProblem = handler(async (req, res) => {
 
   if (body.owner) result.owner = await userMeta(req, row.publisher);
   if (body.localizedContentsOfLocale != null) {
-    const localized = chooseLocalizedContent(contents, body.localizedContentsOfLocale);
+    const localized = chooseLocalizedContent(contents);
     result.localizedContentsOfLocale = {
       locale: localized.locale,
       title: localized.title,
@@ -868,7 +866,7 @@ exports.getProblem = handler(async (req, res) => {
     }));
   }
   if (body.tagsOfLocale) {
-    const localized = chooseLocalizedContent(contents, body.tagsOfLocale);
+    const localized = chooseLocalizedContent(contents);
     result.tagsOfLocale = localizedTagDtosForNames(localized ? localized.tags : parseJsonArray(row.tags, []), body.tagsOfLocale, catalog);
   }
   if (body.tagsOfAllLocales) {

@@ -1,5 +1,3 @@
-const url = require('url');
-
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 const normalizeLocalHost = (host) => (host === '[::1]' ? '::1' : host);
 

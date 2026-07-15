@@ -13,9 +13,15 @@ rlimits / pivot_root** 这些"造笼子"的内核机制亲手写一遍，并配�
 ## 快速开始
 
 ```bash
+cd sandbox
 docker compose up --build      # 构建并启动（首次编译依赖需几分钟）
 # 浏览器打开 http://localhost:1145
+# 健康检查：http://localhost:1145/api/version
 ```
+
+这里的 Compose 端口 `1145` 用于教学界面和本地调试。nywOJ 后端的正式部署默认绑定
+`127.0.0.1:5050`，请从仓库根目录运行 `deploy/rust-sandbox/build.sh --deploy`，详见
+[Rust sandbox 部署文档](../docs/rust-sandbox-deploy.md)。两种启动方式提供相同的 `/api/*` 接口。
 
 打开后：左侧选语言/示例（C / C++ / Python / Shell）、写代码（带行号编辑器）、填 stdin 与可选的预期输出、调限额与机制开关，点「▶ 运行」；右侧四块面板实时展示：
 
@@ -38,42 +44,40 @@ docker compose up --build      # 构建并启动（首次编译依赖需几分�
 | escape | **RE** | pivot_root + 降权后读不到 `/etc/shadow` |
 | netcall | 联网失败 | net namespace 只剩 loopback（勾「共享网络」可联网对照） |
 | badsyscall | **RE**(EPERM) / **SG**(kill) | seccomp 拦截 `mount` |
-| path_probe | **OK** | 敏感文件不可读、系统目录只读、`/box`/`/tmp` 可写 |
-| proc_probe | **OK** | hostname、PID namespace、无外部网卡、no_new_privs/seccomp/capability |
-| fd_stress | **OK** | `RLIMIT_NOFILE` 限制打开文件数 |
-| proc_stress | **OK** | 有界 fork 压测，验证 `pids.max` |
-| thread_stress | **OK** | 有界线程压测，验证 `pids.max` 覆盖 task/thread |
-| privilege_probe | **OK** | setuid/setgid/setgroups/sethostname/mknod 等提权动作被拒绝 |
-| escape_surface_probe | **OK** | Docker/containerd socket、危险设备、cgroup/sysctl/sysfs、旧根等逃逸前置面不可达 |
-| syscall_probe | **OK** | socket/ptrace/unshare/mount/bpf/io_uring 等危险 syscall 返回 EPERM |
-| tmp_fill | **OK** | 私有 `/tmp` tmpfs 填充到上限后失败 |
-| output_flood | **OLE** | stdout 捕获上限与截断 |
 | a+b | **AC** | 判题：stdin `3 4` + 预期 `7` → 输出比对 |
 | shell · 探查隔离 | — | 在沙箱里 `id`/`hostname`/`ls /` 看隔离效果 |
 
 勾上「user ns (rootless)」再跑 hello，程序里 `getuid()` 会是 **0（沙箱内 root）**，但它在宿主上其实是非特权用户 60000。
+
+`examples/` 下的 `*_probe`、`*_stress`、`tmp_fill`、`output_flood` 等是自动化安全回归探针，
+不会出现在教学页面的下拉菜单中；它们由下一节的 smoke tests 编译和运行。
 
 ## 防御向安全回归
 
 容器启动后，可以直接跑兼容接口 smoke test。Docker Compose 默认端口是 `1145`：
 
 ```bash
+SANDBOX_URL=http://127.0.0.1:1145 node scripts/spj-smoke.mjs
+SANDBOX_URL=http://127.0.0.1:1145 node scripts/pipe-smoke.mjs
 SANDBOX_URL=http://127.0.0.1:1145 node scripts/security-smoke.mjs
 SANDBOX_URL=http://127.0.0.1:1145 node scripts/adversarial-smoke.mjs
 SANDBOX_URL=http://127.0.0.1:1145 node scripts/malicious-corpus-smoke.mjs
 SANDBOX_URL=http://127.0.0.1:1145 node scripts/breakout-smoke.mjs
+SANDBOX_WS_URL=ws://127.0.0.1:1145/api/stream node scripts/stream-smoke.mjs
 ```
 
-`security-smoke.mjs` 覆盖基础资源限制、路径校验和危险 syscall；`adversarial-smoke.mjs`
+`spj-smoke.mjs` 验证编译缓存与 checker，`pipe-smoke.mjs` 验证双向 FIFO，
+`stream-smoke.mjs` 验证 WebSocket stdin/stdout。`security-smoke.mjs` 覆盖基础资源限制、
+路径校验和危险 syscall；`adversarial-smoke.mjs`
 会编译并运行 `examples/*_probe` / `*_stress` 里的有界探针，验证"应该被拒绝"和"应该被限额"的边界；
 `malicious-corpus-smoke.mjs` 是全量恶意行为语料库，覆盖 CPU/墙钟/内存/输出/fd/进程/线程/tmpfs、
-文件系统、逃逸前置面、权限、`/proc`、网络、危险 syscall、`copyIn/copyOut/copyOutCached`、多命令隔离与 pipeMapping
+文件系统、逃逸前置面、权限、`/proc`、网络、危险 syscall、输入/输出/缓存文件、多命令隔离与 `pipes`
 参数校验；`breakout-smoke.mjs` 是"爆破"电池，专打更刁钻的绕过面：**fork 多进程翻倍 CPU 预算**
 （整组 `cpu.stat` 计量，`cpu_multiplier`/`cpu_farm`）、多进程内存炸弹（整组 cgroup 记账，`mem_multiproc`）、
 原始设备/内核内存节点（`dev_probe`）、procfs 内核旋钮与 `oom_score_adj` 降权（`procfs_probe`）、
-**fd 继承泄漏**（`fd_leak_probe`，execve 后只应留 stdio）、pivot_root 的 `..`/proc-root 逃逸containment
+**fd 继承泄漏**（`fd_leak_probe`，execve 后只应留 stdio）、pivot_root 的 `..`/proc-root 逃逸 containment
 （`box_escape_probe`）、**`clone(CLONE_NEWUSER)` 嵌套 user namespace**（`userns_probe`，seccomp 按 clone flags 拦、
-clone3 挡成 ENOSYS）、pipeMapping 死锁与干净 EOF、以及 `copyOut/copyOutCached` 的软链接外泄。
+clone3 挡成 ENOSYS）、`pipes` 死锁与干净 EOF、以及输出文件 / 缓存文件的软链接外泄。
 这些程序用于回归测试 sandbox 是否稳固，不包含逃逸、提权或反连载荷。
 
 ## 判题接口 `/api/run` 与题型支持
@@ -104,7 +108,9 @@ clone3 挡成 ENOSYS）、pipeMapping 死锁与干净 EOF、以及 `copyOut/copy
 ```
 
 响应是与 `commands` 同序的结果数组：`{status, exitCode, exitSignal, cpuTimeMs, memoryKb,
-wallTimeMs, outputFiles:{…}, cachedFiles:{…}}`。缓存文件用 `GET/DELETE /api/file/:id` 取回或删除。
+wallTimeMs, outputFiles:{…}, cachedFiles:{…}}`。`status` 可能为 `Accepted`、
+`Nonzero Exit Status`、`Signalled`、`Time Limit Exceeded`、`Memory Limit Exceeded`、
+`Output Limit Exceeded` 或 `Internal Error`。缓存文件用 `GET/DELETE /api/file/:id` 取回或删除。
 
 凭这几件积木（多命令 + 管道 + 额外 fd + 输入/输出文件 + 缓存二进制），四类题型都能表达：
 
@@ -116,6 +122,34 @@ wallTimeMs, outputFiles:{…}, cachedFiles:{…}}`。缓存文件用 `GET/DELETE
 | **自定义题（SPJ）** | 编译 testlib checker → 缓存 id；再 `command:["spj","data.in","user.out","data.out"]` 跑，退出码/stderr = 判定 | 缓存二进制 + 输入文件（见 `scripts/spj-smoke.mjs`） |
 
 交互题也可走 `GET /api/stream`（WebSocket，实时喂 stdin/收 stdout）用于在线 IDE 式交互。
+
+## HTTP / WebSocket 接口
+
+| 接口 | 用途 |
+|---|---|
+| `GET /` | 教学前端 |
+| `POST /api/submit` + `GET /ws/:job_id` | 可切换隔离机制的教学提交与事件回放 |
+| `GET /api/languages` | 教学界面支持的 C / C++ / Python / Shell 目录 |
+| `GET /api/health` | 轻量存活检查 |
+| `GET /api/version` | 能力、版本和安全特性探测 |
+| `POST /api/run` | nywOJ 正式评测兼容接口 |
+| `GET /api/stream` | 单命令交互执行 WebSocket |
+| `GET/DELETE /api/file/:file_id` | 缓存文件读取与删除 |
+
+常用运行参数：
+
+| 环境变量 | 默认值 | 说明 |
+|---|---|---|
+| `BIND` | `0.0.0.0:1145` | HTTP / WebSocket 监听地址 |
+| `FRONTEND_DIR` | `frontend`（镜像内为 `/app/frontend`） | 教学前端目录 |
+| `SANDBOX_CLI` | `sandbox-cli` | 单线程引擎入口路径 |
+| `JOBS_ROOT` | `/tmp/sandbox-jobs` | 教学提交临时目录 |
+| `SANDBOX_FILE_ROOT` | `/tmp/sandbox-files` | `/api/file` 缓存目录 |
+| `SANDBOX_HTTP_BODY_LIMIT` | `256mb` | HTTP 请求体上限 |
+| `SANDBOX_STREAM_REQUEST_LIMIT` | `1mb` | stream 首个执行帧上限 |
+| `SANDBOX_STREAM_INPUT_CHUNK_LIMIT` | `64kb` | stream 单个 stdin 帧上限 |
+| `SANDBOX_STREAM_INPUT_TOTAL_LIMIT` | `16mb` | stream 单连接 stdin 总量上限 |
+| `RUST_LOG` | `info` | Rust 日志过滤级别 |
 
 ## 架构
 
@@ -184,8 +218,8 @@ echo '{"box_dir":"/tmp/box","command":["/box/a.out"], ... }' | sandbox-cli
 - **多命令失败清理**：管道请求准备阶段失败时，会中止持锚任务并删掉整棵 `pipe_root`，不再泄漏
   带 FIFO 的临时目录树。
 
-回归可跑 `scripts/{security,adversarial,malicious-corpus,breakout}-smoke.mjs`（见上文）。
+完整回归命令见上文“防御向安全回归”。
 
-> 仍是**教学/自托管定位**：为求"跑得通、看得见"用了 `privileged` 容器，且编译在容器内的宿主侧进行。
-> 生产评测请在此基础上进一步收敛（编译也入沙箱、rootless、更严白名单 seccomp、全局并发配额等），
-> 方向见各 docs 末尾的"进阶"。**不要把任何一个端口直接暴露到公网。**
+> 仍是**教学/自托管定位**：为求"跑得通、看得见"用了 `privileged` 容器，且教学接口的 C/C++
+> 编译在容器内的沙箱外侧进行。生产评测请在此基础上进一步收敛（rootless、更严白名单 seccomp、
+> 全局并发配额等），方向见各 docs 末尾的"进阶"。**不要把任何一个端口直接暴露到公网。**
