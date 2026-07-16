@@ -33,6 +33,8 @@
     <el-table-column :label="meta.teamMode ? '队伍' : '用户名'" fixed="left" max-width="15%" min-width="150px">
       <template #default="scope">
         <span class="player-name" @click.stop="openPlayerChart(scope.row)">{{ scope.row.user.name }}</span>
+        <el-tag v-if="scope.row.ghost" class="ghost-tag" size="small" effect="plain" type="info">ghost</el-tag>
+        <el-tag v-else-if="scope.row.virtual" class="ghost-tag" size="small" effect="plain" type="warning">虚拟</el-tag>
         <div v-if="scope.row.members && scope.row.members.length" class="attach team-members-line">
           {{ scope.row.members.map(m => m.name).join(' / ') }}
         </div>
@@ -571,8 +573,10 @@ export default {
       return style;
     },
     tableRowClassName(obj) {
-      if (obj.row.mine !== undefined) return obj.row.mine ? 'success' : '';
-      return (obj.row.user.uid === store.state.uid ? 'success' : '');
+      // VP 合榜视图：官方选手为 ghost（置灰），本人行高亮
+      const ghost = obj.row.ghost ? ' vp-ghost' : '';
+      if (obj.row.mine !== undefined) return (obj.row.mine ? 'success' : '') + ghost;
+      return (obj.row.user.uid === store.state.uid ? 'success' : '') + ghost;
     },
     cellClassName({ column, columnIndex }) {
       column.index = columnIndex;
@@ -671,6 +675,20 @@ export default {
   cursor: pointer;
   color: var(--el-color-primary);
   font-weight: 500;
+}
+
+.ghost-tag {
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+
+/* VP 合榜：ghost 行整体置灰 */
+:deep(.el-table .vp-ghost) {
+  color: #a8abb2;
+}
+
+:deep(.el-table .vp-ghost .player-name) {
+  color: #a8abb2;
 }
 
 .player-name:hover {

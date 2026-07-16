@@ -13,7 +13,15 @@
                     <el-button type="warning" plain>取消报名</el-button>
                   </template>
                 </el-popconfirm>
-                <el-button v-show="contestInfo.isReg && !contestInfo.unregAble" type="info" disabled>已报名</el-button>
+                <el-button v-show="contestInfo.isReg && !contestInfo.unregAble && !virtualState.active"
+                  type="info" disabled>已报名</el-button>
+                <el-popconfirm v-if="virtualState.canStart" width="320" confirm-button-text="开始" cancel-button-text="取消"
+                  title="虚拟参赛：按当年条件重赛一场，与历史选手同榜竞技；成绩不计入官方榜单与 Rating，每场限一次，开始后计时不可暂停。确认开始？"
+                  @confirm="startVirtual">
+                  <template #reference>
+                    <el-button type="primary" plain>虚拟参赛</el-button>
+                  </template>
+                </el-popconfirm>
               </p>
             </div>
           </template>
@@ -42,6 +50,22 @@
           </el-descriptions>
           <el-progress :text-inside="true" :stroke-width="16" :percentage="percentage" status="success"
             style="margin: 5px;" />
+          <el-alert v-if="virtualState.active" type="error" show-icon :closable="false" class="vp-banner"
+            style="margin: 5px;">
+            <template #title>
+              <span class="vp-banner-line">
+                虚拟参赛进行中 — 剩余 {{ fmtRemain(vpRemainingSec) }}
+                <el-popconfirm width="260" confirm-button-text="确认" cancel-button-text="取消"
+                  title="确认提前结束虚拟参赛？每场比赛只能虚拟参赛一次，结束后不能重来" @confirm="quitVirtual">
+                  <template #reference>
+                    <el-button size="small" type="danger" plain>结束虚拟参赛</el-button>
+                  </template>
+                </el-popconfirm>
+              </span>
+            </template>
+          </el-alert>
+          <el-alert v-if="virtualState.finished && virtualState.finalRank" type="success" show-icon :closable="false"
+            :title="vpResultTitle" style="margin: 5px;" />
           <el-alert v-if="isHomework && contestInfo.auth && contestInfo.auth.inLateWindow" type="warning" show-icon
             :closable="false" :title="lateNoticeTitle" style="margin: 5px;" />
           <el-tabs v-model="activeName" class="demo-tabs" @tab-change="switchTab">
@@ -70,7 +94,8 @@
                 </el-icon>
                 提交记录
               </template>
-              <contestSubmission ref="submission" :can-manage="canManage" />
+              <contestSubmission ref="submission" :can-manage="canManage"
+                :virtual-finished="!!virtualState.finished" />
             </el-tab-pane>
             <el-tab-pane name="rank" v-if="viewAuth">
               <template #label>
@@ -396,9 +421,17 @@ export default {
     CollaboratorPanel,
   },
   computed: {
-    // 选手可提问：已参与 + 比赛进行中 + 非管理员（管理员走发公告/回复）
+    // 选手可提问：已参与 + 比赛进行中 + 非管理员（管理员走发公告/回复）；
+    // 虚拟参赛没有真人答疑，不开放提问（服务端同样拦截）
     canAsk() {
-      return this.joinAuth && this.contestInfo.status === '正在进行' && !this.canManage;
+      return this.joinAuth && this.contestInfo.status === '正在进行' && !this.canManage
+        && !this.virtualState.active;
+    },
+    vpResultTitle() {
+      const s = this.virtualState;
+      const detail = this.contestInfo.format === 'acm'
+        ? `过题 ${s.finalSolved || 0}` : `得分 ${s.finalScore || 0}`;
+      return `你的虚拟成绩：第 ${s.finalRank} 名 / 共 ${s.playerCount} 人（${detail}，含历史选手合榜）`;
     },
     // Mirrors server/api/contest/contest.js#canManageContest. The server-computed
     // contestInfo.auth.manage is authoritative; this is just the first-paint
@@ -479,6 +512,11 @@ export default {
       ratingPreviewMeta: {},
       ratingPreviewLimit: 100,
       timer: null,
+      // 虚拟参赛会话状态（/api/contest/getVirtualState）
+      virtualState: {},
+      vpRemainingSec: 0,
+      vpStartLocal: 0,
+      vpTimer: null,
     }
   },
   methods: {
@@ -751,16 +789,73 @@ export default {
       });
     },
     frushPercentage() {
+      // VP 进行中：进度条按虚拟时钟走（vpTimer 每秒驱动）
+      if (this.virtualState.active) return;
       this.percentage = parseInt((new Date().getTime() -
         new Date(this.contestInfo.start).getTime()) / 10 / 60 / this.contestInfo.length);
       if (this.percentage < 0) this.percentage = 0;
       else if (this.percentage > 100) this.percentage = 100;
+    },
+    fmtRemain(sec) {
+      const s = Math.max(0, Number(sec) || 0);
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+      const pad = (x) => String(x).padStart(2, '0');
+      return h ? `${h}:${pad(m)}:${pad(ss)}` : `${pad(m)}:${pad(ss)}`;
+    },
+    stopVpTimer() {
+      if (this.vpTimer) { clearInterval(this.vpTimer); this.vpTimer = null; }
+    },
+    startVpTimer() {
+      if (this.vpTimer) return;
+      this.vpTimer = setInterval(() => {
+        const elapsedMs = Date.now() - this.vpStartLocal;
+        this.vpRemainingSec = Math.max(0, Math.round(this.virtualState.durationSec - elapsedMs / 1000));
+        this.percentage = Math.min(100, Math.max(0,
+          parseInt(elapsedMs / 10 / this.virtualState.durationSec)));
+        if (this.vpRemainingSec <= 0) {
+          // 时间到：服务端懒结算（getVirtualState 触发），随后刷新为真实视图
+          this.stopVpTimer();
+          this.fetchVirtualState();
+          this.all();
+        }
+      }, 1000);
+    },
+    fetchVirtualState() {
+      if (!this.$store.state.uid) { this.virtualState = {}; return; }
+      axios.post('/api/contest/getVirtualState', { cid: this.cid }).then(res => {
+        this.virtualState = res.data.data || {};
+        if (this.virtualState.active) {
+          this.vpRemainingSec = this.virtualState.remainingSec;
+          this.vpStartLocal = Date.now() - this.virtualState.elapsedSec * 1000;
+          this.startVpTimer();
+        } else {
+          this.stopVpTimer();
+          this.frushPercentage(); // VP 结束：进度条回到真实时钟
+        }
+      }).catch(() => { /* 未登录/网络抖动：按无会话处理 */ });
+    },
+    startVirtual() {
+      axios.post('/api/contest/startVirtual', { cid: this.cid }).then(() => {
+        this.$message.success('虚拟参赛已开始，计时中');
+        this.all();
+      }).catch(err => {
+        this.$message.error(this.apiErrorMessage(err, '开始失败'));
+      });
+    },
+    quitVirtual() {
+      axios.post('/api/contest/quitVirtual', { cid: this.cid }).then(() => {
+        this.$message.success('虚拟参赛已结束');
+        this.all();
+      }).catch(err => {
+        this.$message.error(this.apiErrorMessage(err, '结束失败'));
+      });
     },
     all() {
       if (this.timer) {
         clearInterval(this.timer);
         this.timer = null;
       }
+      this.fetchVirtualState();
       axios.post('/api/contest/getContestInfo', { cid: this.cid }).then(res => {
         if (res.status === 200) {
           this.contestInfo = res.data.data;
@@ -931,6 +1026,7 @@ export default {
   },
   beforeUnmount() {
     clearInterval(this.timer);
+    this.stopVpTimer();
   }
 }
 </script>
@@ -998,6 +1094,13 @@ export default {
 
 .danger-divider :deep(.el-divider__text) {
   color: #f56c6c;
+}
+
+.vp-banner-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .health-summary {

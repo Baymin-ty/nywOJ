@@ -3,6 +3,7 @@
     <div class="left-controls">
       <el-switch v-model="lastOnly" active-text="Last" inactive-text="All" @change="all" />
       <el-checkbox v-model="selfOnly" label="只看自己" @change="all" />
+      <el-checkbox v-if="virtualFinished && !lastOnly" v-model="virtualOnly" label="我的虚拟提交" @change="all" />
     </div>
     <el-pagination v-if="!(lastOnly && selfOnly)" @current-change="handleCurrentChange" :current-page="currentPage"
       :page-size="20" layout="total, prev, pager, next" :total="total"></el-pagination>
@@ -10,8 +11,12 @@
       <el-popconfirm v-if="canBulkRejudge" confirm-button-text="确认" cancel-button-text="取消"
         :title="`确认批量重测选中的 ${selectedSids.length} 条提交？`" @confirm="bulkRejudge">
         <template #reference>
-          <el-button type="warning" :disabled="selectedSids.length === 0">
-            批量重测
+          <el-button class="bulk-rejudge-btn" :disabled="selectedSids.length === 0">
+            <el-icon class="el-icon--left">
+              <RefreshRight />
+            </el-icon>
+            <span>批量重测</span>
+            <span v-if="selectedSids.length" class="bulk-count">{{ selectedSids.length }}</span>
           </el-button>
         </template>
       </el-popconfirm>
@@ -84,7 +89,9 @@ import store from '@/sto/store'
 export default {
   name: 'submissionList',
   props: {
-    canManage: { type: Boolean, default: false }
+    canManage: { type: Boolean, default: false },
+    // VP 已结束：显示「我的虚拟提交」开关（VP 进行中服务端自动只回本人虚拟提交）
+    virtualFinished: { type: Boolean, default: false },
   },
   data() {
     return {
@@ -95,6 +102,7 @@ export default {
       finished: false,
       cid: 0,
       selfOnly: false,
+      virtualOnly: false,
       selectedSids: [],
     }
   },
@@ -118,7 +126,8 @@ export default {
       axios.post(url, {
         cid: this.cid,
         pageId: this.currentPage,
-        uid: this.selfOnly ? this.uid : null
+        uid: this.selfOnly ? this.uid : null,
+        virtual: (!this.lastOnly && this.virtualOnly) || undefined,
       }).then(res => {
         this.submissionList = res.data.data;
         this.total = res.data.total;
@@ -191,6 +200,49 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.bulk-rejudge-btn {
+  font-weight: 650;
+  color: #a85d00;
+  background: #fff8eb;
+  border-color: #e8a23a;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.bulk-rejudge-btn:not(.is-disabled):hover,
+.bulk-rejudge-btn:not(.is-disabled):focus {
+  color: #fff;
+  background: #d98200;
+  border-color: #d98200;
+}
+
+.header :deep(.bulk-rejudge-btn.is-disabled) {
+  color: #a8abb2;
+  background: #f5f7fa;
+  border-color: #dcdfe6;
+  opacity: 1;
+}
+
+.bulk-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  padding: 0 6px;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  background: #d98200;
+  border-radius: 999px;
+}
+
+.bulk-rejudge-btn:hover .bulk-count,
+.bulk-rejudge-btn:focus .bulk-count {
+  color: #d98200;
+  background: #fff;
 }
 
 @media (max-width: 768px) {

@@ -23,6 +23,7 @@
 | `hacks.js` | CF hack 提交/列表/判定编排 |
 | `health.js` | 比赛体检 checklist |
 | `rating.js` | Rating 结算/重建/预览（行为与重构前一致） |
+| `virtual.js` / `virtualStore.js` | 虚拟参赛会话生命周期 + 数据访问（见「虚拟参赛」） |
 | `schema.js` | ensureContestV2Schema（代码内幂等迁移，SQL 见 db/add_contestV2.sql） |
 
 ## 数据模型
@@ -124,6 +125,27 @@ OI/IOI 的推导与重构前逐接口等价（M1 用 e2e 基线 diff 验收过�
 - 语义：无比赛紧张态 —— 开放期内随时提交、即时看完整结果（IOI 式取最高分）；deadline（start+length）后进入迟交窗口（`late.windowMinutes`），得分 × `late.scoreRatio`，榜单单元格带「迟」标记；窗口结束后关闭提交。
 - 完成度：迟交拿满分也算「完成」（分数照折）。榜单行 `solved` = 完成题数；`problemStats` = 每题 通过/尝试 人数。
 - 强制 unrated：`updateContestInfo` 落库置 0 + rating 结算侧 `ratingIneligible` 双保险。
+
+## 虚拟参赛（VP）
+
+已结束的公开赛可"补赛"：把用户的「现在」映射到比赛时间轴，官方选手作为 ghost 同榜竞技。
+**第一不变量：官方榜单 / 最终榜 / Rating / 题目统计永远不被虚拟提交污染**（回归 `test/logic/virtual.test.js` 逐字节断言）。
+
+- 数据：`contestVirtual`（一人一场一次，`startAt`/`finishedAt`）+ `submission.virtualId`
+  （NULL=正式提交；迁移 `db/add_virtual.sql`，运行时 `virtualStore.ensureSchema` 兜底）。
+- 虚拟时钟：`policy.resolveView` 命中活跃会话时 `nowMs = start + (now − startAt)`，
+  阶段/封榜/迟交窗口全部按虚拟刻推导；`isReged` 视作已报名，`canHack=false`（无真人对手），
+  赛内提问禁用。会话超时由 `getVirtualState` 懒结算。
+- 提交：落 `virtualId`，不碰 `problem.submitCnt` / `contestLastSubmission` / 官方榜缓存；
+  CF 赛制赛中照常只评 pretest，**会话结束时本会话 pretest 通过的提交自动转全量重测**（virtual.js）。
+- 榜单：`standings.loadVirtualContext` = 官方事件流（ghost，相对秒原样）+ 本人虚拟提交
+  （`at = submitTime − startAt`），独立 vcache（TTL 10s）；封榜掩码按同一相对刻生效（保留悬念）；
+  `getRankAt`/`getParticipantTimeline` 对 VP viewer 自动切合榜视图，行带 `ghost`/`virtual` 标记。
+- 端点：`startVirtual`（已结束+公开可见+非正式参赛+非管理+非组队+未 VP 过）/ `quitVirtual` /
+  `getVirtualState`（按钮资格、倒计时、终刻成绩卡 rank/score/solved）。
+- 前端：比赛主页「虚拟参赛」按钮（确认弹窗）→ 红色倒计时横幅（提前结束）→ 赛后绿色成绩卡；
+  榜单 ghost 行置灰 + 标签、本人高亮；提交记录 VP 中只见本人虚拟提交，赛后可勾「我的虚拟提交」回看。
+- 限制：组队场不支持（health 体检有提示）；虚拟参赛不产生 Rating、不计一血语义污染（ghost 一血照常展示）。
 
 ## 比赛体检（health.js）
 

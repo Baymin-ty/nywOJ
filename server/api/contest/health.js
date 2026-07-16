@@ -67,6 +67,18 @@ const checkContest = async (cid) => {
     }
   }
 
+  // 虚拟参赛可用性（结束后学生补赛）：组队场不支持，私有赛不可见
+  if (status === 3) {
+    if (team.enabled) {
+      add('warn', 'contest', '组队比赛不支持虚拟参赛', '结束后学生无法虚拟补赛本场。');
+    } else if (!contest.isPublic) {
+      add('warn', 'contest', '私有比赛无法虚拟参赛', '仅公开比赛结束后可虚拟补赛。');
+    } else {
+      const vpCnt = await db.one('SELECT COUNT(*) AS cnt FROM contestVirtual WHERE cid=?', [cid]).catch(() => null);
+      add('ok', 'contest', '虚拟参赛可用', vpCnt && Number(vpCnt.cnt) ? `已有 ${vpCnt.cnt} 人虚拟参赛。` : null);
+    }
+  }
+
   const freeze = cfg.scoreboard && cfg.scoreboard.freeze;
   if (freeze && freeze.enabled) {
     if ((freeze.offsetMinutes || 0) >= contest.length) {
