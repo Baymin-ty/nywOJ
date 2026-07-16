@@ -25,6 +25,12 @@
               </el-icon>
               下载数据
             </el-button>
+            <el-button type="success" plain @click="exportProblem" :disabled="!auth.manage">
+              <el-icon class="el-icon--left">
+                <Download />
+              </el-icon>
+              导出整题
+            </el-button>
             <el-button type="primary" @click="this.$router.push('/problem/edit/' + pid)">
               <el-icon class="el-icon--left">
                 <Edit />
@@ -633,6 +639,14 @@ export default {
         window.location.href = access.url;
       } catch (err) {
         this.$message.error(err.message || '下载失败');
+      }
+    },
+    async exportProblem() {
+      try {
+        const access = await this.createFileAccess('exportProblem');
+        window.location.href = access.url;
+      } catch (err) {
+        this.$message.error(err.message || '导出题目失败');
       }
     },
     handleUploadError(err) {

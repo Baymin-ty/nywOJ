@@ -14,6 +14,7 @@ module.exports = {
     { path: 'test/logic/notification.test.js', desc: '站内通知 push / 幂等 / 未读数' },
     { path: 'test/logic/rateLimit.test.js', desc: '限流令牌桶放行 / 429 / 独立计数' },
     { path: 'test/logic/clarification.test.js', desc: '赛内提问 提问/回复/公告/可见性/通知' },
+    { path: 'test/logic/problem_archive.test.js', desc: '完整题目包 v2 字段 / 数据 / SPJ 资产往返断言' },
   ],
   e2e: [
     { path: 'test/e2e/judge_types.js', desc: '判题六题型真 worker + 活沙箱', needs: 'sandbox' },

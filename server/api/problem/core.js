@@ -1209,6 +1209,9 @@ exports.createFileAccess = handler(async (req, res) => {
     if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) return fail(res, '资产不存在', 404);
     payload.name = name;
     url = '/api/problem/signedDownloadAsset';
+  } else if (action === 'exportProblem') {
+    if (!(await problemAuth(req, pid)).manage) return res.status(403).end('403 Forbidden');
+    url = '/api/problem/signedExportProblem';
   } else {
     return fail(res, '未知文件访问类型');
   }

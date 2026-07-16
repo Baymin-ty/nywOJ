@@ -121,6 +121,8 @@ exports.eventList = [
   'problem.aiSaveJudge',
   'security.rateLimit.abuse',
   'security.loginBackoff',
+  'problem.export',
+  'problem.import',
 ];
 
 exports.eventExp = [
@@ -187,6 +189,8 @@ exports.eventExp = [
   'LLM 保存评测配置',
   '安全 - 触发限流',
   '安全 - 登录失败退避',
+  '导出完整题目包',
+  '导入完整题目包',
 ]
 
 

@@ -54,6 +54,7 @@ const validateZip = (zipPath, unlimited, maxTotalSize) => {
   return new Promise((resolve, reject) => {
     let settled = false;
     let totalSize = 0;
+    const entryNames = new Set();
     const finish = (result) => {
       if (settled) return;
       settled = true;
@@ -68,6 +69,12 @@ const validateZip = (zipPath, unlimited, maxTotalSize) => {
           zipfile.close();
           return finish({ ok: false, err: 'ZIP包含非法路径' });
         }
+        const entryName = normalizeRelPath(entry.fileName).replace(/\/$/, '');
+        if (entryNames.has(entryName)) {
+          zipfile.close();
+          return finish({ ok: false, err: `ZIP包含重复路径: ${entryName}` });
+        }
+        entryNames.add(entryName);
         if (isZipSymlink(entry)) {
           zipfile.close();
           return finish({ ok: false, err: 'ZIP包含符号链接' });
@@ -75,7 +82,8 @@ const validateZip = (zipPath, unlimited, maxTotalSize) => {
         totalSize += entry.uncompressedSize;
         if (!unlimited && totalSize > maxTotalSize) {
           zipfile.close();
-          return finish({ ok: false, err: 'Total uncompressed size exceeds 200MB limit' });
+          const limitMB = Math.round(maxTotalSize / 1024 / 1024);
+          return finish({ ok: false, err: `ZIP 解压后总大小超过 ${limitMB}MB 限制` });
         }
         zipfile.readEntry();
       });
@@ -446,4 +454,11 @@ module.exports = {
   handleCaseUpload,
   answerUpload: answerUpload(),
   ANSWER_TMP_DIR,
+  loadOrBuildCaseConfig,
+  normalizeSingleRootFolder,
+  parseJudgeProfileImport,
+  removeArchiveNoise,
+  removeIfExists,
+  removeProfileControlFiles,
+  validateZip,
 };

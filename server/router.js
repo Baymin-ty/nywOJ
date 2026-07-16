@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const { rateLimit } = require('./rateLimit');
+const { requirePermission } = require('./auth/middleware');
 // 复用的限流器（config.SECURITY.rules[name] 可覆盖阈值；enabled=false 全直通）
 const rlSubmit = rateLimit('submit', { capacity: 2, refillPerSec: 0.1, by: 'uid' });     // ~每 10s 1 次
 const rlCustomRun = rateLimit('customRun', { capacity: 6, refillPerSec: 0.1, by: 'uid' }); // ~每分钟 6 次
@@ -112,6 +113,7 @@ router.post('/api/group/revokeGroupPermission', group.revokeGroupPermission);
 const problem = require('./api/problem/core');
 const publicProblemApi = require('./api/problem/publicApi');
 const problemAi = require('./api/problem/ai');
+const problemPackage = require('./api/problem/package');
 
 router.post('/api/problem/createProblem', publicProblemApi.createProblem);
 router.post('/api/problem/queryProblemSet', publicProblemApi.queryProblemSet);
@@ -159,6 +161,11 @@ router.post('/api/problem/unbindSol', problem.unbindSol);
 router.post('/api/problem/getProblemAuth', problem.getProblemAuth);
 router.post('/api/problem/getAnswerCaseList', problem.getAnswerCaseList);
 router.post('/api/problem/createFileAccess', problem.createFileAccess);
+router.get('/api/problem/exportProblem', problemPackage.directExport);
+router.post('/api/problem/exportProblem', problemPackage.directExport);
+router.get('/api/problem/signedExportProblem', problemPackage.signedExport);
+router.post('/api/problem/previewProblemImport', requirePermission('problem.create'), problemPackage.packageUpload.single('file'), problemPackage.previewProblemImport);
+router.post('/api/problem/importProblem', requirePermission('problem.create'), problemPackage.importProblem);
 router.post('/api/problem/ai/config', problemAi.getConfig);
 router.post('/api/problem/ai/saveConfig', problemAi.saveConfig);
 router.post('/api/problem/ai/models', problemAi.listModels);

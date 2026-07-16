@@ -5,6 +5,13 @@
       <el-pagination @current-change="handleCurrentChange" :current-page="currentPage" :page-size="20"
         layout="total, prev, pager, next" :total="total"></el-pagination>
       <el-button-group>
+        <el-button v-if="$can('problem.create')" type="warning" plain :loading="importLoading"
+          @click="selectProblemPackage">
+          <el-icon class="el-icon--left">
+            <Upload />
+          </el-icon>
+          导入题目
+        </el-button>
         <el-popconfirm v-if="$can('problem.create')" confirm-button-text="确认" cancel-button-text="取消" title="确认添加题目?"
           @confirm="addProblem">
           <template #reference>
@@ -23,6 +30,8 @@
           刷新
         </el-button>
       </el-button-group>
+      <input ref="problemPackageInput" class="package-file-input" type="file" accept=".zip,application/zip"
+        @change="previewProblemPackage" />
     </div>
     <div class="filter-row">
         <el-form :inline="true" :model="filter">
@@ -123,6 +132,47 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <el-dialog v-model="importDialogVisible" title="导入题目预览" width="min(720px, 92vw)"
+        :close-on-click-modal="!importLoading" :close-on-press-escape="!importLoading">
+        <div v-loading="importLoading" class="import-preview" v-if="importPreview">
+          <el-alert v-if="!importPreview.profileHealth?.ok" type="error" :closable="false"
+            title="评测流程体检未通过，暂不能导入">
+            <div v-for="item in importPreview.profileHealth?.errors || []" :key="item">{{ item }}</div>
+          </el-alert>
+          <el-descriptions :column="2" border class="import-summary">
+            <el-descriptions-item label="标题" :span="2">{{ importPreview.title }}</el-descriptions-item>
+            <el-descriptions-item label="时间限制">{{ importPreview.timeLimit }} ms</el-descriptions-item>
+            <el-descriptions-item label="空间限制">{{ importPreview.memoryLimit }} MB</el-descriptions-item>
+            <el-descriptions-item label="测试点">{{ importPreview.cases }} 个</el-descriptions-item>
+            <el-descriptions-item label="样例">{{ importPreview.samples }} 组</el-descriptions-item>
+            <el-descriptions-item label="评测流程">{{ importPreview.profile }}</el-descriptions-item>
+            <el-descriptions-item label="资产">{{ importPreview.assets?.length || 0 }} 个</el-descriptions-item>
+            <el-descriptions-item label="标签" :span="2">
+              <el-tag v-for="tag in importPreview.tags" :key="tag" type="info" class="preview-tag">{{ tag }}</el-tag>
+              <span v-if="!importPreview.tags?.length">无</span>
+            </el-descriptions-item>
+          </el-descriptions>
+          <div class="import-file-title">包内文件（{{ importPreview.fileCount }} 个）</div>
+          <el-table :data="importPreview.files" size="small" max-height="240" empty-text="无数据或资产文件">
+            <el-table-column prop="name" label="文件" show-overflow-tooltip />
+            <el-table-column label="大小" width="110">
+              <template #default="scope">{{ formatFileSize(scope.row.size) }}</template>
+            </el-table-column>
+          </el-table>
+          <div v-if="importPreview.fileCount > importPreview.files.length" class="file-list-tip">
+            仅显示前 {{ importPreview.files.length }} 个文件
+          </div>
+          <el-alert class="private-tip" type="info" :closable="false" title="导入后题目默认为私有题，仅你和授权协作者可见。" />
+        </div>
+        <template #footer>
+          <el-button @click="importDialogVisible = false" :disabled="importLoading">取消</el-button>
+          <el-button type="primary" @click="confirmProblemImport" :loading="importLoading"
+            :disabled="!importToken || !importPreview?.profileHealth?.ok">
+            确认导入
+          </el-button>
+        </template>
+      </el-dialog>
   </div>
 </template>
 
@@ -195,7 +245,11 @@ export default {
       tagList: [],
       tagColorMap: {},
       tagVisible: true,
-      publisherList: []
+      publisherList: [],
+      importDialogVisible: false,
+      importLoading: false,
+      importPreview: null,
+      importToken: ''
     }
   },
   methods: {
@@ -235,6 +289,59 @@ export default {
           this.$message.error('添加题目失败' + res.data.message);
         }
       });
+    },
+    selectProblemPackage() {
+      this.$refs.problemPackageInput?.click();
+    },
+    async previewProblemPackage(event) {
+      const input = event && event.target;
+      const file = input && input.files && input.files[0];
+      if (!file) return;
+      this.importLoading = true;
+      this.importPreview = null;
+      this.importToken = '';
+      try {
+        const form = new FormData();
+        form.append('file', file);
+        const res = await axios.post('/api/problem/previewProblemImport', form, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (res.status !== 200 || !res.data?.token || !res.data?.preview) {
+          throw new Error(res.data?.message || '无法解析题目包');
+        }
+        this.importToken = res.data.token;
+        this.importPreview = res.data.preview;
+        this.importDialogVisible = true;
+      } catch (err) {
+        this.$message.error(err.message || '题目包预览失败');
+      } finally {
+        this.importLoading = false;
+        if (input) input.value = '';
+      }
+    },
+    async confirmProblemImport() {
+      if (!this.importToken) return;
+      this.importLoading = true;
+      try {
+        const res = await axios.post('/api/problem/importProblem', { token: this.importToken });
+        if (res.status !== 200 || !res.data?.pid) {
+          throw new Error(res.data?.message || '导入题目失败');
+        }
+        const pid = res.data.pid;
+        this.importDialogVisible = false;
+        this.$message.success(`题目 #${pid} 导入成功`);
+        this.$router.push(`/problem/edit/${pid}`);
+      } catch (err) {
+        this.$message.error(err.message || '导入题目失败');
+      } finally {
+        this.importLoading = false;
+      }
+    },
+    formatFileSize(bytes) {
+      const value = Number(bytes || 0);
+      if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(2)} MB`;
+      if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
+      return `${value} B`;
     },
     cellStyle({ columnIndex }) {
       return { textAlign: columnIndex === 1 ? 'left' : 'center' };
@@ -336,6 +443,39 @@ export default {
   text-align: center;
   margin: 0 auto;
   max-width: 1300px;
+}
+
+.package-file-input {
+  display: none;
+}
+
+.import-preview {
+  text-align: left;
+}
+
+.import-summary {
+  margin-top: 12px;
+}
+
+.preview-tag {
+  margin: 2px 6px 2px 0;
+  cursor: default;
+}
+
+.import-file-title {
+  margin: 16px 0 8px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.file-list-tip {
+  margin-top: 6px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.private-tip {
+  margin-top: 14px;
 }
 
 .filter-row {

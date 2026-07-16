@@ -107,6 +107,7 @@ app.use((req, res, next) => {
       req.url.startsWith('/api/problem/signedDownloadAnswerInputs') ||
       req.url.startsWith('/api/problem/signedDownloadAsset') ||
       req.url.startsWith('/api/problem/signedDownloadProblemFile') ||
+      req.url.startsWith('/api/problem/signedExportProblem') ||
       req.url.startsWith('/api/problem/signedUploadData') ||
       req.url.startsWith('/api/problem/signedUploadProblemFile') ||
       req.url === '/api/problem/getProblemTags' ||
