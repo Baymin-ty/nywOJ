@@ -19,7 +19,7 @@ const options = {
 };
 
 const refererCheck = require('./refererCheck');
-const whiteList = ['localhost', '127.0.0.1', '::1', 'https://ty.szsyzx.cn/', 'https://www.niyiwei.com'];
+const whiteList = ['localhost', '127.0.0.1', '::1', 'https://ty.szsyzx.cn/', 'https://www.niyiwei.com', 'https://niyiwei.com'];
 app.use(refererCheck(whiteList, { allowEmpty: true }));
 
 const sessionStore = new MySQLStore(options);
