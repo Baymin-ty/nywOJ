@@ -90,6 +90,57 @@ const createCopyFeedbackPlugin = () => ({
   },
 });
 
+// v-md-editor's KaTeX parser intentionally rejects whitespace next to `$`.
+// That leaves common table cells such as `$ \\le 10 $` unrendered. Handle only
+// the whitespace-padded form here and leave all other delimiter decisions to
+// the upstream parser.
+const whitespacePaddedMathInline = (state, silent) => {
+  if (state.src[state.pos] !== '$') return false;
+
+  const start = state.pos + 1;
+  let match = start;
+
+  while ((match = state.src.indexOf('$', match)) !== -1) {
+    let pos = match - 1;
+    while (state.src[pos] === '\\') pos -= 1;
+
+    // An odd number of backslashes escapes the closing dollar sign.
+    if ((match - pos) % 2 === 1) break;
+    match += 1;
+  }
+
+  if (match === -1) return false;
+
+  const rawContent = state.src.slice(start, match);
+  const content = rawContent.replace(/^[ \t]+|[ \t]+$/g, '');
+  const nextChar = state.src.charCodeAt(match + 1);
+
+  if (!content || content === rawContent || (nextChar >= 0x30 && nextChar <= 0x39)) {
+    return false;
+  }
+
+  if (!silent) {
+    const token = state.push('math_inline', 'math', 0);
+    token.markup = '$';
+    token.content = content;
+  }
+
+  state.pos = match + 1;
+  return true;
+};
+
+const createWhitespacePaddedMathPlugin = () => ({
+  install(VMd) {
+    VMd.vMdParser.extendMarkdown((markdownParser) => {
+      markdownParser.inline.ruler.before(
+        'math_inline',
+        'math_inline_whitespace_padded',
+        whitespacePaddedMathInline
+      );
+    });
+  },
+});
+
 const loadPreview = () => {
   if (!previewPromise) {
     previewPromise = (async () => {
@@ -114,6 +165,7 @@ const loadPreview = () => {
       VMdPreview
         .use(unwrap(themeMod), { Hljs: hljs })
         .use(unwrap(katexMod)())
+        .use(createWhitespacePaddedMathPlugin())
         .use(unwrap(copyCodeMod)())
         .use(createCopyFeedbackPlugin());
       return VMdPreview;
@@ -162,6 +214,7 @@ const loadEditor = () => {
       VMdEditor
         .use(unwrap(themeMod), { Hljs: hljs })
         .use(unwrap(katexMod)())
+        .use(createWhitespacePaddedMathPlugin())
         .use(unwrap(copyCodeMod)())
         .use(createCopyFeedbackPlugin());
       return VMdEditor;
