@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS contestVirtual (
 
 ## 里程碑 V1：数据模型 + 虚拟时钟 policy + 提交链路
 
-1. 迁移如上；`docs/cloud-upgrade.md` / apply_migrations.sh 更新。
+1. 迁移如上；`deploy/upgrade/cloud-upgrade.sh` 迁移清单更新。
 2. **端点**（server/api/contest/ 下新建 `virtual.js`，router.js 注册）：
    - `startVirtual { cid }`：条件 = 比赛已结束、本人未正式参赛（不在 contestPlayer）、无未完成 VP、可见性通过 policy；落 contestVirtual。
    - `quitVirtual { cid }`：置 finishedAt（提前结束）。

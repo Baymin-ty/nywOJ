@@ -406,7 +406,7 @@ npm run build        # 生产构建（输出到 web/dist/，已 git-ignored）
 | [llm-usage-guide.md](docs/llm-usage-guide.md) | LLM 出题助手使用说明 |
 | [rust-sandbox-deploy.md](docs/rust-sandbox-deploy.md) | Rust sandbox 部署 |
 | [rust-sandbox-migration.md](docs/rust-sandbox-migration.md) | Rust sandbox `/api/*` 请求 / 返回契约 |
-| [cloud-upgrade.md](docs/cloud-upgrade.md) | 从 `250fa62` 到当前版本的云端升级方案 |
+| [ops-maintenance.md](docs/ops-maintenance.md) | 云端运维手册：三大组件维护、升级流程、健康检查与回滚 |
 | [testing.md](docs/testing.md) | 回归测试分层（logic / e2e）、CI 建库与 GitHub Actions |
 | [sandbox/README.md](sandbox/README.md) | 教学沙箱快速开始、评测 API、安全模型与 smoke tests |
 

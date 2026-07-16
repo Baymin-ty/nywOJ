@@ -5,7 +5,7 @@
 #   deploy/upgrade/cloud-upgrade.sh
 #
 # The script is intentionally configurable instead of assuming one process
-# manager. See docs/cloud-upgrade.md for the rollout plan and all variables.
+# manager. See docs/ops-maintenance.md for the maintenance guide and all variables.
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
