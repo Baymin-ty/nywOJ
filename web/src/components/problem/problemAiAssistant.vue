@@ -34,15 +34,12 @@
         </el-form-item>
         <el-form-item label="模型">
           <div class="model-row">
-            <el-select
+            <el-autocomplete
               v-model="llm.model"
-              filterable
-              allow-create
-              default-first-option
-              placeholder="先读取模型或手动输入"
-            >
-              <el-option v-for="model in llm.models" :key="model" :label="model" :value="model" />
-            </el-select>
+              :fetch-suggestions="queryModelSuggestions"
+              placeholder="选择模型或直接输入模型名"
+              clearable
+            />
             <el-button plain :loading="llm.modelsLoading" @click="loadModels">
               <el-icon class="el-icon--left"><Refresh /></el-icon>
               读取模型
@@ -630,6 +627,13 @@ export default {
     },
   },
   methods: {
+    queryModelSuggestions(query, callback) {
+      const keyword = query.trim().toLowerCase();
+      const suggestions = this.llm.models
+        .filter((model) => !keyword || model.toLowerCase().includes(keyword))
+        .map((model) => ({ value: model }));
+      callback(suggestions);
+    },
     traditionalJudgeProfile() {
       return {
         version: 1,
@@ -1844,7 +1848,7 @@ h2 {
   flex-wrap: nowrap;
 }
 
-.model-row .el-select {
+.model-row .el-autocomplete {
   flex: 1;
   min-width: 180px;
 }
