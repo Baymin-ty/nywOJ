@@ -269,6 +269,10 @@ need_file "$SERVER_DIR/db/add_judgeProfile.sql"
 need_file "$SERVER_DIR/db/add_solVisible.sql"
 need_file "$SERVER_DIR/db/add_contestV2.sql"
 need_file "$SERVER_DIR/db/add_contestRating.sql"
+need_file "$SERVER_DIR/db/add_virtual.sql"
+need_file "$SERVER_DIR/db/add_notification.sql"
+need_file "$SERVER_DIR/db/add_clarification.sql"
+need_file "$SERVER_DIR/db/add_submissionIndexes.sql"
 need_file "$RUST_SANDBOX_DIR/build.sh"
 have node || die "node is required"
 have npm || die "npm is required"
@@ -296,6 +300,10 @@ if [ "$RUN_DB" = "1" ]; then
   mysql_run_file "$SERVER_DIR/db/add_solVisible.sql"
   mysql_run_file "$SERVER_DIR/db/add_contestV2.sql"
   mysql_run_file "$SERVER_DIR/db/add_contestRating.sql"
+  mysql_run_file "$SERVER_DIR/db/add_virtual.sql"
+  mysql_run_file "$SERVER_DIR/db/add_notification.sql"
+  mysql_run_file "$SERVER_DIR/db/add_clarification.sql"
+  mysql_run_file "$SERVER_DIR/db/add_submissionIndexes.sql"
 fi
 
 if [ "$RUN_SCHEMA_SYNC" = "1" ]; then

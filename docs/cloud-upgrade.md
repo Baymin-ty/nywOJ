@@ -132,7 +132,8 @@ deploy/upgrade/cloud-upgrade.sh
 1. 安装后端依赖并构建 `server/comparer/comparer`
 2. 备份数据库（设置 `NYWOJ_BACKUP_DB=1` 或传 `--backup-db` 时）
 3. 执行幂等 SQL：`add_judgeProfile.sql`、`add_solVisible.sql`、
-   `add_contestV2.sql`、`add_contestRating.sql`
+   `add_contestV2.sql`、`add_contestRating.sql`、`add_virtual.sql`、
+   `add_notification.sql`、`add_clarification.sql`、`add_submissionIndexes.sql`
 4. 执行运行时 schema 同步：权限目录、用户组、contest V2、Rating 存储
 5. 回填旧题 `judgeProfile`，并做 profile 资产体检
 6. 构建并替换 Rust sandbox 容器
