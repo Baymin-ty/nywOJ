@@ -251,7 +251,9 @@ reload_proxy() {
 probe_ws_upgrade() {
   local url="$1"
   local status
-  status="$(curl -ksS -o /dev/null -w '%{http_code}' \
+  # --http1.1: over h2 the Upgrade/Connection headers are dropped and the
+  # probe false-negatives with a plain 404 from the backend router.
+  status="$(curl -ksS --http1.1 -o /dev/null -w '%{http_code}' \
     -H 'Connection: Upgrade' \
     -H 'Upgrade: websocket' \
     -H 'Sec-WebSocket-Version: 13' \
