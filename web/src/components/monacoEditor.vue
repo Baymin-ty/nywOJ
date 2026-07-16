@@ -1,5 +1,5 @@
 <template>
-  <div ref="editorContainer" :style="`height: ${height}px`" />
+  <div ref="editorContainer" class="monaco-host" :style="`height: ${height}px`" />
 </template>
 
 <script>
@@ -166,4 +166,11 @@ export default defineComponent({
 });
 </script>
 
-<style scoped></style>
+<style scoped>
+.monaco-host {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+</style>

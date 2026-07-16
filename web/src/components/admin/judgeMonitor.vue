@@ -172,7 +172,7 @@
       </section>
     </div>
 
-    <el-dialog v-model="clientDialogVisible" :title="clientDialogMode === 'create' ? '新增评测机' : '编辑评测机'" width="520px">
+    <el-dialog v-model="clientDialogVisible" :title="clientDialogMode === 'create' ? '新增评测机' : '编辑评测机'" width="min(520px, 92vw)">
       <el-form label-width="90px">
         <el-form-item label="名称">
           <el-input v-model="clientForm.name" maxlength="80" />
@@ -187,7 +187,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="clientKeyVisible" title="评测机 Key" width="560px">
+    <el-dialog v-model="clientKeyVisible" title="评测机 Key" width="min(560px, 92vw)">
       <el-alert type="warning" show-icon :closable="false" title="关闭窗口后不再展示完整 Key；请将它写入客户端 JUDGE.CLIENT_KEY。" />
       <el-input class="client-key-input" :model-value="clientKey" readonly />
       <template #footer>
@@ -541,6 +541,15 @@ h1 {
 
   .throughput div {
     min-height: 86px;
+  }
+
+  .panel {
+    padding: 12px;
+  }
+
+  .client-title-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

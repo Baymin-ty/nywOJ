@@ -700,7 +700,9 @@ export default {
 .case-page {
   text-align: center;
   margin: 0 auto;
-  width: min(1480px, calc(100vw - 28px));
+  width: 100%;
+  max-width: 1480px;
+  min-width: 0;
 }
 
 .card-header {
@@ -1026,6 +1028,34 @@ pre {
 
   .box-card {
     margin: 0;
+  }
+
+  .card-header,
+  .header-actions,
+  .section-head,
+  .section-actions {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .header-actions,
+  .section-actions {
+    width: 100%;
+  }
+
+  .data-section,
+  .cases {
+    padding: 10px;
+  }
+
+  .overview-strip {
+    align-items: flex-start;
+    padding: 10px;
+  }
+
+  .ov-flow {
+    flex-basis: 100%;
+    margin-left: 0;
   }
 
   .health-summary {

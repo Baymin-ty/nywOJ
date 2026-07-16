@@ -54,14 +54,14 @@
       </el-tab-pane>
     </el-tabs>
 
-    <el-dialog v-model="codeVisible" :title="`${codeTarget.name} 的提交 #${codeTarget.sid}`" width="900px">
+    <el-dialog v-model="codeVisible" :title="`${codeTarget.name} 的提交 #${codeTarget.sid}`" width="min(900px, 92vw)">
       <pre class="hack-code">{{ codeTarget.code }}</pre>
       <template #footer>
         <el-button type="danger" @click="openHack(codeTarget)">Hack 这份提交</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="hackVisible" :title="`Hack ${hackTarget.name} 的提交 #${hackTarget.sid}`" width="720px">
+    <el-dialog v-model="hackVisible" :title="`Hack ${hackTarget.name} 的提交 #${hackTarget.sid}`" width="min(720px, 92vw)">
       <el-alert class="hack-tip" type="warning" :closable="false"
         title="提交一组输入数据。数据先经题目 validator 校验，再用标程生成期望输出并运行目标代码比对。成功 +100，失败 −50。" />
       <el-input v-model="hackInput" type="textarea" :rows="12" placeholder="输入数据（≤256KB）" />
@@ -213,5 +213,27 @@ export default {
 .hack-pagination {
   margin-top: 12px;
   justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .hack-panel {
+    padding: 0;
+  }
+
+  .hack-stats {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .hack-code {
+    box-sizing: border-box;
+    max-width: 100%;
+    padding: 10px;
+    white-space: pre;
+  }
+
+  .hack-pagination {
+    flex-wrap: wrap;
+  }
 }
 </style>

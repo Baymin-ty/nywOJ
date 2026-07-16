@@ -1,5 +1,5 @@
 <template>
-  <el-row style="margin: auto;max-width: 1500px;min-width: 600px;">
+  <el-row class="announcement-page">
     <el-col :span="24">
       <el-card class="box-card" shadow="hover">
         <template #header>
@@ -46,6 +46,12 @@ export default {
 </script>
 
 <style scoped>
+.announcement-page {
+  margin: auto;
+  max-width: 1500px;
+  min-width: 0;
+}
+
 .box-card {
   margin: 10px;
   text-align: left;
@@ -62,5 +68,29 @@ export default {
   margin: 0;
   font-size: 12px;
   color: #708090;
+}
+
+@media (max-width: 768px) {
+  .box-card {
+    margin: 0;
+  }
+
+  .title {
+    font-size: 22px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  :deep(.github-markdown-body) {
+    padding: 4px 0;
+    overflow-wrap: anywhere;
+  }
 }
 </style>

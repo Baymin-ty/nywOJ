@@ -561,7 +561,7 @@
       </el-table>
     </section>
 
-    <el-dialog v-model="previewVisible" title="Rating 变化" width="760px" destroy-on-close>
+    <el-dialog v-model="previewVisible" title="Rating 变化" width="min(760px, 92vw)" destroy-on-close>
       <div class="preview-head">
         <div>
           <strong>{{ previewContest.title || '比赛' }}</strong>
@@ -1388,6 +1388,25 @@ h1 {
   .metrics-grid,
   .result-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .rating-page {
+    padding-inline: 0;
+  }
+
+  .head-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .panel {
+    padding: 12px;
+  }
+
+  .panel-title,
+  .preview-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
 }
 </style>

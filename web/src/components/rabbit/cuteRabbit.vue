@@ -1,5 +1,5 @@
 <template>
-  <div style="margin: auto;max-width: 1500px;">
+  <div class="rabbit-page">
     <el-row>
       <el-col :xs="24" :sm="24" :md="9">
         <el-card class="box-card" shadow="hover" style="text-align: center;">
@@ -8,7 +8,7 @@
               Tiddar (uid: {{ this.uid }} 用户名: {{ this.name }})
             </div>
           </template>
-          <el-button style="height: 500px; width: 350px;" @click="add()" round :disabled="!finished">
+          <el-button class="rabbit-button" @click="add()" round :disabled="!finished">
             <img class="round" :alt="pic[opt].name" :src="pic[opt].loc">
           </el-button>
           <h1 class="rainbow" style="font-size: 35px;">
@@ -149,9 +149,23 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+.rabbit-page {
+  max-width: 1500px;
+  min-width: 0;
+  margin: auto;
+}
+
+.rabbit-button {
+  width: 350px;
+  max-width: 100%;
+  height: 500px;
+}
+
 .round {
   height: 480px;
+  max-width: 100%;
   border-radius: 15px;
+  object-fit: contain;
 }
 
 .box-card {
@@ -172,5 +186,36 @@ a {
   outline: 0;
   cursor: pointer;
   font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .box-card {
+    margin: 0 0 10px;
+  }
+
+  .rabbit-button {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 10px;
+  }
+
+  .round {
+    width: 100%;
+    height: auto;
+    max-height: 420px;
+  }
+
+  .card-header {
+    height: auto;
+    min-height: 24px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .rainbow {
+    font-size: 26px !important;
+    line-height: 1.35;
+  }
 }
 </style>

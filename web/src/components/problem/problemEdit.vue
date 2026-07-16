@@ -428,5 +428,13 @@ export default {
   .stat-number {
     font-size: 22px;
   }
+
+  :deep(.v-md-editor) {
+    min-width: 0;
+  }
+
+  .edit-actions :deep(.el-button) {
+    margin-left: 0;
+  }
 }
 </style>

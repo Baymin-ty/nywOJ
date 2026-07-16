@@ -96,7 +96,7 @@
         </el-table-column>
       </el-table>
     </el-card>
-    <el-dialog v-model="editVisible" title="编辑队伍" width="520px">
+    <el-dialog v-model="editVisible" title="编辑队伍" width="min(520px, 92vw)">
       <el-form label-width="70px">
         <el-form-item label="队名">
           <el-input v-model="editTeamName" placeholder="队名" />
@@ -321,5 +321,32 @@ export default {
   font-family: 'Courier New', monospace;
   font-weight: 700;
   letter-spacing: 1px;
+}
+
+@media (max-width: 768px) {
+  .team-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .team-row :deep(.el-input),
+  .team-card :deep(.el-select) {
+    width: 100% !important;
+  }
+
+  .team-card :deep(.el-form--inline .el-form-item) {
+    display: flex;
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .team-card :deep(.el-form--inline .el-form-item__content) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  :deep(.el-dialog__body) {
+    padding: 12px;
+  }
 }
 </style>

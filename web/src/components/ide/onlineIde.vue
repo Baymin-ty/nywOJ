@@ -187,7 +187,7 @@
         v-model="settingsVisible"
         title="IDE 设置"
         class="ide-settings-dialog"
-        width="780px"
+        width="min(780px, 92vw)"
         append-to-body
         @open="syncSettingsSource">
         <el-tabs v-model="settingsTab" class="ide-settings-tabs">
@@ -1738,6 +1738,20 @@ export default {
 
   .panel-title-wrap {
     min-width: 0;
+  }
+
+  .ide-panel {
+    padding: 10px;
+  }
+
+  .ide-settings-form :deep(.el-form-item) {
+    display: block;
+  }
+
+  .ide-settings-form :deep(.el-form-item__label),
+  .ide-settings-form :deep(.el-form-item__content) {
+    width: 100% !important;
+    margin-left: 0 !important;
   }
 }
 </style>

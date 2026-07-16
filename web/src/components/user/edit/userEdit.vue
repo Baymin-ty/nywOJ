@@ -1,6 +1,6 @@
 <template>
-  <div style="margin: auto;max-width: 1000px;min-width: 800px;">
-    <el-tabs v-model="activeName" @tab-change="switchTab" tab-position="left">
+  <div class="user-edit-page">
+    <el-tabs v-model="activeName" class="user-edit-tabs" @tab-change="switchTab" tab-position="left">
       <el-tab-pane name="profile">
         <template #label>
           <el-icon>
@@ -80,7 +80,54 @@ export default {
 </script>
 
 <style scoped>
+.user-edit-page {
+  max-width: 1000px;
+  min-width: 0;
+  margin: auto;
+}
+
 .el-icon {
   vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+  .user-edit-tabs {
+    display: block;
+  }
+
+  .user-edit-tabs :deep(.el-tabs__header.is-left) {
+    float: none;
+    margin: 0 0 12px;
+  }
+
+  .user-edit-tabs :deep(.el-tabs__nav-wrap.is-left) {
+    height: auto;
+  }
+
+  .user-edit-tabs :deep(.el-tabs__nav-scroll) {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .user-edit-tabs :deep(.el-tabs__nav.is-left) {
+    display: flex;
+    float: none;
+    white-space: nowrap;
+  }
+
+  .user-edit-tabs :deep(.el-tabs__item.is-left) {
+    flex: 0 0 auto;
+    justify-content: center;
+    padding: 0 14px;
+  }
+
+  .user-edit-tabs :deep(.el-tabs__active-bar.is-left) {
+    display: none;
+  }
+
+  .user-edit-tabs :deep(.el-tabs__content) {
+    min-width: 0;
+    overflow: visible;
+  }
 }
 </style>

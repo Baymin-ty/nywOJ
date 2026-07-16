@@ -1,5 +1,5 @@
 <template>
-  <div style="margin: 0 20px;">
+  <div class="user-audit-edit">
     <el-row>
       <el-col :span="8">
         <div class="header">
@@ -139,6 +139,11 @@ export default {
 </script>
 
 <style scoped>
+.user-audit-edit {
+  margin: 0 20px;
+  min-width: 0;
+}
+
 .header {
   font-size: 24px;
   font-weight: 800;
@@ -186,5 +191,20 @@ pre {
   background-color: #f5f5f5;
   border: 1px solid #ccc;
   border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+  .user-audit-edit {
+    margin: 0;
+  }
+
+  .audit-filter > :deep(*) {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
+  .attach {
+    overflow-wrap: anywhere;
+  }
 }
 </style>

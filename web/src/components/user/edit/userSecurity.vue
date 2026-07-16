@@ -1,5 +1,5 @@
 <template>
-  <div style="margin: 0 20px;">
+  <div class="user-security-edit">
     <div class="header">
       修改密码
     </div>
@@ -101,8 +101,19 @@ export default {
 </script>
 
 <style scoped>
+.user-security-edit {
+  margin: 0 20px;
+  min-width: 0;
+}
+
 .header {
   font-size: 24px;
   font-weight: 800;
+}
+
+@media (max-width: 768px) {
+  .user-security-edit {
+    margin: 0;
+  }
 }
 </style>

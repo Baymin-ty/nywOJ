@@ -1,6 +1,6 @@
 <template>
-  <el-row>
-    <el-col :span="6">
+  <el-row class="problem-manage">
+    <el-col :xs="24" :sm="24" :md="6" class="problem-manage-side">
       <el-input v-model="addpid" style="width: 150px;" placeholder="添加题目pid" @keyup.enter="addProblem" />
       <el-button-group style="margin: 5px;">
         <el-button type="success" :disabled="!addpid.length" @click="addProblem">
@@ -24,8 +24,8 @@
         </draggable>
       </div>
     </el-col>
-    <el-col :span="18">
-      <el-table style="margin-left: 30px;min-height: 600px;" :data="problemList" min-height="600px"
+    <el-col :xs="24" :sm="24" :md="18" class="problem-manage-table">
+      <el-table class="manage-table" :data="problemList" min-height="600px"
         :header-cell-style="{ textAlign: 'center' }" :cell-style="{ textAlign: 'center' }">
         <el-table-column fixed="left" label="删除" min-width="10%">
           <template #default="scope">
@@ -250,5 +250,32 @@ export default {
   color: #909399;
   font-size: 12px;
   margin: 2px 0 0 2px;
+}
+
+.problem-manage,
+.problem-manage-side,
+.problem-manage-table {
+  min-width: 0;
+}
+
+.manage-table {
+  min-height: 600px;
+  margin-left: 30px;
+}
+
+@media (max-width: 768px) {
+  .problem-manage-side {
+    margin-bottom: 16px;
+  }
+
+  .manage-table {
+    min-height: 420px;
+    margin-left: 0;
+  }
+
+  .draggable > div:nth-of-type(2) {
+    width: auto;
+    padding-left: 0;
+  }
 }
 </style>

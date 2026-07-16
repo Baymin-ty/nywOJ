@@ -192,4 +192,26 @@ export default {
   align-items: center;
   gap: 10px;
 }
+
+@media (max-width: 768px) {
+  .header {
+    height: auto;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .left-controls {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .header :deep(.el-pagination) {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
 </style>

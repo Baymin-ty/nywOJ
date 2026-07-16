@@ -1,5 +1,5 @@
 <template>
-  <div style="text-align: center; margin: 0 auto; max-width: 1200px">
+  <div class="rabbit-data-page">
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
@@ -136,6 +136,13 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+.rabbit-data-page {
+  max-width: 1200px;
+  min-width: 0;
+  margin: 0 auto;
+  text-align: center;
+}
+
 .box-card {
   margin: 10px;
 }
@@ -145,5 +152,20 @@ export default {
   justify-content: space-between;
   align-items: center;
   height: 20px;
+}
+
+@media (max-width: 768px) {
+  .box-card {
+    margin: 0;
+  }
+
+  :deep(.el-card__body) {
+    padding-inline: 10px;
+  }
+
+  #clickCnt,
+  #userCnt {
+    height: 260px !important;
+  }
 }
 </style>

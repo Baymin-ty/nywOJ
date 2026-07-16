@@ -1,5 +1,5 @@
 <template>
-  <el-row style="margin: auto;max-width: 1500px;min-width: 600px;">
+  <el-row class="paste-page">
     <el-col :span="24">
       <el-card class="box-card" shadow="hover">
         <template #header>
@@ -86,6 +86,12 @@ export default {
 </script>
 
 <style scoped>
+.paste-page {
+  margin: auto;
+  max-width: 1500px;
+  min-width: 0;
+}
+
 .box-card {
   margin: 10px;
   text-align: left;
@@ -105,5 +111,50 @@ export default {
 .time {
   font-size: 12px;
   color: #708090;
+}
+
+@media (max-width: 768px) {
+  .box-card {
+    margin: 0;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .title {
+    font-size: 22px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .subtitle {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .subtitle span {
+    margin-left: 0 !important;
+  }
+
+  .card-header :deep(.el-button-group) {
+    display: flex;
+    float: none !important;
+    width: 100%;
+  }
+
+  .card-header :deep(.el-button-group .el-button) {
+    flex: 1;
+  }
+
+  :deep(.github-markdown-body) {
+    padding: 4px 0;
+    overflow-wrap: anywhere;
+  }
 }
 </style>

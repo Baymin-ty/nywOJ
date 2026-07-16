@@ -176,4 +176,33 @@ export default {
 .clar-answer-bar .el-input {
   max-width: 400px;
 }
+
+@media (max-width: 768px) {
+  .clar-pid,
+  .clar-admin-bar .el-textarea,
+  .clar-ask-bar .el-textarea {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .clar-admin-bar > .el-button,
+  .clar-ask-bar > .el-button {
+    width: 100%;
+  }
+
+  .clar-answer-bar {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .clar-answer-bar .el-input {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .clar-a,
+  .clar-qtext {
+    overflow-wrap: anywhere;
+  }
+}
 </style>

@@ -1,5 +1,6 @@
 <template>
-  <el-menu mode="horizontal" :default-active="this.$store.state.activeTitle" :router="true">
+  <div class="site-header">
+  <el-menu class="desktop-nav" mode="horizontal" :default-active="this.$store.state.activeTitle" :router="true">
     <el-menu-item index="/rabbit" style="height: auto">
       <img style="margin-top: 3px;" src="../assets/icon.png" class="icon">
     </el-menu-item>
@@ -67,20 +68,21 @@
       <template #title>
         <el-badge :value="unreadCount" :max="99" :hidden="unreadCount === 0" class="noti-badge">
           <el-icon><Bell /></el-icon>
+          <span class="sr-only">通知</span>
         </el-badge>
       </template>
       <div class="noti-panel">
         <div class="noti-head">
           <span>通知</span>
-          <el-link type="primary" :underline="false" @click.stop="markAllRead" v-if="unreadCount > 0">全部已读</el-link>
+          <el-button v-if="unreadCount > 0" class="noti-mark-all" link type="primary" @click.stop="markAllRead">全部已读</el-button>
         </div>
         <el-empty v-if="!notifications.length" description="暂无通知" :image-size="60" />
         <div v-else>
-          <div v-for="n in notifications" :key="n.nid" class="noti-item" :class="{ unread: !n.isRead }" @click="goNotification(n)">
+          <button v-for="n in notifications" :key="n.nid" type="button" class="noti-item" :class="{ unread: !n.isRead }" @click="goNotification(n)">
             <div class="noti-title">{{ n.title }}</div>
             <div class="noti-content" v-if="n.content">{{ n.content }}</div>
             <div class="noti-time">{{ formatTime(n.createdAt) }}</div>
-          </div>
+          </button>
         </div>
         <div class="noti-foot">
           <router-link to="/notifications" @click="closeMenus">查看全部</router-link>
@@ -141,6 +143,150 @@
     </el-sub-menu>
   </el-menu>
 
+  <div class="mobile-nav" role="navigation" aria-label="移动端主导航">
+    <el-button class="mobile-menu-button" text circle aria-label="打开主菜单" @click="mobileNavOpen = true">
+      <el-icon :size="24"><Menu /></el-icon>
+    </el-button>
+    <router-link class="mobile-brand" to="/" aria-label="返回首页">
+      <img src="../assets/icon.png" class="mobile-brand-icon" alt="nywOJ">
+    </router-link>
+    <span class="mobile-page-title">{{ mobilePageTitle }}</span>
+    <div class="mobile-actions">
+      <el-button
+        v-if="this.$store.state.uid"
+        class="mobile-action-button"
+        text
+        circle
+        aria-label="查看通知"
+        @click="openMobileNotifications"
+      >
+        <el-badge :value="unreadCount" :max="99" :hidden="unreadCount === 0">
+          <el-icon :size="20"><Bell /></el-icon>
+        </el-badge>
+      </el-button>
+      <el-dropdown
+        v-if="this.$store.state.uid"
+        trigger="click"
+        placement="bottom-end"
+        popper-class="mobile-user-dropdown"
+        @command="handleMobileUserCommand"
+      >
+        <button type="button" class="mobile-avatar-button" aria-label="打开用户菜单">
+          <el-avatar :size="32" :src="this.$store.state.avatar" />
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item :command="`/user/${this.$store.state.uid}`">
+              <el-icon><UserFilled /></el-icon>个人主页
+            </el-dropdown-item>
+            <el-dropdown-item command="/user/edit">
+              <el-icon><Edit /></el-icon>编辑资料
+            </el-dropdown-item>
+            <el-dropdown-item
+              v-if="$canAny('group.manage','judge.monitor.view','judge.client.manage','problem.tag.manage','system.rating.manage','system.migration.manage','system.homepage.manage')"
+              command="/system"
+            >
+              <el-icon><Setting /></el-icon>系统管理
+            </el-dropdown-item>
+            <el-dropdown-item v-if="$canAny('user.manage','user.role.admin')" command="/admin/permissions">
+              <el-icon><Lock /></el-icon>权限管理
+            </el-dropdown-item>
+            <el-dropdown-item command="/paste">
+              <el-icon><Document /></el-icon>剪贴板
+            </el-dropdown-item>
+            <el-dropdown-item v-if="$canAny('user.manage')" command="__broadcast" divided>
+              <el-icon><Promotion /></el-icon>发送广播
+            </el-dropdown-item>
+            <el-dropdown-item command="__logout" :divided="!$canAny('user.manage')">
+              <el-icon><Close /></el-icon>退出登录
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+      <el-button v-else class="mobile-login-button" type="primary" size="small" @click="$router.push('/user/login')">
+        登录
+      </el-button>
+    </div>
+  </div>
+  </div>
+
+  <el-drawer
+    v-model="mobileNavOpen"
+    class="mobile-nav-drawer"
+    title="主菜单"
+    direction="ltr"
+    size="min(86vw, 360px)"
+    :with-header="false"
+    append-to-body
+  >
+    <div class="mobile-drawer-head">
+      <img src="../assets/icon.png" class="mobile-drawer-logo" alt="">
+      <div>
+        <strong>nywOJ</strong>
+        <small v-if="this.$store.state.uid">{{ this.$store.state.name }}</small>
+        <small v-else>在线评测平台</small>
+      </div>
+      <el-button text circle aria-label="关闭主菜单" @click="mobileNavOpen = false">
+        <el-icon :size="22"><Close /></el-icon>
+      </el-button>
+    </div>
+    <el-menu
+      class="mobile-drawer-menu"
+      :default-active="this.$store.state.activeTitle"
+      :router="true"
+      @select="mobileNavOpen = false"
+    >
+      <el-menu-item index="/"><el-icon><Lollipop /></el-icon><span>首页</span></el-menu-item>
+      <el-menu-item index="/problem"><el-icon><Files /></el-icon><span>题库</span></el-menu-item>
+      <el-menu-item index="/ide"><el-icon><Monitor /></el-icon><span>在线 IDE</span></el-menu-item>
+      <el-menu-item index="/contest"><el-icon><Trophy /></el-icon><span>比赛</span></el-menu-item>
+      <el-menu-item index="/homework"><el-icon><Notebook /></el-icon><span>作业</span></el-menu-item>
+      <el-menu-item index="/submission"><el-icon><DataAnalysis /></el-icon><span>提交记录</span></el-menu-item>
+      <el-menu-item index="/users"><el-icon><UserFilled /></el-icon><span>用户榜</span></el-menu-item>
+      <el-menu-item index="/discussion"><el-icon><Document /></el-icon><span>讨论</span></el-menu-item>
+      <el-menu-item index="/rabbit"><el-icon><MagicStick /></el-icon><span>可爱兔兔</span></el-menu-item>
+      <template v-if="!this.$store.state.uid">
+        <el-divider />
+        <el-menu-item index="/user/login"><el-icon><User /></el-icon><span>登录</span></el-menu-item>
+        <el-menu-item index="/user/reg"><el-icon><CircleCheck /></el-icon><span>注册</span></el-menu-item>
+      </template>
+    </el-menu>
+  </el-drawer>
+
+  <el-drawer
+    v-model="mobileNotificationsOpen"
+    class="mobile-notification-drawer"
+    title="通知"
+    direction="rtl"
+    size="min(92vw, 380px)"
+    :with-header="false"
+    append-to-body
+  >
+    <div class="mobile-notification-head">
+      <strong>通知</strong>
+      <el-button text circle aria-label="关闭通知" @click="mobileNotificationsOpen = false">
+        <el-icon :size="22"><Close /></el-icon>
+      </el-button>
+    </div>
+    <div class="mobile-notification-body">
+      <div class="noti-head">
+        <span>{{ unreadCount ? `${unreadCount} 条未读` : '全部已读' }}</span>
+        <el-button v-if="unreadCount > 0" class="noti-mark-all" link type="primary" @click="markAllRead">全部已读</el-button>
+      </div>
+      <el-empty v-if="!notifications.length" description="暂无通知" :image-size="72" />
+      <div v-else>
+        <button v-for="n in notifications" :key="n.nid" type="button" class="noti-item" :class="{ unread: !n.isRead }" @click="goNotification(n)">
+          <div class="noti-title">{{ n.title }}</div>
+          <div class="noti-content" v-if="n.content">{{ n.content }}</div>
+          <div class="noti-time">{{ formatTime(n.createdAt) }}</div>
+        </button>
+      </div>
+      <div class="noti-foot">
+        <router-link to="/notifications" @click="mobileNotificationsOpen = false">查看全部通知</router-link>
+      </div>
+    </div>
+  </el-drawer>
+
   <el-dialog v-model="broadcastDialog" title="发送全站广播" width="480px">
     <el-form label-width="60px">
       <el-form-item label="标题">
@@ -174,6 +320,8 @@ export default {
       unreadCount: 0,
       notifications: [],
       notiTimer: null,
+      mobileNavOpen: false,
+      mobileNotificationsOpen: false,
       broadcastDialog: false,
       broadcasting: false,
       broadcast: { title: '', content: '', link: '' },
@@ -188,6 +336,11 @@ export default {
         label: '一瓶可乐',
       }],
     }
+  },
+  computed: {
+    mobilePageTitle() {
+      return (this.$route.meta && this.$route.meta.title) || 'nywOJ';
+    },
   },
   mounted() {
     if (this.$store.state.uid) {
@@ -210,12 +363,16 @@ export default {
       }
     },
     '$route'() {
+      this.mobileNavOpen = false;
+      this.mobileNotificationsOpen = false;
       if (this.$store.state.uid) this.fetchUnread();
     }
   },
   methods: {
     logout() {
       axios.post('/api/user/logout').then(() => {
+        this.mobileNavOpen = false;
+        this.mobileNotificationsOpen = false;
         this.$store.state.uid = 0;
         this.$store.state.name = '/';
         this.$store.commit('setPermissions', []);
@@ -245,8 +402,24 @@ export default {
           this.unreadCount = Math.max(0, this.unreadCount - 1);
         }).catch(() => {});
       }
+      this.mobileNotificationsOpen = false;
       this.closeMenus();
       if (n.link) this.$router.push(n.link);
+    },
+    openMobileNotifications() {
+      this.mobileNotificationsOpen = true;
+      this.refreshNotifications();
+    },
+    handleMobileUserCommand(command) {
+      if (command === '__logout') {
+        this.logout();
+        return;
+      }
+      if (command === '__broadcast') {
+        this.broadcastDialog = true;
+        return;
+      }
+      if (command) this.$router.push(command);
     },
     markAllRead() {
       axios.post('/api/notification/markAllRead').then(() => {
@@ -290,6 +463,31 @@ export default {
 </script>
 
 <style>
+.site-header {
+  width: 100%;
+  background: var(--el-bg-color);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.desktop-nav {
+  justify-content: center;
+}
+
+.mobile-nav {
+  display: none;
+}
+
 .icon {
   border-radius: 5px;
   width: 40px;
@@ -310,11 +508,7 @@ export default {
   font-size: 10px;
 }
 
-.el-menu {
-  justify-content: center;
-}
-
-.noti-badge :deep(.el-badge__content) {
+.noti-badge .el-badge__content {
   top: 6px;
 }
 
@@ -333,8 +527,15 @@ export default {
 }
 
 .noti-item {
+  display: block;
+  width: 100%;
   padding: 8px 14px;
   cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
@@ -375,27 +576,183 @@ export default {
   padding: 8px;
 }
 
-@media (max-width: 768px) {
-  .el-menu {
-    justify-content: flex-start;
-    overflow-x: auto;
-    overflow-y: hidden;
-    white-space: nowrap;
-    scrollbar-width: none;
-  }
+.noti-mark-all {
+  min-height: 32px;
+  padding: 0 4px;
+}
 
-  .el-menu::-webkit-scrollbar {
+.mobile-drawer-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 64px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.mobile-drawer-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+
+.mobile-drawer-head strong,
+.mobile-drawer-head small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-drawer-head small {
+  margin-top: 2px;
+  color: var(--el-text-color-secondary);
+}
+
+.mobile-nav-drawer .el-drawer__body,
+.mobile-notification-drawer .el-drawer__body {
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.mobile-drawer-menu {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px;
+  overflow-y: auto;
+  border-right: 0;
+}
+
+.mobile-drawer-menu .el-menu-item {
+  height: 48px;
+  margin: 2px 0;
+  border-radius: 8px;
+}
+
+.mobile-notification-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 4px 12px 4px 16px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.mobile-notification-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mobile-notification-body .noti-head {
+  min-height: 38px;
+  padding-top: 8px;
+}
+
+.mobile-notification-body .noti-item {
+  padding: 12px 14px;
+}
+
+@media (max-width: 900px) {
+  .desktop-nav {
     display: none;
   }
 
-  .el-menu--horizontal > .el-menu-item,
-  .el-menu--horizontal > .el-sub-menu .el-sub-menu__title {
-    padding: 0 10px;
+  .site-header {
+    height: calc(56px + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    box-shadow: 0 1px 8px rgb(0 0 0 / 5%);
   }
 
-  .icon {
-    width: 34px;
-    height: 34px;
+  .mobile-nav {
+    display: grid;
+    grid-template-columns: 44px 36px minmax(0, 1fr) auto;
+    gap: 4px;
+    align-items: center;
+    height: 56px;
+    padding: 0 max(8px, env(safe-area-inset-right)) 0 max(6px, env(safe-area-inset-left));
+    box-sizing: border-box;
+  }
+
+  .mobile-menu-button,
+  .mobile-action-button {
+    width: 44px;
+    height: 44px;
+    margin: 0;
+  }
+
+  .mobile-brand {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 40px;
+  }
+
+  .mobile-brand-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+  }
+
+  .mobile-page-title {
+    min-width: 0;
+    padding-left: 4px;
+    overflow: hidden;
+    color: var(--el-text-color-primary);
+    font-size: 15px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-actions {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .mobile-avatar-button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    outline: none;
+    background: transparent;
+  }
+
+  .mobile-avatar-button:focus-visible {
+    box-shadow: 0 0 0 2px var(--el-color-primary-light-5);
+  }
+
+  .mobile-login-button {
+    min-width: 52px;
+    min-height: 44px;
+  }
+
+  .mobile-drawer-head > .el-button,
+  .mobile-notification-head > .el-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .mobile-user-dropdown .el-dropdown-menu__item {
+    min-height: 44px;
+    padding: 0 16px;
   }
 }
 </style>

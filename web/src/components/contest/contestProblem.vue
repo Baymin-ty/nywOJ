@@ -1,5 +1,5 @@
 <template>
-  <el-row style="margin: auto;max-width: 1500px;min-width: 600px;">
+  <el-row class="contest-problem-page">
     <el-col :xs="24" :sm="24" :md="17">
       <el-card class="box-card" shadow="hover">
         <template #header>
@@ -166,6 +166,12 @@ export default {
 </script>
 
 <style scoped>
+.contest-problem-page {
+  margin: auto;
+  max-width: 1500px;
+  min-width: 0;
+}
+
 .box-card {
   margin: 10px;
   text-align: left;
@@ -181,5 +187,27 @@ export default {
 .title {
   margin: 0;
   font-size: 25px;
+}
+
+@media (max-width: 768px) {
+  .box-card {
+    margin: 0 0 10px;
+  }
+
+  .title {
+    font-size: 20px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .card-header {
+    height: auto;
+    min-height: 35px;
+  }
+
+  :deep(.github-markdown-body) {
+    padding: 4px 0;
+    overflow-wrap: anywhere;
+  }
 }
 </style>

@@ -149,4 +149,27 @@ export default {
 .forgot-link:hover {
   text-decoration: underline;
 }
+
+@media (max-width: 768px) {
+  .login {
+    width: 100%;
+  }
+
+  :deep(.el-card__body) {
+    padding-inline: 14px;
+  }
+
+  :deep(.el-form-item) {
+    margin-left: 0 !important;
+  }
+
+  :deep(.el-form-item__content) {
+    min-width: 0;
+  }
+
+  :deep(.el-button[style*="width: 250px"]) {
+    width: 100% !important;
+    max-width: 250px;
+  }
+}
 </style>

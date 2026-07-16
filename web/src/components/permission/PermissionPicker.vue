@@ -1,12 +1,14 @@
 <template>
   <el-select
     v-model="selected"
+    class="permission-picker"
     :multiple="multiple"
     :placeholder="placeholder"
     :clearable="clearable"
     :collapse-tags="collapseTags"
     :collapse-tags-tooltip="collapseTagsTooltip"
     :max-collapse-tags="maxCollapseTags"
+    popper-class="permission-picker-popper"
     filterable
     style="width: 100%;"
     @change="onChange"
@@ -17,7 +19,12 @@
         :key="p.key"
         :label="hideKey ? p.name : `${p.name} (${p.key})`"
         :value="p.key"
-      />
+      >
+        <div class="permission-picker-option">
+          <span class="permission-picker-option-name">{{ p.name }}</span>
+          <code v-if="!hideKey" class="permission-picker-option-key">{{ p.key }}</code>
+        </div>
+      </el-option>
     </el-option-group>
   </el-select>
 </template>
@@ -86,3 +93,69 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.permission-picker { width: 100%; }
+
+.permission-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.permission-picker-option-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.permission-picker-option-key {
+  margin-left: auto;
+  color: #909399;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .permission-picker :deep(.el-select__wrapper) {
+    min-height: 40px;
+  }
+}
+</style>
+
+<style>
+@media (max-width: 768px) {
+  .permission-picker-popper {
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  .permission-picker-popper .el-select-dropdown__item {
+    height: auto;
+    min-height: 44px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    line-height: 1.3;
+    white-space: normal;
+  }
+
+  .permission-picker-popper .permission-picker-option {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .permission-picker-popper .permission-picker-option-name,
+  .permission-picker-popper .permission-picker-option-key {
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .permission-picker-popper .permission-picker-option-key {
+    margin-left: 0;
+  }
+}
+</style>

@@ -138,12 +138,12 @@
     :page-sizes="[20, 50, 100]" @current-change="fetchRank" @size-change="fetchRank" />
 
   <!-- 选手 分数/排名 时间曲线 -->
-  <el-dialog v-model="chartVisible" :title="chartTitle" width="900px" destroy-on-close
+  <el-dialog v-model="chartVisible" :title="chartTitle" width="min(900px, 92vw)" destroy-on-close
     @opened="renderPlayerChart" @closed="disposePlayerChart">
     <div ref="playerChart" style="width: 100%; height: 420px;" v-loading="chartLoading"></div>
   </el-dialog>
 
-  <el-dialog v-if="dialogVisible" v-model="dialogVisible" title="提交记录" width="1300px" center
+  <el-dialog v-if="dialogVisible" v-model="dialogVisible" title="提交记录" width="min(1300px, 94vw)" center
     style="border-radius: 10px; padding-bottom: 10px;" class="pd">
     <el-divider />
     <el-table :data="subList" style="min-height: 200px; width: auto; margin-left: 10px;margin-right: 10px;"
@@ -187,7 +187,7 @@
     </el-table>
   </el-dialog>
 
-  <el-dialog v-model="ratingChangesVisible" title="Rating 变化" width="780px" destroy-on-close>
+  <el-dialog v-model="ratingChangesVisible" title="Rating 变化" width="min(780px, 92vw)" destroy-on-close>
     <div class="rating-change-meta">
       <el-tag :type="ratingChangesAlertType">{{ ratingChangesStatusText }}</el-tag>
       <span>{{ ratingChangesNoticeTitle }}</span>
@@ -777,5 +777,45 @@ export default {
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .rank-rating-bar {
+    flex-direction: column;
+  }
+
+  .rank-rating-button {
+    width: 100%;
+  }
+
+  .timeline-bar {
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-inline: 0;
+  }
+
+  .timeline-slider {
+    flex-basis: calc(100% - 88px);
+    min-width: 180px;
+  }
+
+  .timeline-clock {
+    min-width: 80px;
+    font-size: 16px;
+  }
+
+  .rank-pagination {
+    flex-wrap: wrap;
+    gap: 6px 0;
+  }
+
+  .rating-change-meta {
+    align-items: flex-start;
+  }
+
+  :deep(.el-dialog__body) {
+    padding: 12px;
+  }
 }
 </style>

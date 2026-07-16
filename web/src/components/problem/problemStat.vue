@@ -374,11 +374,22 @@ export default {
 
   .card-header {
     justify-content: flex-start;
+    height: auto;
+    min-height: 20px;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   .solution-actions {
     width: 100%;
     justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .solution-actions :deep(.el-button-group) {
+    display: flex;
+    max-width: 100%;
+    flex-wrap: wrap;
   }
 }
 </style>

@@ -201,5 +201,11 @@ export default {
     flex-wrap: wrap;
     justify-content: center;
   }
+
+  .sub-header :deep(.el-pagination) {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 }
 </style>

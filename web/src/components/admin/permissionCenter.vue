@@ -52,7 +52,7 @@
             <el-option label="正常" :value="1" />
             <el-option label="封禁" :value="0" />
           </el-select>
-          <div style="flex: 1;" />
+          <div class="toolbar-spacer" />
           <div v-if="selected.size > 0" class="batch-bar">
             已选 {{ selected.size }}
             <el-button size="small" type="primary" plain @click="batchChangeRole">批量改角色</el-button>
@@ -234,7 +234,7 @@
       <!-- Permission catalog tab -->
       <div v-if="activeTab === 'catalog'">
         <div class="toolbar" style="margin-bottom: 10px;">
-          <div class="search-box" style="flex: 0 0 320px;">
+          <div class="search-box catalog-search-box">
             <el-icon class="search-icon"><Search /></el-icon>
             <input v-model="catalogFilter" placeholder="按 key 或名称搜索" class="search-input" />
           </div>
@@ -277,15 +277,15 @@
           </div>
         </div>
         <div class="toolbar audit-toolbar">
-          <el-input v-model="auditFilter.actorUid" clearable placeholder="UID" style="width: 100px;"
+          <el-input v-model="auditFilter.actorUid" class="audit-uid-filter" clearable placeholder="UID"
             @keyup.enter="onAuditFilterChange" @clear="onAuditFilterChange" />
-          <el-select v-model="auditFilter.eventType" placeholder="全部事件" clearable filterable style="width: 210px;" @change="onAuditFilterChange">
+          <el-select v-model="auditFilter.eventType" class="audit-event-filter" placeholder="全部事件" clearable filterable @change="onAuditFilterChange">
             <el-option v-for="e in auditEventOptions" :key="e.id" :label="e.name" :value="e.id" />
           </el-select>
-          <el-input v-model="auditFilter.q" clearable placeholder="搜索用户 / IP / 设备 / 事件 / 详情" style="width: 280px;"
+          <el-input v-model="auditFilter.q" class="audit-search-filter" clearable placeholder="搜索用户 / IP / 设备 / 事件 / 详情"
             @keyup.enter="onAuditFilterChange" @clear="onAuditFilterChange" />
           <el-date-picker v-model="auditFilter.timeRange" type="datetimerange" start-placeholder="开始时间" end-placeholder="结束时间"
-            value-format="YYYY-MM-DD HH:mm:ss" style="width: 360px;" @change="onAuditFilterChange" />
+            class="audit-time-filter" value-format="YYYY-MM-DD HH:mm:ss" @change="onAuditFilterChange" />
           <el-button size="small" type="primary" plain @click="onAuditFilterChange">筛选</el-button>
           <el-button size="small" plain @click="resetAuditFilter">重置</el-button>
         </div>
@@ -495,27 +495,29 @@
           <!-- Login log -->
           <div v-if="editTab === 'log'">
             <div style="font-size: 12px; color: #909399; margin-bottom: 12px;">最近登录记录</div>
-            <table class="user-table" v-loading="loginLogLoading" style="font-size: 12px;">
-              <thead>
-                <tr>
-                  <th style="text-align: left;">时间</th>
-                  <th style="text-align: left;">IP</th>
-                  <th style="text-align: left;">属地</th>
-                  <th style="text-align: left;">浏览器</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(l, i) in loginLog" :key="i">
-                  <td class="mono" style="text-align: left; color: #606266;">{{ l.time }}</td>
-                  <td class="mono" style="text-align: left;">{{ l.loginIp }}</td>
-                  <td style="text-align: left;">{{ l.loginLoc }}</td>
-                  <td style="text-align: left; color: #909399;">{{ l.browser }} / {{ l.os }}</td>
-                </tr>
-                <tr v-if="loginLog.length === 0 && !loginLogLoading">
-                  <td colspan="4" class="empty-row">暂无记录</td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="drawer-table-scroll">
+              <table class="user-table login-log-table" v-loading="loginLogLoading" style="font-size: 12px;">
+                <thead>
+                  <tr>
+                    <th style="text-align: left;">时间</th>
+                    <th style="text-align: left;">IP</th>
+                    <th style="text-align: left;">属地</th>
+                    <th style="text-align: left;">浏览器</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(l, i) in loginLog" :key="i">
+                    <td class="mono" style="text-align: left; color: #606266;">{{ l.time }}</td>
+                    <td class="mono" style="text-align: left;">{{ l.loginIp }}</td>
+                    <td style="text-align: left;">{{ l.loginLoc }}</td>
+                    <td style="text-align: left; color: #909399;">{{ l.browser }} / {{ l.os }}</td>
+                  </tr>
+                  <tr v-if="loginLog.length === 0 && !loginLogLoading">
+                    <td colspan="4" class="empty-row">暂无记录</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -542,7 +544,7 @@
     />
 
     <!-- Batch role dialog -->
-    <el-dialog v-model="batchRoleDialogVisible" title="批量修改角色" width="520px">
+    <el-dialog v-model="batchRoleDialogVisible" class="batch-role-dialog" title="批量修改角色" width="520px">
       <div class="hint-box" style="margin-bottom: 14px;">
         将对选中的 <b>{{ batchTargetCount }}</b> 个用户应用以下操作。
         <span v-if="selected.has(1)">根账号 uid=1 会被自动跳过。</span>
@@ -1471,6 +1473,7 @@ export default {
   flex: 0 0 280px;
   height: 32px;
 }
+.catalog-search-box { flex-basis: 320px; }
 .search-icon {
   position: absolute;
   left: 10px;
@@ -1493,6 +1496,11 @@ export default {
 .filter-select { flex: 0 0 auto; }
 .role-filter { width: 160px; }
 .status-filter { width: 110px; }
+.toolbar-spacer { flex: 1; }
+.audit-uid-filter { width: 100px; }
+.audit-event-filter { width: 210px; }
+.audit-search-filter { width: 280px; }
+.audit-time-filter { width: 360px; }
 .toolbar :deep(.el-select__wrapper),
 .toolbar :deep(.el-input__wrapper) {
   min-height: 32px;
@@ -1812,7 +1820,7 @@ export default {
 }
 
 /* Drawer */
-.user-edit-drawer :deep(.el-drawer__body) {
+.perm-page :deep(.user-edit-drawer .el-drawer__body) {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -1839,6 +1847,12 @@ export default {
   flex-shrink: 0;
 }
 .drawer-body { padding: 14px 22px 20px; overflow: auto; flex: 1; }
+.drawer-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.login-log-table { min-width: 660px; }
 .drawer-footer {
   padding: 14px 22px;
   border-top: 1px solid #ebeef5;
@@ -1963,42 +1977,457 @@ export default {
 @media (max-width: 768px) {
   .perm-page {
     grid-template-columns: 1fr;
+    gap: 10px;
     height: auto;
     min-height: calc(100vh - 60px);
-    padding: 10px;
+    padding: 8px;
     overflow: visible;
+  }
+
+  .perm-page.embedded {
+    height: auto;
+    min-height: 0;
+    gap: 10px;
   }
 
   .perm-sidebar {
-    width: 100%;
-    display: flex;
-    align-items: center;
+    width: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+    align-items: stretch;
     gap: 6px;
-    padding: 10px;
-    overflow-x: auto;
+    padding: 8px;
+    overflow: visible;
+  }
+
+  .perm-page.embedded .perm-sidebar {
+    width: auto;
   }
 
   .sidebar-header {
-    flex: 0 0 auto;
-    min-width: 150px;
-    margin-bottom: 0;
-    padding: 0 10px 0 4px;
-    border-bottom: none;
-    border-right: 1px solid #edf1f6;
+    grid-column: 1 / -1;
+    min-width: 0;
+    margin: 0;
+    padding: 2px 4px 8px;
+    border-right: none;
+    border-bottom: 1px solid #edf1f6;
+  }
+
+  .sidebar-label {
+    display: none;
   }
 
   .sidebar-title {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .sidebar-item {
-    flex: 0 0 auto;
     margin: 0;
-    white-space: nowrap;
+    min-width: 0;
+    min-height: 44px;
+    justify-content: center;
+    gap: 4px;
+    padding: 7px 5px;
+    font-size: 12px;
+    line-height: 1.25;
+    text-align: center;
+  }
+
+  .sidebar-item:hover {
+    transform: none;
+  }
+
+  .sidebar-item-label {
+    flex: 0 1 auto;
+  }
+
+  .sidebar-badge {
+    display: none;
   }
 
   .perm-main {
+    width: 100%;
     overflow: visible;
+  }
+
+  .users-layout,
+  .audit-layout {
+    height: auto;
+  }
+
+  .stat-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-item {
+    min-width: 0;
+    padding: 10px;
+    gap: 9px;
+  }
+
+  .stat-item:nth-child(2n) {
+    border-right: none !important;
+  }
+
+  .stat-item:nth-child(-n + 2) {
+    border-bottom: 1px solid #ebeef5;
+  }
+
+  .stat-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .stat-value { font-size: 17px; }
+  .stat-label-text { font-size: 11px; }
+
+  .toolbar {
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .search-box,
+  .catalog-search-box {
+    flex: 1 1 100%;
+    width: 100%;
+    height: 40px;
+  }
+
+  .search-input {
+    height: 40px;
+  }
+
+  .toolbar .role-filter,
+  .toolbar .status-filter {
+    flex: 1 1 calc(50% - 4px);
+    width: auto;
+    min-width: 0;
+  }
+
+  .toolbar-spacer {
+    display: none;
+  }
+
+  .toolbar :deep(.el-select__wrapper),
+  .toolbar :deep(.el-input__wrapper),
+  .toolbar :deep(.el-date-editor) {
+    min-height: 40px;
+  }
+
+  .toolbar > :deep(.el-button) {
+    min-height: 40px;
+    margin-left: 0;
+  }
+
+  .batch-bar {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    min-width: 0;
+    padding: 7px 8px;
+  }
+
+  .list-table-wrap {
+    flex: none;
+  }
+
+  .table-scroll,
+  .matrix-wrap,
+  .drawer-table-scroll {
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .list-table-wrap .user-table {
+    min-width: 960px;
+  }
+
+  .audit-layout .user-table {
+    min-width: 900px;
+  }
+
+  .table-footer {
+    gap: 10px;
+    padding: 9px 10px;
+    white-space: nowrap;
+    overflow-x: auto;
+  }
+
+  .section-header {
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .section-actions {
+    flex-wrap: wrap;
+  }
+
+  .section-actions :deep(.el-button) {
+    flex: 1 1 auto;
+    min-height: 38px;
+    margin-left: 0;
+  }
+
+  .matrix-wrap {
+    max-height: calc(100vh - 230px);
+  }
+
+  .matrix-table {
+    min-width: 760px;
+  }
+
+  .matrix-perm-header {
+    width: 190px;
+    padding: 11px 10px;
+  }
+
+  .matrix-role-header {
+    min-width: 92px;
+    padding: 10px 6px;
+  }
+
+  .perm-key-cell {
+    max-width: 190px;
+    padding: 9px 10px;
+  }
+
+  .perm-key-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .perm-key-row code,
+  .perm-name {
+    overflow-wrap: anywhere;
+  }
+
+  .matrix-legend {
+    gap: 10px 14px;
+  }
+
+  .catalog-summary {
+    flex: 1 1 100%;
+  }
+
+  .catalog-group-header {
+    padding: 9px 10px;
+    gap: 7px;
+    flex-wrap: wrap;
+  }
+
+  .catalog-table,
+  .catalog-table tbody {
+    display: block;
+  }
+
+  .catalog-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 5px 10px;
+    padding: 10px;
+    border-top: 1px solid #f2f4f7;
+  }
+
+  .catalog-table td {
+    width: auto !important;
+    min-width: 0;
+    padding: 0;
+    border-top: none;
+  }
+
+  .catalog-table td:nth-child(1),
+  .catalog-table td:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .catalog-table td:nth-child(3) {
+    line-height: 1.5;
+  }
+
+  .catalog-table code {
+    overflow-wrap: anywhere;
+  }
+
+  .audit-toolbar > * {
+    flex: 1 1 100%;
+    width: 100% !important;
+  }
+
+  .audit-toolbar :deep(.el-date-editor .el-range-input) {
+    min-width: 0;
+    font-size: 11px;
+  }
+
+  .perm-page :deep(.user-edit-drawer) {
+    width: 100% !important;
+  }
+
+  .drawer-header {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .drawer-header > div:nth-child(2) {
+    overflow-wrap: anywhere;
+  }
+
+  .drawer-tabs {
+    min-width: 0;
+    padding: 0 12px;
+  }
+
+  .drawer-tabs :deep(.el-tabs__header) {
+    margin-bottom: 0;
+  }
+
+  .drawer-tabs :deep(.el-tabs__item) {
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  .drawer-body {
+    padding: 12px;
+  }
+
+  .drawer-footer {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .field-row {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .field-row label {
+    width: 66px;
+    padding-top: 8px;
+  }
+
+  .field-row > :not(label) {
+    min-width: 0;
+  }
+
+  .readonly-val {
+    padding-top: 7px;
+    overflow-wrap: anywhere;
+  }
+
+  .role-check-item {
+    padding: 10px;
+  }
+
+  .mini-stats {
+    gap: 6px;
+  }
+
+  .mini-stat {
+    min-width: 0;
+    padding: 10px 7px;
+  }
+
+  .mini-stat-val { font-size: 19px; }
+
+  .effective-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .login-log-table {
+    min-width: 620px !important;
+  }
+
+  .perm-page :deep(.batch-role-dialog) {
+    width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 24px);
+    margin-top: 12px !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .perm-page :deep(.batch-role-dialog .el-dialog__body) {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 16px;
+  }
+
+  .perm-page :deep(.batch-role-dialog .el-dialog__footer) {
+    padding: 10px 16px 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .sidebar-item .el-icon {
+    display: none;
+  }
+
+  .section-header {
+    flex-direction: column;
+  }
+
+  .drawer-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .drawer-footer > div:last-child {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .drawer-footer :deep(.el-button) {
+    min-height: 40px;
+    margin-left: 0;
+  }
+
+  .perm-page :deep(.batch-role-dialog .el-radio-group) {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+</style>
+
+<style>
+.user-edit-drawer .el-drawer__body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .user-edit-drawer.el-drawer,
+  .user-edit-drawer .el-drawer {
+    width: 100% !important;
+  }
+
+  .batch-role-dialog.el-dialog,
+  .batch-role-dialog .el-dialog {
+    width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 24px);
+    margin-top: 12px !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .batch-role-dialog .el-dialog__body {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 16px;
+  }
+
+  .batch-role-dialog .el-dialog__footer {
+    padding: 10px 16px 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .batch-role-dialog .el-radio-group {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

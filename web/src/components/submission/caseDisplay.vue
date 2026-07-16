@@ -3,12 +3,13 @@
     <el-collapse accordion v-model="active">
       <el-collapse-item v-for="subtask in subtaskInfo" :key="subtask.info.index" :name="subtask.info.index">
         <template #title>
-          <el-col :span="4">
+          <div class="case-summary subtask-summary">
+          <div class="summary-field">
             <span class="tag">
               Subtask #{{ subtask.info.index }}
             </span>
-          </el-col>
-          <el-col :span="5">
+          </div>
+          <div class="summary-field">
             <span v-if="!subtask.info.option" class="tag">
               score: {{ subtask.info.score }} / {{ subtask.info.fullScore }}
             </span>
@@ -20,71 +21,76 @@
                 score: {{ subtask.info.score }} / {{ subtask.info.fullScore }}
               </span>
             </el-tooltip>
-          </el-col>
-          <el-col :span="5">
+          </div>
+          <div class="summary-field">
             <span class="tag" :style="{ 'color': resColor[subtask.info.res] }">
               {{ subtask.info.res }}
             </span>
-          </el-col>
-          <el-col :span="4">
+          </div>
+          <div class="summary-field">
             <span class="tag">
               time: {{ subtask.info.time }} ms
             </span>
-          </el-col>
-          <el-col :span="4">
+          </div>
+          <div class="summary-field">
             <span class="tag">
               memory: {{ subtask.info.memory }}
             </span>
-          </el-col>
+          </div>
+          </div>
         </template>
         <div class="sub" :style="{ 'color': resColor[subtask.info.res] }">
           <el-collapse accordion>
             <el-collapse-item :disabled="true" v-for="id in subtask['info']?.dependencies" :key="id">
               <template #title>
-                <el-col :span="6">
+                <div class="case-summary nested-summary">
+                <div class="summary-field">
                   <span class="tag">
                     Subtask #{{ id }}
                   </span>
-                </el-col>
-                <el-col :span="6">
+                </div>
+                <div class="summary-field">
                   <span class="tag" :style="{ 'color': resColor[subtaskInfo[id]['info']['res']] }">
                     {{ subtaskInfo[id]['info']['res'] }}
                   </span>
-                </el-col>
-                <el-col :span="5">
+                </div>
+                <div class="summary-field">
                   <span class="tag">
                     time: {{ subtaskInfo[id]['info']['time'] }} ms
                   </span>
-                </el-col>
-                <el-col :span="5">
+                </div>
+                <div class="summary-field">
                   <span class="tag">
                     memory: {{ subtaskInfo[id]['info']['memory'] }}
                   </span>
-                </el-col>
+                </div>
+                </div>
               </template>
             </el-collapse-item>
             <el-collapse-item v-for="data in subtask['cases']" :key="data.id">
               <template #title>
-                <el-col :span="6">
+                <div class="case-summary nested-summary">
+                <div class="summary-field">
                   <span class="tag">
                     Case #{{ data.caseId }}
                   </span>
-                </el-col>
-                <el-col :span="6">
+                </div>
+                <div class="summary-field">
                   <span class="tag" :style="{ 'color': resColor[data.result] }">
                     {{ data.result }}
                   </span>
-                </el-col>
-                <el-col :span="5">
+                </div>
+                <div class="summary-field">
                   <span class="tag">
                     time: {{ data.time }} ms
                   </span>
-                </el-col>
-                <el-col :span="5">
+                </div>
+                <div class="summary-field">
                   <span class="tag">
                     memory: {{ data.memory }}
                   </span>
-                </el-col>
+                </div>
+                </div>
               </template>
               <div class="sub" :style="{ 'color': resColor[data.result] }">
                 <span class="tag">
@@ -169,6 +175,23 @@ pre {
   border-width: 1.5px;
 }
 
+.case-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+}
+
+.nested-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.summary-field {
+  min-width: 0;
+}
+
 .tag {
   align-items: center;
   display: flex;
@@ -184,5 +207,35 @@ pre {
 
 :deep(.el-icon) {
   margin-right: 5px;
+}
+
+@media (max-width: 768px) {
+  .case-summary,
+  .nested-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px 8px;
+    padding: 6px 0;
+  }
+
+  .case-summary .summary-field:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .sub {
+    padding: 10px;
+  }
+
+  .tag {
+    min-width: 0;
+    font-size: 12px;
+    line-height: 16px;
+    overflow-wrap: anywhere;
+  }
+
+  :deep(.el-collapse-item__header) {
+    height: auto;
+    min-height: 48px;
+    line-height: 1.3;
+  }
 }
 </style>

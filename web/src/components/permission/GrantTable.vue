@@ -1,43 +1,45 @@
 <template>
-  <div>
-    <el-table :data="grants" :cell-style="{ textAlign: 'center' }" :header-cell-style="{ textAlign: 'center' }">
-      <el-table-column label="权限" prop="permissionKey">
-        <template #default="scope">
-          <el-tag size="small">{{ permName(scope.row.permissionKey) }}</el-tag>
-          <div style="font-size: 12px; color: #909399;">{{ scope.row.permissionKey }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="效果" width="100">
-        <template #default="scope">
-          <el-tag :type="scope.row.effect === 'deny' ? 'danger' : 'success'" size="small">
-            {{ scope.row.effect === 'deny' ? '拒绝' : '允许' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="资源作用域" width="180">
-        <template #default="scope">
-          <span v-if="scope.row.resourceType">
-            {{ scope.row.resourceType }} #{{ scope.row.resourceId }}
-          </span>
-          <span v-else style="color:#909399">全局</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="过期时间" width="180">
-        <template #default="scope">
-          <span v-if="scope.row.expiresAt">{{ formatDate(scope.row.expiresAt) }}</span>
-          <span v-else style="color:#909399">永久</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="100">
-        <template #default="scope">
-          <el-button type="danger" size="small" plain @click="onRevoke(scope.row)">撤销</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+  <div class="grant-table-panel">
+    <div class="grant-table-scroll">
+      <el-table class="grant-table-grid" :data="grants" :cell-style="{ textAlign: 'center' }" :header-cell-style="{ textAlign: 'center' }">
+        <el-table-column label="权限" prop="permissionKey">
+          <template #default="scope">
+            <el-tag size="small">{{ permName(scope.row.permissionKey) }}</el-tag>
+            <div style="font-size: 12px; color: #909399;">{{ scope.row.permissionKey }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="效果" width="100">
+          <template #default="scope">
+            <el-tag :type="scope.row.effect === 'deny' ? 'danger' : 'success'" size="small">
+              {{ scope.row.effect === 'deny' ? '拒绝' : '允许' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="资源作用域" width="180">
+          <template #default="scope">
+            <span v-if="scope.row.resourceType">
+              {{ scope.row.resourceType }} #{{ scope.row.resourceId }}
+            </span>
+            <span v-else style="color:#909399">全局</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="过期时间" width="180">
+          <template #default="scope">
+            <span v-if="scope.row.expiresAt">{{ formatDate(scope.row.expiresAt) }}</span>
+            <span v-else style="color:#909399">永久</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100">
+          <template #default="scope">
+            <el-button type="danger" size="small" plain @click="onRevoke(scope.row)">撤销</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
 
     <el-divider>新增授权</el-divider>
 
-    <el-form :inline="true" :model="form" @submit.prevent="onGrant">
+    <el-form :inline="true" :model="form" class="grant-form" @submit.prevent="onGrant">
       <el-form-item label="权限">
         <PermissionPicker
           v-model="form.permissionKey"
@@ -45,22 +47,22 @@
           :whitelist="whitelist"
           :scopable-only="scopedOnly"
           :placeholder="scopedOnly ? '只显示可作用域的权限' : '选择权限'"
-          style="width: 260px;"
+          class="grant-permission-control"
         />
       </el-form-item>
       <el-form-item label="效果" v-if="!scopedOnly || allowDeny">
-        <el-select v-model="form.effect" style="width: 100px;">
+        <el-select v-model="form.effect" class="grant-effect-control">
           <el-option label="允许" value="allow" />
           <el-option label="拒绝" value="deny" />
         </el-select>
       </el-form-item>
       <template v-if="!fixedScope && form.resourceType">
         <el-form-item :label="resourceLabel(form.resourceType)">
-          <ResourcePicker v-model="form.resourceId" :resource-type="form.resourceType" style="width: 260px;" />
+          <ResourcePicker v-model="form.resourceId" :resource-type="form.resourceType" class="grant-resource-control" />
         </el-form-item>
       </template>
       <el-form-item label="过期">
-        <el-date-picker v-model="form.expiresAt" type="datetime" placeholder="（永久）" style="width: 200px;" />
+        <el-date-picker v-model="form.expiresAt" class="grant-date-control" type="datetime" placeholder="（永久）" />
       </el-form-item>
       <el-form-item>
         <el-button type="primary" :loading="granting" @click="onGrant">授予</el-button>
@@ -186,3 +188,70 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.grant-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.grant-table-grid {
+  width: 100%;
+  min-width: 720px;
+}
+
+.grant-permission-control,
+.grant-resource-control { width: 260px; }
+.grant-effect-control { width: 100px; }
+.grant-date-control { width: 200px; }
+
+@media (max-width: 768px) {
+  .grant-table-grid {
+    min-width: 680px;
+  }
+
+  .grant-table-panel :deep(.el-divider__text) {
+    padding: 0 12px;
+  }
+
+  .grant-form :deep(.el-form-item) {
+    display: flex;
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 12px;
+  }
+
+  .grant-form :deep(.el-form-item__label) {
+    width: 52px;
+    flex: 0 0 52px;
+    padding-right: 8px;
+  }
+
+  .grant-form :deep(.el-form-item__content) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .grant-permission-control,
+  .grant-resource-control,
+  .grant-effect-control,
+  .grant-date-control {
+    width: 100%;
+  }
+
+  .grant-form :deep(.el-select__wrapper),
+  .grant-form :deep(.el-input__wrapper) {
+    min-height: 40px;
+  }
+
+  .grant-form :deep(.el-form-item:last-child .el-form-item__content) {
+    margin-left: 52px;
+  }
+
+  .grant-form :deep(.el-form-item:last-child .el-button) {
+    width: 100%;
+    min-height: 40px;
+  }
+}
+</style>

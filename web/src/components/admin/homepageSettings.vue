@@ -36,15 +36,17 @@
             <el-option label="主栏" value="main" />
             <el-option label="侧栏" value="side" />
           </el-select>
-          <el-button :disabled="index === 0" circle @click="moveBlock(index, -1)">
-            <el-icon><Top /></el-icon>
-          </el-button>
-          <el-button :disabled="index === editingBlocks.length - 1" circle @click="moveBlock(index, 1)">
-            <el-icon><Bottom /></el-icon>
-          </el-button>
-          <el-button type="danger" circle @click="removeBlock(index)">
-            <el-icon><Delete /></el-icon>
-          </el-button>
+          <div class="block-actions">
+            <el-button :disabled="index === 0" circle aria-label="上移模块" title="上移模块" @click="moveBlock(index, -1)">
+              <el-icon><Top /></el-icon>
+            </el-button>
+            <el-button :disabled="index === editingBlocks.length - 1" circle aria-label="下移模块" title="下移模块" @click="moveBlock(index, 1)">
+              <el-icon><Bottom /></el-icon>
+            </el-button>
+            <el-button type="danger" circle aria-label="删除模块" title="删除模块" @click="removeBlock(index)">
+              <el-icon><Delete /></el-icon>
+            </el-button>
+          </div>
         </div>
         <v-md-editor
           v-if="block.type === 'markdown'"
@@ -146,8 +148,10 @@ export default {
 
 <style scoped>
 .homepage-settings {
+  width: 100%;
   max-width: 1100px;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .page-head {
@@ -188,6 +192,8 @@ h1 {
   border-radius: 8px;
   padding: 16px;
   background: #fff;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .panel-title {
@@ -200,6 +206,7 @@ h1 {
 }
 
 .block-editor {
+  min-width: 0;
   padding: 12px 0;
   border-top: 1px solid #ebeef5;
 }
@@ -211,9 +218,10 @@ h1 {
 
 .block-editor-row {
   display: grid;
-  grid-template-columns: 130px 150px minmax(180px, 1fr) 110px 36px 36px 36px;
+  grid-template-columns: 130px 150px minmax(180px, 1fr) 110px auto;
   gap: 8px;
   align-items: center;
+  min-width: 0;
 }
 
 .block-type,
@@ -223,21 +231,122 @@ h1 {
 }
 
 .block-editor :deep(.v-md-editor) {
+  min-width: 0;
   margin-top: 10px;
 }
 
+.block-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.block-actions .el-button + .el-button {
+  margin-left: 0;
+}
+
 @media (max-width: 768px) {
+  .homepage-settings {
+    overflow-x: hidden;
+  }
+
   .page-head {
     align-items: flex-start;
     flex-direction: column;
   }
 
   .head-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: flex-start;
+    width: 100%;
+  }
+
+  .head-actions .el-button {
+    min-height: 44px;
+    margin-left: 0;
   }
 
   .block-editor-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 8px;
+  }
+
+  .block-editor-row > .el-switch,
+  .block-title,
+  .block-actions {
+    grid-column: 1 / -1;
+  }
+
+  .block-editor-row > .el-switch {
+    min-height: 36px;
+  }
+
+  .block-title {
+    grid-row: 2;
+  }
+
+  .block-type,
+  .block-column {
+    grid-row: 3;
+  }
+
+  .block-editor-row :deep(.el-input__wrapper),
+  .block-editor-row :deep(.el-select__wrapper) {
+    min-height: 44px;
+  }
+
+  .block-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(44px, 1fr));
+  }
+
+  .block-actions .el-button {
+    width: 100%;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 8px;
+  }
+
+  .block-editor :deep(.v-md-editor__toolbar) {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .block-editor :deep(.v-md-editor__toolbar-left),
+  .block-editor :deep(.v-md-editor__toolbar-right) {
+    flex-wrap: wrap;
+  }
+
+  .block-editor :deep(.v-md-editor__toolbar-left + .v-md-editor__toolbar-right) {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+
+  .block-editor :deep(.v-md-editor) {
+    height: 260px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .panel {
+    padding: 12px;
+  }
+
+  .page-head h1 {
+    font-size: 22px;
+  }
+
+  .page-subtitle {
+    line-height: 1.5;
+  }
+
+  .block-editor {
+    padding: 14px 0;
+  }
+
+  .block-editor :deep(.v-md-editor__main) {
+    min-width: 0;
   }
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div style="margin: 0 20px;">
+  <div class="user-session-edit">
     <el-row>
       <el-col :span="20">
         <div class="header">
@@ -96,6 +96,11 @@ export default {
 </script>
 
 <style scoped>
+.user-session-edit {
+  margin: 0 20px;
+  min-width: 0;
+}
+
 .header {
   font-size: 24px;
   font-weight: 800;
@@ -110,5 +115,15 @@ export default {
   font-size: 14px;
   font-weight: 500;
   color: #7a7a7a;
+}
+
+@media (max-width: 768px) {
+  .user-session-edit {
+    margin: 0;
+  }
+
+  .attach {
+    overflow-wrap: anywhere;
+  }
 }
 </style>

@@ -398,5 +398,9 @@ export default {
     gap: 5px;
     min-width: auto;
   }
+
+  .pager :deep(.el-pagination) {
+    flex-wrap: wrap;
+  }
 }
 </style>

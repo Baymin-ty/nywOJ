@@ -567,10 +567,33 @@ export default {
     justify-content: center;
   }
 
+  .sub-header :deep(.el-pagination) {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
   .filter-row {
     display: grid;
     grid-template-columns: 1fr;
     width: 100%;
+  }
+
+  .filter-row :deep(.el-form) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .filter-row :deep(.el-form-item) {
+    min-width: 0;
+    margin: 0;
+  }
+
+  .filter-row :deep(.el-input),
+  .filter-row :deep(.el-select) {
+    width: 100% !important;
   }
 
   .filter-actions {
@@ -588,6 +611,12 @@ export default {
 
   .tags-right {
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .filter-row :deep(.el-form) {
+    grid-template-columns: 1fr;
   }
 }
 </style>

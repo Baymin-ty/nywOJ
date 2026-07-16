@@ -150,10 +150,108 @@ export default {
 @media (max-width: 768px) {
   .role-editor-dialog :deep(.el-dialog) {
     width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 24px);
+    margin-top: 12px !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .role-editor-dialog :deep(.el-dialog__header) {
+    padding: 14px 16px 10px;
+  }
+
+  .role-editor-dialog :deep(.el-dialog__body) {
+    min-height: 0;
+    overflow: hidden;
+    padding: 10px 16px;
+  }
+
+  .role-editor-dialog :deep(.el-dialog__footer) {
+    padding: 10px 16px 14px;
+  }
+
+  .role-editor-body {
+    max-height: calc(100vh - 170px);
+    padding-right: 2px;
   }
 
   .role-editor-form {
     --el-form-label-width: 82px;
+  }
+
+  .role-editor-form :deep(.el-input__wrapper),
+  .role-editor-form :deep(.el-select__wrapper) {
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .role-editor-form :deep(.el-form-item) {
+    display: block;
+  }
+
+  .role-editor-form :deep(.el-form-item__label) {
+    width: auto !important;
+    height: auto;
+    padding: 0 0 6px;
+    line-height: 1.4;
+  }
+
+  .role-editor-form :deep(.el-form-item__content) {
+    margin-left: 0 !important;
+  }
+
+  .permission-form-item :deep(.el-select__tags-text) {
+    max-width: 140px;
+  }
+
+  .role-editor-dialog :deep(.el-dialog__footer) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .role-editor-dialog :deep(.el-dialog__footer .el-button) {
+    min-height: 40px;
+    margin-left: 0;
+  }
+}
+</style>
+
+<style>
+@media (max-width: 768px) {
+  .role-editor-dialog.el-dialog,
+  .role-editor-dialog .el-dialog {
+    width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 24px);
+    margin-top: 12px !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .role-editor-dialog .el-dialog__header {
+    padding: 14px 16px 10px;
+  }
+
+  .role-editor-dialog .el-dialog__body {
+    min-height: 0;
+    overflow: hidden;
+    padding: 10px 16px;
+  }
+
+  .role-editor-dialog .el-dialog__footer {
+    padding: 10px 16px 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .role-editor-dialog .el-dialog__footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .role-editor-dialog .el-dialog__footer .el-button {
+    min-height: 40px;
+    margin-left: 0;
   }
 }
 </style>

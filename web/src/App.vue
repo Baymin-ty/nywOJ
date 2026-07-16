@@ -88,6 +88,22 @@ body {
   overflow-y: overlay;
 }
 
+html,
+body,
+#app {
+  min-width: 0;
+  max-width: 100%;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.el-main {
+  min-width: 0;
+}
+
 .card-header,
 .el-dialog__header,
 .el-form-item__label {
@@ -159,21 +175,41 @@ blockquote {
   margin-top: 50px;
 }
 
+@media (max-width: 900px) {
+  .el-header {
+    height: calc(56px + env(safe-area-inset-top));
+  }
+}
+
 @media (max-width: 768px) {
+  html,
+  body,
+  #app {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
   body {
     overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .el-main {
     padding: 8px !important;
   }
 
+  .el-main > * {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
   .el-card__header {
-    padding: 12px !important;
+    padding: 12px;
   }
 
   .el-card__body {
-    padding: 12px !important;
+    padding: 12px;
   }
 
   .card-header {
@@ -217,6 +253,28 @@ blockquote {
     width: 100% !important;
   }
 
+  .el-form-item,
+  .el-form-item__content,
+  .el-input,
+  .el-input-number,
+  .el-select,
+  .el-date-editor {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .el-form-item__label {
+    height: auto;
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .el-input__inner,
+  .el-select__input,
+  .el-textarea__inner {
+    font-size: 16px;
+  }
+
   .el-button-group {
     display: inline-flex;
     flex-wrap: wrap;
@@ -234,8 +292,25 @@ blockquote {
     justify-content: center;
   }
 
+  .el-pagination .el-pagination__sizes,
+  .el-pagination .el-pagination__jump {
+    margin-left: 4px;
+  }
+
   .el-table {
     font-size: 12px;
+  }
+
+  .el-button {
+    min-height: 36px;
+  }
+
+  button,
+  a,
+  .el-button,
+  .el-menu-item,
+  .el-dropdown-menu__item {
+    touch-action: manipulation;
   }
 
   .el-dialog {
@@ -243,9 +318,103 @@ blockquote {
     margin-top: 5vh !important;
   }
 
+  .el-dialog__body {
+    max-height: 70vh;
+    max-height: 70dvh;
+    padding: 14px;
+    overflow-y: auto;
+  }
+
+  .el-dialog__footer {
+    padding: 10px 14px 14px;
+  }
+
+  .el-message-box {
+    width: calc(100vw - 20px) !important;
+    max-width: 420px;
+  }
+
+  .el-message,
+  .el-notification {
+    width: calc(100vw - 20px) !important;
+    min-width: 0 !important;
+    max-width: 420px;
+    box-sizing: border-box;
+  }
+
+  .el-notification {
+    right: 10px !important;
+  }
+
+  .el-popper,
+  .el-dropdown__popper,
+  .el-select__popper,
+  .el-picker__popper,
+  .el-cascader__dropdown {
+    max-width: calc(100vw - 16px) !important;
+    box-sizing: border-box;
+  }
+
+  .el-select-dropdown__wrap,
+  .el-cascader-panel {
+    max-height: min(60vh, 480px);
+    max-height: min(60dvh, 480px);
+  }
+
+  .el-dropdown__popper .el-scrollbar__wrap {
+    max-height: min(60vh, 480px);
+    max-height: min(60dvh, 480px);
+    overscroll-behavior: contain;
+  }
+
+  .el-dropdown-menu__item {
+    min-height: 44px;
+  }
+
+  .el-select-dropdown,
+  .el-select-dropdown__item,
+  .el-cascader-node,
+  .el-picker-panel {
+    max-width: calc(100vw - 20px) !important;
+  }
+
+  .el-cascader-panel {
+    overflow-x: auto;
+    overscroll-behavior: contain;
+  }
+
+  .el-picker-panel__body-wrapper {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  pre,
+  code,
+  .v-md-editor-preview {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  pre {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  img,
+  video,
+  iframe,
+  .v-md-editor-preview img {
+    max-width: 100%;
+  }
+
+  img,
+  video {
+    height: auto;
+  }
+
   #footer {
     font-size: 12px;
-    padding: 0 8px;
+    padding: 0 8px max(8px, env(safe-area-inset-bottom));
   }
 }
 </style>

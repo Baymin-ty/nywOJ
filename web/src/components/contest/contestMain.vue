@@ -1,5 +1,5 @@
 <template>
-  <div style="margin: auto; max-width: 1500px;">
+  <div class="contest-main-page">
     <el-row>
       <el-col :span="24">
         <el-card class="box-card" shadow="hover">
@@ -17,7 +17,7 @@
               </p>
             </div>
           </template>
-          <el-descriptions :column="6" size="large">
+          <el-descriptions class="contest-meta" :column="6" size="large">
             <el-descriptions-item label="开始时间">{{ contestInfo.start }}</el-descriptions-item>
             <el-descriptions-item :label="isHomework ? '截止时间' : '结束时间'">{{ contestInfo.end }}</el-descriptions-item>
             <el-descriptions-item :label="isHomework ? '作业时长' : '比赛时长'">{{ contestInfo.length }} min</el-descriptions-item>
@@ -116,12 +116,12 @@
                 {{ isHomework ? '作业管理' : '比赛管理' }}
               </template>
               <el-row>
-                <el-col :xs="24" :sm="24" :md="15" style="margin-bottom: 20px;">
+                <el-col :xs="24" :sm="24" :md="15" class="manage-editor-col">
                   <v-md-editor height="580px"
                     left-toolbar="undo redo clear | h bold italic strikethrough quote | ul ol table hr | link image code"
-                    style="padding-right: 100px;" v-model="tmpInfo.description"></v-md-editor>
+                    class="manage-editor" v-model="tmpInfo.description"></v-md-editor>
                 </el-col>
-                <el-col :xs="24" :sm="24" :md="9" style="padding-left: 30px;">
+                <el-col :xs="24" :sm="24" :md="9" class="manage-form-col">
                   <el-form>
                     <el-form-item label="比赛标题">
                       <el-input v-model="tmpInfo.title" :disabled="tmpInfo.done" />
@@ -293,7 +293,7 @@
         </el-card>
       </el-col>
     </el-row>
-    <el-dialog v-model="healthVisible" title="比赛体检" width="760px" destroy-on-close>
+    <el-dialog v-model="healthVisible" title="比赛体检" width="min(760px, 92vw)" destroy-on-close>
       <div class="health-summary">
         <el-tag type="danger" v-if="healthSummary.error">错误 {{ healthSummary.error }}</el-tag>
         <el-tag type="warning" v-if="healthSummary.warn">警告 {{ healthSummary.warn }}</el-tag>
@@ -312,7 +312,7 @@
         <el-table-column prop="detail" label="说明" min-width="260" show-overflow-tooltip />
       </el-table>
     </el-dialog>
-    <el-dialog v-model="ratingPreviewVisible" title="Rating 预览" width="760px" destroy-on-close>
+    <el-dialog v-model="ratingPreviewVisible" title="Rating 预览" width="min(760px, 92vw)" destroy-on-close>
       <div class="rating-preview-meta">
         <el-tag :type="ratingPreviewTagType()">
           {{ ratingPreviewTagText() }}
@@ -936,6 +936,12 @@ export default {
 </script>
 
 <style scoped>
+.contest-main-page {
+  max-width: 1500px;
+  min-width: 0;
+  margin: auto;
+}
+
 .box-card {
   margin: 10px;
   text-align: left;
@@ -949,6 +955,18 @@ export default {
 
 .demo-tabs {
   margin: 10px;
+}
+
+.manage-editor-col {
+  margin-bottom: 20px;
+}
+
+.manage-editor {
+  padding-right: 100px;
+}
+
+.manage-form-col {
+  padding-left: 30px;
 }
 
 #picon {
@@ -1030,5 +1048,80 @@ export default {
 .rating-value {
   font-size: 16px;
   font-weight: 800;
+}
+
+@media (max-width: 768px) {
+  .box-card,
+  .demo-tabs {
+    margin: 0;
+  }
+
+  .title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 20px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .manage-editor {
+    padding-right: 0;
+  }
+
+  .manage-form-col {
+    padding-left: 0;
+  }
+
+  .manage-editor-col {
+    margin-bottom: 12px;
+  }
+
+  .contest-meta :deep(.el-descriptions__table tbody tr) {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .contest-meta :deep(.el-descriptions__cell) {
+    display: flex;
+    gap: 6px;
+    width: 100% !important;
+    padding: 4px 0;
+  }
+
+  .demo-tabs :deep(.el-tabs__nav-wrap) {
+    padding: 0 2px;
+  }
+
+  .demo-tabs :deep(.el-tabs__content) {
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .demo-tabs :deep(.github-markdown-body) {
+    padding: 8px 0;
+    overflow-wrap: anywhere;
+  }
+
+  .auto-height-row :deep(.el-form-item__content),
+  :deep(.contest-action-row .el-form-item__content) {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .auto-height-row :deep(.el-input-number),
+  .auto-height-row :deep(.el-checkbox),
+  .auto-height-row :deep(.el-button) {
+    margin-left: 0 !important;
+  }
+
+  .health-summary,
+  .rating-preview-meta,
+  .rating-cell {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
 }
 </style>

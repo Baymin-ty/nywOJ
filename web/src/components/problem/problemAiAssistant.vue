@@ -1771,7 +1771,10 @@ export default {
 
 <style scoped>
 .ai-page {
-  width: min(1480px, calc(100vw - 28px));
+  width: 100%;
+  max-width: 1480px;
+  min-width: 0;
+  box-sizing: border-box;
   margin: 0 auto;
   padding: 12px 0 24px;
   text-align: left;
@@ -2447,6 +2450,47 @@ h2 {
   .generate-row,
   .header-actions {
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .ai-page {
+    padding-top: 0;
+  }
+
+  h1 {
+    font-size: 22px;
+  }
+
+  .config-band,
+  .guide-band,
+  .prompt-band,
+  .stream-band,
+  .draft-band {
+    padding-block: 12px;
+  }
+
+  .model-row,
+  .guide-head,
+  .tab-actions,
+  .block-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .model-row .el-autocomplete,
+  .model-row :deep(.el-select),
+  .model-row :deep(.el-input),
+  .header-actions,
+  .header-actions :deep(.el-button) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .preview-panel,
+  .draft-card,
+  .block {
+    padding-inline: 10px;
   }
 }
 </style>

@@ -1315,5 +1315,27 @@ export default {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .toolbar-actions,
+  .asset-add,
+  .step-card-head,
+  .src-row,
+  .member-row,
+  .limit-cell {
+    flex-wrap: wrap;
+  }
+
+  .asset-add :deep(.el-input),
+  .src-row :deep(.el-input),
+  .src-row :deep(.el-select),
+  .member-row :deep(.el-input),
+  .member-row :deep(.el-select) {
+    max-width: 100%;
+  }
+
+  .block,
+  .step-card {
+    padding-inline: 10px;
+  }
 }
 </style>

@@ -148,4 +148,39 @@ export default {
   margin-top: 16px;
   justify-content: center;
 }
+
+@media (max-width: 768px) {
+  .noti-list-page {
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  .noti-list-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .noti-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .noti-row-main {
+    min-width: 0;
+  }
+
+  .noti-row-title,
+  .noti-row-content {
+    overflow-wrap: anywhere;
+  }
+
+  .noti-row-time {
+    white-space: normal;
+  }
+
+  .noti-pager {
+    flex-wrap: wrap;
+  }
+}
 </style>

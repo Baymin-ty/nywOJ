@@ -284,6 +284,10 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .box-card {
+    margin: 0;
+  }
+
   .card-header,
   .toolbar {
     align-items: flex-start;
@@ -292,6 +296,18 @@ export default {
 
   .score-strip {
     grid-template-columns: 1fr;
+  }
+
+  .toolbar :deep(.el-radio-group) {
+    max-width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .toolbar :deep(.el-pagination),
+  .card-header :deep(.el-button-group) {
+    max-width: 100%;
+    flex-wrap: wrap;
   }
 }
 </style>

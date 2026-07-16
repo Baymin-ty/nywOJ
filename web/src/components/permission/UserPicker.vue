@@ -1,6 +1,7 @@
 <template>
   <el-select
     v-model="selected"
+    class="user-picker"
     filterable
     remote
     reserve-keyword
@@ -8,6 +9,7 @@
     :remote-method="search"
     :loading="loading"
     :clearable="clearable"
+    popper-class="user-picker-popper"
     style="width: 100%;"
     @change="onChange"
   >
@@ -16,7 +18,12 @@
       :key="u.uid"
       :label="`${u.name} (#${u.uid})`"
       :value="u.uid"
-    />
+    >
+      <div class="user-picker-option">
+        <span class="user-picker-option-name">{{ u.name }}</span>
+        <code class="user-picker-option-id">#{{ u.uid }}</code>
+      </div>
+    </el-option>
   </el-select>
 </template>
 
@@ -61,3 +68,57 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.user-picker { width: 100%; }
+
+.user-picker-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.user-picker-option-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-picker-option-id {
+  flex-shrink: 0;
+  color: #909399;
+  font-size: 11px;
+}
+
+@media (max-width: 768px) {
+  .user-picker :deep(.el-select__wrapper) {
+    min-height: 40px;
+  }
+}
+</style>
+
+<style>
+@media (max-width: 768px) {
+  .user-picker-popper {
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  .user-picker-popper .el-select-dropdown__item {
+    height: auto;
+    min-height: 44px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .user-picker-popper .user-picker-option-name {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+</style>

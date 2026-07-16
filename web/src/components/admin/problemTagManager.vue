@@ -63,7 +63,7 @@
       </el-table>
     </section>
 
-    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑标签' : '新建标签'" width="620px">
+    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑标签' : '新建标签'" width="min(620px, 92vw)">
       <el-form label-width="88px" class="tag-form">
         <el-form-item label="颜色">
           <el-color-picker v-model="form.color" />
@@ -328,6 +328,20 @@ h1 {
 
   .locale-row {
     grid-template-columns: 1fr;
+  }
+
+  .tag-page {
+    padding-inline: 0;
+  }
+
+  .tag-form :deep(.el-form-item) {
+    display: block;
+  }
+
+  .tag-form :deep(.el-form-item__label),
+  .tag-form :deep(.el-form-item__content) {
+    width: 100% !important;
+    margin-left: 0 !important;
   }
 }
 </style>

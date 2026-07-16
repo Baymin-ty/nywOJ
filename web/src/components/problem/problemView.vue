@@ -935,5 +935,26 @@ export default {
     gap: 6px;
   }
 
+  .multi-slot-label {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .multi-slot-name {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .answer-submit,
+  .multi-submit {
+    padding-inline: 0;
+  }
+
+  .problem-actions,
+  .answer-submit :deep(.el-upload-dragger),
+  .multi-submit :deep(.el-upload-dragger) {
+    max-width: 100%;
+  }
+
 }
 </style>

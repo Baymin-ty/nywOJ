@@ -1,5 +1,5 @@
 <template>
-  <div style="text-align: center; margin: 0 auto; max-width: 1200px">
+  <div class="paste-list-page">
     <el-card class="box-card" shadow="hover">
       <template #header>
         <div class="card-header">
@@ -114,6 +114,13 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+.paste-list-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+  min-width: 0;
+}
+
 .box-card {
   margin: 10px;
 }
@@ -123,5 +130,23 @@ export default {
   justify-content: space-between;
   align-items: center;
   height: 20px;
+}
+
+@media (max-width: 768px) {
+  .box-card {
+    margin: 0;
+  }
+
+  .card-header {
+    height: auto;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .card-header :deep(.el-pagination) {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <el-row style="margin: auto;max-width: 1500px;min-width: 600px;">
+  <el-row class="announcement-page">
     <el-col :span="24">
       <el-card class="box-card" shadow="hover">
         <template #header>
@@ -69,6 +69,12 @@ export default {
 </script>
 
 <style scoped>
+.announcement-page {
+  margin: auto;
+  max-width: 1500px;
+  min-width: 0;
+}
+
 .box-card {
   margin: 10px;
   text-align: left;
@@ -85,5 +91,37 @@ export default {
   margin: 0;
   font-size: 12px;
   color: #708090;
+}
+
+@media (max-width: 768px) {
+  .box-card {
+    margin: 0;
+  }
+
+  .card-header,
+  .title {
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .title :deep(.el-input) {
+    width: 100% !important;
+  }
+
+  .card-header :deep(.el-button-group) {
+    display: flex;
+    float: none !important;
+    width: 100%;
+  }
+
+  .card-header :deep(.el-button-group .el-button) {
+    flex: 1;
+  }
+
+  :deep(.v-md-editor) {
+    min-width: 0;
+  }
 }
 </style>

@@ -143,6 +143,22 @@ export default {
   white-space: pre;
 }
 
+.problem-statement :deep(.github-markdown-body img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.problem-statement :deep(.github-markdown-body table) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.problem-statement :deep(.github-markdown-body pre) {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 @media (max-width: 768px) {
   .sample-section {
     padding: 0 10px 14px;
@@ -150,6 +166,11 @@ export default {
 
   .sample-grid {
     grid-template-columns: 1fr;
+  }
+
+  .problem-statement :deep(.github-markdown-body) {
+    padding-inline: 0;
+    overflow-wrap: anywhere;
   }
 }
 </style>

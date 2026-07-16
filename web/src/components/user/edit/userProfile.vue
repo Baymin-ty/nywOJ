@@ -1,5 +1,5 @@
 <template>
-  <div style="margin: 0 20px;">
+  <div class="user-profile-edit">
     <el-row>
       <el-col :span="16">
         <div class="header">
@@ -153,6 +153,11 @@ export default {
 </script>
 
 <style scoped>
+.user-profile-edit {
+  margin: 0 20px;
+  min-width: 0;
+}
+
 .header {
   font-size: 24px;
   font-weight: 800;
@@ -162,5 +167,15 @@ export default {
   font-size: 13px;
   font-weight: 500;
   color: rgba(0, 0, 0, .4);
+}
+
+@media (max-width: 768px) {
+  .user-profile-edit {
+    margin: 0;
+  }
+
+  :deep(.v-md-editor) {
+    min-width: 0;
+  }
 }
 </style>

@@ -17,5 +17,7 @@ export default {
   text-align: center;
   margin: 0 auto;
   max-width: 500px;
+  min-width: 0;
+  width: 100%;
 }
 </style>

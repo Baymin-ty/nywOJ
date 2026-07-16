@@ -1,6 +1,7 @@
 <template>
   <el-select
     v-model="selected"
+    class="resource-picker"
     filterable
     remote
     reserve-keyword
@@ -8,6 +9,7 @@
     :remote-method="search"
     :loading="loading"
     :clearable="clearable"
+    popper-class="resource-picker-popper"
     style="width: 100%;"
     @change="onChange"
   >
@@ -16,7 +18,12 @@
       :key="item.id"
       :label="`#${item.id} ${item.title}`"
       :value="item.id"
-    />
+    >
+      <div class="resource-picker-option">
+        <code class="resource-picker-option-id">#{{ item.id }}</code>
+        <span class="resource-picker-option-title">{{ item.title }}</span>
+      </div>
+    </el-option>
   </el-select>
 </template>
 
@@ -80,3 +87,60 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.resource-picker { width: 100%; }
+
+.resource-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.resource-picker-option-id {
+  flex-shrink: 0;
+  color: #409eff;
+  font-size: 11px;
+}
+
+.resource-picker-option-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .resource-picker :deep(.el-select__wrapper) {
+    min-height: 40px;
+  }
+}
+</style>
+
+<style>
+@media (max-width: 768px) {
+  .resource-picker-popper {
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  .resource-picker-popper .el-select-dropdown__item {
+    height: auto;
+    min-height: 44px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .resource-picker-popper .resource-picker-option {
+    align-items: flex-start;
+  }
+
+  .resource-picker-popper .resource-picker-option-title {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+</style>

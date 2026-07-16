@@ -1778,4 +1778,68 @@ export default {
   font-size: 12px;
   text-align: center;
 }
+
+@media (max-width: 768px) {
+  .box-card {
+    margin: 0 0 10px;
+  }
+
+  .summary-result {
+    font-size: 18px;
+  }
+
+  .summary-score {
+    font-size: 22px;
+  }
+
+  .flow-stage-percase {
+    min-width: 260px;
+  }
+
+  .log-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .log-tools,
+  .log-filter {
+    width: 100%;
+  }
+
+  .log-cats {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .log-group-head {
+    flex-wrap: wrap;
+    padding: 10px;
+  }
+
+  .log-group-summary {
+    flex-basis: calc(100% - 30px);
+    margin-left: 30px;
+    max-width: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .log-sub-time {
+    width: 100%;
+    margin-left: 14px;
+  }
+
+  .log-timeline {
+    padding-inline: 0;
+  }
+
+  .log-timeline :deep(.el-timeline-item__wrapper) {
+    padding-left: 18px;
+  }
+
+  .source-files,
+  .answer-files {
+    padding-inline: 0;
+  }
+}
 </style>

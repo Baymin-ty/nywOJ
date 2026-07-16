@@ -12,35 +12,37 @@
       <div v-if="!canEdit" style="font-size:12px;color:#909399;margin-bottom:10px;">
         以下是当前协作者列表。仅资源所有者可以新增/移除协作者。
       </div>
-      <el-table :data="grants" :cell-style="{ textAlign: 'center' }" :header-cell-style="{ textAlign: 'center' }">
-        <el-table-column label="用户" width="200">
-          <template #default="scope">
-            <router-link :to="'/user/' + scope.row.uid" class="rlink">{{ scope.row.name }} (#{{ scope.row.uid }})</router-link>
-          </template>
-        </el-table-column>
-        <el-table-column v-if="showPermissionColumn" label="权限">
-          <template #default="scope">
-            <el-tag size="small">{{ permName(scope.row.permissionKey) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="过期" width="180">
-          <template #default="scope">
-            <span v-if="scope.row.expiresAt">{{ formatDate(scope.row.expiresAt) }}</span>
-            <span v-else style="color:#909399">永久</span>
-          </template>
-        </el-table-column>
-        <el-table-column v-if="canEdit" label="操作" width="100">
-          <template #default="scope">
-            <el-button type="danger" size="small" plain @click="revoke(scope.row)">移除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="collaborator-table-scroll">
+        <el-table class="collaborator-table" :data="grants" :cell-style="{ textAlign: 'center' }" :header-cell-style="{ textAlign: 'center' }">
+          <el-table-column label="用户" width="200">
+            <template #default="scope">
+              <router-link :to="'/user/' + scope.row.uid" class="rlink">{{ scope.row.name }} (#{{ scope.row.uid }})</router-link>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="showPermissionColumn" label="权限">
+            <template #default="scope">
+              <el-tag size="small">{{ permName(scope.row.permissionKey) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="过期" width="180">
+            <template #default="scope">
+              <span v-if="scope.row.expiresAt">{{ formatDate(scope.row.expiresAt) }}</span>
+              <span v-else style="color:#909399">永久</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="canEdit" label="操作" width="100">
+            <template #default="scope">
+              <el-button type="danger" size="small" plain @click="revoke(scope.row)">移除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       <template v-if="canEdit">
         <el-divider>添加协作者</el-divider>
-        <el-form :inline="true">
+        <el-form :inline="true" class="collaborator-form">
           <el-form-item label="用户">
-            <UserPicker v-model="form.uid" style="width: 240px;" />
+            <UserPicker v-model="form.uid" class="collaborator-control" />
           </el-form-item>
           <el-form-item v-if="showPermissionPicker" label="权限">
             <PermissionPicker
@@ -49,11 +51,11 @@
               :whitelist="grantablePermissions"
               scopable-only
               hide-key
-              style="width: 240px;"
+              class="collaborator-control"
             />
           </el-form-item>
           <el-form-item label="过期">
-            <el-date-picker v-model="form.expiresAt" type="datetime" placeholder="（永久）" style="width: 200px;" />
+            <el-date-picker v-model="form.expiresAt" class="collaborator-date" type="datetime" placeholder="（永久）" />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" :loading="granting" @click="grant">添加</el-button>
@@ -219,6 +221,74 @@ export default {
 
 <style scoped>
 .box-card { margin: 10px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
+.card-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .rlink { color: #409eff; text-decoration: none; }
+.collaborator-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.collaborator-table {
+  width: 100%;
+  min-width: 620px;
+}
+.collaborator-control { width: 240px; }
+.collaborator-date { width: 200px; }
+
+@media (max-width: 768px) {
+  .box-card {
+    margin: 8px 0;
+  }
+
+  .box-card :deep(.el-card__header),
+  .box-card :deep(.el-card__body) {
+    padding: 12px;
+  }
+
+  .card-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .collaborator-table {
+    min-width: 580px;
+  }
+
+  .collaborator-form :deep(.el-form-item) {
+    display: flex;
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 12px;
+  }
+
+  .collaborator-form :deep(.el-form-item__label) {
+    width: 52px;
+    flex: 0 0 52px;
+    padding-right: 8px;
+  }
+
+  .collaborator-form :deep(.el-form-item__content) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .collaborator-control,
+  .collaborator-date {
+    width: 100%;
+  }
+
+  .collaborator-form :deep(.el-select__wrapper),
+  .collaborator-form :deep(.el-input__wrapper) {
+    min-height: 40px;
+  }
+
+  .collaborator-form :deep(.el-form-item:last-child .el-form-item__content) {
+    margin-left: 52px;
+  }
+
+  .collaborator-form :deep(.el-form-item:last-child .el-button) {
+    width: 100%;
+    min-height: 40px;
+  }
+}
 </style>
