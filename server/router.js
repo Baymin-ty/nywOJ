@@ -317,6 +317,11 @@ router.post('/api/contest/submitClar', rlPost, contestClar.submitClar);
 router.post('/api/contest/listClars', contestClar.listClars);
 router.post('/api/contest/answerClar', contestClar.answerClar);
 router.post('/api/contest/postAnnouncement', contestClar.postAnnouncement);
+
+const contestVirtual = require('./api/contest/virtual');
+router.post('/api/contest/startVirtual', contestVirtual.startVirtual);
+router.post('/api/contest/quitVirtual', contestVirtual.quitVirtual);
+router.post('/api/contest/getVirtualState', contestVirtual.getVirtualState);
 const contestHealth = require('./api/contest/health');
 router.post('/api/contest/checkContest', contestHealth.checkContest);
 const contestTeams = require('./api/contest/teams');

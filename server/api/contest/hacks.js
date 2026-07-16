@@ -263,6 +263,7 @@ exports.getHackTargets = handler(async (req, res) => {
     `SELECT s.sid,s.uid,s.pid,s.submitTime,s.lang,u.name
        FROM submission s INNER JOIN userInfo u ON u.uid=s.uid
       WHERE s.cid=? AND s.judgeResult=? AND s.uid<>? AND s.pid IN (?)
+        AND s.virtualId IS NULL
         AND NOT EXISTS (SELECT 1 FROM contestHack h WHERE h.targetSid=s.sid AND h.status='success')
       ORDER BY s.sid DESC`,
     [cid, AC, uid, [...passed]]

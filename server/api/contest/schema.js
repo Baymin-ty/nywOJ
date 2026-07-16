@@ -77,6 +77,8 @@ const ensureContestV2Schema = () => {
           KEY idx_cid_rank (cid, rank)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
+      // 虚拟参赛（contestVirtual + submission.virtualId）也属于 contest V2 域
+      await require('./virtualStore').ensureSchema();
     })();
     ready.catch(() => { ready = null; }); // allow retry after transient DB errors
   }

@@ -245,9 +245,11 @@ exports.updateSubmissionDetail = (sid, caseId, input, output, time, memory, resu
 
 exports.updateProblemSubmitInfo = async (pid) => {
   try {
-    const total = await db.one('SELECT COUNT(*) as cnt FROM submission WHERE pid=?', [pid]);
+    // 虚拟参赛的提交不计入题目统计（官方统计不被 VP 污染）
+    await require('../contest/virtualStore').ensureSchema();
+    const total = await db.one('SELECT COUNT(*) as cnt FROM submission WHERE pid=? AND virtualId IS NULL', [pid]);
     await db.query('UPDATE problem SET submitCnt=? WHERE pid=?', [total.cnt, pid]);
-    const ac = await db.one('SELECT COUNT(*) as cnt FROM submission WHERE pid=? AND judgeResult=4', [pid]);
+    const ac = await db.one('SELECT COUNT(*) as cnt FROM submission WHERE pid=? AND judgeResult=4 AND virtualId IS NULL', [pid]);
     await db.query('UPDATE problem SET acCnt=? WHERE pid=?', [ac.cnt, pid]);
   } catch (err) {
     console.log(err);

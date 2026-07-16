@@ -1,6 +1,7 @@
 const db = require('../../db');
 const { getContest, getContestProblems } = require('./store');
 const { resolveConfig } = require('./formats');
+const { ensureSchema: ensureVirtualSchema } = require('./virtualStore');
 
 // ============================================================================
 // 排行榜事件回放引擎。
@@ -24,7 +25,17 @@ const CACHE_MAX = 32; // LRU 上限，防长期运行内存无界增长
 const INCR_ON = process.env.STANDINGS_INCR !== '0'; // kill-switch，回退纯 TTL 行为
 const cache = new Map(); // cid -> { at, ctx } （Map 保持插入序，命中时重排到尾部实现 LRU）
 
-const invalidateStandings = (cid) => cache.delete(Number(cid));
+// 虚拟参赛（VP）视图缓存：vid -> { at, cid, ctx }。与官方 ctx 隔离；VP 只有
+// 本人在看，TTL 短即可。
+const VCACHE_TTL_MS = 10 * 1000;
+const vcache = new Map();
+
+const invalidateVirtualStandings = (vid) => vcache.delete(Number(vid));
+
+const invalidateStandings = (cid) => {
+  cache.delete(Number(cid));
+  for (const [vid, e] of vcache) if (e.cid === Number(cid)) vcache.delete(vid);
+};
 
 // LRU 读：命中未过期则重排到尾部并返回 ctx，否则返回 null
 const cacheGet = (cid) => {
@@ -92,9 +103,11 @@ const loadContext = async (cid) => {
       INNER JOIN userInfo u ON u.uid=cp.uid WHERE cp.cid=?`,
     [cid]
   );
+  // 官方事件流只含正式提交；虚拟提交（virtualId 非空）走 loadVirtualContext。
+  await ensureVirtualSchema();
   const submissions = await db.query(
     `SELECT sid,uid,pid,submitTime,judgeResult,score,time
-       FROM submission WHERE cid=? ORDER BY submitTime ASC,sid ASC`,
+       FROM submission WHERE cid=? AND virtualId IS NULL ORDER BY submitTime ASC,sid ASC`,
     [cid]
   );
   // 已判定的 hack（CF）：成功的 hack 让目标提交在 hack 时刻起视为失败；
@@ -169,6 +182,57 @@ const loadContext = async (cid) => {
   return ctx;
 };
 
+// ---- 虚拟参赛（VP）视图 ----
+// VP 视图 = 官方事件流（ghost，相对秒原样）+ 该会话的虚拟提交
+// （at = submitTime − vp.startAt）。官方 ctx 的数组/Map 只读共享，全部浅拷贝
+// 后再叠加，绝不回写 —— 官方榜单不被虚拟事件污染是本功能的第一不变量。
+const loadVirtualContext = async (cid, vp) => {
+  const hit = vcache.get(Number(vp.vid));
+  if (hit && Date.now() - hit.at < VCACHE_TTL_MS) return hit.ctx;
+
+  const base = await loadContext(cid);
+  if (!base) return null;
+  const user = await db.one('SELECT uid,name,rating FROM userInfo WHERE uid=?', [vp.uid]);
+  if (!user) return null;
+
+  const key = `u${user.uid}`;
+  const participants = new Map(base.participants);
+  participants.set(key, {
+    key, uid: Number(user.uid), name: user.name, rating: user.rating,
+    teamId: null, members: null, virtual: true,
+  });
+  const uidToKey = new Map(base.uidToKey);
+  uidToKey.set(Number(user.uid), key);
+
+  const vStartMs = new Date(vp.startAt).getTime();
+  const subs = await db.query(
+    `SELECT sid,uid,pid,submitTime,judgeResult,score,time
+       FROM submission WHERE virtualId=? ORDER BY submitTime ASC,sid ASC`,
+    [vp.vid]
+  );
+  const ctx = {
+    ...base, participants, uidToKey,
+    events: [...base.events],
+    virtual: { vid: Number(vp.vid), uid: Number(vp.uid), key, startMs: vStartMs },
+  };
+  for (const s of subs) {
+    const idx = ctx.pidToIdx.get(Number(s.pid));
+    if (!idx) continue;
+    insertEventSorted(ctx.events, {
+      sid: Number(s.sid),
+      key,
+      idx,
+      at: Math.max(0, Math.floor((new Date(s.submitTime).getTime() - vStartMs) / 1000)),
+      result: s.judgeResult,
+      score: Number(s.score || 0),
+      runTime: Number(s.time || 0),
+      pending: PENDING_RESULTS.has(s.judgeResult),
+    });
+  }
+  vcache.set(Number(vp.vid), { at: Date.now(), cid: Number(cid), ctx });
+  return ctx;
+};
+
 // ---- 增量事件维护（主进程 judgeQueue 回调 / 提交入队时调用）----
 // 只更新已缓存的 ctx；未缓存则不做（下次 getRankAt 全量加载）。
 // 未知选手/题目 -> 保守失效整场（新报名或题目变更）。
@@ -176,10 +240,12 @@ const applyEventBySid = async (sid) => {
   if (!INCR_ON) return;
   try {
     const row = await db.one(
-      'SELECT sid,uid,pid,cid,submitTime,judgeResult,score,time FROM submission WHERE sid=?',
+      'SELECT sid,uid,pid,cid,submitTime,judgeResult,score,time,virtualId FROM submission WHERE sid=?',
       [sid]
     );
     if (!row || !row.cid) return;
+    // 虚拟提交：只失效对应 VP 视图缓存，官方 ctx 不动（也绝不因未知选手整场失效）
+    if (row.virtualId != null) { invalidateVirtualStandings(row.virtualId); return; }
     const ctx = cacheGet(row.cid);
     if (!ctx) return; // 该场未缓存，跳过
     const ev = buildEvent(ctx, row);
@@ -472,12 +538,17 @@ const markFirstBlood = (ctx, events, rows, format, maskAfter) => {
 
 // ---- 对外：任意时刻榜单 ----
 
-// options: { atSec?, masked? } masked=true 时按封榜配置遮蔽封榜期提交
+// options: { atSec?, masked?, virtual? } masked=true 时按封榜配置遮蔽封榜期提交；
+// virtual = contestVirtual 行（{vid,uid,startAt}）时返回 VP 合榜视图，回放进度
+// 按虚拟时钟（now − vp.startAt）推进。
 const computeStandings = async (cid, options = {}) => {
-  const ctx = await loadContext(cid);
+  const ctx = options.virtual
+    ? await loadVirtualContext(cid, options.virtual)
+    : await loadContext(cid);
   if (!ctx) return null;
   const format = ctx.contest.format || 'oi';
-  const elapsedSec = Math.max(0, Math.floor((Date.now() - ctx.startMs) / 1000));
+  const clockStartMs = options.virtual ? new Date(options.virtual.startAt).getTime() : ctx.startMs;
+  const elapsedSec = Math.max(0, Math.floor((Date.now() - clockStartMs) / 1000));
   const horizon = Math.min(horizonLimitOf(ctx), elapsedSec);
   const atSec = options.atSec == null ? horizon : Math.max(0, Math.min(Number(options.atSec), horizon));
 
@@ -497,6 +568,14 @@ const computeStandings = async (cid, options = {}) => {
   for (let i = 0; i < rank.length; i++) {
     if (i === 0 || !same(rank[i - 1], rank[i])) displayedRank = i + 1;
     rank[i].rank = displayedRank;
+  }
+
+  // VP 视图：官方选手标记 ghost（前端置灰），本人标记 virtual（高亮）
+  if (ctx.virtual) {
+    for (const row of rank) {
+      row.ghost = row.key !== ctx.virtual.key;
+      row.virtual = row.key === ctx.virtual.key;
+    }
   }
 
   // 每题 通过/尝试 人数（作业完成度视图；单元格存在即视为尝试过）
@@ -529,13 +608,16 @@ const computeStandings = async (cid, options = {}) => {
 
 // participant 可传 participantKey（'u<uid>'/'t<teamId>'）或裸 uid（个人模式向后兼容）
 const participantTimeline = async (cid, participant, options = {}) => {
-  const ctx = await loadContext(cid);
+  const ctx = options.virtual
+    ? await loadVirtualContext(cid, options.virtual)
+    : await loadContext(cid);
   if (!ctx) return null;
   const format = ctx.contest.format || 'oi';
   const targetKey = /^[ut]\d+$/.test(String(participant)) ? String(participant) : `u${Number(participant)}`;
   if (!ctx.participants.has(targetKey)) return { points: [] };
 
-  const elapsedSec = Math.max(0, Math.floor((Date.now() - ctx.startMs) / 1000));
+  const clockStartMs = options.virtual ? new Date(options.virtual.startAt).getTime() : ctx.startMs;
+  const elapsedSec = Math.max(0, Math.floor((Date.now() - clockStartMs) / 1000));
   let horizon = Math.min(horizonLimitOf(ctx), elapsedSec);
   // 封榜遮蔽时，非特权观众的时间线截断在封榜起点
   const freeze = ctx.cfg.scoreboard && ctx.cfg.scoreboard.freeze || {};
@@ -570,6 +652,24 @@ const participantTimeline = async (cid, participant, options = {}) => {
   return { points, playerCount: ctx.participants.size, durationSec: ctx.durationSec, horizonSec: horizon, format };
 };
 
+// VP 终刻成绩（getVirtualState 的赛后成绩卡）：全时长回放取本人行。
+const virtualStandingOf = async (cid, vp) => {
+  const result = await computeStandings(cid, {
+    virtual: vp, atSec: Number.MAX_SAFE_INTEGER, masked: false,
+  });
+  if (!result) return null;
+  const mine = result.rank.find((r) => r.virtual);
+  if (!mine) return null;
+  return {
+    rank: mine.rank,
+    totalScore: mine.totalScore,
+    solved: mine.solved,
+    penalty: mine.penalty,
+    playerCount: result.rank.length,
+    format: result.format,
+  };
+};
+
 // ---- 最终榜固化（closeContest 时调用）----
 
 const persistFinalStandings = async (cid) => {
@@ -600,5 +700,7 @@ module.exports = {
   persistFinalStandings,
   buildContestRank,
   invalidateStandings,
+  invalidateVirtualStandings,
+  virtualStandingOf,
   applyEventBySid,
 };

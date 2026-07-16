@@ -19,8 +19,9 @@ const {
 } = require('./formats');
 const {
   buildContestRank, computeStandings, participantTimeline,
-  persistFinalStandings, invalidateStandings,
+  persistFinalStandings, invalidateStandings, invalidateVirtualStandings,
 } = require('./standings');
+const { ensureSchema: ensureVirtualSchema } = require('./virtualStore');
 const { deepMerge } = require('./formats');
 const {
   ensureContestRatingSchema,
@@ -422,11 +423,16 @@ exports.submit = handler(async (req, res) => {
   if (!cid || !idx) return fail(res, '请确认信息完善');
   if (code.length < 10) return fail(res, '代码太短');
   if (code.length > 1024 * 100) return fail(res, '选手提交的程序源文件必须不大于 100KB。');
-  // 失败信息顺序与旧版一致：先查报名，再查比赛存在/时间窗
-  if (!(await isReg(uid, cid))) return fail(res, '请先报名比赛');
-
+  // 失败信息顺序与旧版一致：先查报名，再查比赛存在/时间窗。
+  // 报名判定走 view.isReged（正式报名或活跃 VP 会话都算），VP 的时间窗由
+  // policy 的虚拟时钟推导。
+  await ensureVirtualSchema();
   const v = await loadView(req, cid);
-  if (!v) return fail(res, '无此比赛');
+  if (!v) {
+    if (!(await isReg(uid, cid))) return fail(res, '请先报名比赛');
+    return fail(res, '无此比赛');
+  }
+  if (!v.isReged) return fail(res, '请先报名比赛');
   const contest = v.contest;
   // 作业迟交窗口内 canSubmit 仍为真（得分由榜单层按提交时刻打折）
   if (!v.caps.canSubmit) return fail(res, '非比赛时间');
@@ -445,26 +451,32 @@ exports.submit = handler(async (req, res) => {
   const judgeScope =
     contest.format === 'cf' && cfg.cf && cfg.cf.pretestEnabled ? 'pretest' : null;
 
+  // 虚拟提交：落 virtualId，且不碰任何官方状态（problem.submitCnt、
+  // contestLastSubmission、官方榜缓存）—— 官方统计不被 VP 污染是第一不变量。
+  const vid = v.virtual ? v.virtual.vid : null;
   const insertId = await db.tx(async (tx) => {
     const r = await tx.query(
-      'INSERT INTO submission(pid,uid,code,codelength,submitTime,cid,lang,judgeScope) VALUES (?,?,?,?,?,?,?,?)',
-      [pinfo.pid, uid, code, code.length, new Date(), cid, lang, judgeScope]
+      'INSERT INTO submission(pid,uid,code,codelength,submitTime,cid,lang,judgeScope,virtualId) VALUES (?,?,?,?,?,?,?,?,?)',
+      [pinfo.pid, uid, code, code.length, new Date(), cid, lang, judgeScope, vid]
     );
     if (!r.affectedRows) throw new Error('insert failed');
-    await tx.query('UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?', [pinfo.pid]);
-    await tx.query(
-      'DELETE FROM contestLastSubmission WHERE cid=? AND uid=? AND pid=?',
-      [cid, uid, pinfo.pid]
-    );
-    await tx.query(
-      'INSERT INTO contestLastSubmission (cid,uid,pid,sid) VALUES (?,?,?,?)',
-      [cid, uid, pinfo.pid, r.insertId]
-    );
+    if (!vid) {
+      await tx.query('UPDATE problem SET submitCnt=submitCnt+1 WHERE pid=?', [pinfo.pid]);
+      await tx.query(
+        'DELETE FROM contestLastSubmission WHERE cid=? AND uid=? AND pid=?',
+        [cid, uid, pinfo.pid]
+      );
+      await tx.query(
+        'INSERT INTO contestLastSubmission (cid,uid,pid,sid) VALUES (?,?,?,?)',
+        [cid, uid, pinfo.pid, r.insertId]
+      );
+    }
     return r.insertId;
   });
 
   pushSidIntoQueue(insertId, false);
-  invalidateStandings(cid);
+  if (vid) invalidateVirtualStandings(vid);
+  else invalidateStandings(cid);
   return ok(res);
 });
 
@@ -477,24 +489,37 @@ exports.getSubmissionList = handler(async (req, res) => {
   if (!v) return fail(res, '无此比赛');
   if (!v.caps.canViewSubmissionList) return res.status(403).end('403 Forbidden');
 
+  // 视图隔离：VP 进行中只看本人本次虚拟提交；VP 结束后本人可传 virtual:true
+  // 回看自己的虚拟提交；其余（官方视图）一律排除虚拟提交。
+  await ensureVirtualSchema();
+  const conds = [];
   const params = [cid];
-  let extra = '';
+  if (v.virtual) {
+    conds.push('s.virtualId=?');
+    params.push(v.virtual.vid);
+  } else if (req.body.virtual && req.session.uid) {
+    conds.push('s.uid=?', 's.virtualId IS NOT NULL');
+    params.push(req.session.uid);
+  } else {
+    conds.push('s.virtualId IS NULL');
+  }
   if (req.body.uid) {
-    extra = ' AND u.uid=?';
+    conds.push('s.uid=?');
     params.push(req.body.uid);
   }
+  const extra = ` AND ${conds.join(' AND ')}`;
   const list = await db.query(
     'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.judgeScope,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
     'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ' +
-    `WHERE cid=?${extra} ORDER BY s.sid DESC LIMIT ?,?`,
+    `WHERE s.cid=?${extra} ORDER BY s.sid DESC LIMIT ?,?`,
     [...params, offset, limit]
   );
   const ctx = { cid, caps: v.caps, format: v.contest.format };
   for (const r of list) await formatContestSubmissionRow(r, ctx);
 
   const cnt = await db.one(
-    `SELECT COUNT(*) as cnt FROM submission WHERE cid=?${req.body.uid ? ' AND uid=?' : ''}`,
-    req.body.uid ? [cid, req.body.uid] : [cid]
+    `SELECT COUNT(*) as cnt FROM submission s WHERE s.cid=?${extra}`,
+    params
   );
   return ok(res, { data: list, total: cnt.cnt });
 });
@@ -651,7 +676,7 @@ exports.getRank = handler(async (req, res) => {
   const { contest, status } = v;
 
   const [result, ratingStatus] = await Promise.all([
-    buildContestRank(cid, { masked: v.caps.scoreboardMasked }),
+    buildContestRank(cid, { masked: v.caps.scoreboardMasked, virtual: v.virtual || undefined }),
     contestRatingStatusForContest(contest, status),
   ]);
   const showRating = !!contest.done && !!contest.ratingEnabled;
@@ -688,9 +713,11 @@ exports.getRankAt = handler(async (req, res) => {
 
   const { offset, limit, pageId, pageSize } = paginate(req, 50);
   const t = req.body.t == null ? null : Number(req.body.t);
+  // VP 进行中：合榜视图（官方 ghost + 本人虚拟提交），回放进度按虚拟时钟
   const result = await computeStandings(cid, {
     atSec: t == null || Number.isNaN(t) ? null : t,
     masked: v.caps.scoreboardMasked,
+    virtual: v.virtual || undefined,
   });
   if (!result) return fail(res, '无此比赛');
 
@@ -746,7 +773,10 @@ exports.getParticipantTimeline = handler(async (req, res) => {
   if (!v) return fail(res, '无此比赛');
   if (!v.caps.canViewScoreboard) return res.status(403).end('403 Forbidden');
 
-  const result = await participantTimeline(cid, participant, { masked: v.caps.scoreboardMasked });
+  const result = await participantTimeline(cid, participant, {
+    masked: v.caps.scoreboardMasked,
+    virtual: v.virtual || undefined,
+  });
   if (!result) return fail(res, '无此比赛');
   return ok(res, result);
 });
@@ -761,11 +791,13 @@ exports.startSystest = handler(async (req, res) => {
   if (contestStatus(contest) < 2) return fail(res, '比赛还未到截止时间');
   if (Number(contest.phase) >= 1) return fail(res, '终测已启动');
 
+  // 终测只覆盖正式提交；VP 的 pretest 提交在其会话结束时单独转全量（virtual.js）
+  await ensureVirtualSchema();
   const sids = await db.column(
-    'SELECT sid FROM submission WHERE cid=? AND judgeResult=4', [cid], 'sid'
+    'SELECT sid FROM submission WHERE cid=? AND judgeResult=4 AND virtualId IS NULL', [cid], 'sid'
   );
   await db.query('UPDATE contest SET phase=1 WHERE cid=?', [cid]);
-  await db.query('UPDATE submission SET judgeScope=NULL WHERE cid=?', [cid]);
+  await db.query('UPDATE submission SET judgeScope=NULL WHERE cid=? AND virtualId IS NULL', [cid]);
   // 与 judge/core.js reJudgeContest 相同的重置+入队方式
   for (const sid of sids) {
     await db.query(
@@ -781,8 +813,9 @@ exports.startSystest = handler(async (req, res) => {
 // 终测收尾：phase=1 且场内无待评测提交时推进到 phase=2（getContestInfo 顺带调用）
 const advanceSystestPhase = async (contest) => {
   if (contest.format !== 'cf' || Number(contest.phase) !== 1) return contest.phase;
+  await ensureVirtualSchema();
   const pending = await db.one(
-    'SELECT COUNT(*) AS cnt FROM submission WHERE cid=? AND judgeResult IN (0,1,2,13)',
+    'SELECT COUNT(*) AS cnt FROM submission WHERE cid=? AND judgeResult IN (0,1,2,13) AND virtualId IS NULL',
     [contest.cid]
   );
   if (Number(pending && pending.cnt || 0) === 0) {
@@ -839,11 +872,17 @@ exports.getSingleUserProblemSubmission = handler(async (req, res) => {
   const pinfo = await getProblemByIdx(cid, idx);
   if (!pinfo) return fail(res, '无此题目');
 
+  // 榜单单元格点开的提交列表：VP 视图下点自己的行看本次虚拟提交，
+  // 点 ghost 行看官方提交；官方视图一律排除虚拟提交。
+  await ensureVirtualSchema();
+  const mineVirtual = v.virtual && Number(uid) === Number(req.session.uid);
+  const vcond = mineVirtual ? ' AND s.virtualId=?' : ' AND s.virtualId IS NULL';
+  const vparams = mineVirtual ? [v.virtual.vid] : [];
   const list = await db.query(
     'SELECT s.sid,s.uid,s.pid,s.judgeResult,s.judgeScope,s.time,s.memory,s.score,s.codeLength,s.submitTime,s.machine,s.lang,u.name,p.title ' +
     'FROM submission s INNER JOIN userInfo u ON u.uid = s.uid INNER JOIN problem p ON p.pid=s.pid ' +
-    'WHERE s.cid=? AND s.uid=? AND s.pid=? ORDER BY s.sid DESC',
-    [cid, uid, pinfo.pid]
+    `WHERE s.cid=? AND s.uid=? AND s.pid=?${vcond} ORDER BY s.sid DESC`,
+    [cid, uid, pinfo.pid, ...vparams]
   );
   for (const r of list) {
     r.idx = idx;

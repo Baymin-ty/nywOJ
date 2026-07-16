@@ -54,7 +54,7 @@ const resolveView = async (req, contest) => {
       const durationMs = contest.length * 60 * 1000;
       const elapsed = Date.now() - new Date(vp.startAt).getTime();
       if (elapsed >= 0 && elapsed <= durationMs) {
-        virtual = { vid: vp.vid, startAt: vp.startAt, elapsedSec: Math.floor(elapsed / 1000) };
+        virtual = { vid: vp.vid, uid, startAt: vp.startAt, elapsedSec: Math.floor(elapsed / 1000) };
         nowMs = contest.start.getTime() + elapsed; // 虚拟时钟
       }
     }
