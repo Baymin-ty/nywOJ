@@ -45,6 +45,7 @@ echo ">> building $IMAGE from $ROOT/sandbox (runtime=$RUNTIME_IMAGE)"
 docker build --pull=false \
   --build-arg "RUNTIME_IMAGE=$RUNTIME_IMAGE" \
   --build-arg "INSTALL_RUNTIME_PACKAGES=$INSTALL_RUNTIME_PACKAGES" \
+  --build-arg "USE_CN_MIRRORS=${RUST_SANDBOX_CN_MIRRORS:-0}" \
   -t "$IMAGE" "$ROOT/sandbox"
 
 if [ "$DEPLOY" = "1" ]; then

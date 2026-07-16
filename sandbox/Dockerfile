@@ -2,6 +2,12 @@ ARG RUNTIME_IMAGE=debian:bookworm-slim
 
 # ---- 构建阶段：编译 sandbox-web 与 sandbox-cli ----
 FROM rust:1-bookworm AS builder
+# 国内部署把 crates.io 换成 rsproxy 镜像（build.sh 传 RUST_SANDBOX_CN_MIRRORS=1）
+ARG USE_CN_MIRRORS=0
+RUN if [ "$USE_CN_MIRRORS" = "1" ]; then \
+      printf '[source.crates-io]\nreplace-with = "rsproxy-sparse"\n[source.rsproxy-sparse]\nregistry = "sparse+https://rsproxy.cn/index/"\n' \
+        > /usr/local/cargo/config.toml; \
+    fi
 WORKDIR /src
 # 先拷贝清单以利用 Docker 层缓存（依赖不变就不重编）
 COPY Cargo.toml ./
@@ -22,7 +28,12 @@ RUN touch crates/sandbox-core/src/lib.rs crates/sandbox-web/src/main.rs \
 # ---- 运行阶段 ----
 FROM ${RUNTIME_IMAGE}
 ARG INSTALL_RUNTIME_PACKAGES=1
-RUN if [ "$INSTALL_RUNTIME_PACKAGES" = "1" ]; then \
+ARG USE_CN_MIRRORS=0
+RUN if [ "$USE_CN_MIRRORS" = "1" ]; then \
+      sed -i 's#deb.debian.org#mirrors.aliyun.com#g' /etc/apt/sources.list.d/debian.sources 2>/dev/null \
+      || sed -i 's#deb.debian.org#mirrors.aliyun.com#g' /etc/apt/sources.list || true; \
+    fi \
+ && if [ "$INSTALL_RUNTIME_PACKAGES" = "1" ]; then \
       apt-get update \
       && apt-get install -y --no-install-recommends gcc g++ python3 libc6-dev ca-certificates \
       && rm -rf /var/lib/apt/lists/*; \
